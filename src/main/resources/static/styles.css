@@ -1,0 +1,172 @@
+body, html {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    overflow-x: hidden; /* Prevent horizontal scrolling */
+}
+
+.header {
+    background: url('images/summer.webp') no-repeat center center;
+    background-size: cover;
+    color: #000; /* Change text color to black */
+    padding: 40px 0;
+    text-align: center;
+}
+
+.language-switch {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+}
+
+.language-switch button {
+    background: #fff;
+    border: 1px solid #ccc;
+    padding: 5px 10px;
+    cursor: pointer;
+    font-size: 1em;
+    border-radius: 5px;
+    margin-right: 5px;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2.5em;
+    color: #000; /* Set text color to black */
+    display: inline-block;
+    padding: 5px 10px;
+    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background for text */
+    border-radius: 5px;
+}
+
+.buttons {
+    margin-top: 20px;
+}
+
+.btn {
+    background: #007bff;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    margin: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    border-radius: 5px;
+}
+
+.btn.inactive {
+    background: #bbb;
+    cursor: not-allowed;
+}
+
+.container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.intro, .faq {
+    background: #fff;
+    padding: 20px 0;
+    margin-top: 20px;
+    border: 2px solid #ccc; /* Add border to sections */
+    border-radius: 10px;
+}
+
+h2 {
+    text-align: center;
+}
+
+.features {
+    display: flex;
+    justify-content: space-around;
+    border-top: 2px solid #ccc; /* Add top border to features */
+}
+
+.feature {
+    max-width: 300px;
+    text-align: center;
+    border-right: 2px solid #ccc; /* Add right border to feature */
+    padding: 10px;
+}
+
+.feature:last-child {
+    border-right: none; /* Remove right border from the last feature */
+}
+
+.faq-item {
+    margin: 10px 0;
+}
+
+footer {
+    background: #333;
+    color: #fff;
+    text-align: center;
+    padding: 10px 0;
+}
+
+.social-links a {
+    color: #fff;
+    margin: 0 10px;
+    text-decoration: none;
+}
+
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0,0,0,0.4);
+    padding-top: 60px;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 500px;
+    border-radius: 10px;
+}
+
+.close {
+    color: #aaa;
+    float: right;
+    font-size: 28px;
+    font-weight: bold;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.result {
+    margin-top: 20px;
+    font-size: 1.2em;
+    text-align: center;
+}
+
+.form-group {
+    margin-bottom: 15px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 8px;
+    box-sizing: border-box;
+    font-size: 1.2em
+}
