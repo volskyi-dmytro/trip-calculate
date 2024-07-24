@@ -56,8 +56,8 @@ jobs:
           ORACLE_INSTANCE_IP: ${{ secrets.ORACLE_INSTANCE_IP }}
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ubuntu@$ORACLE_INSTANCE_IP << EOF
-            docker pull $DOCKER_USERNAME/trip-planner:latest
-            docker stop trip-planner-container || true
-            docker rm trip-planner-container || true
-            docker run -d -p 8080:8080 --name trip-planner-container $DOCKER_USERNAME/trip-planner:latest
+            sudo docker pull $DOCKER_USERNAME/trip-planner:latest
+            sudo docker stop trip-planner-container || true
+            sudo docker rm trip-planner-container || true
+            sudo docker run -d -p 8080:8080 --name trip-planner-container $DOCKER_USERNAME/trip-planner:latest
           EOF
