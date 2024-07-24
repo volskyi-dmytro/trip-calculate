@@ -16,7 +16,7 @@ jobs:
       - name: Set up JDK 17
         uses: actions/setup-java@v2
         with:
-          distribution: 'temurin'
+          distribution: 'temurin' # Or another distribution of your choice
           java-version: '17'
 
       - name: Build with Maven
@@ -55,7 +55,7 @@ jobs:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           ORACLE_INSTANCE_IP: ${{ secrets.ORACLE_INSTANCE_IP }}
         run: |
-          ssh -i private_key ubuntu@$ORACLE_INSTANCE_IP << EOF
+          ssh -o StrictHostKeyChecking=no -i private_key ubuntu@$ORACLE_INSTANCE_IP << EOF
             docker pull $DOCKER_USERNAME/trip-planner:latest
             docker stop trip-planner-container || true
             docker rm trip-planner-container || true
