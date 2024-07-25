@@ -56,8 +56,35 @@ jobs:
           ORACLE_INSTANCE_IP: ${{ secrets.ORACLE_INSTANCE_IP }}
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ubuntu@$ORACLE_INSTANCE_IP << EOF
+            # Determine the current active container (blue or green)
+            if [ -f /etc/nginx/upstream.conf ]; then
+              CURRENT=$(readlink /etc/nginx/upstream.conf)
+            else
+              CURRENT="blue"
+            fi
+
+            if [ "\$CURRENT" = "/etc/nginx/sites-available/blue" ]; then
+              NEW="green"
+              NEW_PORT=8082
+            else
+              NEW="blue"
+              NEW_PORT=8081
+            fi
+
+            # Pull the latest image
             sudo docker pull $DOCKER_USERNAME/trip-calculate:latest
-            sudo docker stop trip-calculate-container || true
-            sudo docker rm trip-calculate-container || true
-            sudo docker run -d -p 8080:8080 --name trip-calculate-container $DOCKER_USERNAME/trip-calculate:latest
+
+            # Deploy the new container
+            sudo docker stop trip-calculate-\$NEW || true
+            sudo docker rm trip-calculate-\$NEW || true
+            sudo docker run -d -p \$NEW_PORT:8080 --name trip-calculate-\$NEW $DOCKER_USERNAME/trip-calculate:latest
+
+            # Switch Nginx to the new container
+            sudo ln -sf /etc/nginx/sites-available/\$NEW /etc/nginx/upstream.conf
+            sudo systemctl reload nginx
+
+            # Remove the old container after a delay to ensure all traffic is switched
+            sleep 30
+            sudo docker stop trip-calculate-\$CURRENT || true
+            sudo docker rm trip-calculate-\$CURRENT || true
           EOF
