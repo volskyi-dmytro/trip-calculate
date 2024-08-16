@@ -1,15 +1,48 @@
+:root {
+    /* Light Mode Colors */
+    --background-color: #f4f4f4;
+    --text-color: #000000;
+    --header-background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background */
+    --button-background-color: #007bff;
+    --button-text-color: #ffffff;
+    --border-color: #ccc;
+    --feature-background-color: #fff;
+    --feature-border-color: #ccc;
+    --footer-background-color: #333;
+    --footer-text-color: #ffffff;
+
+    /* Dark Mode Colors */
+    --background-color-dark: #121212;
+    --text-color-dark: #ffffff;
+    --header-background-color-dark: rgba(50, 50, 50, 0.9);
+    --button-background-color-dark: #1e88e5;
+    --button-text-color-dark: #ffffff;
+    --border-color-dark: #444;
+    --feature-background-color-dark: #1e1e1e;
+    --feature-border-color-dark: #444;
+    --footer-background-color-dark: #222;
+    --footer-text-color-dark: #ffffff;
+
+    /* Modal Styles */
+    --modal-background-color: #fefefe;
+    --modal-border-color: #888;
+    --modal-background-color-dark: #333;
+    --modal-border-color-dark: #444;
+}
+
 body, html {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f4f4f4;
+    background-color: var(--background-color);
+    color: var(--text-color);
     overflow-x: hidden; /* Prevent horizontal scrolling */
+    transition: background-color 0.3s, color 0.3s;
 }
 
 .header {
     background: url('images/summer.webp') no-repeat center center;
     background-size: cover;
-    color: #000; /* Change text color to black */
     padding: 40px 0;
     text-align: center;
 }
@@ -22,7 +55,7 @@ body, html {
 
 .language-switch button {
     background: #fff;
-    border: 1px solid #ccc;
+    border: 1px solid var(--border-color);
     padding: 5px 10px;
     cursor: pointer;
     font-size: 1em;
@@ -33,10 +66,10 @@ body, html {
 header h1 {
     margin: 0;
     font-size: 2.5em;
-    color: #000; /* Set text color to black */
+    color: var(--text-color);
     display: inline-block;
     padding: 5px 10px;
-    background-color: rgba(255, 255, 255, 0.7); /* Semi-transparent background for text */
+    background-color: var(--header-background-color);
     border-radius: 5px;
 }
 
@@ -45,8 +78,8 @@ header h1 {
 }
 
 .btn {
-    background: #007bff;
-    color: #fff;
+    background: var(--button-background-color);
+    color: var(--button-text-color);
     border: none;
     padding: 10px 20px;
     margin: 5px;
@@ -67,10 +100,10 @@ header h1 {
 }
 
 .intro, .faq {
-    background: #fff;
+    background: var(--feature-background-color);
     padding: 20px 0;
     margin-top: 20px;
-    border: 2px solid #ccc; /* Add border to sections */
+    border: 2px solid var(--border-color);
     border-radius: 10px;
 }
 
@@ -78,36 +111,54 @@ h2 {
     text-align: center;
 }
 
-.features {
+/*.features {
     display: flex;
     justify-content: space-around;
-    border-top: 2px solid #ccc; /* Add top border to features */
+    border-top: 2px solid var(--border-color);
 }
 
 .feature {
     max-width: 300px;
     text-align: center;
-    border-right: 2px solid #ccc; /* Add right border to feature */
+    border-right: 2px solid var(--feature-border-color);
     padding: 10px;
 }
 
 .feature:last-child {
-    border-right: none; /* Remove right border from the last feature */
+    border-right: none; *//* Remove right border from the last feature *//*
+}*/
+
+@media (max-width: 768px) {
+    .features {
+        flex-direction: column;
+        align-items: center;
+    }
+    .feature {
+        border-right: none;
+        border-bottom: 2px solid #ccc;
+    }
+    .feature:last-child {
+        border-bottom: none;
+    }
+    .mode-switch {
+        top: 80px; /* Adjust this to fit smaller screens */
+    }
 }
+
 
 .faq-item {
     margin: 10px 0;
 }
 
 footer {
-    background: #333;
-    color: #fff;
+    background: var(--footer-background-color);
+    color: var(--footer-text-color);
     text-align: center;
     padding: 10px 0;
 }
 
 .social-links a {
-    color: #fff;
+    color: var(--footer-text-color);
     margin: 0 10px;
     text-decoration: none;
 }
@@ -126,13 +177,18 @@ footer {
 }
 
 .modal-content {
-    background-color: #fefefe;
+    background-color: var(--modal-background-color);
     margin: 5% auto;
     padding: 20px;
-    border: 1px solid #888;
+    border: 1px solid var(--modal-border-color);
     width: 80%;
     max-width: 500px;
     border-radius: 10px;
+}
+
+body[data-theme="dark"] .modal-content {
+    background-color: var(--modal-background-color-dark);
+    border-color: var(--modal-border-color-dark);
 }
 
 .close {
@@ -168,5 +224,93 @@ footer {
     width: 100%;
     padding: 8px;
     box-sizing: border-box;
-    font-size: 1.2em
+    font-size: 1.2em;
+    background-color: var(--feature-background-color); /* Matching background color */
+    color: var(--text-color); /* Text color */
+    border: 1px solid var(--border-color); /* Border color */
+}
+
+/* Dark Mode Styles */
+body[data-theme="dark"] {
+    background-color: var(--background-color-dark);
+    color: var(--text-color-dark);
+}
+
+body[data-theme="dark"] .header {
+    background-color: var(--header-background-color-dark);
+}
+
+body[data-theme="dark"] .btn {
+    background-color: var(--button-background-color-dark);
+    color: var(--button-text-color-dark);
+}
+
+body[data-theme="dark"] .intro,
+body[data-theme="dark"] .faq {
+    background-color: var(--feature-background-color-dark);
+    border-color: var(--border-color-dark);
+}
+
+body[data-theme="dark"] .features {
+    border-top-color: var(--border-color-dark);
+}
+
+body[data-theme="dark"] .feature {
+    border-right-color: var(--feature-border-color-dark);
+}
+
+body[data-theme="dark"] footer {
+    background-color: var(--footer-background-color-dark);
+    color: var(--footer-text-color-dark);
+}
+
+body[data-theme="dark"] .social-links a {
+    color: var(--footer-text-color-dark);
+}
+
+/* Toggle Button Styles */
+.mode-switch label {
+    width: 100px;
+    height: 50px;
+    position: absolute;
+    left: 10px;
+    display: block;
+    background: var(--header-background-color);
+    border-radius: 50px;
+    box-shadow: inset 0px 5px 15px rgba(0,0,0,0.4), inset 0px -5px 15px rgba(255,255,255,0.4);
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.mode-switch label:after {
+    content: "";
+    width: 40px;
+    height: 40px;
+    position: absolute;
+    top: 5px;
+    left: 5px;
+    background: linear-gradient(180deg, #ffcc89, #d8860b);
+    border-radius: 40px;
+    box-shadow: 0px 5px 10px rgba(0,0,0,0.2);
+    transition: 0.3s;
+}
+
+.mode-switch input {
+    width: 0;
+    height: 0;
+    visibility: hidden;
+}
+
+.mode-switch input:checked + label {
+    background: #242424;
+}
+
+.mode-switch input:checked + label:after {
+    left: 95px;
+    transform: translateX(-100%);
+    background: linear-gradient(180deg, #777, #3a3a3a);
+}
+
+.mode-switch label:active:after {
+    width: 50px;
 }

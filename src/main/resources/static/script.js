@@ -4,6 +4,8 @@ function showCalculator() {
 
 function closeCalculator() {
     document.getElementById("calculator-modal").style.display = "none";
+    document.getElementById("calculator-form").reset();
+    document.getElementById("result").innerHTML = "";
 }
 
 function calculateExpenses(event) {
@@ -31,10 +33,17 @@ function calculateExpenses(event) {
     .then(response => response.json())
     .then(data => {
         const resultDiv = document.getElementById("result");
-        resultDiv.innerHTML = `
-            <p>Total Fuel Cost: ${data.totalFuelCost.toFixed(2)}</p>
-            <p>Cost Per Passenger: ${data.costPerPassenger.toFixed(2)}</p>
-        `;
+        const currentLang = document.documentElement.getAttribute('lang');
+
+        // Determine the labels based on the current language
+                const totalFuelCostLabel = currentLang === "uk" ? "Загальна вартість палива" : "Total Fuel Cost";
+                const costPerPassengerLabel = currentLang === "uk" ? "Вартість на пасажира" : "Cost Per Passenger";
+
+                // Display the results with translations
+                resultDiv.innerHTML = `
+                    <p>${totalFuelCostLabel}: ${data.totalFuelCost.toFixed(2)}</p>
+                    <p>${costPerPassengerLabel}: ${data.costPerPassenger.toFixed(2)}</p>
+                `;
     })
     .catch(error => {
         console.error('Error:', error);
@@ -42,6 +51,7 @@ function calculateExpenses(event) {
 }
 
 function setLanguage(lang) {
+    document.documentElement.setAttribute('lang', lang);
     const elements = document.querySelectorAll('[data-lang-en], [data-lang-uk]');
     elements.forEach(el => {
         if (lang === 'en') {
@@ -76,5 +86,40 @@ function setSeasonalBackground() {
 
 // Set the seasonal background image
 setSeasonalBackground();
+
+
+// Function to toggle between light and dark modes
+function toggleMode() {
+    const currentTheme = document.body.getAttribute("data-theme");
+
+    if (currentTheme === "dark") {
+        document.body.setAttribute("data-theme", "light");
+        localStorage.setItem("theme", "light");
+    } else {
+        document.body.setAttribute("data-theme", "dark");
+        localStorage.setItem("theme", "dark");
+    }
+}
+
+// Function to load the saved theme from localStorage
+function loadSavedTheme() {
+    const savedTheme = localStorage.getItem("theme") || "light";
+    document.body.setAttribute("data-theme", savedTheme);
+
+    if (savedTheme === "dark") {
+        document.getElementById("darkmode-toggle").checked = true;
+    }
+}
+
+// Event listener for the toggle switch
+document.getElementById('darkmode-toggle').addEventListener('change', toggleMode);
+
+document.getElementById("calculator-form").addEventListener("reset", function() {
+    document.getElementById("result").innerHTML = ""; // Clear the result fields
+});
+
+// Load the saved theme when the page loads
+window.addEventListener('load', loadSavedTheme);
+
 
 
