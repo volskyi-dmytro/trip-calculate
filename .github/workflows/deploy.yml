@@ -34,7 +34,7 @@ jobs:
       - name: Build and push Docker image
         run: |
           echo "Building the Docker image..."
-          docker build -t trip-calculate .
+          docker build --no-cache -t trip-calculate .
           docker tag trip-calculate ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
           echo "Pushing the Docker image..."
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
