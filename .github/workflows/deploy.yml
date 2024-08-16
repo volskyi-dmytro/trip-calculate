@@ -56,8 +56,15 @@ jobs:
           ORACLE_INSTANCE_IP: ${{ secrets.ORACLE_INSTANCE_IP }}
         run: |
           ssh -o StrictHostKeyChecking=no -i private_key ubuntu@$ORACLE_INSTANCE_IP << EOF
+            echo "Pulling the latest Docker image..."
             sudo docker pull $DOCKER_USERNAME/trip-calculate:latest
+
+            echo "Stopping and removing the existing container..."
             sudo docker stop trip-calculate-container || true
             sudo docker rm trip-calculate-container || true
+
+            echo "Running the new container..."
             sudo docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped $DOCKER_USERNAME/trip-calculate:latest
+
+            echo "Deployment complete."
           EOF
