@@ -141,8 +141,13 @@ h2 {
         border-bottom: none;
     }
     .mode-switch {
-        top: 80px; /* Adjust this to fit smaller screens */
+        top: 10px;
+        right: 10px;/* Adjust this to fit smaller screens */
     }
+    .language-switch {
+            top: 10px;
+            left: 10px;
+        }
 }
 
 
@@ -273,7 +278,8 @@ body[data-theme="dark"] .social-links a {
     width: 100px;
     height: 50px;
     position: absolute;
-    left: 10px;
+    top: 10px;
+    right: 10px;
     display: block;
     background: var(--header-background-color);
     border-radius: 50px;
