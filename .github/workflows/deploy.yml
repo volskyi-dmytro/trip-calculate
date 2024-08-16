@@ -64,7 +64,9 @@ jobs:
             sudo docker rm trip-calculate-container || true
 
             echo "Running the new container..."
-            sudo docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped $DOCKER_USERNAME/trip-calculate:latest
+            echo "Running command: sudo docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped \"$DOCKER_USERNAME/trip-calculate:latest\""
+            sudo docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped "$DOCKER_USERNAME/trip-calculate:latest"
+  
 
-            echo "Deployment complete."
+  echo "Deployment complete."
           EOF
