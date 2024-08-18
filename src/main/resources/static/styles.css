@@ -240,6 +240,11 @@ body[data-theme="dark"] .header {
     background-color: var(--header-background-color-dark);
 }
 
+/* Ensure the inactive button stays gray in dark mode */
+body[data-theme="dark"] .btn.inactive {
+    background-color: #555; /* Dark gray for consistency in dark mode */
+}
+
 body[data-theme="dark"] .btn {
     background-color: var(--button-background-color-dark);
     color: var(--button-text-color-dark);
