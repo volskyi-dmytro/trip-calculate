@@ -51,19 +51,24 @@ function calculateExpenses(event) {
 }
 
 function setLanguage(lang) {
-    document.documentElement.setAttribute('lang', lang);
     const elements = document.querySelectorAll('[data-lang-en], [data-lang-uk]');
     elements.forEach(el => {
         if (lang === 'en') {
             el.textContent = el.getAttribute('data-lang-en');
+            if (el.hasAttribute('data-title-en')) {
+                el.setAttribute('title', el.getAttribute('data-title-en'));
+            }
         } else if (lang === 'uk') {
             el.textContent = el.getAttribute('data-lang-uk');
+            if (el.hasAttribute('data-title-uk')) {
+                el.setAttribute('title', el.getAttribute('data-title-uk'));
+            }
         }
     });
 }
 
-// Set default language to Ukrainian
-setLanguage('uk');
+// Set the initial language when the page loads
+setLanguage('uk'); // Or 'en' depending on the default language you want
 
 function getSeason() {
     const month = new Date().getMonth() + 1; // getMonth() is zero-based
