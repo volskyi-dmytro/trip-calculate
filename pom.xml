@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.tripplanner</groupId>
 	<artifactId>TripPlanner</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>v2</version>
 	<name>TripPlanner</name>
 	<description>TripPlanner </description>
 	<url/>
@@ -41,6 +41,10 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security</artifactId>
 		</dependency>
 
 		<dependency>
@@ -84,6 +88,16 @@
 							<artifactId>lombok</artifactId>
 						</exclude>
 					</excludes>
+				</configuration>
+			</plugin>
+			<plugin>
+				<groupId>com.google.cloud.tools</groupId>
+				<artifactId>jib-maven-plugin</artifactId>
+				<version>3.4.5</version>
+				<configuration>
+					<to>
+						<image>stpunk47/${project.artifactId}:${project.version}</image>
+					</to>
 				</configuration>
 			</plugin>
 		</plugins>
