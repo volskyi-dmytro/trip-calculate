@@ -10,10 +10,10 @@ import java.util.Map;
 @Controller
 public class TripController {
 
-    @GetMapping("/")
-    public String showLandingPage(Model model) {
-        return "index"; // Serve the static landing page
-    }
+    // @GetMapping("/")
+    // public String showLandingPage(Model model) {
+    //     return "index"; // Serve the static landing page
+    // }
 
     // Add the /calculate endpoint that your JavaScript expects
     @PostMapping("/calculate")
