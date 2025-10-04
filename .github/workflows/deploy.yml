@@ -4,14 +4,6 @@ on:
   push:
     branches: [ master, feature ]
   workflow_dispatch:
-    inputs:
-      environment:
-        description: 'Deploy target'
-        required: true
-        default: 'oracle-cloud'
-        type: choice
-        options: [ oracle-cloud, lxc-container ]
-
 
 jobs:
   build:
@@ -30,32 +22,7 @@ jobs:
           docker build -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
 
-  deploy-oracle:
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'oracle-cloud') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/master') ||
-      (github.event_name == 'push' && github.ref != 'refs/heads/feature')
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: echo "${{ secrets.ORACLE_CLOUD_KEY_BASE64 }}" | base64 -d > private_key && chmod 600 private_key
-      - env:
-          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          ORACLE_INSTANCE_IP: ${{ secrets.ORACLE_INSTANCE_IP }}
-        run: |
-          ssh -o StrictHostKeyChecking=no -i private_key ubuntu@$ORACLE_INSTANCE_IP "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
-            docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
-            docker stop trip-calculate-container || true
-            docker rm   trip-calculate-container || true
-            docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped "${DOCKER_USERNAME}/trip-calculate:latest"
-            docker ps -a | grep trip-calculate || true
-          REMOTE
-
-  deploy-lxc:
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'lxc-container') ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/feature')
+  deploy:
     needs: build
     runs-on: ubuntu-latest
     steps:
@@ -63,10 +30,9 @@ jobs:
       - run: echo "${{ secrets.LXC_SSH_KEY_BASE64 }}" | base64 -d > lxc_key && chmod 600 lxc_key
       - env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-          LXC_HOST: ${{ secrets.LXC_HOST }} # e.g., tripcalculate.local or IP
+          LXC_HOST: ${{ secrets.LXC_HOST }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i lxc_key root@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
-            command -v docker >/dev/null || curl -fsSL https://get.docker.com | sh
+          ssh -o StrictHostKeyChecking=no -i lxc_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
             docker stop trip-calculate-container || true
             docker rm   trip-calculate-container || true
