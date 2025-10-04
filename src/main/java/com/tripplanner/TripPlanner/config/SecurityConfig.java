@@ -29,7 +29,7 @@ public class SecurityConfig {
                         // Allow legitimate resources first
                         .requestMatchers("/", "/index.html", "/calculate").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**", "/static/**", "/public/**", "/resources/**").permitAll()
-                        .requestMatchers("/styles.css", "/script.js", "/*.ico", "/*.png", "/*.webp", "/*.jpg", "/*.gif").permitAll()
+                        .requestMatchers("/styles.css", "/script.js", "/site.webmanifest", "/*.ico", "/*.png", "/*.webp", "/*.jpg", "/*.gif").permitAll()
                         .requestMatchers("/error").permitAll()
 
                         // Block dangerous paths - CRITICAL SECURITY (simplified patterns)
