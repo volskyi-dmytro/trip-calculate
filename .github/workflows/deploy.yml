@@ -2,7 +2,7 @@ name: Deploy Application
 
 on:
   push:
-    branches: [ master, feature ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
@@ -24,18 +24,16 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
-      - uses: actions/checkout@v4
-      - run: echo "${{ secrets.LXC_SSH_KEY_BASE64 }}" | base64 -d > lxc_key && chmod 600 lxc_key
       - env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           LXC_HOST: ${{ secrets.LXC_HOST }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i lxc_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/trip_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
             docker stop trip-calculate-container || true
-            docker rm   trip-calculate-container || true
+            docker rm trip-calculate-container || true
             docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped "${DOCKER_USERNAME}/trip-calculate:latest"
             docker ps -a | grep trip-calculate || true
           REMOTE
