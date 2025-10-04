@@ -84,3 +84,7 @@ Thumbs.db
 # Application specific
 application-local.properties
 application-dev.properties
+
+# Documentation
+
+INFRASTRUCTURE.md
