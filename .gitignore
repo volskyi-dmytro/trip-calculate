@@ -7,6 +7,10 @@
 # BlueJ files
 *.ctxt
 
+# Internal documentation
+
+docs/
+
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
 
@@ -88,3 +92,8 @@ application-dev.properties
 # Documentation
 
 INFRASTRUCTURE.md
+
+# Environment and development files
+.env
+cookies.txt
+run-with-oauth.sh

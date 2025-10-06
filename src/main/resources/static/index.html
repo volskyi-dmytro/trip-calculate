@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer-when-downgrade">
     <title data-lang-en="Trip Planner" data-lang-uk="Ділимо витрати просто!">Trip Planner</title>
     <meta name="description" content="Are you bored and annoyed when it comes to fuel cost calculation before or after the trip? You can use quick calculation instead! Spend more time on your journey rather arguing about expenses with our platform!">
     <meta name="keywords" content="trip planner, travel expenses, cost sharing, route planning, планування поїздок, витрати на подорож, розподіл витрат, планування маршруту">
@@ -32,9 +33,30 @@
             <input type="checkbox" id="darkmode-toggle"/>
             <label for="darkmode-toggle"></label>
         </div>
+
+        <!-- Authentication UI -->
+        <div class="auth-section">
+            <!-- Login Button (shown when not authenticated) -->
+            <div id="login-section" style="display: none;">
+                <a href="/oauth2/authorization/google" class="btn btn-google" data-lang-en="Sign in with Google" data-lang-uk="Увійти через Google">
+                    Sign in with Google
+                </a>
+            </div>
+
+            <!-- User Profile (shown when authenticated) -->
+            <div id="user-profile" style="display: none;">
+                <img id="user-avatar" src="" alt="User Avatar" class="user-avatar">
+                <span id="user-name" class="user-name"></span>
+                <button onclick="performLogout()" class="btn btn-logout" data-lang-en="Logout" data-lang-uk="Вийти">Logout</button>
+            </div>
+        </div>
+
+        <!-- Error Message Display -->
+        <div id="error-message" class="error-message" style="display: none;"></div>
+
         <h1 data-lang-en="Split expenses simply!" data-lang-uk="Просто поділіть витрати!">Split expenses simply!</h1>
         <div class="buttons">
-            <button class="btn inactive" title="" data-lang-en="Create a trip" data-lang-uk="Створити поїздку" data-title-en="Coming soon" data-title-uk="Скоро буде доступно">Create a trip</button>
+            <button id="create-trip-btn" class="btn inactive" title="" data-lang-en="Create a trip" data-lang-uk="Створити поїздку" data-title-en="Login required" data-title-uk="Потрібен вхід">Create a trip</button>
             <button class="btn" onclick="showCalculator()" data-lang-en="Calculate now" data-lang-uk="Швидкий розрахунок">Calculate now</button>
         </div>
     </div>

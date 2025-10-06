@@ -29,11 +29,24 @@ jobs:
       - env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           LXC_HOST: ${{ secrets.LXC_HOST }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_USERNAME: ${{ secrets.DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/trip_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' bash -s" <<'REMOTE'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/trip_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' bash -s" <<'REMOTE'
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
             docker stop trip-calculate-container || true
             docker rm trip-calculate-container || true
-            docker run -d -p 8080:8080 --name trip-calculate-container --restart unless-stopped "${DOCKER_USERNAME}/trip-calculate:latest"
+            docker run -d -p 8080:8080 \
+              --name trip-calculate-container \
+              --restart unless-stopped \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              -e DATABASE_USERNAME="${DATABASE_USERNAME}" \
+              -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
+              -e GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
+              -e GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
+              "${DOCKER_USERNAME}/trip-calculate:latest"
             docker ps -a | grep trip-calculate || true
           REMOTE
