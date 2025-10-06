@@ -40,6 +40,8 @@ public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
                 String principalName = oauth2Token.getName();
                 String registrationId = oauth2Token.getAuthorizedClientRegistrationId();
 
+                log.info("Processing OAuth2 logout for user: {} with registrationId: {}", principalName, registrationId);
+
                 // Get the authorized client to access the token
                 OAuth2AuthorizedClient authorizedClient = authorizedClientService
                         .loadAuthorizedClient(registrationId, principalName);
@@ -47,19 +49,34 @@ public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
                 if (authorizedClient != null) {
                     OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
                     if (accessToken != null) {
+                        log.info("Found access token, attempting revocation with Google");
                         // Revoke the token with Google
                         revokeGoogleToken(accessToken.getTokenValue());
-                        log.info("Successfully revoked OAuth2 token for user logout");
+                        log.info("Successfully revoked OAuth2 access token for user: {}", principalName);
+                    } else {
+                        log.warn("No access token found for user: {}", principalName);
                     }
+
+                    // Also try to revoke refresh token if available
+                    if (authorizedClient.getRefreshToken() != null) {
+                        log.info("Found refresh token, attempting revocation");
+                        revokeGoogleToken(authorizedClient.getRefreshToken().getTokenValue());
+                        log.info("Successfully revoked OAuth2 refresh token");
+                    }
+                } else {
+                    log.warn("No authorized client found for user: {} with registrationId: {}", principalName, registrationId);
                 }
 
                 // Remove the authorized client from the service
                 authorizedClientService.removeAuthorizedClient(registrationId, principalName);
+                log.info("Removed authorized client from service for user: {}", principalName);
 
             } catch (Exception e) {
-                log.warn("Failed to revoke OAuth2 token during logout: {}", e.getMessage());
+                log.error("Failed to revoke OAuth2 token during logout", e);
                 // Continue with logout even if token revocation fails
             }
+        } else {
+            log.info("No OAuth2 authentication found, proceeding with standard logout");
         }
 
         // Set the default target URL to homepage
