@@ -3,18 +3,31 @@ package com.tripplanner.TripPlanner.security;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
+import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.oauth2.core.OAuth2AccessToken;
 import org.springframework.security.web.authentication.logout.SimpleUrlLogoutSuccessHandler;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 
 import java.io.IOException;
 
 @Component
+@RequiredArgsConstructor
 @Slf4j
 public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
+
+    private final OAuth2AuthorizedClientService authorizedClientService;
+    private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
     public void onLogoutSuccess(HttpServletRequest request, HttpServletResponse response,
@@ -24,12 +37,25 @@ public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
         if (authentication instanceof OAuth2AuthenticationToken) {
             try {
                 OAuth2AuthenticationToken oauth2Token = (OAuth2AuthenticationToken) authentication;
-                OAuth2User oauth2User = oauth2Token.getPrincipal();
+                String principalName = oauth2Token.getName();
+                String registrationId = oauth2Token.getAuthorizedClientRegistrationId();
 
-                // Try to revoke the token (best effort - don't fail logout if this fails)
-                revokeGoogleToken(oauth2User);
+                // Get the authorized client to access the token
+                OAuth2AuthorizedClient authorizedClient = authorizedClientService
+                        .loadAuthorizedClient(registrationId, principalName);
 
-                log.info("Successfully revoked OAuth2 token for user logout");
+                if (authorizedClient != null) {
+                    OAuth2AccessToken accessToken = authorizedClient.getAccessToken();
+                    if (accessToken != null) {
+                        // Revoke the token with Google
+                        revokeGoogleToken(accessToken.getTokenValue());
+                        log.info("Successfully revoked OAuth2 token for user logout");
+                    }
+                }
+
+                // Remove the authorized client from the service
+                authorizedClientService.removeAuthorizedClient(registrationId, principalName);
+
             } catch (Exception e) {
                 log.warn("Failed to revoke OAuth2 token during logout: {}", e.getMessage());
                 // Continue with logout even if token revocation fails
@@ -43,15 +69,26 @@ public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
 
     /**
      * Revoke Google OAuth token by calling Google's revoke endpoint
-     * This forces the user to re-authenticate on next login
+     * This forces complete logout from Google OAuth
      */
-    private void revokeGoogleToken(OAuth2User oauth2User) {
+    private void revokeGoogleToken(String accessToken) {
         try {
-            // Note: In a production app, you'd want to store the access_token during login
-            // and use it here. For now, we rely on prompt=login to force re-authentication
-            log.debug("OAuth2 logout processed - user will need to re-authenticate on next login");
+            String revokeUrl = "https://oauth2.googleapis.com/revoke";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+            MultiValueMap<String, String> params = new LinkedMultiValueMap<>();
+            params.add("token", accessToken);
+
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(params, headers);
+
+            restTemplate.postForEntity(revokeUrl, request, String.class);
+            log.debug("OAuth2 token revoked successfully at Google");
+
         } catch (Exception e) {
-            log.warn("Error during token revocation: {}", e.getMessage());
+            log.warn("Error revoking token with Google: {}", e.getMessage());
+            // Don't fail logout if revocation fails
         }
     }
 }
