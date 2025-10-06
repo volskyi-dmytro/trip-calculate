@@ -126,5 +126,196 @@ document.getElementById("calculator-form").addEventListener("reset", function() 
 // Load the saved theme when the page loads
 window.addEventListener('load', loadSavedTheme);
 
+// ============================================
+// Authentication Functions
+// ============================================
+
+/**
+ * Check authentication status and update UI accordingly
+ */
+async function checkAuthStatus() {
+    try {
+        const response = await fetch('/api/user/me');
+        const data = await response.json();
+
+        if (data.authenticated) {
+            // User is authenticated
+            showUserProfile(data);
+            enableCreateTripButton();
+        } else {
+            // User is not authenticated
+            showLoginButton();
+            disableCreateTripButton();
+        }
+    } catch (error) {
+        console.error('Error checking auth status:', error);
+        showLoginButton();
+        disableCreateTripButton();
+    }
+}
+
+/**
+ * Display user profile information
+ */
+function showUserProfile(userData) {
+    const loginSection = document.getElementById('login-section');
+    const userProfile = document.getElementById('user-profile');
+    const userAvatar = document.getElementById('user-avatar');
+    const userName = document.getElementById('user-name');
+
+    // Hide login button
+    loginSection.style.display = 'none';
+
+    // Show user profile
+    userProfile.style.display = 'flex';
+
+    // Set avatar through proxy to avoid CORS and rate limiting
+    if (userData.picture) {
+        userAvatar.src = '/api/avatar/proxy?url=' + encodeURIComponent(userData.picture);
+    } else {
+        userAvatar.src = '/images/default-avatar.png';
+    }
+
+    userName.textContent = userData.name || userData.email;
+}
+
+/**
+ * Perform logout - clear app session then redirect to Google logout
+ */
+async function performLogout() {
+    try {
+        // Get CSRF token
+        const csrfResponse = await fetch('/api/user/csrf');
+        const csrfData = await csrfResponse.json();
+        const csrfToken = csrfData.token;
+
+        if (!csrfToken) {
+            console.error('No CSRF token available');
+            return;
+        }
+
+        // Create form data with CSRF token
+        const formData = new FormData();
+        formData.append('_csrf', csrfToken);
+
+        // Call logout endpoint
+        const logoutResponse = await fetch('/logout', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (logoutResponse.ok || logoutResponse.redirected) {
+            // After successful app logout, redirect to Google logout
+            const currentUrl = window.location.origin + '/';
+            const googleLogoutUrl = 'https://accounts.google.com/Logout?continue=' +
+                encodeURIComponent('https://appengine.google.com/_ah/logout?continue=' + currentUrl);
+
+            window.location.href = googleLogoutUrl;
+        } else {
+            console.error('Logout failed:', logoutResponse.status);
+            // Fallback: just redirect to homepage
+            window.location.href = '/';
+        }
+    } catch (error) {
+        console.error('Logout error:', error);
+        // Fallback: just redirect to homepage
+        window.location.href = '/';
+    }
+}
+
+/**
+ * Display login button
+ */
+function showLoginButton() {
+    const loginSection = document.getElementById('login-section');
+    const userProfile = document.getElementById('user-profile');
+
+    // Show login button
+    loginSection.style.display = 'block';
+
+    // Hide user profile
+    userProfile.style.display = 'none';
+}
+
+/**
+ * Enable "Create a trip" button for authenticated users
+ */
+function enableCreateTripButton() {
+    const createTripBtn = document.getElementById('create-trip-btn');
+    const currentLang = document.documentElement.getAttribute('lang') || 'en';
+
+    createTripBtn.classList.remove('inactive');
+    createTripBtn.removeAttribute('title');
+    createTripBtn.style.cursor = 'pointer';
+
+    // Add click handler (placeholder for now)
+    createTripBtn.onclick = function() {
+        alert(currentLang === 'uk' ? 'Функція в розробці!' : 'Feature coming soon!');
+    };
+}
+
+/**
+ * Disable "Create a trip" button for guests
+ */
+function disableCreateTripButton() {
+    const createTripBtn = document.getElementById('create-trip-btn');
+    const currentLang = document.documentElement.getAttribute('lang') || 'en';
+
+    createTripBtn.classList.add('inactive');
+    createTripBtn.style.cursor = 'not-allowed';
+
+    const title = currentLang === 'uk' ? 'Потрібен вхід' : 'Login required';
+    createTripBtn.setAttribute('title', title);
+
+    // Remove click handler
+    createTripBtn.onclick = null;
+}
+
+/**
+ * Check for error messages in URL parameters
+ */
+function checkForErrors() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const error = urlParams.get('error');
+
+    if (error) {
+        const errorMessages = {
+            'auth_failed': {
+                'en': 'Authentication failed. Please try again.',
+                'uk': 'Помилка автентифікації. Будь ласка, спробуйте ще раз.'
+            }
+        };
+
+        const currentLang = document.documentElement.getAttribute('lang') || 'en';
+        const message = errorMessages[error] ? errorMessages[error][currentLang] :
+                       (currentLang === 'uk' ? 'Виникла помилка' : 'An error occurred');
+
+        showErrorMessage(message);
+
+        // Clear error from URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
+}
+
+/**
+ * Display error message to user
+ */
+function showErrorMessage(message) {
+    const errorDiv = document.getElementById('error-message');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+
+    // Auto-hide after 5 seconds
+    setTimeout(() => {
+        errorDiv.style.display = 'none';
+    }, 5000);
+}
+
+// Initialize authentication on page load
+window.addEventListener('load', function() {
+    checkAuthStatus();
+    checkForErrors();
+});
+
 
 

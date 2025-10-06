@@ -325,3 +325,134 @@ body[data-theme="dark"] .social-links a {
 .mode-switch label:active:after {
     width: 50px;
 }
+
+/* ============================================
+   Authentication Styles
+   ============================================ */
+
+.auth-section {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 15px 0;
+    min-height: 50px;
+}
+
+/* Google Sign-In Button */
+.btn-google {
+    background: #4285f4;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-size: 1em;
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.3s;
+}
+
+.btn-google:hover {
+    background: #357ae8;
+}
+
+/* User Profile Display */
+#user-profile {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: var(--header-background-color);
+    padding: 10px 20px;
+    border-radius: 25px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+body[data-theme="dark"] #user-profile {
+    background: var(--header-background-color-dark);
+}
+
+.user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid var(--button-background-color);
+}
+
+body[data-theme="dark"] .user-avatar {
+    border-color: var(--button-background-color-dark);
+}
+
+.user-name {
+    font-weight: 500;
+    color: var(--text-color);
+    max-width: 150px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+body[data-theme="dark"] .user-name {
+    color: var(--text-color-dark);
+}
+
+/* Logout Button */
+.btn-logout {
+    background: #dc3545;
+    color: white;
+    padding: 8px 16px;
+    font-size: 0.9em;
+}
+
+.btn-logout:hover {
+    background: #c82333;
+}
+
+/* Error Message Display */
+.error-message {
+    background: #f8d7da;
+    color: #721c24;
+    padding: 12px 20px;
+    border: 1px solid #f5c6cb;
+    border-radius: 5px;
+    margin: 10px 0;
+    text-align: center;
+    font-size: 0.95em;
+}
+
+body[data-theme="dark"] .error-message {
+    background: #5a1a1a;
+    color: #f8d7da;
+    border-color: #721c24;
+}
+
+/* Responsive Styles for Authentication */
+@media (max-width: 768px) {
+    .auth-section {
+        margin: 10px 0;
+    }
+
+    #user-profile {
+        padding: 8px 15px;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 32px;
+        height: 32px;
+    }
+
+    .user-name {
+        max-width: 100px;
+        font-size: 0.9em;
+    }
+
+    .btn-logout {
+        padding: 6px 12px;
+        font-size: 0.85em;
+    }
+
+    .btn-google {
+        padding: 8px 16px;
+        font-size: 0.9em;
+    }
+}

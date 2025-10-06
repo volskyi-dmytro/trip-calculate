@@ -88,3 +88,8 @@ Thumbs.db
 # Application specific
 application-local.properties
 application-dev.properties
+
+# Environment and development files
+.env
+cookies.txt
+run-with-oauth.sh
