@@ -34,8 +34,9 @@ jobs:
           DATABASE_PASSWORD: ${{ secrets.DATABASE_PASSWORD }}
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          OAUTH_REDIRECT_URI: ${{ secrets.OAUTH_REDIRECT_URI }}
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/trip_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' bash -s" <<'REMOTE'
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/trip_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' bash -s" <<'REMOTE'
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
             docker stop trip-calculate-container || true
             docker rm trip-calculate-container || true
@@ -47,6 +48,7 @@ jobs:
               -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
               -e GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
               -e GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
+              -e OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
             docker ps -a | grep trip-calculate || true
           REMOTE
