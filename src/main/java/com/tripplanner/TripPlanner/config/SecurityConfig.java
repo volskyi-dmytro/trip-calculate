@@ -5,12 +5,8 @@ import com.tripplanner.TripPlanner.security.OAuth2LogoutSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.oauth2.client.JdbcOAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
-import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
@@ -23,17 +19,6 @@ public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
-    private final JdbcOperations jdbcOperations;
-
-    /**
-     * Configure OAuth2 Authorized Client Service to use JDBC for persistence
-     * This allows us to store and retrieve OAuth tokens for revocation on logout
-     */
-    @Bean
-    public OAuth2AuthorizedClientService authorizedClientService(
-            ClientRegistrationRepository clientRegistrationRepository) {
-        return new JdbcOAuth2AuthorizedClientService(jdbcOperations, clientRegistrationRepository);
-    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
