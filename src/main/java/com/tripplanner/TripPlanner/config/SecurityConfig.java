@@ -1,6 +1,7 @@
 package com.tripplanner.TripPlanner.config;
 
 import com.tripplanner.TripPlanner.security.OAuth2LoginSuccessHandler;
+import com.tripplanner.TripPlanner.security.OAuth2LogoutSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +18,7 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
+    private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -52,12 +54,13 @@ public class SecurityConfig {
                         .failureUrl("/?error=auth_failed")
                 )
 
-                // Configure logout
+                // Configure logout with custom handler
                 .logout(logout -> logout
                         .logoutUrl("/logout")
-                        .logoutSuccessUrl("/")  // Simple redirect to homepage
+                        .logoutSuccessHandler(oAuth2LogoutSuccessHandler)  // Custom handler for OAuth2 logout
                         .invalidateHttpSession(true)
                         .deleteCookies("JSESSIONID")
+                        .clearAuthentication(true)
                 )
 
                 // Authorization rules

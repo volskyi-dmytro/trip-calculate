@@ -180,7 +180,7 @@ function showUserProfile(userData) {
 }
 
 /**
- * Perform logout - clear app session then redirect to Google logout
+ * Perform logout - clear session and force re-authentication on next login
  */
 async function performLogout() {
     try {
@@ -191,6 +191,8 @@ async function performLogout() {
 
         if (!csrfToken) {
             console.error('No CSRF token available');
+            // Redirect anyway to clear frontend state
+            window.location.href = '/';
             return;
         }
 
@@ -198,27 +200,18 @@ async function performLogout() {
         const formData = new FormData();
         formData.append('_csrf', csrfToken);
 
-        // Call logout endpoint
-        const logoutResponse = await fetch('/logout', {
+        // Call logout endpoint - backend handles OAuth revocation and redirects to homepage
+        await fetch('/logout', {
             method: 'POST',
-            body: formData
+            body: formData,
+            redirect: 'follow'
         });
 
-        if (logoutResponse.ok || logoutResponse.redirected) {
-            // After successful app logout, redirect to Google logout
-            const currentUrl = window.location.origin + '/';
-            const googleLogoutUrl = 'https://accounts.google.com/Logout?continue=' +
-                encodeURIComponent('https://appengine.google.com/_ah/logout?continue=' + currentUrl);
-
-            window.location.href = googleLogoutUrl;
-        } else {
-            console.error('Logout failed:', logoutResponse.status);
-            // Fallback: just redirect to homepage
-            window.location.href = '/';
-        }
+        // Backend will redirect to homepage after successful logout
+        window.location.href = '/';
     } catch (error) {
         console.error('Logout error:', error);
-        // Fallback: just redirect to homepage
+        // Fallback: redirect to homepage
         window.location.href = '/';
     }
 }
