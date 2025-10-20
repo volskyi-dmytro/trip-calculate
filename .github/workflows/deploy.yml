@@ -2,7 +2,7 @@ name: Deploy Application
 
 on:
   push:
-    branches: [ master, deployment-ssh-security ]
+    branches: [ master ]
   workflow_dispatch:
 
 jobs:
