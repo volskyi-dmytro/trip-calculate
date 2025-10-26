@@ -68,9 +68,9 @@ public class SecurityConfig {
                         // Public resources
                         .requestMatchers("/", "/index.html", "/calculate").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**",
-                                "/static/**", "/public/**", "/resources/**").permitAll()
+                                "/static/**", "/public/**", "/resources/**", "/assets/**").permitAll()
                         .requestMatchers("/styles.css", "/script.js", "/site.webmanifest", "/*.ico", "/*.png",
-                                "/*.webp", "/*.jpg", "/*.gif").permitAll()
+                                "/*.webp", "/*.jpg", "/*.gif", "/vite.svg").permitAll()
                         .requestMatchers("/error", "/oauth2/**", "/login/**").permitAll()
 
                         // Public API endpoints for auth status check, CSRF token, and avatar proxy
@@ -79,9 +79,13 @@ public class SecurityConfig {
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()
 
+                        // Allow health endpoint for monitoring, block other actuator endpoints
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/**").denyAll()
+
                         // Block dangerous paths - CRITICAL SECURITY
                         .requestMatchers("/.git/**", "/.env", "/config/**", "/.aws/**",
-                                "/.ssh/**", "/backup/**", "/admin/**", "/actuator/**").denyAll()
+                                "/.ssh/**", "/backup/**", "/admin/**").denyAll()
 
                         // Deny everything else by default
                         .anyRequest().denyAll()
