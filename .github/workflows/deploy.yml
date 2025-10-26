@@ -28,15 +28,33 @@ jobs:
       # Copy React build to Spring Boot static resources
       - name: Copy Frontend to Spring Boot
         run: |
+          echo "📦 Cleaning static directory..."
           rm -rf src/main/resources/static/*
+
+          echo "📂 Copying React build to static resources..."
           cp -r frontend/dist/* src/main/resources/static/
+
+          echo "✅ Verifying files copied:"
+          ls -la src/main/resources/static/
+          ls -la src/main/resources/static/assets/ || echo "❌ Assets directory missing!"
+
+          echo "📊 File count:"
+          find src/main/resources/static -type f | wc -l
 
       # Setup Java and build Spring Boot application
       - uses: actions/setup-java@v4
         with: { distribution: temurin, java-version: '17' }
 
       - name: Build Spring Boot JAR
-        run: mvn -q -DskipTests package
+        run: |
+          echo "🔨 Building Spring Boot JAR..."
+          mvn -q -DskipTests package
+
+          echo "✅ Verifying static files in JAR:"
+          jar tf target/*.jar | grep "static/assets/index" || echo "❌ ERROR: React files NOT in JAR!"
+
+          echo "📦 JAR file info:"
+          ls -lh target/*.jar
 
       # Build and push Docker image
       - uses: docker/setup-buildx-action@v3
