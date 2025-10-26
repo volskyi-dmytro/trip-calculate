@@ -1,4 +1,5 @@
-import { useState, FormEvent } from 'react';
+import { useState } from 'react';
+import type { FormEvent } from 'react';
 import { calculatorService } from '../../services/calculatorService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import type { Trip, TripResult } from '../../types';
