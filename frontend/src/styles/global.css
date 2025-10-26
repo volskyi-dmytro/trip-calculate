@@ -41,7 +41,7 @@ body, html {
 }
 
 .header {
-    background: url('images/summer.webp') no-repeat center center;
+    background: url('/images/summer.webp') no-repeat center center;
     background-size: cover;
     padding: 40px 0;
     text-align: center;
