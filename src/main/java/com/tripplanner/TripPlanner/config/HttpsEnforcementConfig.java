@@ -26,11 +26,13 @@ public class HttpsEnforcementConfig {
                                           HttpServletResponse response,
                                           FilterChain filterChain) throws ServletException, IOException {
 
-                // Check for X-Forwarded-Proto header from Cloudflare
+                // Check for X-Forwarded-* headers from Cloudflare
                 String forwardedProto = request.getHeader("X-Forwarded-Proto");
+                String forwardedHost = request.getHeader("X-Forwarded-Host");
 
                 // If behind proxy with HTTPS, wrap request to return https scheme
                 if ("https".equalsIgnoreCase(forwardedProto)) {
+                    HttpServletRequest finalRequest = request;
                     request = new HttpServletRequestWrapper(request) {
                         @Override
                         public String getScheme() {
@@ -48,12 +50,19 @@ public class HttpsEnforcementConfig {
                         }
 
                         @Override
+                        public String getServerName() {
+                            // Use X-Forwarded-Host if available, otherwise use original
+                            return forwardedHost != null ? forwardedHost : finalRequest.getServerName();
+                        }
+
+                        @Override
                         public StringBuffer getRequestURL() {
                             StringBuffer url = new StringBuffer();
                             String scheme = getScheme();
                             int port = getServerPort();
+                            String serverName = getServerName();
 
-                            url.append(scheme).append("://").append(getServerName());
+                            url.append(scheme).append("://").append(serverName);
                             if ((scheme.equals("https") && port != 443) ||
                                 (scheme.equals("http") && port != 80)) {
                                 url.append(':').append(port);
