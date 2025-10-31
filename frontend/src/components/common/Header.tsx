@@ -28,9 +28,28 @@ export function Header({ onCalculateClick }: HeaderProps) {
   return (
     <header className="header" style={headerStyle}>
       <div className="container">
-        <div className="language-switch">
-          <button onClick={() => setLanguage('en')}>EN</button>
-          <button onClick={() => setLanguage('uk')}>UA</button>
+        <div
+          className={`language-switch ${
+            language === 'uk' ? 'lang-uk' : 'lang-en'
+          }`}
+        >
+          <button
+            type="button"
+            className={language === 'en' ? 'active' : ''}
+            aria-pressed={language === 'en'}
+            onClick={() => setLanguage('en')}
+          >
+            EN
+          </button>
+          <button
+            type="button"
+            className={language === 'uk' ? 'active' : ''}
+            aria-pressed={language === 'uk'}
+            onClick={() => setLanguage('uk')}
+          >
+            UA
+          </button>
+          <span className="language-toggle-indicator" aria-hidden="true"></span>
         </div>
         <div className="mode-switch">
           <input
