@@ -11,7 +11,7 @@ export function LoginButton() {
 
   return (
     <a
-      href={loginUrl}
+      href={loginUrl.trim()}
       className="btn btn-google"
       onClick={(e) => {
         e.preventDefault();

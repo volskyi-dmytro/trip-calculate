@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       API_BASE_URL && API_BASE_URL.length > 0
         ? `${API_BASE_URL}${loginPath}`
         : loginPath;
-    window.location.href = target;
+    window.location.href = target.trim();
   };
 
   const logout = async () => {
