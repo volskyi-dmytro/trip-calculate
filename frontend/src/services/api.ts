@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const trimmedBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const rawBaseUrl = (import.meta.env.VITE_API_URL || '').trim();
+const trimmedBaseUrl = rawBaseUrl.replace(/\/+$/, '');
 
 export const API_BASE_URL = trimmedBaseUrl;
 
