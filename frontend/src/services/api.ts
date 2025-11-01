@@ -1,7 +1,11 @@
 import axios from 'axios';
 
+const trimmedBaseUrl = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+
+export const API_BASE_URL = trimmedBaseUrl;
+
 export const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '',
+  baseURL: trimmedBaseUrl || undefined,
   withCredentials: true, // CRITICAL: Include cookies for session
   headers: {
     'Content-Type': 'application/json',

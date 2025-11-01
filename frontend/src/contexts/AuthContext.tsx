@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authService } from '../services/authService';
+import { API_BASE_URL } from '../services/api';
 import type { User } from '../types';
 
 interface AuthContextType {
@@ -43,7 +44,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const login = () => {
-    window.location.href = '/oauth2/authorization/google';
+    const loginPath = '/oauth2/authorization/google';
+    const target =
+      API_BASE_URL && API_BASE_URL.length > 0
+        ? `${API_BASE_URL}${loginPath}`
+        : loginPath;
+    window.location.href = target;
   };
 
   const logout = async () => {
