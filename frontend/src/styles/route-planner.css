@@ -1,166 +1,217 @@
-/* Route Planner Specific Styles */
+/* Route Planner Layout - CRITICAL: !important flags to override Tailwind */
 
-/* Ensure full height layout */
 .route-planner-container {
   display: flex !important;
   flex-direction: column !important;
   height: 100vh !important;
-  width: 100vw !important;
+  width: 100% !important;
   overflow: hidden !important;
-  background-color: #ffffff;
+  position: relative !important;
+  background-color: #ffffff !important;
 }
 
 body[data-theme="dark"] .route-planner-container {
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background-color: #1a1a1a !important;
+  color: #ffffff !important;
 }
 
-/* Header section */
 .route-planner-header {
   flex-shrink: 0 !important;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #ffffff;
-  padding: 1rem;
-  z-index: 10;
+  border-bottom: 1px solid #e5e7eb !important;
+  background-color: white !important;
+  padding: 1rem 1.5rem !important;
+  z-index: 10 !important;
+  min-height: 60px !important;
 }
 
 body[data-theme="dark"] .route-planner-header {
-  background-color: #2a2a2a;
-  border-bottom-color: #374151;
+  background-color: #2a2a2a !important;
+  border-bottom-color: #374151 !important;
 }
 
-/* Main content area */
 .route-planner-content {
   display: flex !important;
   flex: 1 !important;
   overflow: hidden !important;
+  width: 100% !important;
+  height: calc(100vh - 60px) !important;
 }
 
-/* Left panel */
 .route-panel {
-  width: 384px !important; /* 96 * 4px */
-  flex-shrink: 0 !important;
-  border-right: 1px solid #e5e7eb;
+  width: 384px !important;
+  min-width: 384px !important;
+  max-width: 384px !important;
+  border-right: 1px solid #e5e7eb !important;
   overflow-y: auto !important;
-  background-color: #f9fafb;
+  overflow-x: hidden !important;
+  background-color: #f9fafb !important;
+  flex-shrink: 0 !important;
+  padding: 1rem !important;
 }
 
 body[data-theme="dark"] .route-panel {
-  background-color: #1f1f1f;
-  border-right-color: #374151;
+  background-color: #1f1f1f !important;
+  border-right-color: #374151 !important;
 }
 
-/* Map container - CRITICAL FOR MAP DISPLAY */
 .map-wrapper {
   flex: 1 !important;
   position: relative !important;
   overflow: hidden !important;
-  background-color: #e5e7eb;
+  min-width: 0 !important;
+  height: 100% !important;
+  background-color: #e5e7eb !important;
 }
 
 #map {
-  width: 100% !important;
-  height: 100% !important;
   position: absolute !important;
   top: 0 !important;
   left: 0 !important;
   right: 0 !important;
   bottom: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
   z-index: 1 !important;
 }
 
-/* Right panel */
 .stats-panel {
-  width: 320px !important; /* 80 * 4px */
-  flex-shrink: 0 !important;
-  border-left: 1px solid #e5e7eb;
+  width: 320px !important;
+  min-width: 320px !important;
+  max-width: 320px !important;
+  border-left: 1px solid #e5e7eb !important;
   overflow-y: auto !important;
-  background-color: #f9fafb;
+  overflow-x: hidden !important;
+  background-color: #f9fafb !important;
+  flex-shrink: 0 !important;
+  padding: 1rem !important;
 }
 
 body[data-theme="dark"] .stats-panel {
-  background-color: #1f1f1f;
-  border-left-color: #374151;
+  background-color: #1f1f1f !important;
+  border-left-color: #374151 !important;
 }
 
-/* Leaflet map controls dark mode fix */
+/* Leaflet Map Controls */
+.leaflet-container {
+  width: 100% !important;
+  height: 100% !important;
+  z-index: 1 !important;
+}
+
+.leaflet-control-zoom {
+  border: 2px solid rgba(0,0,0,0.2) !important;
+  border-radius: 4px !important;
+}
+
 body[data-theme="dark"] .leaflet-control-zoom a {
-  background-color: #2a2a2a;
-  color: #ffffff;
-  border-color: #374151;
+  background-color: #2a2a2a !important;
+  color: #ffffff !important;
+  border-color: #374151 !important;
 }
 
 body[data-theme="dark"] .leaflet-control-zoom a:hover {
-  background-color: #3a3a3a;
+  background-color: #3a3a3a !important;
 }
 
 body[data-theme="dark"] .leaflet-control-attribution {
-  background-color: rgba(42, 42, 42, 0.8);
-  color: #ffffff;
+  background-color: rgba(42, 42, 42, 0.8) !important;
+  color: #ffffff !important;
+}
+
+/* Ensure panel content is visible */
+.route-panel > * {
+  width: 100% !important;
+  max-width: 352px !important; /* 384px - 2rem padding */
+}
+
+.stats-panel > * {
+  width: 100% !important;
+  max-width: 288px !important; /* 320px - 2rem padding */
 }
 
 /* Ensure dialogs are above map */
 .route-dialog-overlay {
-  z-index: 1000;
+  z-index: 1000 !important;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling for panels */
 .route-panel::-webkit-scrollbar,
 .stats-panel::-webkit-scrollbar {
-  width: 8px;
+  width: 8px !important;
 }
 
 .route-panel::-webkit-scrollbar-track,
 .stats-panel::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: #f1f1f1 !important;
 }
 
 body[data-theme="dark"] .route-panel::-webkit-scrollbar-track,
 body[data-theme="dark"] .stats-panel::-webkit-scrollbar-track {
-  background: #2a2a2a;
+  background: #2a2a2a !important;
 }
 
 .route-panel::-webkit-scrollbar-thumb,
 .stats-panel::-webkit-scrollbar-thumb {
-  background: #888;
-  border-radius: 4px;
+  background: #888 !important;
+  border-radius: 4px !important;
 }
 
 .route-panel::-webkit-scrollbar-thumb:hover,
 .stats-panel::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: #555 !important;
 }
 
-/* Responsive adjustments */
-@media (max-width: 1024px) {
+/* Responsive Design - Keep panels visible on smaller screens */
+@media (max-width: 1280px) {
   .route-panel {
-    width: 300px;
+    width: 320px !important;
+    min-width: 320px !important;
+    max-width: 320px !important;
   }
 
   .stats-panel {
-    width: 280px;
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .route-panel {
+    width: 280px !important;
+    min-width: 280px !important;
+    max-width: 280px !important;
+  }
+
+  .stats-panel {
+    width: 240px !important;
+    min-width: 240px !important;
+    max-width: 240px !important;
   }
 }
 
 @media (max-width: 768px) {
   .route-planner-content {
-    flex-direction: column;
+    flex-direction: column !important;
   }
 
   .route-panel,
   .stats-panel {
-    width: 100%;
-    height: 200px;
-    border: none;
-    border-bottom: 1px solid #e5e7eb;
+    width: 100% !important;
+    min-width: 100% !important;
+    max-width: 100% !important;
+    max-height: 30vh !important;
+    border: none !important;
+    border-top: 1px solid #e5e7eb !important;
   }
 
   body[data-theme="dark"] .route-panel,
   body[data-theme="dark"] .stats-panel {
-    border-bottom-color: #374151;
+    border-top-color: #374151 !important;
   }
 
   .map-wrapper {
-    min-height: 400px;
+    flex: 1 !important;
+    min-height: 40vh !important;
   }
 }
