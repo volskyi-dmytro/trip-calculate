@@ -142,7 +142,7 @@ jobs:
           GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           OAUTH_REDIRECT_URI: ${{ secrets.OAUTH_REDIRECT_URI }}
-          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}        
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }} 
         run: |
@@ -159,7 +159,7 @@ jobs:
               -e GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
               -e GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
               -e OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI}" \
-              -e GMAIL_USERNAME="${GMAIL_USERNAME}" \       
+              -e GMAIL_USERNAME="${GMAIL_USERNAME}" \
               -e GMAIL_APP_PASSWORD="${GMAIL_APP_PASSWORD}" \
               -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
