@@ -314,20 +314,7 @@ export function RoutePlanner() {
       {/* Main Content */}
       <div className="route-planner-content">
         {/* Left Panel - Route Details */}
-        <div
-          className="route-panel"
-          style={{
-            width: '384px',
-            minWidth: '384px',
-            maxWidth: '384px',
-            flexShrink: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            borderRight: '1px solid #e5e7eb',
-            backgroundColor: '#f9fafb',
-            padding: '1rem'
-          }}
-        >
+        <div className="route-panel">
           <RoutePanel
             waypoints={waypoints}
             routeSettings={routeSettings}
@@ -338,28 +325,8 @@ export function RoutePlanner() {
         </div>
 
         {/* Map */}
-        <div
-          className="map-wrapper"
-          style={{
-            flex: 1,
-            position: 'relative',
-            overflow: 'hidden',
-            minWidth: 0,
-            height: '100%'
-          }}
-        >
-          <div
-            id="map"
-            style={{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              width: '100%',
-              height: '100%'
-            }}
-          ></div>
+        <div className="map-wrapper">
+          <div id="map"></div>
           <MapContainer
             waypoints={waypoints}
             onAddWaypoint={addWaypoint}
@@ -388,20 +355,7 @@ export function RoutePlanner() {
         </div>
 
         {/* Right Panel - Statistics */}
-        <div
-          className="stats-panel"
-          style={{
-            width: '320px',
-            minWidth: '320px',
-            maxWidth: '320px',
-            flexShrink: 0,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            borderLeft: '1px solid #e5e7eb',
-            backgroundColor: '#f9fafb',
-            padding: '1rem'
-          }}
-        >
+        <div className="stats-panel">
           <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
         </div>
       </div>
