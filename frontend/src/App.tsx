@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -17,6 +18,7 @@ function App() {
               <Route path="/" element={<HomePage />} />
               <Route path="/route-planner" element={<RoutePlannerPage />} />
             </Routes>
+            <Toaster position="top-right" richColors />
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>

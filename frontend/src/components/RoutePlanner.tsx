@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
+import '../styles/route-planner.css'
 
 export interface Waypoint {
   id: string
@@ -191,14 +192,14 @@ export function RoutePlanner() {
   }, [waypoints, routeSettings, routeName])
 
   return (
-    <div className="flex flex-col h-screen">
+    <div className="route-planner-container">
       {/* Header */}
-      <header className="border-b bg-card px-6 py-4">
+      <header className="route-planner-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Navigation className="h-6 w-6 text-primary" />
+            <Navigation className="h-6 w-6" style={{ color: '#3b82f6' }} />
             <h1 className="text-2xl font-bold">Trip Route Planner</h1>
-            {routeName && <span className="text-sm text-muted-foreground ml-4">({routeName})</span>}
+            {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
           </div>
           <div className="flex items-center gap-2">
             {/* Load Route Dialog */}
@@ -311,9 +312,9 @@ export function RoutePlanner() {
       </header>
 
       {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="route-planner-content">
         {/* Left Panel - Route Details */}
-        <div className="w-96 border-r overflow-y-auto">
+        <div className="route-panel">
           <RoutePanel
             waypoints={waypoints}
             routeSettings={routeSettings}
@@ -324,26 +325,37 @@ export function RoutePlanner() {
         </div>
 
         {/* Map */}
-        <div className="flex-1 relative">
+        <div className="map-wrapper">
+          <div id="map"></div>
           <MapContainer
             waypoints={waypoints}
             onAddWaypoint={addWaypoint}
             onUpdateWaypoint={updateWaypoint}
           />
-          
+
           {/* Instructions overlay */}
           {waypoints.length === 0 && (
-            <Card className="absolute top-4 left-1/2 -translate-x-1/2 p-4 bg-background/95 backdrop-blur">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <div style={{
+              position: 'absolute',
+              top: '1rem',
+              left: '50%',
+              transform: 'translateX(-50%)',
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              padding: '1rem',
+              borderRadius: '0.5rem',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+              zIndex: 1000
+            }}>
+              <div className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
                 <span>Click on the map to add waypoints</span>
               </div>
-            </Card>
+            </div>
           )}
         </div>
 
         {/* Right Panel - Statistics */}
-        <div className="w-80 border-l overflow-y-auto">
+        <div className="stats-panel">
           <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
         </div>
       </div>

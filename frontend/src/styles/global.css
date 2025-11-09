@@ -1,3 +1,5 @@
+@import "tailwindcss";
+
 :root {
     /* Light Mode Colors */
     --background-color: #f4f4f4;
