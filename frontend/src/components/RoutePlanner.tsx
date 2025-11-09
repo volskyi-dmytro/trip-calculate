@@ -326,7 +326,6 @@ export function RoutePlanner() {
 
         {/* Map */}
         <div className="map-wrapper">
-          <div id="map"></div>
           <MapContainer
             waypoints={waypoints}
             onAddWaypoint={addWaypoint}
