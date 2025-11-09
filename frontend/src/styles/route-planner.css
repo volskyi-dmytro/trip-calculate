@@ -1,162 +1,160 @@
 /* Route Planner Specific Styles */
 
-@layer components {
-  /* Ensure full height layout */
-  .route-planner-container {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-    width: 100vw;
-    overflow: hidden;
-    background-color: #ffffff;
-  }
+/* Ensure full height layout */
+.route-planner-container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: #ffffff;
+}
 
-  /* Header section */
-  .route-planner-header {
-    flex-shrink: 0;
-    border-bottom: 1px solid #e5e7eb;
-    background-color: #ffffff;
-    padding: 1rem;
-    z-index: 10;
-  }
+/* Header section */
+.route-planner-header {
+  flex-shrink: 0;
+  border-bottom: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  padding: 1rem;
+  z-index: 10;
+}
 
-  /* Main content area */
-  .route-planner-content {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
+/* Main content area */
+.route-planner-content {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
 
-  /* Left panel */
+/* Left panel */
+.route-panel {
+  width: 384px;
+  min-width: 384px;
+  flex-shrink: 0;
+  border-right: 1px solid #e5e7eb;
+  overflow-y: auto;
+  background-color: #f9fafb;
+  padding: 1rem;
+}
+
+/* Map container - CRITICAL FOR MAP DISPLAY */
+.map-wrapper {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background-color: #e5e7eb;
+}
+
+#map {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1;
+}
+
+/* Right panel */
+.stats-panel {
+  width: 320px;
+  min-width: 320px;
+  flex-shrink: 0;
+  border-left: 1px solid #e5e7eb;
+  overflow-y: auto;
+  background-color: #f9fafb;
+  padding: 1rem;
+}
+
+/* Leaflet container */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+}
+
+/* Ensure dialogs are above map */
+.route-dialog-overlay {
+  z-index: 1000;
+}
+
+/* Instructions overlay */
+.map-instructions-overlay {
+  position: absolute;
+  top: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: rgba(255, 255, 255, 0.95);
+  padding: 1rem;
+  border-radius: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  z-index: 1000;
+}
+
+/* Scrollbar styling */
+.route-panel::-webkit-scrollbar,
+.stats-panel::-webkit-scrollbar {
+  width: 8px;
+}
+
+.route-panel::-webkit-scrollbar-track,
+.stats-panel::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+.route-panel::-webkit-scrollbar-thumb,
+.stats-panel::-webkit-scrollbar-thumb {
+  background: #888;
+  border-radius: 4px;
+}
+
+.route-panel::-webkit-scrollbar-thumb:hover,
+.stats-panel::-webkit-scrollbar-thumb:hover {
+  background: #555;
+}
+
+/* Responsive adjustments */
+@media (max-width: 1280px) {
   .route-panel {
-    width: 384px;
-    min-width: 384px;
-    flex-shrink: 0;
-    border-right: 1px solid #e5e7eb;
-    overflow-y: auto;
-    background-color: #f9fafb;
-    padding: 1rem;
-  }
-
-  /* Map container - CRITICAL FOR MAP DISPLAY */
-  .map-wrapper {
-    flex: 1;
-    position: relative;
-    overflow: hidden;
-    background-color: #e5e7eb;
-  }
-
-  #map {
-    width: 100%;
-    height: 100%;
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 1;
-  }
-
-  /* Right panel */
-  .stats-panel {
     width: 320px;
     min-width: 320px;
-    flex-shrink: 0;
-    border-left: 1px solid #e5e7eb;
-    overflow-y: auto;
-    background-color: #f9fafb;
-    padding: 1rem;
   }
 
-  /* Leaflet container */
-  .leaflet-container {
+  .stats-panel {
+    width: 280px;
+    min-width: 280px;
+  }
+}
+
+@media (max-width: 1024px) {
+  .route-panel {
+    width: 280px;
+    min-width: 280px;
+  }
+
+  .stats-panel {
+    width: 240px;
+    min-width: 240px;
+  }
+}
+
+@media (max-width: 768px) {
+  .route-planner-content {
+    flex-direction: column;
+  }
+
+  .route-panel,
+  .stats-panel {
     width: 100%;
-    height: 100%;
-    z-index: 1;
+    min-width: 100%;
+    max-height: 30vh;
+    border: none;
+    border-top: 1px solid #e5e7eb;
   }
 
-  /* Ensure dialogs are above map */
-  .route-dialog-overlay {
-    z-index: 1000;
-  }
-
-  /* Instructions overlay */
-  .map-instructions-overlay {
-    position: absolute;
-    top: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: rgba(255, 255, 255, 0.95);
-    padding: 1rem;
-    border-radius: 0.5rem;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    z-index: 1000;
-  }
-
-  /* Scrollbar styling */
-  .route-panel::-webkit-scrollbar,
-  .stats-panel::-webkit-scrollbar {
-    width: 8px;
-  }
-
-  .route-panel::-webkit-scrollbar-track,
-  .stats-panel::-webkit-scrollbar-track {
-    background: #f1f1f1;
-  }
-
-  .route-panel::-webkit-scrollbar-thumb,
-  .stats-panel::-webkit-scrollbar-thumb {
-    background: #888;
-    border-radius: 4px;
-  }
-
-  .route-panel::-webkit-scrollbar-thumb:hover,
-  .stats-panel::-webkit-scrollbar-thumb:hover {
-    background: #555;
-  }
-
-  /* Responsive adjustments */
-  @media (max-width: 1280px) {
-    .route-panel {
-      width: 320px;
-      min-width: 320px;
-    }
-
-    .stats-panel {
-      width: 280px;
-      min-width: 280px;
-    }
-  }
-
-  @media (max-width: 1024px) {
-    .route-panel {
-      width: 280px;
-      min-width: 280px;
-    }
-
-    .stats-panel {
-      width: 240px;
-      min-width: 240px;
-    }
-  }
-
-  @media (max-width: 768px) {
-    .route-planner-content {
-      flex-direction: column;
-    }
-
-    .route-panel,
-    .stats-panel {
-      width: 100%;
-      min-width: 100%;
-      max-height: 30vh;
-      border: none;
-      border-top: 1px solid #e5e7eb;
-    }
-
-    .map-wrapper {
-      min-height: 40vh;
-    }
+  .map-wrapper {
+    min-height: 40vh;
   }
 }
 
