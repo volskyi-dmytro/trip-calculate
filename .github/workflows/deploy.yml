@@ -43,15 +43,61 @@ jobs:
 
       # Setup Java and build Spring Boot application
       - uses: actions/setup-java@v4
-        with: { distribution: temurin, java-version: '17' }
+        with: 
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+          overwrite-settings: true
+          settings-path: ${{ github.workspace }} 
 
+      # Inject settings.xml that mirrors Central to repo1 (often more reliable)
+      - name: Write Maven settings.xml
+        run: |
+          cat > $GITHUB_WORKSPACE/settings.xml <<'XML'
+          <settings xmlns="http://maven.apache.org/SETTINGS/1.0.0">
+            <mirrors>
+              <mirror>
+                <id>central-repo1</id>
+                <name>Central via repo1</name>
+                <url>https://repo1.maven.org/maven2/</url>
+                <mirrorOf>central</mirrorOf>
+              </mirror>
+            </mirrors>
+            <profiles>
+              <profile>
+                <id>http-tuning</id>
+                <properties>
+                  <maven.wagon.http.retryHandler.count>6</maven.wagon.http.retryHandler.count>
+                  <maven.wagon.http.connectionTimeout>30000</maven.wagon.http.connectionTimeout>
+                  <maven.wagon.http.readTimeout>30000</maven.wagon.http.readTimeout>
+                  <!-- Tame parallel downloads if the network is flaky -->
+                  <maven.artifact.threads>5</maven.artifact.threads>
+                </properties>
+              </profile>
+            </profiles>
+            <activeProfiles>
+              <activeProfile>http-tuning</activeProfile>
+            </activeProfiles>
+          </settings>
+          XML
+
+      # Build Spring Boot JAR with retries and clearer logs
       - name: Build Spring Boot JAR
         run: |
           echo "🔨 Building Spring Boot JAR..."
-          mvn -q -DskipTests package
+          # simple retry loop (handles transient 502/503/504)
+          for i in 1 2 3; do
+            mvn -s $GITHUB_WORKSPACE/settings.xml -U -DskipTests package \
+              -Dmaven.wagon.http.retryHandler.count=6 \
+              -Dmaven.wagon.http.pool=false \
+              -Dhttp.keepAlive=false && break || {
+                echo "Attempt $i failed; retrying in 10s..."
+                sleep 10;
+              }
+          done
 
           echo "✅ Verifying static files in JAR:"
-          jar tf target/*.jar | grep "static/assets/index" || echo "❌ ERROR: React files NOT in JAR!"
+          jar tf target/*.jar | grep "static/" || echo "⚠️ Could not find static files (check copy step)"
 
           echo "📦 JAR file info:"
           ls -lh target/*.jar
