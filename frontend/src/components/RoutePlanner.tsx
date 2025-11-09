@@ -197,7 +197,7 @@ export function RoutePlanner() {
       <header className="route-planner-header">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Navigation className="h-6 w-6" style={{ color: '#3b82f6' }} />
+            <Navigation className="h-6 w-6 text-blue-500" />
             <h1 className="text-2xl font-bold">Trip Route Planner</h1>
             {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
           </div>
@@ -335,17 +335,7 @@ export function RoutePlanner() {
 
           {/* Instructions overlay */}
           {waypoints.length === 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '1rem',
-              left: '50%',
-              transform: 'translateX(-50%)',
-              backgroundColor: 'rgba(255, 255, 255, 0.95)',
-              padding: '1rem',
-              borderRadius: '0.5rem',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-              zIndex: 1000
-            }}>
+            <div className="map-instructions-overlay">
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
                 <span>Click on the map to add waypoints</span>
