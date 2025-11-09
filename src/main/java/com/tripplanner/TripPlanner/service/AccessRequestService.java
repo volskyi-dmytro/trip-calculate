@@ -10,6 +10,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
+
 @Service
 @RequiredArgsConstructor
 public class AccessRequestService {
@@ -17,8 +19,8 @@ public class AccessRequestService {
     private final FeatureAccessRepository featureAccessRepository;
     private final JavaMailSender mailSender;
 
-    // TODO: Add your email from application.properties
-    private final String adminEmail = "your-email@example.com";
+    @Value("${app.admin.email}")
+    private String adminEmail;
 
     @Transactional
     public void requestAccess(Long userId, String featureName, String userEmail, String userName) {
