@@ -1,147 +1,29 @@
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="referrer" content="no-referrer-when-downgrade">
-    <title data-lang-en="Trip Planner" data-lang-uk="Ділимо витрати просто!">Trip Planner</title>
-    <meta name="description" content="Are you bored and annoyed when it comes to fuel cost calculation before or after the trip? You can use quick calculation instead! Spend more time on your journey rather arguing about expenses with our platform!">
-    <meta name="keywords" content="trip planner, travel expenses, cost sharing, route planning, планування поїздок, витрати на подорож, розподіл витрат, планування маршруту">
-    <link rel="stylesheet" href="/styles.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet">
+<html lang="uk">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="referrer" content="no-referrer-when-downgrade" />
+    <title>Trip Planner</title>
+    <meta name="description" content="Are you bored and annoyed when it comes to fuel cost calculation before or after the trip? You can use quick calculation instead! Spend more time on your journey rather arguing about expenses with our platform!" />
+    <meta name="keywords" content="trip planner, travel expenses, cost sharing, route planning, планування поїздок, витрати на подорож, розподіл витрат, планування маршруту" />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100;0,300;0,400;0,500;0,700;0,900;1,100;1,300;1,400;1,500;1,700;1,900&display=swap" rel="stylesheet" />
 
     <!-- Favicon and Icons -->
-    <link rel="icon" href="/favicon.ico" type="image/x-icon">
-    <link rel="icon" href="/favicon-16x16.ico" sizes="16x16" type="image/png">
-    <link rel="icon" href="/favicon-32x32.ico" sizes="32x32" type="image/png">
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180">
-    <link rel="icon" href="/android-chrome-192x192.png" sizes="192x192" type="image/png">
-    <link rel="icon" href="/android-chrome-512x512.png" sizes="512x512" type="image/png">
-    <link rel="manifest" href="/site.webmanifest">
-</head>
-<body data-theme="light">
-<header class="header">
-    <div class="container">
-        <div class="language-switch">
-            <button onclick="setLanguage('en')">EN</button>
-            <button onclick="setLanguage('uk')">UA</button>
-        </div>
-        <div class="mode-switch">
-            <!--  <button id="mode-toggle">Dark/Light Mode</button> -->
-            <input type="checkbox" id="darkmode-toggle"/>
-            <label for="darkmode-toggle"></label>
-        </div>
-
-        <!-- Authentication UI -->
-        <div class="auth-section">
-            <!-- Login Button (shown when not authenticated) -->
-            <div id="login-section" style="display: none;">
-                <a href="/oauth2/authorization/google" class="btn btn-google" data-lang-en="Sign in with Google" data-lang-uk="Увійти через Google">
-                    Sign in with Google
-                </a>
-            </div>
-
-            <!-- User Profile (shown when authenticated) -->
-            <div id="user-profile" style="display: none;">
-                <img id="user-avatar" src="" alt="User Avatar" class="user-avatar">
-                <span id="user-name" class="user-name"></span>
-                <button onclick="performLogout()" class="btn btn-logout" data-lang-en="Logout" data-lang-uk="Вийти">Logout</button>
-            </div>
-        </div>
-
-        <!-- Error Message Display -->
-        <div id="error-message" class="error-message" style="display: none;"></div>
-
-        <h1 data-lang-en="Split expenses simply!" data-lang-uk="Просто поділіть витрати!">Split expenses simply!</h1>
-        <div class="buttons">
-            <button id="create-trip-btn" class="btn inactive" title="" data-lang-en="Create a trip" data-lang-uk="Створити поїздку" data-title-en="Login required" data-title-uk="Потрібен вхід">Create a trip</button>
-            <button class="btn" onclick="showCalculator()" data-lang-en="Calculate now" data-lang-uk="Швидкий розрахунок">Calculate now</button>
-        </div>
-    </div>
-</header>
-<section class="intro">
-    <div class="container">
-        <h2 data-lang-en="All-In-One Trip Planner" data-lang-uk="Менеджер поїздок все-в-одному">All-In-One Trip Manager</h2>
-        <p data-lang-en="Are you bored and annoyed when it comes to fuel cost calculation before or after the trip? You can use quick calculation instead! Spend more time on your journey rather arguing about expenses with our platform!" data-lang-uk="Чи втомилися ви від розрахунку вартості палива до чи після поїздки? Використовуйте Швидкий Розрахунок замість цього! Не сперечайтеся про витрати - проведіть більше часу в подорожі за допомогою нашої платформи!"></p>
-        <div class="features">
-            <div class="feature">
-                <h3 data-lang-en="User-Friendly" data-lang-uk="Зручний у використанні">User-Friendly</h3>
-                <p data-lang-en="Our interface is designed with simplicity in mind. Easily navigate through trip planning and expense splitting." data-lang-uk="Наш інтерфейс розроблений з урахуванням простоти. Легко перемикайтеся між плануванням поїздок та розподілом витрат.">Our interface is designed with simplicity in mind. Easily navigate through trip planning and expense splitting.</p>
-            </div>
-            <div class="feature">
-                <h3 data-lang-en="Route Planner" data-lang-uk="Планування маршрутів">Route Planner</h3>
-                <p data-lang-en="Plan the most efficient routes to save fuel and time." data-lang-uk="Плануйте найефективніші маршрути для економії палива та часу.">Plan the most efficient routes to save fuel and time.</p>
-            </div>
-            <div class="feature">
-                <h3 data-lang-en="Quick Lookup" data-lang-uk="Швидкий пошук">Quick Lookup</h3>
-                <p data-lang-en="Quickly find routes, fuel stops, and more with Quick Lookup." data-lang-uk="Знаходьте маршрути, зупинки для заправки тощо за допомогою Швидкого Пошуку.">Quickly find routes, fuel stops, and more with Quick Lookup.</p>
-            </div>
-        </div>
-    </div>
-</section>
-<section class="faq">
-    <div class="container">
-        <h2 data-lang-en="Frequently Asked Questions" data-lang-uk="Часто задавані питання">Frequently Asked Questions</h2>
-        <div class="faq-item">
-            <h3 data-lang-en="How does Trip Planner work?" data-lang-uk="Як працює Trip Planner?">How does Trip Planner work?</h3>
-            <p data-lang-en="Trip Planner allows you to easily plan and split expenses among your trip participants. Simply enter your trip details, and we'll do the rest." data-lang-uk="Trip Planner дозволяє легко планувати та розподіляти витрати між учасниками поїздки. Просто введіть деталі поїздки, і ми зробимо все інше.">Trip Planner allows you to easily plan and split expenses among your trip participants. Simply enter your trip details, and we'll do the rest.</p>
-        </div>
-        <div class="faq-item">
-            <h3 data-lang-en="Is Trip Planner free to use?" data-lang-uk="Чи є Trip Planner безкоштовним для використання?">Is Trip Planner free to use?</h3>
-            <p data-lang-en="Yes, Trip Planner offers a free version with basic features. Additional premium features will be available for a small fee." data-lang-uk="Так, Trip Planner пропонує безкоштовну версію з базовими функціями. Додаткові преміум-функції будуть доступні за невелику плату.">Yes, Trip Planner offers a free version with basic features. Additional premium features will be available for a small fee.</p>
-        </div>
-        <div class="faq-item">
-            <h3 data-lang-en="Can I use Trip Planner abroad?" data-lang-uk="Чи можу я використовувати Trip Planner за кордоном?">Can I use Trip Planner abroad?</h3>
-            <p data-lang-en="Absolutely! Trip Planner works globally, making it easy to plan trips and split expenses with friends and family anywhere in the world." data-lang-uk="Звичайно! Trip Planner працює по всьому світу, що дозволяє легко планувати поїздки та розподіляти витрати з друзями та родиною будь-де у світі.">Absolutely! Trip Planner works globally, making it easy to plan trips and split expenses with friends and family anywhere in the world.</p>
-        </div>
-    </div>
-</section>
-<footer>
-    <div class="container">
-        <p> 2024 Dmytro Volskyi</p>
-        <div class="social-links">
-            <p>Connect with me on:</p>
-            <a href="https://www.linkedin.com/in/volskyi-dmytro" target="_blank" title="LinkedIn">
-                <i class="fab fa-linkedin"></i> LinkedIn
-            </a>
-            <a href="https://www.github.com/volskyi-dmytro" target="_blank" title="GitHub">
-                <i class="fab fa-github"></i> GitHub
-            </a>
-        </div>
-    </div>
-</footer>
-
-<!-- Modal for Calculate Trip Expenses -->
-<div id="calculator-modal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="closeCalculator()">&times;</span>
-        <h2 data-lang-en="Calculate Trip Expenses" data-lang-uk="Розрахувати витрати на поїздку">Calculate Trip Expenses</h2>
-        <form id="calculator-form" onsubmit="calculateExpenses(event)">
-            <div class="form-group">
-                <label for="customFuelConsumption" data-lang-en="Custom Fuel Consumption (L/100km):" data-lang-uk="Власна витрата палива (л/100 км):">Custom Fuel Consumption (L/100km):</label>
-                <input type="number" id="customFuelConsumption" name="customFuelConsumption" step="0.01" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="numberOfPassengers" data-lang-en="Number of Passengers:" data-lang-uk="Кількість пасажирів:">Number of Passengers:</label>
-                <input type="number" id="numberOfPassengers" name="numberOfPassengers" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="distance" data-lang-en="Distance (km):" data-lang-uk="Відстань (км):">Distance (km):</label>
-                <input type="number" id="distance" name="distance" min="0" required>
-            </div>
-            <div class="form-group">
-                <label for="fuelCost" data-lang-en="Fuel Cost (per liter):" data-lang-uk="Вартість палива (за літр):">Fuel Cost (per liter):</label>
-                <input type="number" id="fuelCost" name="fuelCost" step="0.01" min="0" required>
-            </div>
-            <button type="submit" class="btn" data-lang-en="Calculate" data-lang-uk="Розрахувати">Calculate</button>
-            <button type="reset" class="btn" data-lang-en="Reset" data-lang-uk="Скинути">Reset</button>
-        </form>
-        <div id="result" class="result"></div>
-    </div>
-</div>
-
-<script src="/script.js"></script>
-</body>
+    <link rel="icon" href="/favicon.ico" type="image/x-icon" />
+    <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+    <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" sizes="180x180" />
+    <link rel="icon" href="/android-chrome-192x192.png" sizes="192x192" type="image/png" />
+    <link rel="icon" href="/android-chrome-512x512.png" sizes="512x512" type="image/png" />
+    <link rel="manifest" href="/site.webmanifest" />
+    <script type="module" crossorigin src="/assets/index-CR4GefqU.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DIel2bwY.css">
+  </head>
+  <body data-theme="light">
+    <div id="root"></div>
+  </body>
 </html>

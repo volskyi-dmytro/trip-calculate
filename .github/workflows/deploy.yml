@@ -31,14 +31,31 @@ jobs:
           echo "📦 Cleaning static directory..."
           rm -rf src/main/resources/static/*
 
+          echo "📂 Creating static directory..."
+          mkdir -p src/main/resources/static
+
           echo "📂 Copying React build to static resources..."
           cp -r frontend/dist/* src/main/resources/static/
 
-          echo "✅ Verifying files copied:"
-          ls -la src/main/resources/static/
-          ls -la src/main/resources/static/assets/ || echo "❌ Assets directory missing!"
+          echo "✅ Verifying index.html copied:"
+          ls -la src/main/resources/static/index.html || { echo "❌ index.html missing!"; exit 1; }
 
-          echo "📊 File count:"
+          echo "✅ Verifying assets directory:"
+          ls -la src/main/resources/static/assets/ || { echo "❌ Assets directory missing!"; exit 1; }
+
+          echo "🎨 Checking for CSS files:"
+          find src/main/resources/static -name "*.css" -type f | head -10
+
+          echo "📜 Checking for JS files:"
+          find src/main/resources/static -name "*.js" -type f | head -10
+
+          echo "🔍 Checking for route-planner CSS in bundle:"
+          grep -l "route-planner-container" src/main/resources/static/assets/*.css && echo "✅ Route planner styles found!" || echo "⚠️ Route planner styles not found in CSS"
+
+          echo "🔍 Checking for Leaflet CSS in bundle:"
+          grep -l "leaflet" src/main/resources/static/assets/*.css && echo "✅ Leaflet styles found!" || echo "⚠️ Leaflet styles not found in CSS"
+
+          echo "📊 Total files copied:"
           find src/main/resources/static -type f | wc -l
 
       # Setup Java and build Spring Boot application
@@ -96,8 +113,17 @@ jobs:
               }
           done
 
-          echo "✅ Verifying static files in JAR:"
-          jar tf target/*.jar | grep "static/" || echo "⚠️ Could not find static files (check copy step)"
+          echo "✅ Verifying index.html in JAR:"
+          jar tf target/*.jar | grep "BOOT-INF/classes/static/index.html" || { echo "❌ index.html not in JAR!"; exit 1; }
+
+          echo "✅ Checking for CSS files in JAR:"
+          jar tf target/*.jar | grep "\.css$" | head -5 || { echo "❌ No CSS files in JAR!"; exit 1; }
+
+          echo "✅ Checking for JS files in JAR:"
+          jar tf target/*.jar | grep "\.js$" | head -5 || { echo "❌ No JS files in JAR!"; exit 1; }
+
+          echo "🔍 Verifying route-planner assets in JAR:"
+          jar tf target/*.jar | grep "BOOT-INF/classes/static/assets/" | head -10
 
           echo "📦 JAR file info:"
           ls -lh target/*.jar
