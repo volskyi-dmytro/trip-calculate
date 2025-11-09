@@ -86,6 +86,7 @@ public class SecurityConfig {
 
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()
+                        .requestMatchers("/api/routes/**", "/api/access-requests/**").authenticated()
 
                         // Allow health endpoint for monitoring, block other actuator endpoints
                         .requestMatchers("/actuator/health").permitAll()

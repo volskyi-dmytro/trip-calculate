@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -10,6 +11,7 @@ interface HeaderProps {
 }
 
 export function Header({ onCalculateClick }: HeaderProps) {
+  const navigate = useNavigate();
   const { user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
@@ -17,7 +19,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
 
   const handleCreateTripClick = () => {
     if (user) {
-      alert(language === 'uk' ? 'Функція в розробці!' : 'Feature coming soon!');
+      navigate('/route-planner');
     }
   };
 
