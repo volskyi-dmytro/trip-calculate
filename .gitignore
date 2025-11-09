@@ -92,8 +92,9 @@ application-dev.properties
 # Documentation
 
 INFRASTRUCTURE.md
-
+CLAUDE.md
 # Environment and development files
+*.sh
 .env
 cookies.txt
 run-with-oauth.sh
