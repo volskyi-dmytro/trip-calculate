@@ -10,6 +10,8 @@ import { Label } from '@/components/ui/label'
 import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
+import { geocodingService } from '../services/geocodingService'
+import { routingService } from '../services/routingService'
 import '../styles/route-planner.css'
 
 export interface Waypoint {
@@ -38,11 +40,34 @@ export function RoutePlanner() {
   const [routeName, setRouteName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
+  const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([])
+  const [isGeocoding, setIsGeocoding] = useState(false)
 
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Calculate road-based route whenever waypoints change
+  useEffect(() => {
+    const updateRoute = async () => {
+      if (waypoints.length < 2) {
+        setRouteGeometry([])
+        return
+      }
+
+      try {
+        const route = await routingService.getRoute(waypoints)
+        setRouteGeometry(route.geometry)
+      } catch (error) {
+        console.error('Failed to calculate route:', error)
+        // Fallback to straight lines
+        setRouteGeometry(waypoints.map(w => [w.lat, w.lng]))
+      }
+    }
+
+    updateRoute()
+  }, [waypoints])
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
@@ -57,16 +82,34 @@ export function RoutePlanner() {
     }
   }
 
-  const addWaypoint = useCallback((lat: number, lng: number) => {
-    const newWaypoint: Waypoint = {
-      id: Date.now().toString(),
-      lat,
-      lng,
-      name: `Waypoint ${waypoints.length + 1}`
+  const addWaypoint = useCallback(async (lat: number, lng: number) => {
+    if (isGeocoding) {
+      toast.error('Please wait for previous location to load')
+      return
     }
-    setWaypoints(prev => [...prev, newWaypoint])
-    toast.success(`Added ${newWaypoint.name}`)
-  }, [waypoints.length])
+
+    setIsGeocoding(true)
+
+    try {
+      // Get location name via reverse geocoding
+      const locationName = await geocodingService.reverseGeocode(lat, lng)
+
+      const newWaypoint: Waypoint = {
+        id: Date.now().toString(),
+        lat,
+        lng,
+        name: locationName
+      }
+
+      setWaypoints(prev => [...prev, newWaypoint])
+      toast.success(`Added: ${locationName}`)
+    } catch (error) {
+      console.error('Failed to add waypoint:', error)
+      toast.error('Failed to get location name')
+    } finally {
+      setIsGeocoding(false)
+    }
+  }, [isGeocoding])
 
   const updateWaypoint = useCallback((id: string, lat: number, lng: number) => {
     setWaypoints(prev => 
@@ -328,6 +371,7 @@ export function RoutePlanner() {
         <div className="map-wrapper">
           <MapContainer
             waypoints={waypoints}
+            routeGeometry={routeGeometry}
             onAddWaypoint={addWaypoint}
             onUpdateWaypoint={updateWaypoint}
           />

@@ -1,0 +1,83 @@
+export interface RouteSegment {
+  distance: number; // in meters
+  duration: number; // in seconds
+  geometry: Array<[number, number]>; // lat/lng pairs for the route line
+}
+
+export interface RoutingResult {
+  totalDistance: number; // in km
+  totalDuration: number; // in minutes
+  geometry: Array<[number, number]>; // lat/lng pairs
+  segments: RouteSegment[];
+}
+
+export const routingService = {
+  /**
+   * Calculate road-based route between waypoints using OSRM
+   * @param waypoints Array of waypoints with lat/lng coordinates
+   * @returns Route geometry and statistics
+   */
+  async getRoute(waypoints: Array<{ lat: number; lng: number }>): Promise<RoutingResult> {
+    if (waypoints.length < 2) {
+      return {
+        totalDistance: 0,
+        totalDuration: 0,
+        geometry: [],
+        segments: [],
+      };
+    }
+
+    try {
+      // Build OSRM API URL
+      const coordinates = waypoints
+        .map(w => `${w.lng},${w.lat}`)
+        .join(';');
+
+      const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`;
+
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        throw new Error('Routing failed');
+      }
+
+      const data = await response.json();
+
+      if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
+        throw new Error('No route found');
+      }
+
+      const route = data.routes[0];
+
+      // Convert GeoJSON coordinates [lng, lat] to [lat, lng] for Leaflet
+      const geometry: Array<[number, number]> = route.geometry.coordinates.map(
+        (coord: [number, number]) => [coord[1], coord[0]]
+      );
+
+      // Extract segments
+      const segments: RouteSegment[] = route.legs.map((leg: { distance: number; duration: number; steps: { geometry: { coordinates: Array<[number, number]> } }[] }) => ({
+        distance: leg.distance,
+        duration: leg.duration,
+        geometry: leg.steps.flatMap((step: { geometry: { coordinates: Array<[number, number]> } }) =>
+          step.geometry.coordinates.map((coord: [number, number]) => [coord[1], coord[0]] as [number, number])
+        ),
+      }));
+
+      return {
+        totalDistance: route.distance / 1000, // convert meters to km
+        totalDuration: route.duration / 60, // convert seconds to minutes
+        geometry,
+        segments,
+      };
+    } catch (error) {
+      console.error('Routing error:', error);
+      // Fallback to straight lines if routing fails
+      return {
+        totalDistance: 0,
+        totalDuration: 0,
+        geometry: waypoints.map(w => [w.lat, w.lng] as [number, number]),
+        segments: [],
+      };
+    }
+  },
+};

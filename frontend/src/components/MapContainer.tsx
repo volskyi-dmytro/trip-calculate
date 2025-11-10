@@ -13,11 +13,12 @@ L.Icon.Default.mergeOptions({
 
 interface MapContainerProps {
   waypoints: Waypoint[]
+  routeGeometry: Array<[number, number]>
   onAddWaypoint: (lat: number, lng: number) => void
   onUpdateWaypoint: (id: string, lat: number, lng: number) => void
 }
 
-export function MapContainer({ waypoints, onAddWaypoint, onUpdateWaypoint }: MapContainerProps) {
+export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint }: MapContainerProps) {
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
   const polylineRef = useRef<L.Polyline | null>(null)
@@ -105,15 +106,14 @@ export function MapContainer({ waypoints, onAddWaypoint, onUpdateWaypoint }: Map
       }
     })
 
-    // Update route line
+    // Update route line - use road-based geometry if available
     if (polylineRef.current) {
       polylineRef.current.remove()
       polylineRef.current = null
     }
 
-    if (waypoints.length > 1) {
-      const latLngs = waypoints.map(wp => [wp.lat, wp.lng] as [number, number])
-      polylineRef.current = L.polyline(latLngs, {
+    if (routeGeometry.length > 0) {
+      polylineRef.current = L.polyline(routeGeometry, {
         color: '#3b82f6',
         weight: 4,
         opacity: 0.7,
@@ -124,7 +124,7 @@ export function MapContainer({ waypoints, onAddWaypoint, onUpdateWaypoint }: Map
     } else if (waypoints.length === 1) {
       map.setView([waypoints[0].lat, waypoints[0].lng], 10)
     }
-  }, [waypoints, onUpdateWaypoint])
+  }, [waypoints, routeGeometry, onUpdateWaypoint])
 
   return <div id="map" className="w-full h-full" />
 }
