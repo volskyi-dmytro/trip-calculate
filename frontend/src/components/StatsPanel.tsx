@@ -2,6 +2,9 @@ import { useMemo } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Fuel, Navigation, DollarSign, Route, Clock } from 'lucide-react'
+import type { Language } from '../types'
+import { getTranslation } from '../i18n/routePlanner'
+import { useLanguage } from '../contexts/LanguageContext'
 
 interface StatsPanelProps {
   waypoints: Waypoint[]
@@ -22,6 +25,9 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
 }
 
 export function StatsPanel({ waypoints, routeSettings }: StatsPanelProps) {
+  const { language } = useLanguage()
+  const t = getTranslation(language as Language)
+
   const stats = useMemo(() => {
     if (waypoints.length < 2) {
       return {
@@ -66,28 +72,28 @@ export function StatsPanel({ waypoints, routeSettings }: StatsPanelProps) {
       {/* Summary Stats */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Route Summary</CardTitle>
+          <CardTitle className="text-lg">{t.routeSummary.title}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-3">
             <StatItem
               icon={<Route className="h-5 w-5" />}
-              label="Total Distance"
+              label={t.routeSummary.totalDistance}
               value={`${stats.totalDistance.toFixed(2)} km`}
             />
             <StatItem
               icon={<Fuel className="h-5 w-5" />}
-              label="Fuel Needed"
+              label={t.routeSummary.fuelNeeded}
               value={`${stats.fuelNeeded.toFixed(2)} L`}
             />
             <StatItem
               icon={<DollarSign className="h-5 w-5" />}
-              label="Fuel Cost"
+              label={t.routeSummary.fuelCost}
               value={`${stats.fuelCost.toFixed(2)} ${routeSettings.currency}`}
             />
             <StatItem
               icon={<Clock className="h-5 w-5" />}
-              label="Est. Time"
+              label={t.routeSummary.estTime}
               value={`${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}
             />
           </div>
@@ -98,7 +104,7 @@ export function StatsPanel({ waypoints, routeSettings }: StatsPanelProps) {
       {stats.segments.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Route Segments</CardTitle>
+            <CardTitle className="text-lg">{t.routeSegments.title}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-3">
@@ -126,28 +132,28 @@ export function StatsPanel({ waypoints, routeSettings }: StatsPanelProps) {
       {waypoints.length >= 2 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Cost Breakdown</CardTitle>
+            <CardTitle className="text-lg">{t.costBreakdown.title}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fuel consumption:</span>
+              <span className="text-muted-foreground">{t.costBreakdown.fuelConsumption}</span>
               <span className="font-medium">{routeSettings.fuelConsumption} L/100km</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fuel price:</span>
+              <span className="text-muted-foreground">{t.costBreakdown.fuelPrice}</span>
               <span className="font-medium">{routeSettings.fuelCostPerLiter} {routeSettings.currency}/L</span>
             </div>
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Distance:</span>
+              <span className="text-muted-foreground">{t.costBreakdown.distance}</span>
               <span className="font-medium">{stats.totalDistance.toFixed(2)} km</span>
             </div>
             <div className="h-px bg-border my-2" />
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Fuel needed:</span>
+              <span className="text-muted-foreground">{t.costBreakdown.fuelNeeded}</span>
               <span className="font-medium">{stats.fuelNeeded.toFixed(2)} L</span>
             </div>
             <div className="flex justify-between font-bold text-base pt-2">
-              <span>Total Cost:</span>
+              <span>{t.costBreakdown.totalCost}</span>
               <span className="text-primary">{stats.fuelCost.toFixed(2)} {routeSettings.currency}</span>
             </div>
           </CardContent>
@@ -157,7 +163,7 @@ export function StatsPanel({ waypoints, routeSettings }: StatsPanelProps) {
       {waypoints.length === 0 && (
         <Card>
           <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
-            <p className="text-sm">Add waypoints to see route statistics</p>
+            <p className="text-sm">{t.routeSummary.addWaypoints}</p>
           </CardContent>
         </Card>
       )}

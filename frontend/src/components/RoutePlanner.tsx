@@ -12,6 +12,8 @@ import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
+import { useLanguage } from '../contexts/LanguageContext'
+import { getTranslation, type Language } from '../i18n/routePlanner'
 import '../styles/route-planner.css'
 
 export interface Waypoint {
@@ -28,6 +30,9 @@ export interface RouteSettings {
 }
 
 export function RoutePlanner() {
+  const { language } = useLanguage()
+  const t = getTranslation(language as Language)
+
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>({
     fuelConsumption: 7,
@@ -79,7 +84,7 @@ export function RoutePlanner() {
       setSavedRoutes(routes)
     } catch (error) {
       console.error('Failed to load routes:', error)
-      toast.error('Failed to load saved routes')
+      toast.error(t.toasts.routesLoadFailed)
     } finally {
       setLoadingRoutes(false)
     }
@@ -87,7 +92,7 @@ export function RoutePlanner() {
 
   const addWaypoint = useCallback(async (lat: number, lng: number) => {
     if (isGeocoding) {
-      toast.error('Please wait for previous location to load')
+      toast.error(t.toasts.waitForLocation)
       return
     }
 
@@ -105,14 +110,14 @@ export function RoutePlanner() {
       }
 
       setWaypoints(prev => [...prev, newWaypoint])
-      toast.success(`Added: ${locationName}`)
+      toast.success(`${t.toasts.locationAdded} ${locationName}`)
     } catch (error) {
       console.error('Failed to add waypoint:', error)
-      toast.error('Failed to get location name')
+      toast.error(t.toasts.locationFailed)
     } finally {
       setIsGeocoding(false)
     }
-  }, [isGeocoding])
+  }, [isGeocoding, t])
 
   const updateWaypoint = useCallback((id: string, lat: number, lng: number) => {
     setWaypoints(prev => 
@@ -128,23 +133,23 @@ export function RoutePlanner() {
 
   const removeWaypoint = useCallback((id: string) => {
     setWaypoints(prev => prev.filter(wp => wp.id !== id))
-    toast.success('Waypoint removed')
-  }, [])
+    toast.success(t.toasts.waypointRemoved)
+  }, [t])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
     setRouteName('')
-    toast.success('Route cleared')
-  }, [])
+    toast.success(t.toasts.routeCleared)
+  }, [t])
 
   const saveRouteToServer = useCallback(async () => {
     if (waypoints.length < 2) {
-      toast.error('Please add at least 2 waypoints')
+      toast.error(t.toasts.minWaypoints)
       return
     }
 
     if (!routeName.trim()) {
-      toast.error('Please enter a route name')
+      toast.error(t.toasts.enterRouteName)
       return
     }
 
@@ -164,22 +169,22 @@ export function RoutePlanner() {
       }
 
       await routeService.createRoute(routeData)
-      toast.success('Route saved successfully!')
+      toast.success(t.toasts.routeSaved)
       setShowSaveDialog(false)
       setRouteName('')
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to save route:', error)
-      toast.error('Failed to save route')
+      toast.error(t.toasts.routeSaveFailed)
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName])
+  }, [waypoints, routeSettings, routeName, t])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
       const route = await routeService.getRoute(routeId)
-      
+
       // Convert backend waypoints to frontend format
       const loadedWaypoints: Waypoint[] = route.waypoints.map(wp => ({
         id: Date.now().toString() + Math.random(),
@@ -196,27 +201,27 @@ export function RoutePlanner() {
       })
       setRouteName(route.name)
       setShowLoadDialog(false)
-      toast.success(`Loaded route: ${route.name}`)
+      toast.success(`${t.toasts.routeLoaded} ${route.name}`)
     } catch (error) {
       console.error('Failed to load route:', error)
-      toast.error('Failed to load route')
+      toast.error(t.toasts.routeLoadFailed)
     }
-  }, [])
+  }, [t])
 
   const deleteRouteFromServer = useCallback(async (routeId: number) => {
-    if (!confirm('Are you sure you want to delete this route?')) {
+    if (!confirm(t.dialogs.load.deleteConfirm)) {
       return
     }
 
     try {
       await routeService.deleteRoute(routeId)
-      toast.success('Route deleted')
+      toast.success(t.toasts.routeDeleted)
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to delete route:', error)
-      toast.error('Failed to delete route')
+      toast.error(t.toasts.routeDeleteFailed)
     }
-  }, [])
+  }, [t])
 
   const exportRouteAsJSON = useCallback(() => {
     const routeData = {
@@ -234,26 +239,26 @@ export function RoutePlanner() {
     a.click()
     URL.revokeObjectURL(url)
 
-    toast.success('Route exported!')
-  }, [waypoints, routeSettings, routeName])
+    toast.success(t.toasts.routeExported)
+  }, [waypoints, routeSettings, routeName, t])
 
   const handleManualAddressSubmit = useCallback(async () => {
     if (!manualAddress.trim()) {
-      toast.error('Please enter an address')
+      toast.error(t.toasts.enterAddress)
       return
     }
 
     setIsSearching(true)
 
     try {
-      toast.loading('Searching for location...')
+      toast.loading(t.toasts.searchingLocation)
 
       const result = await geocodingService.forwardGeocode(manualAddress)
 
       toast.dismiss()
 
       if (!result) {
-        toast.error('Location not found. Try a different search.')
+        toast.error(t.toasts.locationNotFound)
         return
       }
 
@@ -270,7 +275,7 @@ export function RoutePlanner() {
 
       setWaypoints(prev => [...prev, newWaypoint])
 
-      toast.success(`Added: ${locationName}`)
+      toast.success(`${t.toasts.manualAddSuccess} ${locationName}`)
 
       // Close dialog and reset
       setShowManualInputDialog(false)
@@ -278,11 +283,11 @@ export function RoutePlanner() {
     } catch (error) {
       toast.dismiss()
       console.error('Manual address error:', error)
-      toast.error('Failed to add waypoint')
+      toast.error(t.toasts.manualAddFailed)
     } finally {
       setIsSearching(false)
     }
-  }, [manualAddress])
+  }, [manualAddress, t])
 
   return (
     <div className="route-planner-container">
@@ -291,7 +296,7 @@ export function RoutePlanner() {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Navigation className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-bold">Trip Route Planner</h1>
+            <h1 className="text-2xl font-bold">{t.title}</h1>
             {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
           </div>
           <div className="flex items-center gap-2">
@@ -300,12 +305,13 @@ export function RoutePlanner() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm">
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  Load Route
+                  {t.buttons.loadRoute}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Load Saved Route</DialogTitle>
+                  <DialogTitle>{t.dialogs.load.title}</DialogTitle>
+                  <DialogDescription>{t.dialogs.load.description}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2 max-h-96 overflow-y-auto">
                   {loadingRoutes ? (
@@ -313,9 +319,10 @@ export function RoutePlanner() {
                       <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     </div>
                   ) : savedRoutes.length === 0 ? (
-                    <p className="text-center text-muted-foreground py-8">
-                      No saved routes yet
-                    </p>
+                    <div className="text-center py-8">
+                      <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
+                      <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
+                    </div>
                   ) : (
                     savedRoutes.map(route => (
                       <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
@@ -323,21 +330,21 @@ export function RoutePlanner() {
                           <div className="flex-1">
                             <h3 className="font-semibold">{route.name}</h3>
                             <p className="text-sm text-muted-foreground">
-                              {route.waypoints.length} waypoints • {route.totalDistance?.toFixed(2)} km
+                              {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
                             </p>
                             <p className="text-xs text-muted-foreground">
                               {new Date(route.updatedAt!).toLocaleDateString()}
                             </p>
                           </div>
                           <div className="flex gap-2">
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               onClick={() => loadRouteFromServer(route.id!)}
                             >
-                              Load
+                              {t.buttons.load}
                             </Button>
-                            <Button 
-                              size="sm" 
+                            <Button
+                              size="sm"
                               variant="destructive"
                               onClick={() => deleteRouteFromServer(route.id!)}
                             >
@@ -357,48 +364,74 @@ export function RoutePlanner() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={waypoints.length === 0}>
                   <Save className="h-4 w-4 mr-2" />
-                  Save Route
+                  {t.buttons.saveRoute}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>Save Route</DialogTitle>
+                  <DialogTitle>{t.dialogs.save.title}</DialogTitle>
+                  <DialogDescription>{t.dialogs.save.description}</DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
-                    <Label htmlFor="route-name">Route Name</Label>
+                    <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
                     <Input
                       id="route-name"
-                      placeholder="Enter route name..."
+                      placeholder={t.dialogs.save.placeholder}
                       value={routeName}
                       onChange={(e) => setRouteName(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !savingRoute) {
+                          saveRouteToServer()
+                        }
+                      }}
                     />
                   </div>
-                  <Button 
-                    onClick={saveRouteToServer} 
+
+                  <div className="text-sm text-muted-foreground">
+                    <p>{t.dialogs.save.willSave}</p>
+                    <ul className="list-disc list-inside mt-2 space-y-1">
+                      <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
+                      <li>{t.dialogs.save.fuelSettings}</li>
+                      <li>{t.dialogs.save.calculations}</li>
+                    </ul>
+                  </div>
+                </div>
+
+                <DialogFooter>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowSaveDialog(false)}
+                  >
+                    {t.buttons.cancel}
+                  </Button>
+                  <Button
+                    onClick={saveRouteToServer}
                     disabled={savingRoute}
-                    className="w-full"
                   >
                     {savingRoute ? (
                       <>
                         <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Saving...
+                        {t.buttons.saving}
                       </>
                     ) : (
-                      'Save to Cloud'
+                      <>
+                        <Save className="h-4 w-4 mr-2" />
+                        {t.buttons.save}
+                      </>
                     )}
                   </Button>
-                </div>
+                </DialogFooter>
               </DialogContent>
             </Dialog>
 
             <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0}>
               <Upload className="h-4 w-4 mr-2" />
-              Export JSON
+              {t.buttons.exportJson}
             </Button>
             <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0}>
               <Trash2 className="h-4 w-4 mr-2" />
-              Clear
+              {t.buttons.clear}
             </Button>
           </div>
         </div>
@@ -408,20 +441,20 @@ export function RoutePlanner() {
       <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Add Waypoint Manually</DialogTitle>
+            <DialogTitle>{t.dialogs.manual.title}</DialogTitle>
             <DialogDescription>
-              Enter an address, city, or place name to add as a waypoint
+              {t.dialogs.manual.description}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div>
-              <Label htmlFor="manual-address">Address or Place</Label>
+              <Label htmlFor="manual-address">{t.dialogs.manual.addressLabel}</Label>
               <Input
                 id="manual-address"
                 value={manualAddress}
                 onChange={(e) => setManualAddress(e.target.value)}
-                placeholder="e.g., Lviv, Prospect Svobody"
+                placeholder={t.dialogs.manual.placeholder}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !isSearching) {
                     handleManualAddressSubmit()
@@ -429,7 +462,7 @@ export function RoutePlanner() {
                 }}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                You can enter: city name, street address, or landmark
+                {t.dialogs.manual.hint}
               </p>
             </div>
 
@@ -441,7 +474,7 @@ export function RoutePlanner() {
                   setManualAddress('')
                 }}
               >
-                Cancel
+                {t.buttons.cancel}
               </Button>
               <Button
                 onClick={handleManualAddressSubmit}
@@ -450,10 +483,13 @@ export function RoutePlanner() {
                 {isSearching ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    Searching...
+                    {t.buttons.searching}
                   </>
                 ) : (
-                  'Add Waypoint'
+                  <>
+                    <MapPin className="h-4 w-4 mr-2" />
+                    {t.dialogs.manual.addWaypoint}
+                  </>
                 )}
               </Button>
             </DialogFooter>
@@ -489,7 +525,7 @@ export function RoutePlanner() {
             <div className="map-instructions-overlay">
               <div className="flex items-center gap-2 text-sm">
                 <MapPin className="h-4 w-4" />
-                <span>Click on the map to add waypoints</span>
+                <span>{t.waypoints.clickMap}</span>
               </div>
             </div>
           )}
