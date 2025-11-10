@@ -4,7 +4,7 @@ import { RoutePanel } from './RoutePanel'
 import { StatsPanel } from './StatsPanel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2 } from 'lucide-react'
@@ -42,6 +42,9 @@ export function RoutePlanner() {
   const [showLoadDialog, setShowLoadDialog] = useState(false)
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([])
   const [isGeocoding, setIsGeocoding] = useState(false)
+  const [showManualInputDialog, setShowManualInputDialog] = useState(false)
+  const [manualAddress, setManualAddress] = useState('')
+  const [isSearching, setIsSearching] = useState(false)
 
   // Load user's routes on mount
   useEffect(() => {
@@ -222,7 +225,7 @@ export function RoutePlanner() {
       settings: routeSettings,
       exportedAt: new Date().toISOString()
     }
-    
+
     const blob = new Blob([JSON.stringify(routeData, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -230,9 +233,56 @@ export function RoutePlanner() {
     a.download = `route-${Date.now()}.json`
     a.click()
     URL.revokeObjectURL(url)
-    
+
     toast.success('Route exported!')
   }, [waypoints, routeSettings, routeName])
+
+  const handleManualAddressSubmit = useCallback(async () => {
+    if (!manualAddress.trim()) {
+      toast.error('Please enter an address')
+      return
+    }
+
+    setIsSearching(true)
+
+    try {
+      toast.loading('Searching for location...')
+
+      const result = await geocodingService.forwardGeocode(manualAddress)
+
+      toast.dismiss()
+
+      if (!result) {
+        toast.error('Location not found. Try a different search.')
+        return
+      }
+
+      // Get proper location name via reverse geocoding
+      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+
+      // Add waypoint
+      const newWaypoint: Waypoint = {
+        id: Date.now().toString(),
+        lat: result.lat,
+        lng: result.lng,
+        name: locationName
+      }
+
+      setWaypoints(prev => [...prev, newWaypoint])
+
+      toast.success(`Added: ${locationName}`)
+
+      // Close dialog and reset
+      setShowManualInputDialog(false)
+      setManualAddress('')
+    } catch (error) {
+      toast.dismiss()
+      console.error('Manual address error:', error)
+      toast.error('Failed to add waypoint')
+    } finally {
+      setIsSearching(false)
+    }
+  }, [manualAddress])
 
   return (
     <div className="route-planner-container">
@@ -354,6 +404,63 @@ export function RoutePlanner() {
         </div>
       </header>
 
+      {/* Manual Address Input Dialog */}
+      <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Waypoint Manually</DialogTitle>
+            <DialogDescription>
+              Enter an address, city, or place name to add as a waypoint
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="manual-address">Address or Place</Label>
+              <Input
+                id="manual-address"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                placeholder="e.g., Lviv, Prospect Svobody"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isSearching) {
+                    handleManualAddressSubmit()
+                  }
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                You can enter: city name, street address, or landmark
+              </p>
+            </div>
+
+            <DialogFooter>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowManualInputDialog(false)
+                  setManualAddress('')
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleManualAddressSubmit}
+                disabled={!manualAddress.trim() || isSearching}
+              >
+                {isSearching ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Searching...
+                  </>
+                ) : (
+                  'Add Waypoint'
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Main Content */}
       <div className="route-planner-content">
         {/* Left Panel - Route Details */}
@@ -364,6 +471,7 @@ export function RoutePlanner() {
             onUpdateWaypointName={updateWaypointName}
             onRemoveWaypoint={removeWaypoint}
             onUpdateSettings={setRouteSettings}
+            onAddManually={() => setShowManualInputDialog(true)}
           />
         </div>
 

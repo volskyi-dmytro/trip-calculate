@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { MapPin, Trash2, GripVertical } from 'lucide-react'
+import { MapPin, Trash2, GripVertical, Plus } from 'lucide-react'
 
 interface RoutePanelProps {
   waypoints: Waypoint[]
@@ -12,6 +12,7 @@ interface RoutePanelProps {
   onUpdateWaypointName: (id: string, name: string) => void
   onRemoveWaypoint: (id: string) => void
   onUpdateSettings: (settings: RouteSettings) => void
+  onAddManually?: () => void
 }
 
 export function RoutePanel({
@@ -20,6 +21,7 @@ export function RoutePanel({
   onUpdateWaypointName,
   onRemoveWaypoint,
   onUpdateSettings,
+  onAddManually,
 }: RoutePanelProps) {
   return (
     <div className="p-4 space-y-4">
@@ -76,6 +78,16 @@ export function RoutePanel({
         <CardHeader>
           <CardTitle className="text-lg flex items-center justify-between">
             <span>Waypoints ({waypoints.length})</span>
+            {onAddManually && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={onAddManually}
+              >
+                <Plus className="h-4 w-4 mr-1" />
+                Add Manually
+              </Button>
+            )}
           </CardTitle>
         </CardHeader>
         <CardContent>

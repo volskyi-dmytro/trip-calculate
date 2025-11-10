@@ -88,3 +88,17 @@ export function DialogDescription({
     </p>
   );
 }
+
+export function DialogFooter({
+  children,
+  className = ''
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 ${className}`}>
+      {children}
+    </div>
+  );
+}
