@@ -54,6 +54,8 @@ public class AuthController {
             response.put("email", user.getEmail());
             response.put("name", user.getName());
             response.put("picture", user.getPictureUrl());
+            response.put("role", user.getRole().toString());
+            response.put("isAdmin", user.isAdmin());
 
             return ResponseEntity.ok(response);
 

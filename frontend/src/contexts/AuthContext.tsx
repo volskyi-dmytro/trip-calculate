@@ -31,6 +31,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: userData.email,
           picture: userData.picture || '',
           authenticated: true,
+          role: (userData.role as 'USER' | 'ADMIN') || 'USER',
+          isAdmin: userData.isAdmin || false,
         });
       } else {
         setUser(null);

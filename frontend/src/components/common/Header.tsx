@@ -76,6 +76,39 @@ export function Header({ onCalculateClick }: HeaderProps) {
         </div>
 
         <h1>{t('header.title')}</h1>
+
+        {/* Navigation Links */}
+        {user && (
+          <nav className="nav-links">
+            <button
+              className="nav-link"
+              onClick={() => navigate('/')}
+            >
+              {t('header.nav.home')}
+            </button>
+            <button
+              className="nav-link"
+              onClick={() => navigate('/route-planner')}
+            >
+              {t('header.nav.routePlanner')}
+            </button>
+            <button
+              className="nav-link"
+              onClick={() => navigate('/dashboard')}
+            >
+              {t('header.nav.dashboard')}
+            </button>
+            {user.isAdmin && (
+              <button
+                className="nav-link admin-link"
+                onClick={() => navigate('/admin')}
+              >
+                {t('header.nav.admin')}
+              </button>
+            )}
+          </nav>
+        )}
+
         <div className="buttons">
           <button
             id="create-trip-btn"

@@ -8,4 +8,6 @@ import java.util.Optional;
 @Repository
 public interface FeatureAccessRepository extends JpaRepository<FeatureAccess, Long> {
     Optional<FeatureAccess> findByUserId(Long userId);
+
+    long countByRoutePlannerEnabled(Boolean enabled);
 }

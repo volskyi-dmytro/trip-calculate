@@ -1,10 +1,12 @@
 package com.tripplanner.TripPlanner.config;
 
+import com.tripplanner.TripPlanner.security.CustomOAuth2UserService;
 import com.tripplanner.TripPlanner.security.OAuth2LoginSuccessHandler;
 import com.tripplanner.TripPlanner.security.OAuth2LogoutSuccessHandler;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
@@ -17,12 +19,14 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
+    private final CustomOAuth2UserService customOAuth2UserService;
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
@@ -58,6 +62,7 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/oauth2/authorization/google")
                         .authorizationEndpoint(auth -> auth.authorizationRequestResolver(authorizationRequestResolver))
+                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
                         .successHandler(oAuth2LoginSuccessHandler)
                         .failureUrl("/?error=auth_failed")
                 )
@@ -84,6 +89,9 @@ public class SecurityConfig {
                         // Public API endpoints for auth status check, CSRF token, and avatar proxy
                         .requestMatchers("/api/user/me", "/api/user/status", "/api/user/csrf", "/api/avatar/proxy").permitAll()
 
+                        // Admin API endpoints (role-based access via @PreAuthorize)
+                        .requestMatchers("/api/admin/**").authenticated()
+
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()
                         .requestMatchers("/api/routes/**", "/api/access-requests/**").authenticated()
@@ -94,7 +102,7 @@ public class SecurityConfig {
 
                         // Block dangerous paths - CRITICAL SECURITY
                         .requestMatchers("/.git/**", "/.env", "/config/**", "/.aws/**",
-                                "/.ssh/**", "/backup/**", "/admin/**").denyAll()
+                                "/.ssh/**", "/backup/**").denyAll()
 
                         // Deny everything else by default
                         .anyRequest().denyAll()
