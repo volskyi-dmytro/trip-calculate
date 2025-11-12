@@ -1,6 +1,7 @@
 package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.entity.User;
+import com.tripplanner.TripPlanner.entity.UserRole;
 import com.tripplanner.TripPlanner.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -38,19 +39,26 @@ public class UserService {
             user.setPictureUrl(pictureUrl);
             user.setLastLogin(LocalDateTime.now());
 
+            // Ensure role is set (for users created before role column was added)
+            if (user.getRole() == null) {
+                user.setRole(UserRole.USER);
+                log.info("Set default role for existing user: {} ({})", name, email);
+            }
+
             log.info("Updated existing user: {} ({})", name, email);
             return userRepository.save(user);
         } else {
-            // Create new user
+            // Create new user with default USER role
             User newUser = User.builder()
                     .googleId(googleId)
                     .email(email)
                     .name(name)
                     .pictureUrl(pictureUrl)
+                    .role(UserRole.USER)  // Explicitly set default role
                     .lastLogin(LocalDateTime.now())
                     .build();
 
-            log.info("Created new user: {} ({})", name, email);
+            log.info("Created new user: {} ({}) with role: {}", name, email, UserRole.USER);
             return userRepository.save(newUser);
         }
     }
