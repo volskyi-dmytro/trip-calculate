@@ -2,7 +2,6 @@ package com.tripplanner.TripPlanner.security;
 
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.service.UserService;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -14,9 +13,7 @@ import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
-import java.util.Collections;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -24,11 +21,17 @@ import java.util.Set;
  * This enables role-based access control with @PreAuthorize annotations
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
     private final UserService userService;
+
+    public CustomOAuth2UserService(UserService userService) {
+        this.userService = userService;
+        log.info("========================================");
+        log.info("CustomOAuth2UserService BEAN CREATED");
+        log.info("========================================");
+    }
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
