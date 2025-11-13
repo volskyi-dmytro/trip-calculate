@@ -31,7 +31,9 @@ public class AccessRequestService {
                 userId, featureName, AccessRequest.RequestStatus.PENDING);
 
         if (alreadyRequested) {
-            throw new RuntimeException("Access request already pending");
+            log.warn("Duplicate access request attempt for user ID: {}, feature: {}", userId, featureName);
+            // Don't throw exception - just return silently (request already exists)
+            return;
         }
 
         AccessRequest request = new AccessRequest();
@@ -42,6 +44,7 @@ public class AccessRequestService {
         request.setStatus(AccessRequest.RequestStatus.PENDING);
 
         accessRequestRepository.save(request);
+        log.info("Access request saved for user ID: {}, feature: {}", userId, featureName);
 
         // Send email notification to admin
         sendAccessRequestEmail(userId, userName, userEmail, featureName);
