@@ -28,10 +28,14 @@ public class OAuth2LogoutSuccessHandler extends SimpleUrlLogoutSuccessHandler {
                                 Authentication authentication) throws IOException, ServletException {
 
         if (authentication instanceof OAuth2AuthenticationToken) {
-            OAuth2AuthenticationToken oauth2Token = (OAuth2AuthenticationToken) authentication;
-            String principalName = oauth2Token.getName();
+            // Get user ID from session if available
+            Long userId = (Long) request.getSession().getAttribute("userId");
 
-            log.info("OAuth2 logout successful for user: {}", principalName);
+            if (userId != null) {
+                log.info("OAuth2 logout successful for user ID: {}", userId);
+            } else {
+                log.info("OAuth2 logout successful");
+            }
             log.info("User will be required to re-authenticate on next login due to prompt=login&max_age=0");
         } else {
             log.info("Standard logout completed");

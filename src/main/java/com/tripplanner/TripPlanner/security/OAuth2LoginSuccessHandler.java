@@ -35,7 +35,7 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
         request.getSession().setAttribute("userName", user.getName());
         request.getSession().setAttribute("userPicture", user.getPictureUrl());
 
-        log.info("OAuth2 login successful for user: {} (ID: {})", user.getEmail(), user.getId());
+        log.info("OAuth2 login successful for user ID: {}", user.getId());
 
         // Redirect to home page after successful authentication
         setDefaultTargetUrl("/");

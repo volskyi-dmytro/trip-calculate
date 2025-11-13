@@ -42,10 +42,10 @@ public class UserService {
             // Ensure role is set (for users created before role column was added)
             if (user.getRole() == null) {
                 user.setRole(UserRole.USER);
-                log.info("Set default role for existing user: {} ({})", name, email);
+                log.info("Set default role for existing user ID: {}", user.getId());
             }
 
-            log.info("Updated existing user: {} ({})", name, email);
+            log.info("Updated existing user ID: {}", user.getId());
             return userRepository.save(user);
         } else {
             // Create new user with default USER role
@@ -58,8 +58,9 @@ public class UserService {
                     .lastLogin(LocalDateTime.now())
                     .build();
 
-            log.info("Created new user: {} ({}) with role: {}", name, email, UserRole.USER);
-            return userRepository.save(newUser);
+            User savedUser = userRepository.save(newUser);
+            log.info("Created new user ID: {} with role: {}", savedUser.getId(), UserRole.USER);
+            return savedUser;
         }
     }
 

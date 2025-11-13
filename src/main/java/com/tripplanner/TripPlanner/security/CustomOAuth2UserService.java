@@ -58,7 +58,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         Set<GrantedAuthority> authorities = new HashSet<>();
         authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
 
-        log.info("Loaded user {} with role {}", user.getEmail(), user.getRole());
+        log.info("Loaded user ID: {} with role: {}", user.getId(), user.getRole());
 
         // Return OAuth2User with authorities from database
         return new DefaultOAuth2User(authorities, oauth2User.getAttributes(), "sub");

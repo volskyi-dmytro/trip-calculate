@@ -11,9 +11,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Value;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class AccessRequestService {
     private final AccessRequestRepository accessRequestRepository;
     private final FeatureAccessRepository featureAccessRepository;
@@ -42,7 +44,7 @@ public class AccessRequestService {
         accessRequestRepository.save(request);
 
         // Send email notification to admin
-        sendAccessRequestEmail(userName, userEmail, featureName);
+        sendAccessRequestEmail(userId, userName, userEmail, featureName);
     }
 
     @Transactional
@@ -80,7 +82,7 @@ public class AccessRequestService {
         return accessRequestRepository.findByStatusOrderByRequestedAtDesc(AccessRequest.RequestStatus.PENDING);
     }
 
-    private void sendAccessRequestEmail(String userName, String userEmail, String featureName) {
+    private void sendAccessRequestEmail(Long userId, String userName, String userEmail, String featureName) {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(adminEmail);
         message.setSubject("New Feature Access Request - " + featureName);
@@ -97,7 +99,7 @@ public class AccessRequestService {
             mailSender.send(message);
         } catch (Exception e) {
             // Log error but don't fail the request
-            System.err.println("Failed to send email notification: " + e.getMessage());
+            log.error("Failed to send access request email notification for user ID: {}", userId, e);
         }
     }
 }
