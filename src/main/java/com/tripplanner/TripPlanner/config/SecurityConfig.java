@@ -3,7 +3,6 @@ package com.tripplanner.TripPlanner.config;
 import com.tripplanner.TripPlanner.security.CustomOAuth2UserService;
 import com.tripplanner.TripPlanner.security.OAuth2LoginSuccessHandler;
 import com.tripplanner.TripPlanner.security.OAuth2LogoutSuccessHandler;
-import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
@@ -20,13 +19,27 @@ import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWrite
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity(prePostEnabled = true)
-@RequiredArgsConstructor
 public class SecurityConfig {
 
     private final OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler;
     private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
+
+    public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
+                         OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler,
+                         ClientRegistrationRepository clientRegistrationRepository,
+                         CustomOAuth2UserService customOAuth2UserService) {
+        this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
+        this.oAuth2LogoutSuccessHandler = oAuth2LogoutSuccessHandler;
+        this.clientRegistrationRepository = clientRegistrationRepository;
+        this.customOAuth2UserService = customOAuth2UserService;
+
+        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
+        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with CustomOAuth2UserService: {}",
+            customOAuth2UserService != null ? customOAuth2UserService.getClass().getName() : "NULL");
+        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
