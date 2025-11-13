@@ -27,6 +27,7 @@ public class AdminController {
 
     private final AdminDashboardService adminService;
     private final UserService userService;
+    private final com.tripplanner.TripPlanner.service.EmailTestService emailTestService;
 
     /**
      * Get system-wide statistics
@@ -139,6 +140,25 @@ public class AdminController {
         String adminEmail = getAdminEmail(principal);
         AccessRequestDTO request = adminService.denyAccessRequest(requestId, adminEmail);
         return ResponseEntity.ok(request);
+    }
+
+    /**
+     * Test email configuration by sending a test email
+     */
+    @PostMapping("/test-email")
+    public ResponseEntity<Map<String, String>> testEmail() {
+        try {
+            emailTestService.sendTestEmail();
+            return ResponseEntity.ok(Map.of(
+                "status", "success",
+                "message", "Test email sent successfully. Check your admin email inbox."
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(Map.of(
+                "status", "error",
+                "message", "Failed to send test email: " + e.getMessage()
+            ));
+        }
     }
 
     /**

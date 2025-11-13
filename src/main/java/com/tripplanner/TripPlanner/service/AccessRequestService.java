@@ -83,23 +83,36 @@ public class AccessRequestService {
     }
 
     private void sendAccessRequestEmail(Long userId, String userName, String userEmail, String featureName) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setTo(adminEmail);
-        message.setSubject("New Feature Access Request - " + featureName);
-        message.setText(String.format(
-                "New access request received:\n\n" +
-                "User: %s\n" +
-                "Email: %s\n" +
-                "Feature: %s\n\n" +
-                "Please review and approve/reject this request in the admin panel.",
-                userName, userEmail, featureName
-        ));
+        log.info("Attempting to send access request email for user ID: {}, feature: {}", userId, featureName);
+
+        // Validate admin email is configured
+        if (adminEmail == null || adminEmail.trim().isEmpty()) {
+            log.error("ADMIN_EMAIL is not configured! Cannot send notification email. Check environment variable.");
+            return;
+        }
+
+        log.debug("Admin email configured as: {}", adminEmail);
 
         try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(adminEmail);
+            message.setSubject("New Feature Access Request - " + featureName);
+            message.setText(String.format(
+                    "New access request received:\n\n" +
+                    "User: %s\n" +
+                    "Email: %s\n" +
+                    "Feature: %s\n\n" +
+                    "Please review and approve/reject this request in the admin panel.",
+                    userName, userEmail, featureName
+            ));
+
+            log.info("Sending email to: {}", adminEmail);
             mailSender.send(message);
+            log.info("Email sent successfully for user ID: {}", userId);
         } catch (Exception e) {
-            // Log error but don't fail the request
-            log.error("Failed to send access request email notification for user ID: {}", userId, e);
+            // Log detailed error information
+            log.error("Failed to send access request email notification for user ID: {}. Error type: {}, Message: {}",
+                    userId, e.getClass().getName(), e.getMessage(), e);
         }
     }
 }
