@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.config;
 
+import com.tripplanner.TripPlanner.security.AuthorityRestoreFilter;
 import com.tripplanner.TripPlanner.security.CustomOAuth2UserService;
 import com.tripplanner.TripPlanner.security.CustomOidcUserService;
 import com.tripplanner.TripPlanner.security.OAuth2LoginSuccessHandler;
@@ -13,6 +14,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -27,21 +29,26 @@ public class SecurityConfig {
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomOidcUserService customOidcUserService;
+    private final AuthorityRestoreFilter authorityRestoreFilter;
 
     public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
                          OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler,
                          ClientRegistrationRepository clientRegistrationRepository,
                          CustomOAuth2UserService customOAuth2UserService,
-                         CustomOidcUserService customOidcUserService) {
+                         CustomOidcUserService customOidcUserService,
+                         AuthorityRestoreFilter authorityRestoreFilter) {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.oAuth2LogoutSuccessHandler = oAuth2LogoutSuccessHandler;
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.customOAuth2UserService = customOAuth2UserService;
         this.customOidcUserService = customOidcUserService;
+        this.authorityRestoreFilter = authorityRestoreFilter;
 
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with CustomOidcUserService: {}",
             customOidcUserService != null ? customOidcUserService.getClass().getName() : "NULL");
+        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with AuthorityRestoreFilter: {}",
+            authorityRestoreFilter != null ? authorityRestoreFilter.getClass().getName() : "NULL");
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
     }
 
@@ -74,6 +81,9 @@ public class SecurityConfig {
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
                 )
+
+                // Add custom filter to restore authorities from database when session is restored
+                .addFilterAfter(authorityRestoreFilter, UsernamePasswordAuthenticationFilter.class)
 
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
