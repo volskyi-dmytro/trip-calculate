@@ -45,7 +45,19 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        String requestUri = request.getRequestURI();
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        // Log every request to see if filter is running
+        if (requestUri.startsWith("/api/")) {
+            log.info("=== AuthorityRestoreFilter === Processing: {} {}", request.getMethod(), requestUri);
+            log.info("Authentication type: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
+            log.info("Is authenticated: {}", authentication != null && authentication.isAuthenticated());
+            if (authentication != null) {
+                log.info("Authorities: {}", authentication.getAuthorities());
+                log.info("Principal type: {}", authentication.getPrincipal().getClass().getName());
+            }
+        }
 
         // Check if user is authenticated and has OAuth2 authentication
         if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
@@ -125,9 +137,21 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                 }
             }
         } else if (authentication != null && authentication.isAuthenticated()) {
-            log.debug("Authenticated but not OAuth2: {} with authorities: {}",
-                    authentication.getClass().getSimpleName(),
-                    authentication.getAuthorities());
+            if (requestUri.startsWith("/api/")) {
+                log.warn("=== AuthorityRestoreFilter === Authenticated but NOT OAuth2AuthenticationToken!");
+                log.warn("Authentication type: {}, authorities: {}",
+                        authentication.getClass().getName(),
+                        authentication.getAuthorities());
+            }
+        } else if (authentication != null) {
+            if (requestUri.startsWith("/api/")) {
+                log.warn("=== AuthorityRestoreFilter === Authentication exists but not authenticated: {}",
+                        authentication.getClass().getName());
+            }
+        } else {
+            if (requestUri.startsWith("/api/")) {
+                log.warn("=== AuthorityRestoreFilter === No authentication found for request!");
+            }
         }
 
         // Continue with the filter chain
