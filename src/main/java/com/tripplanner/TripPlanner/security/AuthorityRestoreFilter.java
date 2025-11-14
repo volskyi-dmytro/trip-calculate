@@ -50,11 +50,27 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
         // Check if user is authenticated and has OAuth2 authentication
         if (authentication instanceof OAuth2AuthenticationToken oauth2Token) {
 
-            // Check if authorities are missing or empty
+            // Check if authorities are missing, empty, or don't contain any ROLE_ authorities
+            boolean needsRestore = false;
+
             if (oauth2Token.getAuthorities() == null || oauth2Token.getAuthorities().isEmpty()) {
+                log.info("OAuth2 authentication has null/empty authorities - needs restore");
+                needsRestore = true;
+            } else {
+                // Check if any authority starts with "ROLE_"
+                boolean hasRoleAuthority = oauth2Token.getAuthorities().stream()
+                        .anyMatch(auth -> auth.getAuthority() != null && auth.getAuthority().startsWith("ROLE_"));
 
-                log.info("Detected OAuth2 authentication with missing authorities - restoring from database");
+                if (!hasRoleAuthority) {
+                    log.info("OAuth2 authentication missing ROLE_ authorities - needs restore. Current authorities: {}",
+                            oauth2Token.getAuthorities().stream()
+                                    .map(GrantedAuthority::getAuthority)
+                                    .toList());
+                    needsRestore = true;
+                }
+            }
 
+            if (needsRestore) {
                 // Get the OIDC user from the authentication
                 Object principal = oauth2Token.getPrincipal();
 
@@ -94,7 +110,8 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                             // Update the security context with the new authentication
                             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
-                            log.debug("Successfully updated SecurityContext with restored authorities");
+                            log.info("Successfully updated SecurityContext with restored authorities for request: {} {}",
+                                    request.getMethod(), request.getRequestURI());
 
                         } else {
                             log.warn("User not found in database for Google ID: {} - cannot restore authorities", googleId);
@@ -102,8 +119,15 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                     } else {
                         log.warn("Google ID (sub claim) not found in OIDC user attributes - cannot restore authorities");
                     }
+                } else {
+                    log.warn("Principal is not an OidcUser, actual type: {}",
+                            principal != null ? principal.getClass().getName() : "null");
                 }
             }
+        } else if (authentication != null && authentication.isAuthenticated()) {
+            log.debug("Authenticated but not OAuth2: {} with authorities: {}",
+                    authentication.getClass().getSimpleName(),
+                    authentication.getAuthorities());
         }
 
         // Continue with the filter chain
@@ -112,7 +136,11 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        // Skip filter for public resources to improve performance
+        // Temporarily disabled optimization to enable full logging for debugging
+        // TODO: Re-enable after confirming the filter works correctly
+        return false;
+
+        /* Original optimization - restore after testing:
         String path = request.getRequestURI();
         return path.startsWith("/css/") ||
                path.startsWith("/js/") ||
@@ -122,5 +150,6 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                path.equals("/calculate") ||
                path.startsWith("/oauth2/") ||
                path.startsWith("/login/");
+        */
     }
 }

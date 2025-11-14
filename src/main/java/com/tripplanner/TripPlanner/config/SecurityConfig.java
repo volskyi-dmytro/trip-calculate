@@ -14,7 +14,7 @@ import org.springframework.security.oauth2.client.registration.ClientRegistratio
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter;
@@ -83,7 +83,8 @@ public class SecurityConfig {
                 )
 
                 // Add custom filter to restore authorities from database when session is restored
-                .addFilterAfter(authorityRestoreFilter, UsernamePasswordAuthenticationFilter.class)
+                // CRITICAL: Must run after SecurityContext is loaded but BEFORE authorization checks
+                .addFilterAfter(authorityRestoreFilter, SecurityContextHolderFilter.class)
 
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
