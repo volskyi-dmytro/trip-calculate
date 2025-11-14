@@ -1,6 +1,7 @@
 package com.tripplanner.TripPlanner.config;
 
 import com.tripplanner.TripPlanner.security.CustomOAuth2UserService;
+import com.tripplanner.TripPlanner.security.CustomOidcUserService;
 import com.tripplanner.TripPlanner.security.OAuth2LoginSuccessHandler;
 import com.tripplanner.TripPlanner.security.OAuth2LogoutSuccessHandler;
 import org.springframework.context.annotation.Bean;
@@ -25,19 +26,22 @@ public class SecurityConfig {
     private final OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler;
     private final ClientRegistrationRepository clientRegistrationRepository;
     private final CustomOAuth2UserService customOAuth2UserService;
+    private final CustomOidcUserService customOidcUserService;
 
     public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
                          OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler,
                          ClientRegistrationRepository clientRegistrationRepository,
-                         CustomOAuth2UserService customOAuth2UserService) {
+                         CustomOAuth2UserService customOAuth2UserService,
+                         CustomOidcUserService customOidcUserService) {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.oAuth2LogoutSuccessHandler = oAuth2LogoutSuccessHandler;
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.customOAuth2UserService = customOAuth2UserService;
+        this.customOidcUserService = customOidcUserService;
 
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
-        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with CustomOAuth2UserService: {}",
-            customOAuth2UserService != null ? customOAuth2UserService.getClass().getName() : "NULL");
+        org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with CustomOidcUserService: {}",
+            customOidcUserService != null ? customOidcUserService.getClass().getName() : "NULL");
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
     }
 
@@ -75,7 +79,8 @@ public class SecurityConfig {
                 .oauth2Login(oauth2 -> oauth2
                         .loginPage("/oauth2/authorization/google")
                         .authorizationEndpoint(auth -> auth.authorizationRequestResolver(authorizationRequestResolver))
-                        .userInfoEndpoint(userInfo -> userInfo.userService(customOAuth2UserService))
+                        // Google uses OIDC - configure OIDC user service to load roles from database
+                        .userInfoEndpoint(userInfo -> userInfo.oidcUserService(customOidcUserService))
                         .successHandler(oAuth2LoginSuccessHandler)
                         .failureUrl("/?error=auth_failed")
                 )
