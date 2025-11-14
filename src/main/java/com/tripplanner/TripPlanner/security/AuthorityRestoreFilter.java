@@ -46,6 +46,10 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         String requestUri = request.getRequestURI();
+
+        // Log EVERY request to see if filter is even being called
+        log.info(">>> AuthorityRestoreFilter START >>> {} {}", request.getMethod(), requestUri);
+
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         // Log every request to see if filter is running
@@ -155,6 +159,7 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
         }
 
         // Continue with the filter chain
+        log.info("<<< AuthorityRestoreFilter END <<< {} {}", request.getMethod(), requestUri);
         filterChain.doFilter(request, response);
     }
 
@@ -162,6 +167,8 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
         // Temporarily disabled optimization to enable full logging for debugging
         // TODO: Re-enable after confirming the filter works correctly
+        String path = request.getRequestURI();
+        log.info(">>> shouldNotFilter check for: {}", path);
         return false;
 
         /* Original optimization - restore after testing:
@@ -175,5 +182,15 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                path.startsWith("/oauth2/") ||
                path.startsWith("/login/");
         */
+    }
+
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false;
+    }
+
+    @Override
+    protected boolean shouldNotFilterErrorDispatch() {
+        return false;
     }
 }
