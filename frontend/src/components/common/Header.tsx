@@ -1,10 +1,11 @@
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSeason } from '../../hooks/useSeason';
 import { LoginButton } from '../auth/LoginButton';
-import { UserProfile } from '../auth/UserProfile';
+import { UserMenu } from '../auth/UserMenu';
+import { Home } from 'lucide-react';
 
 interface HeaderProps {
   onCalculateClick: () => void;
@@ -12,10 +13,14 @@ interface HeaderProps {
 
 export function Header({ onCalculateClick }: HeaderProps) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, setLanguage, t } = useLanguage();
   const season = useSeason();
+
+  // Check if we're on the homepage
+  const isHomePage = location.pathname === '/';
 
   const handleCreateTripClick = () => {
     if (user) {
@@ -65,9 +70,9 @@ export function Header({ onCalculateClick }: HeaderProps) {
 
         <div className="auth-section">
           {loading ? (
-            <div>Loading...</div>
+            <div className="text-gray-600 dark:text-gray-400">Loading...</div>
           ) : user ? (
-            <UserProfile />
+            <UserMenu />
           ) : (
             <div id="login-section">
               <LoginButton />
@@ -75,54 +80,62 @@ export function Header({ onCalculateClick }: HeaderProps) {
           )}
         </div>
 
-        <h1>{t('header.title')}</h1>
+        <h1
+          onClick={() => navigate('/')}
+          style={{ cursor: 'pointer' }}
+          title={t('header.nav.home')}
+        >
+          {t('header.title')}
+        </h1>
 
-        {/* Navigation Links */}
-        {user && (
-          <nav className="nav-links">
+        {/* Return to Homepage Button - Only show when not on homepage */}
+        {!isHomePage && (
+          <div className="flex justify-center mb-3 px-4" style={{ gridArea: 'nav' }}>
             <button
-              className="nav-link"
+              className="nav-link flex items-center gap-2 text-base sm:text-lg font-bold px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto justify-center"
               onClick={() => navigate('/')}
+              style={{
+                background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
+                color: 'white',
+              }}
             >
-              {t('header.nav.home')}
+              <Home size={20} className="flex-shrink-0" />
+              <span className="truncate">{t('header.returnHome')}</span>
             </button>
-            <button
-              className="nav-link"
-              onClick={() => navigate('/route-planner')}
-            >
-              {t('header.nav.routePlanner')}
-            </button>
-            <button
-              className="nav-link"
-              onClick={() => navigate('/dashboard')}
-            >
-              {t('header.nav.dashboard')}
-            </button>
-            {user.isAdmin && (
-              <button
-                className="nav-link admin-link"
-                onClick={() => navigate('/admin')}
-              >
-                {t('header.nav.admin')}
-              </button>
-            )}
-          </nav>
+          </div>
         )}
 
-        <div className="buttons">
-          <button
-            id="create-trip-btn"
-            className={`btn ${!user ? 'inactive' : ''}`}
-            onClick={handleCreateTripClick}
-            title={!user ? t('header.loginRequired') : ''}
-            disabled={!user}
-          >
-            {t('header.createTrip')}
-          </button>
-          <button className="btn" onClick={onCalculateClick}>
-            {t('header.calculate')}
-          </button>
-        </div>
+        {/* Primary Action Buttons - Only show on homepage */}
+        {isHomePage && (
+          <div className="buttons flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center w-full px-4 sm:px-0">
+            <button
+              id="create-trip-btn"
+              className={`btn w-full sm:w-auto ${!user ? 'inactive' : ''}`}
+              onClick={handleCreateTripClick}
+              title={!user ? t('header.loginRequired') : ''}
+              disabled={!user}
+              style={{
+                fontSize: '1.1em',
+                padding: '12px 30px',
+                fontWeight: '600',
+                background: user ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined,
+              }}
+            >
+              {t('header.createTrip')}
+            </button>
+            <button
+              className="btn w-full sm:w-auto"
+              onClick={onCalculateClick}
+              style={{
+                fontSize: '1.1em',
+                padding: '12px 30px',
+                fontWeight: '600',
+              }}
+            >
+              {t('header.calculate')}
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );

@@ -176,7 +176,7 @@ header h1 {
 
 .intro, .faq {
     background: var(--feature-background-color);
-    padding: 20px 0;
+    padding: 20px 15px;
     margin-top: 20px;
     border: 2px solid var(--border-color);
     border-radius: 10px;
@@ -184,6 +184,7 @@ header h1 {
 
 h2 {
     text-align: center;
+    font-size: 1.8em;
 }
 
 /*.features {
@@ -209,8 +210,10 @@ h2 {
         grid-template-areas:
             "lang auth theme"
             "title title title"
+            "nav nav nav"
             "buttons buttons buttons";
-        row-gap: 15px;
+        row-gap: 12px;
+        padding: 15px 10px;
     }
     .language-switch,
     .mode-switch,
@@ -219,8 +222,8 @@ h2 {
     }
     .language-switch {
         justify-content: center;
-        width: 100px;
-        height: 50px;
+        width: 90px;
+        height: 45px;
         justify-self: start;
     }
     .auth-section {
@@ -229,6 +232,40 @@ h2 {
     }
     .mode-switch {
         justify-self: end;
+    }
+    .mode-switch label {
+        width: 90px;
+        height: 45px;
+    }
+    .mode-switch label:after {
+        width: 35px;
+        height: 35px;
+    }
+    .mode-switch input:checked + label:after {
+        transform: translateX(45px);
+    }
+    header h1 {
+        font-size: 1.8em;
+        padding: 8px 12px;
+        text-align: center;
+    }
+    .buttons {
+        margin-top: 10px;
+        flex-direction: column;
+        gap: 8px;
+        padding: 0 10px;
+    }
+    .btn {
+        width: 100%;
+        padding: 12px 20px;
+        font-size: 1em;
+    }
+    h2 {
+        font-size: 1.5em;
+    }
+    .intro, .faq {
+        padding: 15px 10px;
+        margin-top: 15px;
     }
     .features {
         flex-direction: column;

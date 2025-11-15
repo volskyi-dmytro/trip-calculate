@@ -24,6 +24,10 @@ const translations: Record<Language, Record<string, string>> = {
     'header.nav.routePlanner': 'Route Planner',
     'header.nav.dashboard': 'Dashboard',
     'header.nav.admin': 'Admin',
+    'header.returnHome': 'Return to Homepage',
+
+    // User Menu
+    'userMenu.myRoutes': 'My Routes',
 
     // Intro
     'intro.title': 'All-In-One Trip Manager',
@@ -257,6 +261,10 @@ const translations: Record<Language, Record<string, string>> = {
     'header.nav.routePlanner': 'Планувальник Маршрутів',
     'header.nav.dashboard': 'Панель',
     'header.nav.admin': 'Адмін',
+    'header.returnHome': 'Повернутися на Головну',
+
+    // User Menu
+    'userMenu.myRoutes': 'Мої Маршрути',
 
     // Intro
     'intro.title': 'Менеджер поїздок все-в-одному',

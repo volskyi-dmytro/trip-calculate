@@ -21,30 +21,30 @@ export function AdminDashboard() {
     <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-purple-900/20">
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
+        <div className="mb-6 sm:mb-8">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
             <div className="p-2 bg-purple-500 rounded-lg">
-              <Shield className="h-6 w-6 text-white" />
+              <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
               {t('admin.title')}
             </h1>
           </div>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
             {t('admin.subtitle')}
           </p>
         </div>
 
         {/* Tabs */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-6">
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex space-x-8" aria-label="Tabs">
+            <nav className="flex flex-col sm:flex-row sm:space-x-8 -mb-px" aria-label="Tabs">
               {tabs.map((tab) => (
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`
-                    py-4 px-1 border-b-2 font-medium text-sm transition-colors
+                    py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm sm:text-base transition-colors text-left
                     ${
                       activeTab === tab.id
                         ? 'border-purple-500 text-purple-600 dark:text-purple-400'

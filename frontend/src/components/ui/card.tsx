@@ -8,7 +8,7 @@ export function Card({
   className?: string;
 }) {
   return (
-    <div className={`rounded-lg border bg-white shadow-sm ${className}`}>
+    <div className={`rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm ${className}`}>
       {children}
     </div>
   );
@@ -36,7 +36,7 @@ export function CardTitle({
   className?: string;
 }) {
   return (
-    <h3 className={`text-2xl font-semibold leading-none tracking-tight ${className}`}>
+    <h3 className={`text-2xl font-semibold leading-none tracking-tight text-gray-900 dark:text-white ${className}`}>
       {children}
     </h3>
   );
@@ -64,7 +64,7 @@ export function CardDescription({
   className?: string;
 }) {
   return (
-    <p className={`text-sm text-gray-500 ${className}`}>
+    <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>
       {children}
     </p>
   );
