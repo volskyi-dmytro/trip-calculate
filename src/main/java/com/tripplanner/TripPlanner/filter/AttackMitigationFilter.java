@@ -5,14 +5,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Component;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
-@Component
+/**
+ * Filter to mitigate common attacks by rate limiting suspicious requests
+ *
+ * NOTE: This is registered as a Spring Security filter in SecurityConfig
+ * to ensure it runs AFTER authentication is loaded into SecurityContext
+ */
 public class AttackMitigationFilter implements Filter {
 
     private static final Logger logger = LoggerFactory.getLogger(AttackMitigationFilter.class);
@@ -36,6 +42,15 @@ public class AttackMitigationFilter implements Filter {
 
         // Allow localhost to bypass mitigation
         if (isLocalhost(clientIp)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // Allow authenticated users to bypass attack mitigation rate limiting
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !authentication.getPrincipal().equals("anonymousUser")) {
+            logger.debug("Bypassing attack mitigation for authenticated user on {}", requestUri);
             chain.doFilter(request, response);
             return;
         }

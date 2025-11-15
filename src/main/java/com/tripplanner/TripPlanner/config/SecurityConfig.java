@@ -58,6 +58,11 @@ public class SecurityConfig {
     }
 
     @Bean
+    public com.tripplanner.TripPlanner.filter.AttackMitigationFilter attackMitigationFilter() {
+        return new com.tripplanner.TripPlanner.filter.AttackMitigationFilter();
+    }
+
+    @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationRequestResolver authorizationRequestResolver =
                 buildAuthorizationRequestResolver();
@@ -91,8 +96,11 @@ public class SecurityConfig {
                 // CRITICAL: Must run after SecurityContext is loaded but BEFORE authorization checks
                 .addFilterAfter(authorityRestoreFilter, SecurityContextHolderFilter.class)
 
-                // Add rate limiting filter AFTER authority restoration to ensure authentication is available
-                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.security.AuthorityRestoreFilter.class)
+                // Add attack mitigation filter AFTER authority restoration to ensure authentication is available
+                .addFilterAfter(attackMitigationFilter(), com.tripplanner.TripPlanner.security.AuthorityRestoreFilter.class)
+
+                // Add rate limiting filter AFTER attack mitigation
+                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
 
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
