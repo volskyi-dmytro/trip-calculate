@@ -6,6 +6,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.apache.catalina.filters.RateLimitFilter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -35,9 +37,18 @@ public class RateLimitingFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
         String clientIp = getClientIp(httpRequest);
-        
+
         // Allow localhost to bypass rate limiting
         if (isLocalhost(clientIp)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        // Allow authenticated users to bypass rate limiting
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        if (authentication != null && authentication.isAuthenticated()
+                && !authentication.getPrincipal().equals("anonymousUser")) {
+            logger.debug("Bypassing rate limit for authenticated user");
             chain.doFilter(request, response);
             return;
         }
