@@ -8,7 +8,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 import java.util.concurrent.ConcurrentHashMap;
@@ -17,8 +16,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * Filter to rate limit incoming requests
+ *
+ * NOTE: This is registered as a Spring Security filter in SecurityConfig
+ * to ensure it runs AFTER authentication is loaded into SecurityContext
  */
-@Component
 public class RateLimitingFilter implements Filter {
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimitingFilter.class);
