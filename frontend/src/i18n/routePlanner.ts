@@ -18,6 +18,9 @@ export const routePlannerTranslations = {
       close: 'Close',
       saving: 'Saving...',
       searching: 'Searching...',
+      settings: 'Settings',
+      map: 'Map',
+      summary: 'Summary',
     },
     routeSettings: {
       title: 'Route Settings',
@@ -118,6 +121,9 @@ export const routePlannerTranslations = {
       close: 'Закрити',
       saving: 'Збереження...',
       searching: 'Пошук...',
+      settings: 'Налаштування',
+      map: 'Карта',
+      summary: 'Підсумок',
     },
     routeSettings: {
       title: 'Налаштування маршруту',

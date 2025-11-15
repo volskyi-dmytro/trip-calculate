@@ -114,6 +114,11 @@
   background: #555;
 }
 
+/* Mobile Tab Navigation - Hidden on desktop */
+.mobile-tabs {
+  display: none;
+}
+
 /* Responsive adjustments */
 @media (max-width: 1280px) {
   .route-panel {
@@ -140,21 +145,79 @@
 }
 
 @media (max-width: 768px) {
+  /* Show mobile tabs */
+  .mobile-tabs {
+    display: flex;
+    border-bottom: 2px solid #e5e7eb;
+    background-color: #ffffff;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  .mobile-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 8px;
+    background: transparent;
+    border: none;
+    color: #6b7280;
+    font-size: 0.75rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 3px solid transparent;
+  }
+
+  .mobile-tab:hover {
+    background-color: #f9fafb;
+    color: #374151;
+  }
+
+  .mobile-tab.active {
+    color: #3b82f6;
+    border-bottom-color: #3b82f6;
+    background-color: #eff6ff;
+  }
+
+  /* Mobile layout - stack panels vertically and hide inactive ones */
   .route-planner-content {
     flex-direction: column;
+    position: relative;
   }
 
   .route-panel,
+  .map-wrapper,
   .stats-panel {
+    display: none;
     width: 100%;
     min-width: 100%;
-    max-height: 30vh;
+    height: calc(100vh - 140px); /* Full height minus header and tabs */
+    max-height: none;
     border: none;
-    border-top: 1px solid #e5e7eb;
   }
 
-  .map-wrapper {
-    min-height: 40vh;
+  /* Show only active panel on mobile */
+  .route-panel.mobile-active,
+  .map-wrapper.mobile-active,
+  .stats-panel.mobile-active {
+    display: block;
+    flex: 1;
+  }
+
+  /* Ensure map fills the space when active */
+  .map-wrapper.mobile-active {
+    min-height: calc(100vh - 140px);
+  }
+
+  /* Make panels scrollable */
+  .route-panel,
+  .stats-panel {
+    overflow-y: auto;
   }
 }
 
@@ -207,7 +270,28 @@ body[data-theme="dark"] .map-instructions-overlay {
   color: #ffffff;
 }
 
+/* Dark mode mobile tabs */
 @media (max-width: 768px) {
+  body[data-theme="dark"] .mobile-tabs {
+    background-color: #2a2a2a;
+    border-bottom-color: #374151;
+  }
+
+  body[data-theme="dark"] .mobile-tab {
+    color: #9ca3af;
+  }
+
+  body[data-theme="dark"] .mobile-tab:hover {
+    background-color: #1f1f1f;
+    color: #d1d5db;
+  }
+
+  body[data-theme="dark"] .mobile-tab.active {
+    color: #60a5fa;
+    border-bottom-color: #60a5fa;
+    background-color: #1e3a5f;
+  }
+
   body[data-theme="dark"] .route-panel,
   body[data-theme="dark"] .stats-panel {
     border-top-color: #374151;

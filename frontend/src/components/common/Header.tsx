@@ -90,17 +90,17 @@ export function Header({ onCalculateClick }: HeaderProps) {
 
         {/* Return to Homepage Button - Only show when not on homepage */}
         {!isHomePage && (
-          <div className="flex justify-center mb-3 px-4" style={{ gridArea: 'nav' }}>
+          <div style={{ gridArea: 'nav' }} className="w-full flex justify-center">
             <button
-              className="nav-link flex items-center gap-2 text-base sm:text-lg font-bold px-4 sm:px-6 py-2 sm:py-3 w-full sm:w-auto justify-center"
               onClick={() => navigate('/')}
+              className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
               style={{
                 background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
-                color: 'white',
+                maxWidth: '300px',
               }}
             >
-              <Home size={20} className="flex-shrink-0" />
-              <span className="truncate">{t('header.returnHome')}</span>
+              <Home size={20} />
+              <span>{t('header.returnHome')}</span>
             </button>
           </div>
         )}

@@ -50,6 +50,7 @@ export function RoutePlanner() {
   const [showManualInputDialog, setShowManualInputDialog] = useState(false)
   const [manualAddress, setManualAddress] = useState('')
   const [isSearching, setIsSearching] = useState(false)
+  const [activeTab, setActiveTab] = useState<'settings' | 'map' | 'summary'>('map')
 
   // Load user's routes on mount
   useEffect(() => {
@@ -497,10 +498,35 @@ export function RoutePlanner() {
         </DialogContent>
       </Dialog>
 
+      {/* Mobile Tab Navigation */}
+      <div className="mobile-tabs">
+        <button
+          className={`mobile-tab ${activeTab === 'settings' ? 'active' : ''}`}
+          onClick={() => setActiveTab('settings')}
+        >
+          <MapPin className="h-4 w-4" />
+          <span>{t.buttons.settings || 'Settings'}</span>
+        </button>
+        <button
+          className={`mobile-tab ${activeTab === 'map' ? 'active' : ''}`}
+          onClick={() => setActiveTab('map')}
+        >
+          <Navigation className="h-4 w-4" />
+          <span>{t.buttons.map || 'Map'}</span>
+        </button>
+        <button
+          className={`mobile-tab ${activeTab === 'summary' ? 'active' : ''}`}
+          onClick={() => setActiveTab('summary')}
+        >
+          <Save className="h-4 w-4" />
+          <span>{t.buttons.summary || 'Summary'}</span>
+        </button>
+      </div>
+
       {/* Main Content */}
       <div className="route-planner-content">
         {/* Left Panel - Route Details */}
-        <div className="route-panel">
+        <div className={`route-panel ${activeTab === 'settings' ? 'mobile-active' : ''}`}>
           <RoutePanel
             waypoints={waypoints}
             routeSettings={routeSettings}
@@ -512,7 +538,7 @@ export function RoutePlanner() {
         </div>
 
         {/* Map */}
-        <div className="map-wrapper">
+        <div className={`map-wrapper ${activeTab === 'map' ? 'mobile-active' : ''}`}>
           <MapContainer
             waypoints={waypoints}
             routeGeometry={routeGeometry}
@@ -532,7 +558,7 @@ export function RoutePlanner() {
         </div>
 
         {/* Right Panel - Statistics */}
-        <div className="stats-panel">
+        <div className={`stats-panel ${activeTab === 'summary' ? 'mobile-active' : ''}`}>
           <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
         </div>
       </div>
