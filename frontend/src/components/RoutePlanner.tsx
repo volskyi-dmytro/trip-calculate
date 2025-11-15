@@ -38,8 +38,8 @@ export function RoutePlanner() {
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>({
-    fuelConsumption: 7,
-    fuelCostPerLiter: 51.99,
+    fuelConsumption: 0,
+    fuelCostPerLiter: 0,
     currency: 'UAH'
   })
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
