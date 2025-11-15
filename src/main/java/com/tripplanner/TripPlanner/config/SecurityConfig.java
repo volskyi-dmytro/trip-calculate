@@ -123,8 +123,9 @@ public class SecurityConfig {
 
                 // Authorization rules
                 .authorizeHttpRequests(authz -> authz
-                        // Public resources
+                        // Public resources and SPA routes (forwarded to index.html by SpaFallbackController)
                         .requestMatchers("/", "/index.html", "/calculate").permitAll()
+                        .requestMatchers("/dashboard", "/admin", "/profile", "/trips/**", "/routes/**").permitAll()
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**",
                                 "/static/**", "/public/**", "/resources/**", "/assets/**").permitAll()
                         .requestMatchers("/styles.css", "/script.js", "/site.webmanifest", "/*.ico", "/*.png",
