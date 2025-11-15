@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ChevronDown, User, LayoutDashboard, Shield, LogOut, Map } from 'lucide-react';
+import { ChevronDown, User, LayoutDashboard, Shield, LogOut } from 'lucide-react';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -41,15 +41,6 @@ export function UserMenu() {
     {
       icon: LayoutDashboard,
       label: t('header.nav.dashboard'),
-      onClick: () => {
-        navigate('/dashboard');
-        setIsOpen(false);
-      },
-      show: true,
-    },
-    {
-      icon: Map,
-      label: t('userMenu.myRoutes'),
       onClick: () => {
         navigate('/dashboard');
         setIsOpen(false);
