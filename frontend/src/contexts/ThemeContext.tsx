@@ -18,6 +18,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.body.setAttribute('data-theme', theme);
     localStorage.setItem('theme', theme);
+
+    // Add/remove 'dark' class for Tailwind dark mode compatibility
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   const toggleTheme = () => {
