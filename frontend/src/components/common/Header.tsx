@@ -8,7 +8,7 @@ import { UserMenu } from '../auth/UserMenu';
 import { Home } from 'lucide-react';
 
 interface HeaderProps {
-  onCalculateClick: () => void;
+  onCalculateClick?: () => void;
 }
 
 export function Header({ onCalculateClick }: HeaderProps) {

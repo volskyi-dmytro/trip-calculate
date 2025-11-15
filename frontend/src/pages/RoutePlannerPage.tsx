@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { RoutePlanner } from '../components/RoutePlanner';
+import { Header } from '../components/common/Header';
 import { routeService } from '../services/routeService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -40,17 +41,22 @@ export function RoutePlannerPage() {
   // Loading state
   if (hasAccess === null) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <>
+        <Header />
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </>
     );
   }
 
   // No access - show request form
   if (!hasAccess) {
     return (
-      <div className="container mx-auto max-w-2xl p-8">
-        <Card className="border-2">
+      <>
+        <Header />
+        <div className="container mx-auto max-w-2xl p-8">
+          <Card className="border-2">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
               <div className="p-4 bg-primary/10 rounded-full">
@@ -148,10 +154,16 @@ export function RoutePlannerPage() {
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      </>
     );
   }
 
   // Has access - show route planner
-  return <RoutePlanner />;
+  return (
+    <>
+      <Header />
+      <RoutePlanner />
+    </>
+  );
 }

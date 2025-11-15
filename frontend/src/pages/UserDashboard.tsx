@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { dashboardService, type UserDashboard as UserDashboardData } from '../services/dashboardService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Header } from '../components/common/Header';
 import { ProfileCard } from '../components/dashboard/ProfileCard';
 import { StatsCard } from '../components/dashboard/StatsCard';
 import { RoutesList } from '../components/dashboard/RoutesList';
@@ -33,25 +34,33 @@ export function UserDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <>
+        <Header />
+        <div className="flex items-center justify-center min-h-screen">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </>
     );
   }
 
   if (!dashboardData) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <p className="text-lg text-muted-foreground">{t('dashboard.error.noData')}</p>
+      <>
+        <Header />
+        <div className="flex items-center justify-center min-h-screen">
+          <div className="text-center">
+            <p className="text-lg text-muted-foreground">{t('dashboard.error.noData')}</p>
+          </div>
         </div>
-      </div>
+      </>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
-      <div className="container mx-auto px-4 py-6 sm:py-8">
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+        <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
             {t('dashboard.title')}
@@ -81,7 +90,8 @@ export function UserDashboard() {
             <SecuritySection />
           </div>
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
