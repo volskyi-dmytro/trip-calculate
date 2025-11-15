@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { RoutePanel } from './RoutePanel'
 import { StatsPanel } from './StatsPanel'
@@ -7,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2 } from 'lucide-react'
+import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -32,6 +33,8 @@ export interface RouteSettings {
 export function RoutePlanner() {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
+  const [searchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>({
@@ -52,10 +55,27 @@ export function RoutePlanner() {
   const [isSearching, setIsSearching] = useState(false)
   const [activeTab, setActiveTab] = useState<'settings' | 'map' | 'summary'>('map')
 
+  // Edit mode state
+  const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
+  const [isEditMode, setIsEditMode] = useState(false)
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Check for routeId in URL parameters and load route for editing
+  useEffect(() => {
+    const routeId = searchParams.get('routeId')
+    if (routeId) {
+      const id = parseInt(routeId, 10)
+      if (!isNaN(id)) {
+        loadRouteFromServer(id)
+        setCurrentRouteId(id)
+        setIsEditMode(true)
+      }
+    }
+  }, [searchParams])
 
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
@@ -140,10 +160,22 @@ export function RoutePlanner() {
   const clearRoute = useCallback(() => {
     setWaypoints([])
     setRouteName('')
+    setCurrentRouteId(null)
+    setIsEditMode(false)
+    navigate('/route-planner', { replace: true })
     toast.success(t.toasts.routeCleared)
-  }, [t])
+  }, [t, navigate])
 
-  const saveRouteToServer = useCallback(async () => {
+  const createNewRoute = useCallback(() => {
+    setWaypoints([])
+    setRouteName('')
+    setCurrentRouteId(null)
+    setIsEditMode(false)
+    navigate('/route-planner', { replace: true })
+    toast.success('Ready to create new route')
+  }, [navigate])
+
+  const saveRouteToServer = useCallback(async (saveAsNew = false) => {
     if (waypoints.length < 2) {
       toast.error(t.toasts.minWaypoints)
       return
@@ -169,10 +201,23 @@ export function RoutePlanner() {
         }))
       }
 
-      await routeService.createRoute(routeData)
-      toast.success(t.toasts.routeSaved)
+      if (isEditMode && currentRouteId && !saveAsNew) {
+        // Update existing route
+        await routeService.updateRoute(currentRouteId, routeData)
+        toast.success('Route updated successfully!')
+      } else {
+        // Create new route
+        const newRoute = await routeService.createRoute(routeData)
+        toast.success(t.toasts.routeSaved)
+
+        // If saving as new from edit mode, switch to editing the new route
+        if (saveAsNew && isEditMode) {
+          setCurrentRouteId(newRoute.id!)
+          navigate(`/route-planner?routeId=${newRoute.id}`, { replace: true })
+        }
+      }
+
       setShowSaveDialog(false)
-      setRouteName('')
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to save route:', error)
@@ -180,7 +225,7 @@ export function RoutePlanner() {
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, t])
+  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -299,8 +344,20 @@ export function RoutePlanner() {
             <Navigation className="h-6 w-6 text-blue-500" />
             <h1 className="text-2xl font-bold">{t.title}</h1>
             {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
+            {isEditMode && (
+              <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                <Edit className="h-3 w-3" />
+                Editing
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            {isEditMode && (
+              <Button variant="outline" size="sm" onClick={createNewRoute}>
+                <FilePlus className="h-4 w-4 mr-2" />
+                New Route
+              </Button>
+            )}
             {/* Load Route Dialog */}
             <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
               <DialogTrigger asChild>
@@ -365,13 +422,15 @@ export function RoutePlanner() {
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" disabled={waypoints.length === 0}>
                   <Save className="h-4 w-4 mr-2" />
-                  {t.buttons.saveRoute}
+                  {isEditMode ? 'Update Route' : t.buttons.saveRoute}
                 </Button>
               </DialogTrigger>
               <DialogContent>
                 <DialogHeader>
-                  <DialogTitle>{t.dialogs.save.title}</DialogTitle>
-                  <DialogDescription>{t.dialogs.save.description}</DialogDescription>
+                  <DialogTitle>{isEditMode ? 'Update Route' : t.dialogs.save.title}</DialogTitle>
+                  <DialogDescription>
+                    {isEditMode ? 'Update the existing route or save as a new one' : t.dialogs.save.description}
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
                   <div>
@@ -383,14 +442,14 @@ export function RoutePlanner() {
                       onChange={(e) => setRouteName(e.target.value)}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !savingRoute) {
-                          saveRouteToServer()
+                          saveRouteToServer(false)
                         }
                       }}
                     />
                   </div>
 
                   <div className="text-sm text-muted-foreground">
-                    <p>{t.dialogs.save.willSave}</p>
+                    <p>{isEditMode ? 'This will update:' : t.dialogs.save.willSave}</p>
                     <ul className="list-disc list-inside mt-2 space-y-1">
                       <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
                       <li>{t.dialogs.save.fuelSettings}</li>
@@ -406,8 +465,27 @@ export function RoutePlanner() {
                   >
                     {t.buttons.cancel}
                   </Button>
+                  {isEditMode && (
+                    <Button
+                      variant="outline"
+                      onClick={() => saveRouteToServer(true)}
+                      disabled={savingRoute}
+                    >
+                      {savingRoute ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <FilePlus className="h-4 w-4 mr-2" />
+                          Save as New
+                        </>
+                      )}
+                    </Button>
+                  )}
                   <Button
-                    onClick={saveRouteToServer}
+                    onClick={() => saveRouteToServer(false)}
                     disabled={savingRoute}
                   >
                     {savingRoute ? (
@@ -418,7 +496,7 @@ export function RoutePlanner() {
                     ) : (
                       <>
                         <Save className="h-4 w-4 mr-2" />
-                        {t.buttons.save}
+                        {isEditMode ? 'Update' : t.buttons.save}
                       </>
                     )}
                   </Button>
