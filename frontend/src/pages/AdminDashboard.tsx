@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { Header } from '../components/common/Header';
 import { SystemOverview } from '../components/admin/SystemOverview';
 import { UsersTable } from '../components/admin/UsersTable';
 import { AccessRequestsTable } from '../components/admin/AccessRequestsTable';
@@ -18,8 +19,10 @@ export function AdminDashboard() {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-purple-900/20">
-      <div className="container mx-auto px-4 py-8">
+    <>
+      <Header />
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-purple-900/20">
+        <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
@@ -65,7 +68,8 @@ export function AdminDashboard() {
           {activeTab === 'users' && <UsersTable />}
           {activeTab === 'requests' && <AccessRequestsTable />}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
