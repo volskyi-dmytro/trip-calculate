@@ -16,6 +16,7 @@ public class SpaFallbackController {
         "/dashboard",
         "/admin",
         "/profile",
+        "/route-planner",
         "/trips/**",
         "/routes/**"
     })
