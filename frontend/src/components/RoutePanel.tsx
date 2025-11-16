@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -8,6 +9,15 @@ import { MapPin, Trash2, GripVertical, Plus } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
+
+// Currency options with symbols
+const CURRENCIES = [
+  { code: 'UAH', symbol: '₴', name: 'Ukrainian Hryvnia' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' }
+] as const
+
+type CurrencyCode = 'UAH' | 'USD' | 'EUR'
 
 interface RoutePanelProps {
   waypoints: Waypoint[]
@@ -29,6 +39,140 @@ export function RoutePanel({
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
 
+  // Local state for text inputs (to allow empty strings and decimals)
+  const [fuelConsumptionInput, setFuelConsumptionInput] = useState<string>('')
+  const [fuelCostInput, setFuelCostInput] = useState<string>('')
+
+  // Initialize local state from routeSettings
+  useEffect(() => {
+    setFuelConsumptionInput(routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : '')
+    setFuelCostInput(routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : '')
+  }, [])
+
+  // Handle fuel consumption input change
+  const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value
+
+    // Allow empty string (user is clearing the field)
+    if (value === '') {
+      setFuelConsumptionInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelConsumption: 0
+      })
+      return
+    }
+
+    // Replace comma with period for internal storage
+    value = value.replace(',', '.')
+
+    // Only allow valid numeric input with one decimal point
+    if (/^\d*\.?\d*$/.test(value)) {
+      setFuelConsumptionInput(value)
+
+      // Update parent with numeric value
+      const numValue = parseFloat(value)
+      if (!isNaN(numValue) && numValue >= 0) {
+        onUpdateSettings({
+          ...routeSettings,
+          fuelConsumption: numValue
+        })
+      }
+    }
+  }
+
+  // Validate fuel consumption on blur
+  const handleFuelConsumptionBlur = () => {
+    if (fuelConsumptionInput === '' || fuelConsumptionInput === '.') {
+      setFuelConsumptionInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelConsumption: 0
+      })
+      return
+    }
+
+    const numValue = parseFloat(fuelConsumptionInput)
+
+    // Ensure valid positive number
+    if (isNaN(numValue) || numValue < 0) {
+      setFuelConsumptionInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelConsumption: 0
+      })
+    } else {
+      // Clean up the display
+      setFuelConsumptionInput(numValue.toString())
+      onUpdateSettings({
+        ...routeSettings,
+        fuelConsumption: numValue
+      })
+    }
+  }
+
+  // Handle fuel cost input change
+  const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value
+
+    // Allow empty string (user is clearing the field)
+    if (value === '') {
+      setFuelCostInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelCostPerLiter: 0
+      })
+      return
+    }
+
+    // Replace comma with period for internal storage
+    value = value.replace(',', '.')
+
+    // Only allow valid numeric input with one decimal point
+    if (/^\d*\.?\d*$/.test(value)) {
+      setFuelCostInput(value)
+
+      // Update parent with numeric value
+      const numValue = parseFloat(value)
+      if (!isNaN(numValue) && numValue >= 0) {
+        onUpdateSettings({
+          ...routeSettings,
+          fuelCostPerLiter: numValue
+        })
+      }
+    }
+  }
+
+  // Validate fuel cost on blur
+  const handleFuelCostBlur = () => {
+    if (fuelCostInput === '' || fuelCostInput === '.') {
+      setFuelCostInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelCostPerLiter: 0
+      })
+      return
+    }
+
+    const numValue = parseFloat(fuelCostInput)
+
+    // Ensure valid positive number
+    if (isNaN(numValue) || numValue < 0) {
+      setFuelCostInput('')
+      onUpdateSettings({
+        ...routeSettings,
+        fuelCostPerLiter: 0
+      })
+    } else {
+      // Clean up the display
+      setFuelCostInput(numValue.toString())
+      onUpdateSettings({
+        ...routeSettings,
+        fuelCostPerLiter: numValue
+      })
+    }
+  }
+
   return (
     <div className="p-4 space-y-4">
       {/* Route Settings */}
@@ -41,13 +185,12 @@ export function RoutePanel({
             <Label htmlFor="fuel-consumption">{t.routeSettings.fuelConsumption}</Label>
             <Input
               id="fuel-consumption"
-              type="number"
-              step="0.1"
-              value={routeSettings.fuelConsumption}
-              onChange={(e) => onUpdateSettings({
-                ...routeSettings,
-                fuelConsumption: parseFloat(e.target.value) || 0
-              })}
+              type="text"
+              inputMode="decimal"
+              placeholder="0.0"
+              value={fuelConsumptionInput}
+              onChange={handleFuelConsumptionChange}
+              onBlur={handleFuelConsumptionBlur}
             />
           </div>
 
@@ -55,26 +198,32 @@ export function RoutePanel({
             <Label htmlFor="fuel-cost">{t.routeSettings.fuelCost}</Label>
             <Input
               id="fuel-cost"
-              type="number"
-              step="0.01"
-              value={routeSettings.fuelCostPerLiter}
-              onChange={(e) => onUpdateSettings({
-                ...routeSettings,
-                fuelCostPerLiter: parseFloat(e.target.value) || 0
-              })}
+              type="text"
+              inputMode="decimal"
+              placeholder="0.00"
+              value={fuelCostInput}
+              onChange={handleFuelCostChange}
+              onBlur={handleFuelCostBlur}
             />
           </div>
 
           <div className="space-y-2">
             <Label htmlFor="currency">{t.routeSettings.currency}</Label>
-            <Input
+            <select
               id="currency"
               value={routeSettings.currency}
               onChange={(e) => onUpdateSettings({
                 ...routeSettings,
-                currency: e.target.value
+                currency: e.target.value as CurrencyCode
               })}
-            />
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {CURRENCIES.map((curr) => (
+                <option key={curr.code} value={curr.code}>
+                  {curr.symbol} {curr.code}
+                </option>
+              ))}
+            </select>
           </div>
         </CardContent>
       </Card>
