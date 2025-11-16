@@ -1,12 +1,32 @@
-import React from 'react';
+import React, { cloneElement, isValidElement } from 'react';
 
 export function DialogTrigger({
-  children
+  children,
+  asChild = false,
+  onClick
 }: {
   children: React.ReactNode;
   asChild?: boolean;
+  onClick?: () => void;
 }) {
-  return <>{children}</>;
+  if (asChild && isValidElement(children)) {
+    const child = children as React.ReactElement<any>;
+    return cloneElement(child, {
+      onClick: (e: React.MouseEvent) => {
+        e.preventDefault();
+        onClick?.();
+        // Call original onClick if it exists
+        const originalOnClick = child.props.onClick;
+        originalOnClick?.(e);
+      }
+    } as any);
+  }
+
+  return (
+    <button onClick={onClick} type="button">
+      {children}
+    </button>
+  );
 }
 
 export function Dialog({
@@ -18,18 +38,40 @@ export function Dialog({
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
 }) {
-  if (!open) return null;
+  // Separate trigger from content
+  const childArray = React.Children.toArray(children);
+  const trigger = childArray.find(
+    (child) => isValidElement(child) && child.type === DialogTrigger
+  );
+  const content = childArray.filter(
+    (child) => !isValidElement(child) || child.type !== DialogTrigger
+  );
+
+  // Clone trigger with onClick handler
+  const triggerWithHandler = trigger && isValidElement(trigger)
+    ? cloneElement(trigger as React.ReactElement<any>, {
+        onClick: () => onOpenChange(true)
+      } as any)
+    : null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
-      <div
-        className="fixed inset-0 bg-black/50"
-        onClick={() => onOpenChange(false)}
-      />
-      <div className="relative z-50">
-        {children}
-      </div>
-    </div>
+    <>
+      {/* Always render the trigger */}
+      {triggerWithHandler}
+
+      {/* Only render dialog content when open */}
+      {open && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => onOpenChange(false)}
+          />
+          <div className="relative z-50">
+            {content}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -41,7 +83,7 @@ export function DialogContent({
   className?: string;
 }) {
   return (
-    <div className={`bg-white rounded-lg shadow-lg p-6 max-w-lg w-full ${className}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-lg w-full ${className}`}>
       {children}
     </div>
   );
@@ -83,7 +125,7 @@ export function DialogDescription({
   className?: string;
 }) {
   return (
-    <p className={`text-sm text-gray-500 ${className}`}>
+    <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>
       {children}
     </p>
   );
@@ -97,7 +139,7 @@ export function DialogFooter({
   className?: string;
 }) {
   return (
-    <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 ${className}`}>
+    <div className={`flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2 mt-4 ${className}`}>
       {children}
     </div>
   );
