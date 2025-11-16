@@ -1,4 +1,4 @@
-import axios from 'axios';
+import { api } from './api';
 
 const API_BASE = '/api/routes';
 
@@ -28,7 +28,7 @@ export const routeService = {
    * Get all routes for the authenticated user
    */
   getUserRoutes: async (): Promise<Route[]> => {
-    const response = await axios.get(API_BASE);
+    const response = await api.get(API_BASE);
     return response.data;
   },
 
@@ -36,7 +36,7 @@ export const routeService = {
    * Get a single route by ID
    */
   getRoute: async (id: number): Promise<Route> => {
-    const response = await axios.get(`${API_BASE}/${id}`);
+    const response = await api.get(`${API_BASE}/${id}`);
     return response.data;
   },
 
@@ -44,7 +44,7 @@ export const routeService = {
    * Create a new route
    */
   createRoute: async (route: Route): Promise<Route> => {
-    const response = await axios.post(API_BASE, route);
+    const response = await api.post(API_BASE, route);
     return response.data;
   },
 
@@ -52,7 +52,7 @@ export const routeService = {
    * Update an existing route
    */
   updateRoute: async (id: number, route: Route): Promise<Route> => {
-    const response = await axios.put(`${API_BASE}/${id}`, route);
+    const response = await api.put(`${API_BASE}/${id}`, route);
     return response.data;
   },
 
@@ -60,7 +60,7 @@ export const routeService = {
    * Delete a route
    */
   deleteRoute: async (id: number): Promise<void> => {
-    await axios.delete(`${API_BASE}/${id}`);
+    await api.delete(`${API_BASE}/${id}`);
   },
 
   /**
@@ -68,7 +68,7 @@ export const routeService = {
    */
   checkAccess: async (): Promise<boolean> => {
     try {
-      const response = await axios.get(`${API_BASE}/access`);
+      const response = await api.get(`${API_BASE}/access`);
       const data = response.data;
 
       console.log('Access check response:', data, 'Type:', typeof data);
@@ -83,8 +83,11 @@ export const routeService = {
       console.error('Failed to check access:', error);
 
       // If it's a 403, user definitely doesn't have access
-      if (axios.isAxiosError(error) && error.response?.status === 403) {
-        return false;
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number } };
+        if (axiosError.response?.status === 403) {
+          return false;
+        }
       }
 
       // For other errors, default to true since backend is working
@@ -96,7 +99,7 @@ export const routeService = {
    * Request access to route planner feature
    */
   requestAccess: async (): Promise<void> => {
-    await axios.post('/api/access-requests', null, {
+    await api.post('/api/access-requests', null, {
       params: { featureName: 'route_planner' }
     });
   }
