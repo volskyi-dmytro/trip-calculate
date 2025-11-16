@@ -48,6 +48,9 @@ public class AccessRequestService {
 
         // Send email notification to admin
         sendAccessRequestEmail(userId, userName, userEmail, featureName);
+
+        // Send confirmation email to user
+        sendPendingConfirmationEmail(userName, userEmail, featureName);
     }
 
     @Transactional
@@ -117,5 +120,93 @@ public class AccessRequestService {
             log.error("Failed to send access request email notification for user ID: {}. Error type: {}, Message: {}",
                     userId, e.getClass().getName(), e.getMessage(), e);
         }
+    }
+
+    private void sendPendingConfirmationEmail(String userName, String userEmail, String featureName) {
+        log.info("Sending pending confirmation email to user: {}", userEmail);
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(userEmail);
+            message.setSubject("Beta Access Request Received - " + formatFeatureName(featureName));
+            message.setText(String.format(
+                    "Hello %s,\n\n" +
+                    "Thank you for requesting beta access to %s!\n\n" +
+                    "Your request has been received and is currently pending review. " +
+                    "You will receive another email notification once your request has been processed.\n\n" +
+                    "This usually takes 1-2 business days.\n\n" +
+                    "If you have any questions, please don't hesitate to contact us.\n\n" +
+                    "Best regards,\n" +
+                    "Trip Planner Team",
+                    userName, formatFeatureName(featureName)
+            ));
+
+            mailSender.send(message);
+            log.info("Pending confirmation email sent successfully to: {}", userEmail);
+        } catch (Exception e) {
+            log.error("Failed to send pending confirmation email to user: {}. Error: {}",
+                    userEmail, e.getMessage(), e);
+        }
+    }
+
+    public void sendApprovalEmail(String userName, String userEmail, String featureName) {
+        log.info("Sending approval notification email to user: {}", userEmail);
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(userEmail);
+            message.setSubject("Beta Access Granted - " + formatFeatureName(featureName));
+            message.setText(String.format(
+                    "Hello %s,\n\n" +
+                    "Great news! Your request for beta access to %s has been approved!\n\n" +
+                    "You can now access this feature by logging into your account at our platform.\n\n" +
+                    "We hope you enjoy using this new feature. If you encounter any issues or have feedback, " +
+                    "please let us know.\n\n" +
+                    "Best regards,\n" +
+                    "Trip Planner Team",
+                    userName, formatFeatureName(featureName)
+            ));
+
+            mailSender.send(message);
+            log.info("Approval email sent successfully to: {}", userEmail);
+        } catch (Exception e) {
+            log.error("Failed to send approval email to user: {}. Error: {}",
+                    userEmail, e.getMessage(), e);
+        }
+    }
+
+    public void sendRejectionEmail(String userName, String userEmail, String featureName) {
+        log.info("Sending rejection notification email to user: {}", userEmail);
+
+        try {
+            SimpleMailMessage message = new SimpleMailMessage();
+            message.setTo(userEmail);
+            message.setSubject("Beta Access Request Update - " + formatFeatureName(featureName));
+            message.setText(String.format(
+                    "Hello %s,\n\n" +
+                    "Thank you for your interest in beta access to %s.\n\n" +
+                    "After careful consideration, we are unable to grant access at this time. " +
+                    "This may be due to capacity limitations or other factors.\n\n" +
+                    "We appreciate your interest and encourage you to check back in the future " +
+                    "as we expand our beta program.\n\n" +
+                    "If you have any questions, please don't hesitate to contact us.\n\n" +
+                    "Best regards,\n" +
+                    "Trip Planner Team",
+                    userName, formatFeatureName(featureName)
+            ));
+
+            mailSender.send(message);
+            log.info("Rejection email sent successfully to: {}", userEmail);
+        } catch (Exception e) {
+            log.error("Failed to send rejection email to user: {}. Error: {}",
+                    userEmail, e.getMessage(), e);
+        }
+    }
+
+    private String formatFeatureName(String featureName) {
+        // Convert "route_planner" to "Route Planner"
+        return featureName.replace("_", " ")
+                .toLowerCase()
+                .replaceAll("\\b(\\w)", match -> match.toUpperCase());
     }
 }

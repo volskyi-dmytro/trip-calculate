@@ -29,6 +29,7 @@ public class AdminDashboardService {
     private final RouteRepository routeRepository;
     private final FeatureAccessRepository featureAccessRepository;
     private final AccessRequestRepository accessRequestRepository;
+    private final AccessRequestService accessRequestService;
 
     /**
      * Get system-wide statistics for admin dashboard
@@ -158,6 +159,13 @@ public class AdminDashboardService {
         // Grant access to the feature
         updateRoutePlannerAccess(request.getUserId(), true, approvedBy);
 
+        // Send approval email to user
+        accessRequestService.sendApprovalEmail(
+            request.getUserName(),
+            request.getUserEmail(),
+            request.getFeatureName()
+        );
+
         return convertToAccessRequestDTO(request);
     }
 
@@ -173,6 +181,13 @@ public class AdminDashboardService {
         request.setProcessedAt(LocalDateTime.now());
         request.setProcessedBy(deniedBy);
         request = accessRequestRepository.save(request);
+
+        // Send rejection email to user
+        accessRequestService.sendRejectionEmail(
+            request.getUserName(),
+            request.getUserEmail(),
+            request.getFeatureName()
+        );
 
         return convertToAccessRequestDTO(request);
     }
