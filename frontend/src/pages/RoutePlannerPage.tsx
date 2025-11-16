@@ -43,6 +43,18 @@ export function RoutePlannerPage() {
       setRequestSent(true);
     } catch (error) {
       console.error('Failed to send beta access request:', error);
+
+      // Handle duplicate request error (409 CONFLICT)
+      if (error && typeof error === 'object' && 'response' in error) {
+        const axiosError = error as { response?: { status?: number; data?: string } };
+        if (axiosError.response?.status === 409) {
+          // Show the specific error message from backend
+          toast.error(axiosError.response.data || t.betaAccess.errorMessage);
+          return;
+        }
+      }
+
+      // Default error message for other errors
       toast.error(t.betaAccess.errorMessage);
     } finally {
       setRequesting(false);
