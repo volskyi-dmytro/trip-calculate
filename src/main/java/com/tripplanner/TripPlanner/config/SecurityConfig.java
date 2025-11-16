@@ -123,13 +123,41 @@ public class SecurityConfig {
 
                 // Authorization rules
                 .authorizeHttpRequests(authz -> authz
-                        // Public resources and SPA routes (forwarded to index.html by SpaFallbackController)
-                        .requestMatchers("/", "/index.html", "/calculate").permitAll()
-                        .requestMatchers("/dashboard", "/admin", "/profile", "/route-planner", "/trips/**", "/routes/**").permitAll()
+                        // CRITICAL: Static resources must be first to ensure they're always accessible
+                        // Vite build artifacts (primary location)
+                        .requestMatchers("/assets/**").permitAll()
+
+                        // Root-level static files (HTML, JS, CSS, images, icons)
+                        .requestMatchers(
+                                "/",                          // Root path
+                                "/index.html",                // Main HTML file
+                                "/*.js",                      // Root-level JS files
+                                "/*.css",                     // Root-level CSS files
+                                "/*.ico",                     // Favicon and icons
+                                "/*.png",                     // PNG images
+                                "/*.jpg",                     // JPG images
+                                "/*.jpeg",                    // JPEG images
+                                "/*.webp",                    // WebP images
+                                "/*.gif",                     // GIF images
+                                "/*.svg",                     // SVG files
+                                "/favicon.ico",               // Specific favicon
+                                "/vite.svg"                   // Vite logo
+                        ).permitAll()
+
+                        // Additional static resource directories (for compatibility)
                         .requestMatchers("/css/**", "/js/**", "/images/**", "/webjars/**",
-                                "/static/**", "/public/**", "/resources/**", "/assets/**").permitAll()
-                        .requestMatchers("/styles.css", "/script.js", "/site.webmanifest", "/*.ico", "/*.png",
-                                "/*.webp", "/*.jpg", "/*.gif", "/vite.svg").permitAll()
+                                "/static/**", "/public/**", "/resources/**").permitAll()
+
+                        // Manifest and PWA files
+                        .requestMatchers("/site.webmanifest", "/*.webmanifest", "/manifest.json").permitAll()
+
+                        // SPA routes (forwarded to index.html for client-side routing)
+                        .requestMatchers("/dashboard", "/admin", "/profile", "/route-planner", "/trips/**", "/routes/**").permitAll()
+
+                        // Public API endpoint
+                        .requestMatchers("/calculate").permitAll()
+
+                        // OAuth and error pages
                         .requestMatchers("/error", "/oauth2/**", "/login/**").permitAll()
 
                         // Public API endpoints for auth status check, CSRF token, and avatar proxy
