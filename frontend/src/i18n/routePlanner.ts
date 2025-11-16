@@ -5,6 +5,26 @@ export type { Language } from '../types';
 export const routePlannerTranslations = {
   en: {
     title: 'Trip Route Planner',
+    betaAccess: {
+      pageTitle: 'Interactive Route Planner',
+      pageDescription: 'Premium feature for trip planning and cost calculation',
+      featuresTitle: 'Features:',
+      features: {
+        interactive: 'Interactive map with drag-and-drop waypoints',
+        realtime: 'Real-time distance and cost calculation',
+        saveLoad: 'Save and load routes from cloud',
+        export: 'Export routes for navigation apps',
+        multiStop: 'Multi-stop route planning',
+      },
+      betaNotice: 'This feature is currently in beta testing. Request access to try it out!',
+      requestButton: 'Request Beta Access',
+      sendingRequest: 'Sending Request...',
+      emailNotice: "You'll receive an email confirmation when your request is approved",
+      successTitle: 'Request Sent!',
+      successMessage: "Your request has been sent successfully. You'll receive an email notification when your access is approved.",
+      successTiming: 'This usually takes 1-2 business days.',
+      errorMessage: 'Failed to send request. Please try again.',
+    },
     buttons: {
       loadRoute: 'Load Route',
       saveRoute: 'Save Route',
@@ -108,6 +128,26 @@ export const routePlannerTranslations = {
   },
   uk: {
     title: 'Планувальник маршруту',
+    betaAccess: {
+      pageTitle: 'Інтерактивний планувальник маршруту',
+      pageDescription: 'Преміум функція для планування поїздок та розрахунку вартості',
+      featuresTitle: 'Можливості:',
+      features: {
+        interactive: 'Інтерактивна карта з перетягуванням точок',
+        realtime: 'Розрахунок відстані та вартості в реальному часі',
+        saveLoad: 'Збереження та завантаження маршрутів з хмари',
+        export: 'Експорт маршрутів для навігаційних додатків',
+        multiStop: 'Планування маршруту з кількома зупинками',
+      },
+      betaNotice: 'Ця функція зараз у бета-тестуванні. Запросіть доступ, щоб спробувати!',
+      requestButton: 'Запросити бета-доступ',
+      sendingRequest: 'Надсилання запиту...',
+      emailNotice: 'Ви отримаєте підтвердження електронною поштою, коли ваш запит буде схвалено',
+      successTitle: 'Запит надіслано!',
+      successMessage: 'Ваш запит успішно надіслано. Ви отримаєте повідомлення електронною поштою, коли доступ буде схвалено.',
+      successTiming: 'Зазвичай це займає 1-2 робочі дні.',
+      errorMessage: 'Не вдалося надіслати запит. Будь ласка, спробуйте ще раз.',
+    },
     buttons: {
       loadRoute: 'Завантажити маршрут',
       saveRoute: 'Зберегти маршрут',
