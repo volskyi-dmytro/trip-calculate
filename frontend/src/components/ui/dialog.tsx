@@ -63,7 +63,7 @@ export function Dialog({
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
           <div
-            className="fixed inset-0 bg-black/50"
+            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
             onClick={() => onOpenChange(false)}
           />
           <div className="relative z-50">
