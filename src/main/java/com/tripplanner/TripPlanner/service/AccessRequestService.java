@@ -208,8 +208,17 @@ public class AccessRequestService {
 
     private String formatFeatureName(String featureName) {
         // Convert "route_planner" to "Route Planner"
-        return featureName.replace("_", " ")
-                .toLowerCase()
-                .replaceAll("\\b(\\w)", match -> match.toUpperCase());
+        String[] words = featureName.replace("_", " ").toLowerCase().split(" ");
+        StringBuilder result = new StringBuilder();
+
+        for (String word : words) {
+            if (!word.isEmpty()) {
+                result.append(Character.toUpperCase(word.charAt(0)))
+                      .append(word.substring(1))
+                      .append(" ");
+            }
+        }
+
+        return result.toString().trim();
     }
 }
