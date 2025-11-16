@@ -111,6 +111,17 @@ public class AdminDashboardService {
         if (granted) {
             featureAccess.setGrantedAt(LocalDateTime.now());
             featureAccess.setGrantedBy(grantedBy);
+
+            // Auto-approve any pending access requests for this user and feature
+            List<AccessRequest> pendingRequests = accessRequestRepository
+                .findByUserIdAndFeatureNameAndStatus(userId, "route_planner", AccessRequest.RequestStatus.PENDING);
+
+            for (AccessRequest request : pendingRequests) {
+                request.setStatus(AccessRequest.RequestStatus.APPROVED);
+                request.setProcessedAt(LocalDateTime.now());
+                request.setProcessedBy(grantedBy + " (auto-approved)");
+                accessRequestRepository.save(request);
+            }
         } else {
             featureAccess.setGrantedAt(null);
             featureAccess.setGrantedBy(null);

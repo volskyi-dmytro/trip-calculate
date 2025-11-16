@@ -1,6 +1,7 @@
 package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.entity.*;
+import com.tripplanner.TripPlanner.exception.DuplicateAccessRequestException;
 import com.tripplanner.TripPlanner.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.mail.SimpleMailMessage;
@@ -32,8 +33,10 @@ public class AccessRequestService {
 
         if (alreadyRequested) {
             log.warn("Duplicate access request attempt for user ID: {}, feature: {}", userId, featureName);
-            // Don't throw exception - just return silently (request already exists)
-            return;
+            throw new DuplicateAccessRequestException(
+                "You already have a pending request for this feature. " +
+                "Please wait for admin approval. You will receive an email notification once your request is processed."
+            );
         }
 
         AccessRequest request = new AccessRequest();

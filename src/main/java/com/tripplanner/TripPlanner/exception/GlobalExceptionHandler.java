@@ -48,6 +48,12 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
     }
 
+    @ExceptionHandler(DuplicateAccessRequestException.class)
+    public ResponseEntity<String> handleDuplicateAccessRequest(DuplicateAccessRequestException e) {
+        logger.debug("Duplicate access request attempt: {}", e.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(e.getMessage());
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<String> handleBadRequest(IllegalArgumentException e) {
         String clientIp = getClientIp();
