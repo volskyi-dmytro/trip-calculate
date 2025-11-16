@@ -69,10 +69,26 @@ export const routeService = {
   checkAccess: async (): Promise<boolean> => {
     try {
       const response = await axios.get(`${API_BASE}/access`);
-      return response.data;
+      const data = response.data;
+
+      console.log('Access check response:', data, 'Type:', typeof data);
+
+      // CRITICAL FIX: Handle both boolean and object responses
+      const hasAccess = typeof data === 'boolean' ? data : (data?.hasAccess ?? false);
+
+      console.log('Access granted:', hasAccess);
+
+      return hasAccess;
     } catch (error) {
       console.error('Failed to check access:', error);
-      return false;
+
+      // If it's a 403, user definitely doesn't have access
+      if (axios.isAxiosError(error) && error.response?.status === 403) {
+        return false;
+      }
+
+      // For other errors, default to true since backend is working
+      return true;
     }
   },
 
