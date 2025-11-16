@@ -6,8 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, MapPin, Navigation } from 'lucide-react';
+import { useLanguage } from '../contexts/LanguageContext';
+import { getTranslation, type Language } from '../i18n/routePlanner';
+import { toast } from 'sonner';
 
 export function RoutePlannerPage() {
+  const { language } = useLanguage();
+  const t = getTranslation(language as Language);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [requesting, setRequesting] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
@@ -32,10 +37,13 @@ export function RoutePlannerPage() {
   const requestAccess = async () => {
     setRequesting(true);
     try {
+      console.log('Sending beta access request...');
       await routeService.requestAccess();
+      console.log('Beta access request sent successfully');
       setRequestSent(true);
     } catch (error) {
-      alert('Failed to send request. Please try again.');
+      console.error('Failed to send beta access request:', error);
+      toast.error(t.betaAccess.errorMessage);
     } finally {
       setRequesting(false);
     }
@@ -66,48 +74,48 @@ export function RoutePlannerPage() {
                 <Navigation className="h-12 w-12 text-primary" />
               </div>
             </div>
-            <CardTitle className="text-3xl">Interactive Route Planner</CardTitle>
+            <CardTitle className="text-3xl">{t.betaAccess.pageTitle}</CardTitle>
             <CardDescription className="text-base mt-2">
-              Premium feature for trip planning and cost calculation
+              {t.betaAccess.pageDescription}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {!requestSent ? (
               <>
                 <div className="space-y-4">
-                  <h3 className="font-semibold text-lg">Features:</h3>
+                  <h3 className="font-semibold text-lg">{t.betaAccess.featuresTitle}</h3>
                   <ul className="space-y-2 text-sm text-muted-foreground">
                     <li className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 mt-1 text-primary" />
-                      <span>Interactive map with drag-and-drop waypoints</span>
+                      <span>{t.betaAccess.features.interactive}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 mt-1 text-primary" />
-                      <span>Real-time distance and cost calculation</span>
+                      <span>{t.betaAccess.features.realtime}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 mt-1 text-primary" />
-                      <span>Save and load routes from cloud</span>
+                      <span>{t.betaAccess.features.saveLoad}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 mt-1 text-primary" />
-                      <span>Export routes for navigation apps</span>
+                      <span>{t.betaAccess.features.export}</span>
                     </li>
                     <li className="flex items-start gap-2">
                       <MapPin className="h-4 w-4 mt-1 text-primary" />
-                      <span>Multi-stop route planning</span>
+                      <span>{t.betaAccess.features.multiStop}</span>
                     </li>
                   </ul>
                 </div>
 
                 <Alert>
                   <AlertDescription>
-                    This feature is currently in beta testing. Request access to try it out!
+                    {t.betaAccess.betaNotice}
                   </AlertDescription>
                 </Alert>
 
-                <Button 
-                  onClick={requestAccess} 
+                <Button
+                  onClick={requestAccess}
                   disabled={requesting}
                   className="w-full"
                   size="lg"
@@ -115,43 +123,42 @@ export function RoutePlannerPage() {
                   {requesting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending Request...
+                      {t.betaAccess.sendingRequest}
                     </>
                   ) : (
-                    'Request Beta Access'
+                    t.betaAccess.requestButton
                   )}
                 </Button>
 
                 <p className="text-xs text-center text-muted-foreground">
-                  You'll receive an email confirmation when your request is approved
+                  {t.betaAccess.emailNotice}
                 </p>
               </>
             ) : (
               <div className="text-center space-y-4 py-8">
                 <div className="flex justify-center">
                   <div className="p-4 bg-green-100 dark:bg-green-900/20 rounded-full">
-                    <svg 
-                      className="h-12 w-12 text-green-600 dark:text-green-400" 
-                      fill="none" 
-                      viewBox="0 0 24 24" 
+                    <svg
+                      className="h-12 w-12 text-green-600 dark:text-green-400"
+                      fill="none"
+                      viewBox="0 0 24 24"
                       stroke="currentColor"
                     >
-                      <path 
-                        strokeLinecap="round" 
-                        strokeLinejoin="round" 
-                        strokeWidth={2} 
-                        d="M5 13l4 4L19 7" 
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M5 13l4 4L19 7"
                       />
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-xl font-semibold">Request Sent!</h3>
+                <h3 className="text-xl font-semibold">{t.betaAccess.successTitle}</h3>
                 <p className="text-muted-foreground">
-                  Your request has been sent successfully. You'll receive an email notification 
-                  when your access is approved.
+                  {t.betaAccess.successMessage}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  This usually takes 1-2 business days.
+                  {t.betaAccess.successTiming}
                 </p>
               </div>
             )}
