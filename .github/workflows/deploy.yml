@@ -40,6 +40,22 @@ jobs:
           echo "✅ Verifying index.html copied:"
           ls -la src/main/resources/static/index.html || { echo "❌ index.html missing!"; exit 1; }
 
+          echo "✅ Verifying bundle reference in index.html:"
+          grep -o "index-[^.]*\.js" src/main/resources/static/index.html || { echo "❌ No bundle reference found in index.html!"; exit 1; }
+
+          echo "✅ Verifying bundle file exists:"
+          BUNDLE=$(grep -o "index-[^.]*\.js" src/main/resources/static/index.html | head -1)
+          echo "📦 Bundle referenced in HTML: $BUNDLE"
+          ls -la "src/main/resources/static/assets/$BUNDLE" || { echo "❌ Bundle file $BUNDLE missing!"; exit 1; }
+
+          echo "✅ Verifying no stale bundles exist:"
+          BUNDLE_COUNT=$(find src/main/resources/static/assets -name "index-*.js" -type f | wc -l)
+          echo "📊 Total index bundles found: $BUNDLE_COUNT"
+          if [ "$BUNDLE_COUNT" -ne 1 ]; then
+            echo "⚠️ Warning: Multiple index bundles found! This may indicate stale files."
+            find src/main/resources/static/assets -name "index-*.js" -type f
+          fi
+
           echo "✅ Verifying assets directory:"
           ls -la src/main/resources/static/assets/ || { echo "❌ Assets directory missing!"; exit 1; }
 
@@ -115,6 +131,13 @@ jobs:
 
           echo "✅ Verifying index.html in JAR:"
           jar tf target/*.jar | grep "BOOT-INF/classes/static/index.html" || { echo "❌ index.html not in JAR!"; exit 1; }
+
+          echo "✅ Verifying bundle reference in JAR:"
+          jar xf target/*.jar BOOT-INF/classes/static/index.html
+          BUNDLE_IN_JAR=$(grep -o "index-[^.]*\.js" BOOT-INF/classes/static/index.html | head -1)
+          echo "📦 Bundle referenced in JAR: $BUNDLE_IN_JAR"
+          jar tf target/*.jar | grep "BOOT-INF/classes/static/assets/$BUNDLE_IN_JAR" || { echo "❌ Bundle file $BUNDLE_IN_JAR not found in JAR!"; exit 1; }
+          rm -rf BOOT-INF
 
           echo "✅ Checking for CSS files in JAR:"
           jar tf target/*.jar | grep "\.css$" | head -5 || { echo "❌ No CSS files in JAR!"; exit 1; }
