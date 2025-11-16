@@ -42,7 +42,9 @@ export function Header({ onCalculateClick }: HeaderProps) {
             checked={language === 'uk'}
             onChange={() => setLanguage(language === 'en' ? 'uk' : 'en')}
           />
-          <label htmlFor="language-toggle"></label>
+          <label htmlFor="language-toggle">
+            <span className="slider"></span>
+          </label>
         </div>
         <div className="mode-switch">
           <input

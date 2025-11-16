@@ -76,16 +76,47 @@ body, html {
     width: 100px;
     height: 50px;
     position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
     background: var(--header-background-color);
     border-radius: 50px;
     box-shadow: inset 0px 5px 15px rgba(0,0,0,0.4), inset 0px -5px 15px rgba(255,255,255,0.4);
     cursor: pointer;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
+}
+
+.language-switch label:before {
+    content: "🇬🇧";
+    font-size: 18px;
+    z-index: 1;
+    position: relative;
+    transition: opacity 0.3s;
 }
 
 .language-switch label:after {
+    content: "🇺🇦";
+    font-size: 18px;
+    z-index: 1;
+    position: relative;
+    transition: opacity 0.3s;
+}
+
+.language-switch input {
+    width: 0;
+    height: 0;
+    visibility: hidden;
+    position: absolute;
+}
+
+.language-switch input + label::first-line {
+    background: linear-gradient(180deg, #ffcc89, #d8860b);
+}
+
+/* Sliding indicator ball */
+.language-switch label .slider {
     content: "";
     width: 40px;
     height: 40px;
@@ -96,15 +127,10 @@ body, html {
     border-radius: 40px;
     box-shadow: 0px 5px 10px rgba(0,0,0,0.2);
     transition: transform 0.3s, background 0.3s;
+    z-index: 0;
 }
 
-.language-switch input {
-    width: 0;
-    height: 0;
-    visibility: hidden;
-}
-
-.language-switch input:checked + label:after {
+.language-switch input:checked + label .slider {
     transform: translateX(50px);
     background: linear-gradient(180deg, #6ea6ff, #3263d5);
 }
@@ -211,12 +237,17 @@ h2 {
     .language-switch label {
         width: 90px;
         height: 45px;
+        padding: 0 6px;
     }
+    .language-switch label:before,
     .language-switch label:after {
+        font-size: 16px;
+    }
+    .language-switch label .slider {
         width: 35px;
         height: 35px;
     }
-    .language-switch input:checked + label:after {
+    .language-switch input:checked + label .slider {
         transform: translateX(45px);
     }
     .auth-section {
