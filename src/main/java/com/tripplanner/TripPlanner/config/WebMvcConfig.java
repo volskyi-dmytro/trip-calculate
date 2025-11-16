@@ -1,5 +1,7 @@
 package com.tripplanner.TripPlanner.config;
 
+import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
@@ -18,8 +20,36 @@ import java.io.IOException;
  * 2. All non-API routes are forwarded to index.html for React Router to handle
  * 3. Direct navigation to SPA routes (e.g., /route-planner) works correctly
  */
+@Slf4j
 @Configuration
 public class WebMvcConfig implements WebMvcConfigurer {
+
+    @PostConstruct
+    public void logStaticResourcesStatus() {
+        try {
+            ClassPathResource indexHtml = new ClassPathResource("static/index.html");
+            ClassPathResource assetsDir = new ClassPathResource("static/assets/");
+
+            log.info("=== STATIC RESOURCES DEBUG ===");
+            log.info("index.html exists: {}", indexHtml.exists());
+            log.info("index.html path: {}", indexHtml.getURL());
+            log.info("assets/ exists: {}", assetsDir.exists());
+            log.info("assets/ path: {}", assetsDir.getURL());
+
+            // List all static resources
+            ClassPathResource staticDir = new ClassPathResource("static/");
+            if (staticDir.exists()) {
+                log.info("static/ directory exists: true");
+                log.info("static/ URL: {}", staticDir.getURL());
+            } else {
+                log.error("static/ directory DOES NOT EXIST!");
+            }
+
+            log.info("=============================");
+        } catch (IOException e) {
+            log.error("Error checking static resources", e);
+        }
+    }
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
