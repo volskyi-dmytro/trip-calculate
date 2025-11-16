@@ -40,6 +40,13 @@ public class AttackMitigationFilter implements Filter {
         String clientIp = getClientIp(httpRequest);
         String requestUri = httpRequest.getRequestURI();
 
+        // CRITICAL: Bypass static resources FIRST to avoid blocking frontend assets
+        if (isStaticResource(requestUri)) {
+            logger.trace("Bypassing attack mitigation for static resource: {}", requestUri);
+            chain.doFilter(request, response);
+            return;
+        }
+
         // Allow localhost to bypass mitigation
         if (isLocalhost(clientIp)) {
             chain.doFilter(request, response);
@@ -141,6 +148,45 @@ public class AttackMitigationFilter implements Filter {
         return "127.0.0.1".equals(clientIp)
                 || "0:0:0:0:0:0:0:1".equals(clientIp)
                 || "localhost".equals(clientIp);
+    }
+
+    /**
+     * Check if the request is for a static resource that should bypass attack mitigation
+     * This is CRITICAL to ensure frontend assets are served correctly
+     */
+    private boolean isStaticResource(String uri) {
+        if (uri == null) return false;
+
+        // Vite build artifacts (primary location)
+        if (uri.startsWith("/assets/")) return true;
+
+        // Static resource directories
+        if (uri.startsWith("/static/") ||
+            uri.startsWith("/public/") ||
+            uri.startsWith("/resources/") ||
+            uri.startsWith("/css/") ||
+            uri.startsWith("/js/") ||
+            uri.startsWith("/images/")) return true;
+
+        // Root-level static files (check file extensions)
+        if (uri.equals("/") || uri.equals("/index.html")) return true;
+        if (uri.endsWith(".js") ||
+            uri.endsWith(".css") ||
+            uri.endsWith(".ico") ||
+            uri.endsWith(".png") ||
+            uri.endsWith(".jpg") ||
+            uri.endsWith(".jpeg") ||
+            uri.endsWith(".webp") ||
+            uri.endsWith(".gif") ||
+            uri.endsWith(".svg") ||
+            uri.endsWith(".woff") ||
+            uri.endsWith(".woff2") ||
+            uri.endsWith(".ttf") ||
+            uri.endsWith(".eot") ||
+            uri.endsWith(".webmanifest") ||
+            uri.endsWith(".json")) return true;
+
+        return false;
     }
 
     // Inner class to track request counts
