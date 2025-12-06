@@ -1,0 +1,135 @@
+name: Deploy to Staging (LXC)
+
+on:
+  push:
+    branches: [ develop ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Setup Node.js for React frontend build
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: frontend/package-lock.json
+
+      # Build React frontend
+      - name: Build React Frontend
+        run: |
+          cd frontend
+          npm ci
+          npm run build
+
+      # Copy React build to Spring Boot static resources
+      - name: Copy Frontend to Spring Boot
+        run: |
+          echo "📦 Cleaning static directory..."
+          rm -rf src/main/resources/static/*
+          mkdir -p src/main/resources/static
+          cp -r frontend/dist/* src/main/resources/static/
+
+          echo "✅ Verifying build artifacts..."
+          ls -la src/main/resources/static/index.html || { echo "❌ index.html missing!"; exit 1; }
+
+      # Setup Java and build Spring Boot
+      - uses: actions/setup-java@v4
+        with: 
+          distribution: temurin
+          java-version: '17'
+          cache: maven
+
+      # Build Spring Boot JAR
+      - name: Build Spring Boot JAR
+        run: |
+          echo "🔨 Building Staging JAR..."
+          mvn clean package -DskipTests
+          
+          echo "✅ Verifying JAR contents..."
+          jar tf target/*.jar | grep "BOOT-INF/classes/static/index.html" || { echo "❌ index.html not in JAR!"; exit 1; }
+
+      # Build and push Docker image with staging tag
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate:staging \
+                       -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate:staging-${{ github.sha }} .
+          docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:staging
+          docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:staging-${{ github.sha }}
+
+  deploy:
+    needs: build
+    runs-on: self-hosted  # Your GitHub runner on LXC
+    steps:
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/tripcalc_deploy_key
+          chmod 600 ~/.ssh/tripcalc_deploy_key
+          
+          if [ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]; then
+            echo "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -H ${{ secrets.LXC_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          fi
+
+      - name: Deploy to LXC Staging
+        env:
+          DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+          LXC_HOST: ${{ secrets.LXC_HOST }}
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          DATABASE_USERNAME: ${{ secrets.STAGING_DATABASE_USERNAME }}
+          DATABASE_PASSWORD: ${{ secrets.STAGING_DATABASE_PASSWORD }}
+          GOOGLE_CLIENT_ID: ${{ secrets.STAGING_GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.STAGING_GOOGLE_CLIENT_SECRET }}
+          OAUTH_REDIRECT_URI: ${{ secrets.STAGING_OAUTH_REDIRECT_URI }}
+          GMAIL_USERNAME: ${{ secrets.GMAIL_USERNAME }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: |
+          ssh -i ~/.ssh/tripcalc_deploy_key ubuntu@$LXC_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' bash -s" <<'REMOTE'
+            echo "🧪 Deploying to Staging (LXC)..."
+            
+            docker pull "${DOCKER_USERNAME}/trip-calculate:staging"
+            
+            # Stop and remove old staging container
+            docker stop trip-calculate-staging || true
+            docker rm trip-calculate-staging || true
+            
+            # Run new staging container on different port (8081)
+            docker run -d -p 8081:8080 \
+              --name trip-calculate-staging \
+              --restart unless-stopped \
+              -e SPRING_PROFILES_ACTIVE=staging \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              -e DATABASE_USERNAME="${DATABASE_USERNAME}" \
+              -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
+              -e GOOGLE_CLIENT_ID="${GOOGLE_CLIENT_ID}" \
+              -e GOOGLE_CLIENT_SECRET="${GOOGLE_CLIENT_SECRET}" \
+              -e OAUTH_REDIRECT_URI="${OAUTH_REDIRECT_URI}" \
+              -e GMAIL_USERNAME="${GMAIL_USERNAME}" \
+              -e GMAIL_APP_PASSWORD="${GMAIL_APP_PASSWORD}" \
+              -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
+              "${DOCKER_USERNAME}/trip-calculate:staging"
+            
+            echo "✅ Staging deployment complete!"
+            docker ps -a | grep trip-calculate-staging
+            
+            # Health check
+            sleep 5
+            curl -f http://localhost:8081/actuator/health || echo "⚠️ Health check failed!"
+          REMOTE
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f ~/.ssh/tripcalc_deploy_key
