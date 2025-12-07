@@ -71,6 +71,9 @@ export function RoutePlanner() {
   const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
   const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
 
+  // View mode: welcome screen vs dashboard
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
@@ -99,6 +102,8 @@ export function RoutePlanner() {
         loadRouteFromServer(id)
         setCurrentRouteId(id)
         setIsEditMode(true)
+        // Exit welcome screen when loading a route
+        setShowWelcomeScreen(false)
       }
     }
   }, [searchParams])
@@ -273,6 +278,7 @@ export function RoutePlanner() {
       })
       setRouteName(route.name)
       setShowLoadDialog(false)
+      setShowWelcomeScreen(false) // Exit welcome screen when loading a route
       toast.success(`${t.toasts.routeLoaded} ${route.name}`)
     } catch (error) {
       console.error('Failed to load route:', error)
@@ -375,6 +381,11 @@ export function RoutePlanner() {
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setIsProcessingN8n(true);
+
+    // Transition to dashboard after first user message
+    if (showWelcomeScreen) {
+      setShowWelcomeScreen(false);
+    }
 
     try {
       const n8nData = await planTripWithN8n(userMsg.content);
@@ -493,7 +504,7 @@ export function RoutePlanner() {
     } finally {
       setIsProcessingN8n(false);
     }
-  }, [chatInput, t]);
+  }, [chatInput, t, showWelcomeScreen]);
 
   // AI Insights Handler
   const handleGetAiInsights = useCallback(async () => {
@@ -604,6 +615,41 @@ export function RoutePlanner() {
     return R * c;
   }
 
+  // If in welcome screen mode, show centered chat interface
+  if (showWelcomeScreen) {
+    return (
+      <div className="route-planner-container">
+        {/* Header */}
+        <header className="route-planner-header">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Navigation className="h-6 w-6 text-blue-500" />
+              <h1 className="text-2xl font-bold">{t.title}</h1>
+            </div>
+          </div>
+        </header>
+
+        {/* Welcome Screen - Centered Chat */}
+        <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4">
+          <ChatInterface
+            messages={chatMessages}
+            chatInput={chatInput}
+            onChatInputChange={setChatInput}
+            onSendMessage={handleSendChat}
+            isProcessing={isProcessingN8n}
+            isCentered={true}
+            showInsightsButton={false}
+            pendingSuggestions={pendingSuggestions}
+            onApplySuggestions={handleApplySuggestions}
+            onDismissSuggestions={() => setPendingSuggestions(null)}
+            isApplyingSuggestions={isApplyingSuggestions}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Dashboard view with map and panels
   return (
     <div className="route-planner-container">
       {/* Header */}
