@@ -73,7 +73,7 @@ jobs:
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest  # Use GitHub-hosted runner for VPS deployment
+    runs-on: ubuntu-latest
     steps:
       - name: Setup SSH
         run: |
@@ -106,6 +106,13 @@ jobs:
           ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' bash -s" <<'REMOTE'
             echo "🚀 Deploying to Production VPS..."
             
+            # Create Docker network if it doesn't exist
+            docker network inspect trip-calculate-network >/dev/null 2>&1 || docker network create trip-calculate-network
+            
+            # Connect database to network if not already connected
+            docker network connect trip-calculate-network trip-calculate-db 2>/dev/null || echo "✅ Database already on network"
+            
+            # Pull latest image
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
             
             # Stop and remove old container
@@ -116,6 +123,7 @@ jobs:
             docker run -d -p 8080:8080 \
               --name trip-calculate-prod \
               --restart unless-stopped \
+              --network trip-calculate-network \
               -e SPRING_PROFILES_ACTIVE=prod \
               -e DATABASE_URL="${DATABASE_URL}" \
               -e DATABASE_USERNAME="${DATABASE_USERNAME}" \
@@ -132,8 +140,9 @@ jobs:
             docker ps -a | grep trip-calculate-prod
             
             # Health check
-            sleep 5
-            curl -f http://localhost:8080/actuator/health || echo "⚠️ Health check failed!"
+            echo "⏳ Waiting for application to start..."
+            sleep 10
+            curl -f http://localhost:8080/actuator/health && echo "✅ Health check passed!" || echo "⚠️ Health check failed - check logs with: docker logs trip-calculate-prod"
           REMOTE
 
       - name: Cleanup SSH Key
@@ -143,5 +152,4 @@ jobs:
       - name: Send Deployment Notification
         if: always()
         run: |
-          # Optional: Send notification to Telegram/Slack
           echo "🎉 Production deployment completed for commit ${{ github.sha }}"
