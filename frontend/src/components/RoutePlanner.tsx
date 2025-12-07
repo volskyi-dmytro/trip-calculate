@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { RoutePanel } from './RoutePanel'
 import { StatsPanel } from './StatsPanel'
+import { ChatInterface } from './ChatInterface'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -13,8 +14,11 @@ import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
+import { planTripWithN8n } from '../services/n8nService'
+import { getTripInsights } from '../services/geminiService'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
+import type { ChatMessage } from '../types'
 import '../styles/route-planner.css'
 
 export interface Waypoint {
@@ -59,10 +63,32 @@ export function RoutePlanner() {
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
 
+  // AI Chat State
+  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+  const [chatInput, setChatInput] = useState('')
+  const [isProcessingN8n, setIsProcessingN8n] = useState(false)
+  const [isGettingInsights, setIsGettingInsights] = useState(false)
+  const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
+  const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Initialize welcome message
+  useEffect(() => {
+    const welcomeMessage = language === 'uk'
+      ? 'Привіт! Я можу допомогти вам спланувати маршрут. Просто опишіть вашу подорож, наприклад: "Поїздка з Києва до Львова на двох пасажирів".'
+      : 'Hello! I can help you plan your route. Just describe your trip, for example: "Trip from Kyiv to Lviv for 2 passengers".';
+
+    setChatMessages([{
+      id: 'init',
+      role: 'assistant',
+      content: welcomeMessage,
+      timestamp: Date.now()
+    }]);
+  }, [language])
 
   // Check for routeId in URL parameters and load route for editing
   useEffect(() => {
@@ -335,6 +361,249 @@ export function RoutePlanner() {
     }
   }, [manualAddress, t])
 
+  // AI Chat Handler
+  const handleSendChat = useCallback(async () => {
+    if (!chatInput.trim()) return;
+
+    const userMsg: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: chatInput,
+      timestamp: Date.now()
+    };
+
+    setChatMessages(prev => [...prev, userMsg]);
+    setChatInput('');
+    setIsProcessingN8n(true);
+
+    try {
+      const n8nData = await planTripWithN8n(userMsg.content);
+
+      if (n8nData) {
+        const updates: string[] = [];
+
+        // Update fuel consumption
+        if (n8nData.consumption) {
+          setRouteSettings(prev => ({ ...prev, fuelConsumption: n8nData.consumption! }));
+          updates.push(`${t.routeSettings.fuelConsumption}: ${n8nData.consumption}`);
+        }
+
+        // Update fuel cost
+        if (n8nData.price) {
+          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: n8nData.price! }));
+          updates.push(`${t.routeSettings.fuelCost}: ${n8nData.price}`);
+        }
+
+        // Update currency
+        if (n8nData.currency) {
+          setRouteSettings(prev => ({ ...prev, currency: n8nData.currency! }));
+        }
+
+        // Add waypoints from n8n data
+        const newWaypoints: Waypoint[] = [];
+
+        // Origin
+        if (n8nData.originLocation) {
+          newWaypoints.push({
+            id: Date.now().toString() + '-origin',
+            lat: n8nData.originLocation.lat,
+            lng: n8nData.originLocation.lon,
+            name: n8nData.originLocation.display_name
+          });
+          updates.push(`Start: ${n8nData.originLocation.display_name.split(',')[0]}`);
+        } else if (n8nData.originName) {
+          const locs = await geocodingService.forwardGeocode(n8nData.originName);
+          if (locs) {
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            newWaypoints.push({
+              id: Date.now().toString() + '-origin',
+              lat: locs.lat,
+              lng: locs.lng,
+              name: locationName
+            });
+            updates.push(`Start: ${locationName.split(',')[0]}`);
+          }
+        }
+
+        // Intermediate waypoints
+        if (n8nData.waypoints && n8nData.waypoints.length > 0) {
+          for (const wp of n8nData.waypoints) {
+            newWaypoints.push({
+              id: Date.now().toString() + '-wp-' + Math.random(),
+              lat: wp.lat,
+              lng: wp.lon,
+              name: wp.display_name
+            });
+          }
+          updates.push(`+${n8nData.waypoints.length} stop(s)`);
+        }
+
+        // Destination
+        if (n8nData.destinationLocation) {
+          newWaypoints.push({
+            id: Date.now().toString() + '-dest',
+            lat: n8nData.destinationLocation.lat,
+            lng: n8nData.destinationLocation.lon,
+            name: n8nData.destinationLocation.display_name
+          });
+          updates.push(`Destination: ${n8nData.destinationLocation.display_name.split(',')[0]}`);
+        } else if (n8nData.destinationName) {
+          const locs = await geocodingService.forwardGeocode(n8nData.destinationName);
+          if (locs) {
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            newWaypoints.push({
+              id: Date.now().toString() + '-dest',
+              lat: locs.lat,
+              lng: locs.lng,
+              name: locationName
+            });
+            updates.push(`Destination: ${locationName.split(',')[0]}`);
+          }
+        }
+
+        if (newWaypoints.length > 0) {
+          setWaypoints(newWaypoints);
+        }
+
+        const responseMsg: ChatMessage = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: updates.length > 0
+            ? `✓ Updated: ${updates.join(', ')}.`
+            : 'No changes made. Please provide more details.',
+          timestamp: Date.now()
+        };
+        setChatMessages(prev => [...prev, responseMsg]);
+      } else {
+        setChatMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: 'Sorry, I could not process your request. Please try again.',
+          timestamp: Date.now()
+        }]);
+      }
+    } catch (e) {
+      console.error(e);
+      setChatMessages(prev => [...prev, {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'An error occurred while processing your request.',
+        timestamp: Date.now()
+      }]);
+    } finally {
+      setIsProcessingN8n(false);
+    }
+  }, [chatInput, t]);
+
+  // AI Insights Handler
+  const handleGetAiInsights = useCallback(async () => {
+    if (waypoints.length < 2) {
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: 'Please add at least 2 waypoints (start and destination) to get insights.',
+        timestamp: Date.now()
+      }]);
+      return;
+    }
+
+    setIsGettingInsights(true);
+    setChatMessages(prev => [...prev, {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: 'Searching for interesting stops along your route...',
+      timestamp: Date.now()
+    }]);
+
+    const origin = waypoints[0].name.split(',')[0];
+    const destination = waypoints[waypoints.length - 1].name.split(',')[0];
+    const distance = routeGeometry.length > 0 ? calculateTotalDistance() : 0;
+
+    const insights = await getTripInsights(origin, destination, distance / 1000, language);
+
+    setChatMessages(prev => [...prev, {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: insights.content,
+      timestamp: Date.now()
+    }]);
+
+    if (insights.suggestedStops.length > 0) {
+      setPendingSuggestions(insights.suggestedStops);
+    }
+
+    setIsGettingInsights(false);
+  }, [waypoints, routeGeometry, language]);
+
+  // Apply Suggested Stops
+  const handleApplySuggestions = useCallback(async () => {
+    if (!pendingSuggestions) return;
+    setIsApplyingSuggestions(true);
+
+    try {
+      const newWaypoints = [...waypoints];
+      const destination = newWaypoints.pop();
+
+      for (const stopName of pendingSuggestions) {
+        const result = await geocodingService.forwardGeocode(stopName);
+        if (result) {
+          const locationName = await geocodingService.reverseGeocode(result.lat, result.lng);
+          newWaypoints.push({
+            id: Date.now().toString() + '-suggested-' + Math.random(),
+            lat: result.lat,
+            lng: result.lng,
+            name: locationName
+          });
+        }
+      }
+
+      if (destination) {
+        newWaypoints.push(destination);
+      }
+
+      setWaypoints(newWaypoints);
+
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'assistant',
+        content: `✓ Added ${pendingSuggestions.join(', ')} to your route. Recalculating...`,
+        timestamp: Date.now()
+      }]);
+    } catch (error) {
+      console.error("Failed to add stops", error);
+    } finally {
+      setIsApplyingSuggestions(false);
+      setPendingSuggestions(null);
+    }
+  }, [pendingSuggestions, waypoints]);
+
+  // Helper function to calculate total distance
+  const calculateTotalDistance = () => {
+    if (routeGeometry.length < 2) return 0;
+    let totalDistance = 0;
+    for (let i = 0; i < routeGeometry.length - 1; i++) {
+      const [lat1, lng1] = routeGeometry[i];
+      const [lat2, lng2] = routeGeometry[i + 1];
+      totalDistance += getDistanceBetweenPoints(lat1, lng1, lat2, lng2);
+    }
+    return totalDistance;
+  };
+
+  const getDistanceBetweenPoints = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371e3;
+    const φ1 = lat1 * Math.PI/180;
+    const φ2 = lat2 * Math.PI/180;
+    const Δφ = (lat2-lat1) * Math.PI/180;
+    const Δλ = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+  }
+
   return (
     <div className="route-planner-container">
       {/* Header */}
@@ -601,10 +870,62 @@ export function RoutePlanner() {
         </button>
       </div>
 
-      {/* Main Content */}
+      {/* Main Content - Responsive Layout */}
       <div className="route-planner-content">
-        {/* Left Panel - Route Details */}
+        {/**
+         * RESPONSIVE LAYOUT PATTERN (from TripCost Pro):
+         *
+         * Mobile (<768px):
+         * - Chat at top (block lg:hidden)
+         * - Map in middle
+         * - Settings/Stats via tabs
+         *
+         * Desktop (≥1024px):
+         * - Chat in left sidebar (hidden lg:block)
+         * - Settings/Stats in left sidebar
+         * - Map takes main area
+         */}
+
+        {/* Mobile ONLY: Chat at the very top */}
+        <div className="block lg:hidden mb-4 px-4">
+          <ChatInterface
+            messages={chatMessages}
+            chatInput={chatInput}
+            onChatInputChange={setChatInput}
+            onSendMessage={handleSendChat}
+            isProcessing={isProcessingN8n}
+            isCentered={false}
+            showInsightsButton={waypoints.length >= 2}
+            onGetInsights={handleGetAiInsights}
+            isGettingInsights={isGettingInsights}
+            pendingSuggestions={pendingSuggestions}
+            onApplySuggestions={handleApplySuggestions}
+            onDismissSuggestions={() => setPendingSuggestions(null)}
+            isApplyingSuggestions={isApplyingSuggestions}
+          />
+        </div>
+
+        {/* Left Panel - Route Details (includes desktop chat) */}
         <div className={`route-panel ${activeTab === 'settings' ? 'mobile-active' : ''}`}>
+          {/* Desktop ONLY: Chat inside the sidebar */}
+          <div className="hidden lg:block px-4 mb-4">
+            <ChatInterface
+              messages={chatMessages}
+              chatInput={chatInput}
+              onChatInputChange={setChatInput}
+              onSendMessage={handleSendChat}
+              isProcessing={isProcessingN8n}
+              isCentered={false}
+              showInsightsButton={waypoints.length >= 2}
+              onGetInsights={handleGetAiInsights}
+              isGettingInsights={isGettingInsights}
+              pendingSuggestions={pendingSuggestions}
+              onApplySuggestions={handleApplySuggestions}
+              onDismissSuggestions={() => setPendingSuggestions(null)}
+              isApplyingSuggestions={isApplyingSuggestions}
+            />
+          </div>
+
           <RoutePanel
             waypoints={waypoints}
             routeSettings={routeSettings}
