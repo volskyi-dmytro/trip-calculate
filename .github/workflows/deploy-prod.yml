@@ -18,8 +18,12 @@ jobs:
           cache: 'npm'
           cache-dependency-path: frontend/package-lock.json
 
-      # Build React frontend
+      # Build React frontend with environment variables
       - name: Build React Frontend
+        env:
+          VITE_N8N_WEBHOOK_URL: ${{ secrets.PROD_N8N_WEBHOOK_URL }}
+          VITE_GEMINI_API_KEY: ${{ secrets.PROD_GEMINI_API_KEY }}
+          VITE_API_URL: ""
         run: |
           cd frontend
           npm ci
