@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { RoutePlanner } from '../components/RoutePlanner';
 import { Header } from '../components/common/Header';
+import { LandingView } from '../components/LandingView';
+import { useAuth } from '../contexts/AuthContext';
 import { routeService } from '../services/routeService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -12,6 +14,7 @@ import { toast } from 'sonner';
 
 export function RoutePlannerPage() {
   const { language } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
   const t = getTranslation(language as Language);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [requesting, setRequesting] = useState(false);
@@ -61,8 +64,18 @@ export function RoutePlannerPage() {
     }
   };
 
+  // Show landing page if user is not authenticated
+  if (!authLoading && !user) {
+    return (
+      <>
+        <Header />
+        <LandingView />
+      </>
+    );
+  }
+
   // Loading state
-  if (hasAccess === null) {
+  if (hasAccess === null || authLoading) {
     return (
       <>
         <Header />

@@ -1,9 +1,9 @@
 import { useState, useCallback, useEffect } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
-import { RoutePanel } from './RoutePanel'
-import { StatsPanel } from './StatsPanel'
-import { ChatInterface } from './ChatInterface'
+import { WelcomeScreen } from './WelcomeScreen'
+import { TopChatBar } from './TopChatBar'
+import { TripDetailsForm } from './TripDetailsForm'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -15,7 +15,7 @@ import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { planTripWithN8n } from '../services/n8nService'
-import { getTripInsights } from '../services/geminiService'
+// import { getTripInsights } from '../services/geminiService'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { ChatMessage } from '../types'
@@ -57,7 +57,6 @@ export function RoutePlanner() {
   const [showManualInputDialog, setShowManualInputDialog] = useState(false)
   const [manualAddress, setManualAddress] = useState('')
   const [isSearching, setIsSearching] = useState(false)
-  const [activeTab, setActiveTab] = useState<'settings' | 'map' | 'summary'>('map')
 
   // Edit mode state
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
@@ -67,12 +66,13 @@ export function RoutePlanner() {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [isProcessingN8n, setIsProcessingN8n] = useState(false)
-  const [isGettingInsights, setIsGettingInsights] = useState(false)
+  // const [isGettingInsights, setIsGettingInsights] = useState(false)
   const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
   const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
 
   // View mode: welcome screen vs dashboard
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
+  const [manualMode, setManualMode] = useState(false)
 
   // Load user's routes on mount
   useEffect(() => {
@@ -178,15 +178,15 @@ export function RoutePlanner() {
   }, [])
 
   const updateWaypointName = useCallback((id: string, name: string) => {
-    setWaypoints(prev => 
+    setWaypoints(prev =>
       prev.map(wp => wp.id === id ? { ...wp, name } : wp)
     )
   }, [])
 
-  const removeWaypoint = useCallback((id: string) => {
-    setWaypoints(prev => prev.filter(wp => wp.id !== id))
-    toast.success(t.toasts.waypointRemoved)
-  }, [t])
+  // const removeWaypoint = useCallback((id: string) => {
+  //   setWaypoints(prev => prev.filter(wp => wp.id !== id))
+  //   toast.success(t.toasts.waypointRemoved)
+  // }, [t])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
@@ -385,6 +385,7 @@ export function RoutePlanner() {
     // Transition to dashboard after first user message
     if (showWelcomeScreen) {
       setShowWelcomeScreen(false);
+      setManualMode(false); // Exit manual mode when AI is used
     }
 
     try {
@@ -506,45 +507,45 @@ export function RoutePlanner() {
     }
   }, [chatInput, t, showWelcomeScreen]);
 
-  // AI Insights Handler
-  const handleGetAiInsights = useCallback(async () => {
-    if (waypoints.length < 2) {
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: 'Please add at least 2 waypoints (start and destination) to get insights.',
-        timestamp: Date.now()
-      }]);
-      return;
-    }
+  // AI Insights Handler (commented out for now)
+  // const handleGetAiInsights = useCallback(async () => {
+  //   if (waypoints.length < 2) {
+  //     setChatMessages(prev => [...prev, {
+  //       id: Date.now().toString(),
+  //       role: 'assistant',
+  //       content: 'Please add at least 2 waypoints (start and destination) to get insights.',
+  //       timestamp: Date.now()
+  //     }]);
+  //     return;
+  //   }
 
-    setIsGettingInsights(true);
-    setChatMessages(prev => [...prev, {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: 'Searching for interesting stops along your route...',
-      timestamp: Date.now()
-    }]);
+  //   setIsGettingInsights(true);
+  //   setChatMessages(prev => [...prev, {
+  //     id: Date.now().toString(),
+  //     role: 'assistant',
+  //     content: 'Searching for interesting stops along your route...',
+  //     timestamp: Date.now()
+  //   }]);
 
-    const origin = waypoints[0].name.split(',')[0];
-    const destination = waypoints[waypoints.length - 1].name.split(',')[0];
-    const distance = routeGeometry.length > 0 ? calculateTotalDistance() : 0;
+  //   const origin = waypoints[0].name.split(',')[0];
+  //   const destination = waypoints[waypoints.length - 1].name.split(',')[0];
+  //   const distance = routeGeometry.length > 0 ? calculateTotalDistance() : 0;
 
-    const insights = await getTripInsights(origin, destination, distance / 1000, language);
+  //   const insights = await getTripInsights(origin, destination, distance / 1000, language);
 
-    setChatMessages(prev => [...prev, {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: insights.content,
-      timestamp: Date.now()
-    }]);
+  //   setChatMessages(prev => [...prev, {
+  //     id: (Date.now() + 1).toString(),
+  //     role: 'assistant',
+  //     content: insights.content,
+  //     timestamp: Date.now()
+  //   }]);
 
-    if (insights.suggestedStops.length > 0) {
-      setPendingSuggestions(insights.suggestedStops);
-    }
+  //   if (insights.suggestedStops.length > 0) {
+  //     setPendingSuggestions(insights.suggestedStops);
+  //   }
 
-    setIsGettingInsights(false);
-  }, [waypoints, routeGeometry, language]);
+  //   setIsGettingInsights(false);
+  // }, [waypoints, routeGeometry, language]);
 
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
@@ -588,76 +589,74 @@ export function RoutePlanner() {
     }
   }, [pendingSuggestions, waypoints]);
 
-  // Helper function to calculate total distance
-  const calculateTotalDistance = () => {
-    if (routeGeometry.length < 2) return 0;
-    let totalDistance = 0;
-    for (let i = 0; i < routeGeometry.length - 1; i++) {
-      const [lat1, lng1] = routeGeometry[i];
-      const [lat2, lng2] = routeGeometry[i + 1];
-      totalDistance += getDistanceBetweenPoints(lat1, lng1, lat2, lng2);
-    }
-    return totalDistance;
-  };
+  // Helper function to calculate total distance (commented out for now)
+  // const calculateTotalDistance = () => {
+  //   if (routeGeometry.length < 2) return 0;
+  //   let totalDistance = 0;
+  //   for (let i = 0; i < routeGeometry.length - 1; i++) {
+  //     const [lat1, lng1] = routeGeometry[i];
+  //     const [lat2, lng2] = routeGeometry[i + 1];
+  //     totalDistance += getDistanceBetweenPoints(lat1, lng1, lat2, lng2);
+  //   }
+  //   return totalDistance;
+  // };
 
-  const getDistanceBetweenPoints = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
-    const R = 6371e3;
-    const φ1 = lat1 * Math.PI/180;
-    const φ2 = lat2 * Math.PI/180;
-    const Δφ = (lat2-lat1) * Math.PI/180;
-    const Δλ = (lon2-lon1) * Math.PI/180;
+  // const getDistanceBetweenPoints = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  //   const R = 6371e3;
+  //   const φ1 = lat1 * Math.PI/180;
+  //   const φ2 = lat2 * Math.PI/180;
+  //   const Δφ = (lat2-lat1) * Math.PI/180;
+  //   const Δλ = (lon2-lon1) * Math.PI/180;
 
-    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
-              Math.cos(φ1) * Math.cos(φ2) *
-              Math.sin(Δλ/2) * Math.sin(Δλ/2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  //   const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+  //             Math.cos(φ1) * Math.cos(φ2) *
+  //             Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  //   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 
-    return R * c;
-  }
+  //   return R * c;
+  // }
+
+  // Handler for manual configuration mode
+  const handleManualClick = useCallback(() => {
+    setManualMode(true);
+    setShowWelcomeScreen(false);
+  }, []);
 
   // If in welcome screen mode, show centered chat interface
-  if (showWelcomeScreen) {
+  if (showWelcomeScreen && !manualMode) {
     return (
-      <div className="route-planner-container">
-        {/* Header */}
-        <header className="route-planner-header">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Navigation className="h-6 w-6 text-blue-500" />
-              <h1 className="text-2xl font-bold">{t.title}</h1>
-            </div>
-          </div>
-        </header>
-
-        {/* Welcome Screen - Centered Chat */}
-        <div className="flex items-center justify-center min-h-[calc(100vh-120px)] px-4">
-          <ChatInterface
-            messages={chatMessages}
-            chatInput={chatInput}
-            onChatInputChange={setChatInput}
-            onSendMessage={handleSendChat}
-            isProcessing={isProcessingN8n}
-            isCentered={true}
-            showInsightsButton={false}
-            pendingSuggestions={pendingSuggestions}
-            onApplySuggestions={handleApplySuggestions}
-            onDismissSuggestions={() => setPendingSuggestions(null)}
-            isApplyingSuggestions={isApplyingSuggestions}
-          />
-        </div>
-      </div>
+      <WelcomeScreen
+        chatMessages={chatMessages}
+        chatInput={chatInput}
+        onChatInputChange={setChatInput}
+        onSendMessage={handleSendChat}
+        isProcessing={isProcessingN8n}
+        onManualClick={handleManualClick}
+        pendingSuggestions={pendingSuggestions}
+        onApplySuggestions={handleApplySuggestions}
+        onDismissSuggestions={() => setPendingSuggestions(null)}
+        isApplyingSuggestions={isApplyingSuggestions}
+      />
     );
   }
 
   // Dashboard view with map and panels
   return (
-    <div className="route-planner-container">
-      {/* Header */}
-      <header className="route-planner-header">
+    <div className="flex flex-col h-screen">
+      {/* Top Chat Bar - Always visible */}
+      <TopChatBar
+        chatInput={chatInput}
+        onChatInputChange={setChatInput}
+        onSendMessage={handleSendChat}
+        isProcessing={isProcessingN8n}
+      />
+
+      {/* Header with actions */}
+      <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Navigation className="h-6 w-6 text-blue-500" />
-            <h1 className="text-2xl font-bold">{t.title}</h1>
+            <Navigation className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            <h1 className="text-xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
             {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
             {isEditMode && (
               <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
@@ -891,99 +890,20 @@ export function RoutePlanner() {
         </DialogContent>
       </Dialog>
 
-      {/* Mobile Tab Navigation */}
-      <div className="mobile-tabs">
-        <button
-          className={`mobile-tab ${activeTab === 'settings' ? 'active' : ''}`}
-          onClick={() => setActiveTab('settings')}
-        >
-          <MapPin className="h-4 w-4" />
-          <span>{t.buttons.settings || 'Settings'}</span>
-        </button>
-        <button
-          className={`mobile-tab ${activeTab === 'map' ? 'active' : ''}`}
-          onClick={() => setActiveTab('map')}
-        >
-          <Navigation className="h-4 w-4" />
-          <span>{t.buttons.map || 'Map'}</span>
-        </button>
-        <button
-          className={`mobile-tab ${activeTab === 'summary' ? 'active' : ''}`}
-          onClick={() => setActiveTab('summary')}
-        >
-          <Save className="h-4 w-4" />
-          <span>{t.buttons.summary || 'Summary'}</span>
-        </button>
-      </div>
-
-      {/* Main Content - Responsive Layout */}
-      <div className="route-planner-content">
-        {/**
-         * RESPONSIVE LAYOUT PATTERN (from TripCost Pro):
-         *
-         * Mobile (<768px):
-         * - Chat at top (block lg:hidden)
-         * - Map in middle
-         * - Settings/Stats via tabs
-         *
-         * Desktop (≥1024px):
-         * - Chat in left sidebar (hidden lg:block)
-         * - Settings/Stats in left sidebar
-         * - Map takes main area
-         */}
-
-        {/* Mobile ONLY: Chat at the very top */}
-        <div className="block lg:hidden mb-4 px-4">
-          <ChatInterface
-            messages={chatMessages}
-            chatInput={chatInput}
-            onChatInputChange={setChatInput}
-            onSendMessage={handleSendChat}
-            isProcessing={isProcessingN8n}
-            isCentered={false}
-            showInsightsButton={waypoints.length >= 2}
-            onGetInsights={handleGetAiInsights}
-            isGettingInsights={isGettingInsights}
-            pendingSuggestions={pendingSuggestions}
-            onApplySuggestions={handleApplySuggestions}
-            onDismissSuggestions={() => setPendingSuggestions(null)}
-            isApplyingSuggestions={isApplyingSuggestions}
-          />
-        </div>
-
-        {/* Left Panel - Route Details (includes desktop chat) */}
-        <div className={`route-panel ${activeTab === 'settings' ? 'mobile-active' : ''}`}>
-          {/* Desktop ONLY: Chat inside the sidebar */}
-          <div className="hidden lg:block px-4 mb-4">
-            <ChatInterface
-              messages={chatMessages}
-              chatInput={chatInput}
-              onChatInputChange={setChatInput}
-              onSendMessage={handleSendChat}
-              isProcessing={isProcessingN8n}
-              isCentered={false}
-              showInsightsButton={waypoints.length >= 2}
-              onGetInsights={handleGetAiInsights}
-              isGettingInsights={isGettingInsights}
-              pendingSuggestions={pendingSuggestions}
-              onApplySuggestions={handleApplySuggestions}
-              onDismissSuggestions={() => setPendingSuggestions(null)}
-              isApplyingSuggestions={isApplyingSuggestions}
-            />
-          </div>
-
-          <RoutePanel
+      {/* Main Content: Left Sidebar + Map */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Sidebar - Trip Details */}
+        <div className="hidden md:block">
+          <TripDetailsForm
             waypoints={waypoints}
             routeSettings={routeSettings}
-            onUpdateWaypointName={updateWaypointName}
-            onRemoveWaypoint={removeWaypoint}
             onUpdateSettings={setRouteSettings}
-            onAddManually={() => setShowManualInputDialog(true)}
+            onUpdateWaypointName={updateWaypointName}
           />
         </div>
 
-        {/* Map */}
-        <div className={`map-wrapper ${activeTab === 'map' ? 'mobile-active' : ''}`}>
+        {/* Map - Takes remaining space */}
+        <div className="flex-1 relative">
           <MapContainer
             waypoints={waypoints}
             routeGeometry={routeGeometry}
@@ -993,8 +913,8 @@ export function RoutePlanner() {
 
           {/* Instructions overlay */}
           {waypoints.length === 0 && (
-            <div className="map-instructions-overlay">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <MapPin className="h-4 w-4" />
                 <span>{t.waypoints.clickMap}</span>
               </div>
@@ -1002,9 +922,17 @@ export function RoutePlanner() {
           )}
         </div>
 
-        {/* Right Panel - Statistics */}
-        <div className={`stats-panel ${activeTab === 'summary' ? 'mobile-active' : ''}`}>
-          <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
+        {/* Mobile: Bottom sheet for trip details */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 max-h-[50vh] overflow-y-auto shadow-lg">
+          <div className="p-4">
+            <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4"></div>
+            <TripDetailsForm
+              waypoints={waypoints}
+              routeSettings={routeSettings}
+              onUpdateSettings={setRouteSettings}
+              onUpdateWaypointName={updateWaypointName}
+            />
+          </div>
         </div>
       </div>
     </div>
