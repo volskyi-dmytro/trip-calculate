@@ -40,11 +40,18 @@ export function RoutePlanner() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  const [waypoints, setWaypoints] = useState<Waypoint[]>([])
-  const [routeSettings, setRouteSettings] = useState<RouteSettings>({
-    fuelConsumption: 0,
-    fuelCostPerLiter: 0,
-    currency: 'UAH'
+  // Load waypoints from localStorage on mount
+  const [waypoints, setWaypoints] = useState<Waypoint[]>(() => {
+    const saved = localStorage.getItem('tripCalculate_currentRoute')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
+    const saved = localStorage.getItem('tripCalculate_routeSettings')
+    return saved ? JSON.parse(saved) : {
+      fuelConsumption: 9.2,
+      fuelCostPerLiter: 55,
+      currency: 'UAH'
+    }
   })
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
@@ -78,6 +85,20 @@ export function RoutePlanner() {
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Persist waypoints to localStorage
+  useEffect(() => {
+    if (waypoints.length > 0) {
+      localStorage.setItem('tripCalculate_currentRoute', JSON.stringify(waypoints))
+    } else {
+      localStorage.removeItem('tripCalculate_currentRoute')
+    }
+  }, [waypoints])
+
+  // Persist route settings to localStorage
+  useEffect(() => {
+    localStorage.setItem('tripCalculate_routeSettings', JSON.stringify(routeSettings))
+  }, [routeSettings])
 
   // Initialize welcome message
   useEffect(() => {
@@ -205,6 +226,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    localStorage.removeItem('tripCalculate_currentRoute')
     navigate('/route-planner', { replace: true })
     toast.success(t.toasts.routeCleared)
   }, [t, navigate])
@@ -692,9 +714,9 @@ export function RoutePlanner() {
   // Dashboard view with map and panels
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      {/* Fixed Header Section - NO SCROLL */}
+      {/* SECTION 1: Fixed Header - NO SCROLL */}
       <div className="flex-shrink-0">
-        {/* Top Chat Bar - Always visible */}
+        {/* AI Assistant Input - FIXED at top */}
         <TopChatBar
           chatInput={chatInput}
           onChatInputChange={setChatInput}
@@ -702,12 +724,13 @@ export function RoutePlanner() {
           isProcessing={isProcessingN8n}
         />
 
-        {/* Header with actions */}
+        {/* Title + Buttons - FIXED at top, doesn't scroll */}
         <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-3">
+            {/* Title */}
             <div className="flex items-center gap-2">
               <Navigation className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              <h1 className="text-xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
+              <h1 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
               {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
               {isEditMode && (
                 <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
@@ -716,19 +739,23 @@ export function RoutePlanner() {
                 </span>
               )}
             </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
+
+            {/* Button Group - ALL buttons must be visible */}
+            <div className="flex gap-2 flex-wrap">
             {isEditMode && (
-              <Button variant="outline" size="sm" onClick={createNewRoute} className="whitespace-nowrap">
+              <Button variant="outline" size="sm" onClick={createNewRoute} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
                 <FilePlus className="h-4 w-4 mr-2" />
-                New Route
+                <span className="hidden sm:inline">New Route</span>
+                <span className="sm:hidden">New</span>
               </Button>
             )}
             {/* Load Route Dialog */}
             <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="whitespace-nowrap">
+                <Button variant="outline" size="sm" className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
                   <FolderOpen className="h-4 w-4 mr-2" />
-                  {t.buttons.loadRoute}
+                  <span className="hidden sm:inline">{t.buttons.loadRoute}</span>
+                  <span className="sm:hidden">Load</span>
                 </Button>
               </DialogTrigger>
               <DialogContent>
@@ -869,13 +896,15 @@ export function RoutePlanner() {
               </DialogContent>
             </Dialog>
 
-            <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0} className="whitespace-nowrap">
+            <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
               <Upload className="h-4 w-4 mr-2" />
-              {t.buttons.exportJson}
+              <span className="hidden sm:inline">{t.buttons.exportJson}</span>
+              <span className="sm:hidden">Export</span>
             </Button>
-            <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0} className="whitespace-nowrap">
+            <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
               <Trash2 className="h-4 w-4 mr-2" />
-              {t.buttons.clear}
+              <span className="hidden sm:inline">{t.buttons.clear}</span>
+              <span className="sm:hidden">Clear</span>
             </Button>
           </div>
         </div>
@@ -943,10 +972,11 @@ export function RoutePlanner() {
       </div>
       {/* End Fixed Header Section */}
 
-      {/* Main Content: Map + Details Panel - Responsive Layout */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* Map Panel - Collapsible on mobile */}
-        <div className="relative w-full lg:w-2/3 h-96 lg:h-full flex-shrink-0">
+      {/* SECTION 2: Main Content Area - SINGLE SCROLL */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full flex flex-col lg:flex-row">
+          {/* LEFT: Map Container */}
+          <div className="relative w-full lg:w-2/3 h-64 lg:h-full bg-gray-100 dark:bg-gray-800">
           <MapContainer
             waypoints={waypoints}
             routeGeometry={routeGeometry}
@@ -965,15 +995,15 @@ export function RoutePlanner() {
           )}
         </div>
 
-        {/* Details Panel - Always visible, scrollable */}
-        <div className="w-full lg:w-1/3 flex-1 lg:flex-none overflow-y-auto bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700">
-          <div className="p-4 space-y-4">
-            {/* Trip Details Form */}
+        {/* RIGHT: Details Panel - THIS is the ONLY scrollable section */}
+        <div className="w-full lg:w-1/3 h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
+          <div className="p-4 space-y-6">
+            {/* Route Inputs Section */}
             <div className="space-y-4">
-              <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-white">
-                <MapPin className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                {t.title}
-              </h3>
+              <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-800 dark:text-white">
+                <Navigation className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                {language === 'uk' ? 'Деталі маршруту' : 'Route Details'}
+              </h2>
 
               {/* Start Location */}
               <div>
@@ -1071,6 +1101,7 @@ export function RoutePlanner() {
             {/* Stats Panel */}
             <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
           </div>
+        </div>
         </div>
       </div>
     </div>
