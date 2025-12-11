@@ -3,13 +3,13 @@ import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
 import { TopChatBar } from './TopChatBar'
-import { TripDetailsForm } from './TripDetailsForm'
+import { StatsPanel } from './StatsPanel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus } from 'lucide-react'
+import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -486,6 +486,19 @@ export function RoutePlanner() {
           timestamp: Date.now()
         };
         setChatMessages(prev => [...prev, responseMsg]);
+
+        // Success toast notification
+        if (updates.length > 0) {
+          toast.success(
+            language === 'uk' ? 'Маршрут оновлено!' : 'Route updated!',
+            {
+              description: language === 'uk'
+                ? 'AI успішно обробив ваш запит'
+                : 'AI assistant processed your request successfully',
+              duration: 3000
+            }
+          );
+        }
       } else {
         setChatMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
@@ -493,19 +506,43 @@ export function RoutePlanner() {
           content: 'Sorry, I could not process your request. Please try again.',
           timestamp: Date.now()
         }]);
+
+        // Error toast - no data returned
+        toast.error(
+          language === 'uk' ? 'Не вдалося обробити запит' : 'Failed to process request',
+          {
+            description: language === 'uk'
+              ? 'AI не зміг обробити ваш запит. Спробуйте ще раз з більш детальним описом.'
+              : 'AI could not process your request. Please try again with more details.',
+            duration: 5000
+          }
+        );
       }
     } catch (e) {
       console.error(e);
+      const errorMessage = e instanceof Error ? e.message : 'Unknown error';
+
       setChatMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: 'An error occurred while processing your request.',
         timestamp: Date.now()
       }]);
+
+      // Error toast - exception occurred
+      toast.error(
+        language === 'uk' ? 'Помилка обробки' : 'Processing error',
+        {
+          description: language === 'uk'
+            ? `Виникла помилка: ${errorMessage}`
+            : `An error occurred: ${errorMessage}`,
+          duration: 5000
+        }
+      );
     } finally {
       setIsProcessingN8n(false);
     }
-  }, [chatInput, t, showWelcomeScreen]);
+  }, [chatInput, t, showWelcomeScreen, language]);
 
   // AI Insights Handler (commented out for now)
   // const handleGetAiInsights = useCallback(async () => {
@@ -890,20 +927,10 @@ export function RoutePlanner() {
         </DialogContent>
       </Dialog>
 
-      {/* Main Content: Left Sidebar + Map */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left Sidebar - Trip Details */}
-        <div className="hidden md:block">
-          <TripDetailsForm
-            waypoints={waypoints}
-            routeSettings={routeSettings}
-            onUpdateSettings={setRouteSettings}
-            onUpdateWaypointName={updateWaypointName}
-          />
-        </div>
-
-        {/* Map - Takes remaining space */}
-        <div className="flex-1 relative">
+      {/* Main Content: Map + Details Panel - Responsive Layout */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
+        {/* Map Panel - Collapsible on mobile */}
+        <div className="relative w-full lg:w-2/3 h-96 lg:h-full flex-shrink-0">
           <MapContainer
             waypoints={waypoints}
             routeGeometry={routeGeometry}
@@ -913,7 +940,7 @@ export function RoutePlanner() {
 
           {/* Instructions overlay */}
           {waypoints.length === 0 && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700">
+            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[500]">
               <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <MapPin className="h-4 w-4" />
                 <span>{t.waypoints.clickMap}</span>
@@ -922,16 +949,111 @@ export function RoutePlanner() {
           )}
         </div>
 
-        {/* Mobile: Bottom sheet for trip details */}
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 max-h-[50vh] overflow-y-auto shadow-lg">
-          <div className="p-4">
-            <div className="w-12 h-1 bg-slate-300 dark:bg-slate-600 rounded-full mx-auto mb-4"></div>
-            <TripDetailsForm
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              onUpdateSettings={setRouteSettings}
-              onUpdateWaypointName={updateWaypointName}
-            />
+        {/* Details Panel - Always visible, scrollable */}
+        <div className="w-full lg:w-1/3 flex-1 lg:flex-none overflow-y-auto bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-700">
+          <div className="p-4 space-y-4">
+            {/* Trip Details Form */}
+            <div className="space-y-4">
+              <h3 className="font-bold flex items-center gap-2 text-slate-800 dark:text-white">
+                <MapPin className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+                {t.title}
+              </h3>
+
+              {/* Start Location */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
+                  {language === 'uk' ? 'ПОЧАТОК' : 'START'}
+                </Label>
+                <Input
+                  type="text"
+                  placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
+                  value={waypoints.length > 0 ? waypoints[0].name : ''}
+                  onChange={(e) => {
+                    if (waypoints.length > 0) {
+                      updateWaypointName(waypoints[0].id, e.target.value);
+                    }
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Destination */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
+                  {language === 'uk' ? 'ПРИЗНАЧЕННЯ' : 'DESTINATION'}
+                </Label>
+                <Input
+                  type="text"
+                  placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
+                  value={waypoints.length > 1 ? waypoints[waypoints.length - 1].name : ''}
+                  onChange={(e) => {
+                    if (waypoints.length > 1) {
+                      updateWaypointName(waypoints[waypoints.length - 1].id, e.target.value);
+                    }
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Fuel Consumption */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
+                  {language === 'uk' ? 'Л/100КМ' : 'L/100KM'}
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="9.2"
+                  value={routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : ''}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(',', '.');
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setRouteSettings({ ...routeSettings, fuelConsumption: numValue });
+                      }
+                    }
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Fuel Price */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
+                  {language === 'uk' ? 'ЦІНА' : 'PRICE'}
+                </Label>
+                <Input
+                  type="text"
+                  inputMode="decimal"
+                  placeholder="55"
+                  value={routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : ''}
+                  onChange={(e) => {
+                    let value = e.target.value.replace(',', '.');
+                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      const numValue = parseFloat(value);
+                      if (!isNaN(numValue) && numValue >= 0) {
+                        setRouteSettings({ ...routeSettings, fuelCostPerLiter: numValue });
+                      }
+                    }
+                  }}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Manual Add Button */}
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowManualInputDialog(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t.buttons.addManually}
+              </Button>
+            </div>
+
+            {/* Stats Panel */}
+            <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
           </div>
         </div>
       </div>
