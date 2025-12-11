@@ -171,10 +171,22 @@ export function RoutePlanner() {
     }
   }, [isGeocoding, t])
 
-  const updateWaypoint = useCallback((id: string, lat: number, lng: number) => {
-    setWaypoints(prev => 
+  const updateWaypoint = useCallback(async (id: string, lat: number, lng: number) => {
+    // Update position immediately
+    setWaypoints(prev =>
       prev.map(wp => wp.id === id ? { ...wp, lat, lng } : wp)
     )
+
+    // Fetch new address via reverse geocoding
+    try {
+      const locationName = await geocodingService.reverseGeocode(lat, lng)
+      setWaypoints(prev =>
+        prev.map(wp => wp.id === id ? { ...wp, name: locationName } : wp)
+      )
+    } catch (error) {
+      console.error('Failed to reverse geocode on drag:', error)
+      // Keep the old name if reverse geocoding fails
+    }
   }, [])
 
   const updateWaypointName = useCallback((id: string, name: string) => {
@@ -679,32 +691,34 @@ export function RoutePlanner() {
 
   // Dashboard view with map and panels
   return (
-    <div className="flex flex-col h-screen">
-      {/* Top Chat Bar - Always visible */}
-      <TopChatBar
-        chatInput={chatInput}
-        onChatInputChange={setChatInput}
-        onSendMessage={handleSendChat}
-        isProcessing={isProcessingN8n}
-      />
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Fixed Header Section - NO SCROLL */}
+      <div className="flex-shrink-0">
+        {/* Top Chat Bar - Always visible */}
+        <TopChatBar
+          chatInput={chatInput}
+          onChatInputChange={setChatInput}
+          onSendMessage={handleSendChat}
+          isProcessing={isProcessingN8n}
+        />
 
-      {/* Header with actions */}
-      <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Navigation className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-            <h1 className="text-xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
-            {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
+        {/* Header with actions */}
+        <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Navigation className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+              <h1 className="text-xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
+              {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
+              {isEditMode && (
+                <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
+                  <Edit className="h-3 w-3" />
+                  Editing
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
             {isEditMode && (
-              <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                <Edit className="h-3 w-3" />
-                Editing
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {isEditMode && (
-              <Button variant="outline" size="sm" onClick={createNewRoute}>
+              <Button variant="outline" size="sm" onClick={createNewRoute} className="whitespace-nowrap">
                 <FilePlus className="h-4 w-4 mr-2" />
                 New Route
               </Button>
@@ -712,7 +726,7 @@ export function RoutePlanner() {
             {/* Load Route Dialog */}
             <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <Button variant="outline" size="sm" className="whitespace-nowrap">
                   <FolderOpen className="h-4 w-4 mr-2" />
                   {t.buttons.loadRoute}
                 </Button>
@@ -855,11 +869,11 @@ export function RoutePlanner() {
               </DialogContent>
             </Dialog>
 
-            <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0}>
+            <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0} className="whitespace-nowrap">
               <Upload className="h-4 w-4 mr-2" />
               {t.buttons.exportJson}
             </Button>
-            <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0}>
+            <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0} className="whitespace-nowrap">
               <Trash2 className="h-4 w-4 mr-2" />
               {t.buttons.clear}
             </Button>
@@ -867,8 +881,8 @@ export function RoutePlanner() {
         </div>
       </header>
 
-      {/* Manual Address Input Dialog */}
-      <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
+        {/* Manual Address Input Dialog */}
+        <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.dialogs.manual.title}</DialogTitle>
@@ -926,6 +940,8 @@ export function RoutePlanner() {
           </div>
         </DialogContent>
       </Dialog>
+      </div>
+      {/* End Fixed Header Section */}
 
       {/* Main Content: Map + Details Panel - Responsive Layout */}
       <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
