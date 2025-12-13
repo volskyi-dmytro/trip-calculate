@@ -85,9 +85,15 @@ jobs:
                        -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate:prod-${{ github.sha }} .
 
           echo "🔍 Verifying properties files in built Docker image BEFORE pushing..."
-          docker run --rm ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application.properties" || { echo "❌ application.properties missing from Docker image!"; exit 1; }
-          docker run --rm ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application-prod.properties" || { echo "❌ application-prod.properties missing from Docker image!"; exit 1; }
+          # Extract JAR from Docker image to verify (JRE doesn't have 'jar' command)
+          CONTAINER_ID=$(docker create ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest)
+          docker cp $CONTAINER_ID:/app/trip-calculate.jar /tmp/verify-docker.jar
+          docker rm $CONTAINER_ID
+
+          jar tf /tmp/verify-docker.jar | grep "BOOT-INF/classes/application.properties" || { echo "❌ application.properties missing from Docker image!"; exit 1; }
+          jar tf /tmp/verify-docker.jar | grep "BOOT-INF/classes/application-prod.properties" || { echo "❌ application-prod.properties missing from Docker image!"; exit 1; }
           echo "✅ Properties files verified in Docker image"
+          rm /tmp/verify-docker.jar
 
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:prod-${{ github.sha }}
@@ -159,11 +165,7 @@ jobs:
             # Pull latest image
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
 
-            # Verify JAR contents in pulled image
-            echo ""
-            echo "🔍 Verifying application.properties in Docker image..."
-            docker run --rm "${DOCKER_USERNAME}/trip-calculate:latest" jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application.properties" && echo "✅ application.properties found" || echo "❌ application.properties MISSING!"
-            docker run --rm "${DOCKER_USERNAME}/trip-calculate:latest" jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application-prod.properties" && echo "✅ application-prod.properties found" || echo "❌ application-prod.properties MISSING!"
+            # Note: JAR contents already verified in build job before pushing to registry
 
             # Stop and remove old container
             docker stop trip-calculate-prod || true
