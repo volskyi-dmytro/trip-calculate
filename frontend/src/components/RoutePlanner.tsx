@@ -738,9 +738,9 @@ export function RoutePlanner() {
 
   // Dashboard view with map and panels
   return (
-    <div className="flex flex-col h-full overflow-hidden">
+    <div className="flex flex-col min-h-screen">
       {/* SECTION 1: Fixed Header - NO SCROLL */}
-      <div className="flex-shrink-0">
+      <div className="sticky top-0 z-50 bg-white dark:bg-slate-900">
         {/* AI Assistant Input - FIXED at top */}
         <TopChatBar
           chatInput={chatInput}
@@ -997,11 +997,11 @@ export function RoutePlanner() {
       </div>
       {/* End Fixed Header Section */}
 
-      {/* SECTION 2: Main Content Area - SINGLE SCROLL */}
-      <div className="flex-1 overflow-hidden">
-        <div className="h-full flex flex-col lg:flex-row">
+      {/* SECTION 2: Main Content Area - SINGLE PAGE SCROLL */}
+      <div className="flex-1">
+        <div className="flex flex-col lg:flex-row">
           {/* LEFT: Map Container */}
-          <div className="relative w-full lg:w-2/3 h-64 lg:h-full bg-gray-100 dark:bg-gray-800">
+          <div className="relative w-full lg:w-2/3 h-[400px] lg:h-[600px] bg-gray-100 dark:bg-gray-800">
           <MapContainer
             waypoints={waypoints}
             routeGeometry={routeGeometry}
@@ -1020,8 +1020,8 @@ export function RoutePlanner() {
           )}
         </div>
 
-        {/* RIGHT: Details Panel - THIS is the ONLY scrollable section */}
-        <div className="w-full lg:w-1/3 h-full overflow-y-auto bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
+        {/* RIGHT: Details Panel - Scrolls naturally with page */}
+        <div className="w-full lg:w-1/3 bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
           <div className="p-4 space-y-6">
             {/* Route Inputs Section */}
             <div className="space-y-4">
