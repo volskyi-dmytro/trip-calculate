@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Plus } from 'lucide-react'
+import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Plus, ChevronDown, ChevronUp } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -85,6 +85,12 @@ export function RoutePlanner() {
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
   const [manualMode, setManualMode] = useState(false)
 
+  // Map visibility state (Issue #1 fix: Collapsible map)
+  const [isMapVisible, setIsMapVisible] = useState<boolean>(() => {
+    const saved = localStorage.getItem('tripCalculate_mapVisible')
+    return saved ? JSON.parse(saved) : false // Default to hidden
+  })
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
@@ -103,6 +109,11 @@ export function RoutePlanner() {
   useEffect(() => {
     localStorage.setItem('tripCalculate_routeSettings', JSON.stringify(routeSettings))
   }, [routeSettings])
+
+  // Persist map visibility to localStorage
+  useEffect(() => {
+    localStorage.setItem('tripCalculate_mapVisible', JSON.stringify(isMapVisible))
+  }, [isMapVisible])
 
   // Initialize welcome message
   useEffect(() => {
@@ -332,6 +343,10 @@ export function RoutePlanner() {
       setRouteName(route.name)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
+
+      // Issue #3 fix: Automatically show map when loading a route
+      setIsMapVisible(true)
+
       toast.success(`${t.toasts.routeLoaded} ${route.name}`)
     } catch (error) {
       console.error('Failed to load route:', error)
@@ -718,6 +733,11 @@ export function RoutePlanner() {
     setShowWelcomeScreen(false);
   }, []);
 
+  // Handler for toggling map visibility (Issue #1 fix)
+  const toggleMapVisibility = useCallback(() => {
+    setIsMapVisible(prev => !prev);
+  }, []);
+
   // If in welcome screen mode, show centered chat interface
   if (showWelcomeScreen && !manualMode) {
     return (
@@ -1000,25 +1020,56 @@ export function RoutePlanner() {
       {/* SECTION 2: Main Content Area - SINGLE PAGE SCROLL */}
       <div className="flex-1">
         <div className="flex flex-col lg:flex-row">
-          {/* LEFT: Map Container */}
-          <div className="relative w-full lg:w-2/3 h-[400px] lg:h-[600px] bg-gray-100 dark:bg-gray-800">
-          <MapContainer
-            waypoints={waypoints}
-            routeGeometry={routeGeometry}
-            onAddWaypoint={addWaypoint}
-            onUpdateWaypoint={updateWaypoint}
-          />
+          {/* LEFT: Map Container with Collapsible Section */}
+          <div className="relative w-full lg:w-2/3 bg-gray-100 dark:bg-gray-800">
+            {/* Map Toggle Button - Always Visible */}
+            <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-3">
+              <Button
+                onClick={toggleMapVisibility}
+                variant="outline"
+                className="w-full h-11 flex items-center justify-between gap-2 text-base font-medium hover:bg-accent transition-colors"
+              >
+                <div className="flex items-center gap-2">
+                  <MapPin className="h-5 w-5" />
+                  <span>{isMapVisible ? (language === 'uk' ? 'Сховати карту' : 'Hide Map') : (language === 'uk' ? 'Показати карту' : 'Show Map')}</span>
+                </div>
+                {isMapVisible ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+              </Button>
+            </div>
 
-          {/* Instructions overlay */}
-          {waypoints.length === 0 && (
-            <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[500]">
-              <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                <MapPin className="h-4 w-4" />
-                <span>{t.waypoints.clickMap}</span>
+            {/* Collapsible Map Container with Smooth Transition */}
+            <div
+              className="overflow-hidden transition-all duration-300 ease-in-out"
+              style={{
+                maxHeight: isMapVisible ? '600px' : '0px',
+                opacity: isMapVisible ? 1 : 0,
+              }}
+            >
+              <div className="h-[400px] lg:h-[600px] relative">
+                {/* Only render map when visible to improve performance */}
+                {isMapVisible && (
+                  <>
+                    <MapContainer
+                      waypoints={waypoints}
+                      routeGeometry={routeGeometry}
+                      onAddWaypoint={addWaypoint}
+                      onUpdateWaypoint={updateWaypoint}
+                    />
+
+                    {/* Instructions overlay */}
+                    {waypoints.length === 0 && (
+                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[500]">
+                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
+                          <MapPin className="h-4 w-4" />
+                          <span>{t.waypoints.clickMap}</span>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
             </div>
-          )}
-        </div>
+          </div>
 
         {/* RIGHT: Details Panel - Scrolls naturally with page */}
         <div className="w-full lg:w-1/3 bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">

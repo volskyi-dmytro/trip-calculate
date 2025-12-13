@@ -22,8 +22,15 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const mapRef = useRef<L.Map | null>(null)
   const markersRef = useRef<Map<string, L.Marker>>(new Map())
   const polylineRef = useRef<L.Polyline | null>(null)
+  // Use ref to store callback to avoid map re-initialization on language change (Issue #2 fix)
+  const onAddWaypointRef = useRef(onAddWaypoint)
 
-  // Initialize map
+  // Update callback ref when it changes
+  useEffect(() => {
+    onAddWaypointRef.current = onAddWaypoint
+  }, [onAddWaypoint])
+
+  // Initialize map ONCE - never re-run this effect (Issue #2 fix)
   useEffect(() => {
     if (!mapRef.current) {
       const map = L.map('map').setView([50.4501, 30.5234], 6) // Center on Ukraine
@@ -33,9 +40,9 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         maxZoom: 19,
       }).addTo(map)
 
-      // Add click handler for adding waypoints
+      // Add click handler using ref to avoid re-initialization
       map.on('click', (e) => {
-        onAddWaypoint(e.latlng.lat, e.latlng.lng)
+        onAddWaypointRef.current(e.latlng.lat, e.latlng.lng)
       })
 
       mapRef.current = map
@@ -47,13 +54,18 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         mapRef.current = null
       }
     }
-  }, [onAddWaypoint])
+  }, []) // Empty dependency array - only run once
 
-  // Update markers and route line
+  // Update markers and route line (Issue #2 & #3 fix: Properly handle language changes and route loading)
   useEffect(() => {
     if (!mapRef.current) return
 
     const map = mapRef.current
+
+    // Ensure map is properly sized (important when becoming visible)
+    setTimeout(() => {
+      map.invalidateSize()
+    }, 100)
 
     // Remove markers that no longer exist
     markersRef.current.forEach((marker, id) => {
@@ -93,14 +105,14 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       } else {
         // Update existing marker position and icon
         marker.setLatLng([waypoint.lat, waypoint.lng])
-        
+
         const icon = L.divIcon({
           html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
           className: 'custom-marker',
           iconSize: [32, 32],
           iconAnchor: [16, 16],
         })
-        
+
         marker.setIcon(icon)
         marker.setPopupContent(waypoint.name)
       }
@@ -119,10 +131,18 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         opacity: 0.7,
       }).addTo(map)
 
-      // Fit bounds to show all waypoints
-      map.fitBounds(polylineRef.current.getBounds(), { padding: [50, 50] })
+      // Fit bounds to show all waypoints (Issue #3 fix: Ensure proper zoom)
+      setTimeout(() => {
+        map.fitBounds(polylineRef.current!.getBounds(), { padding: [50, 50] })
+      }, 150)
     } else if (waypoints.length === 1) {
       map.setView([waypoints[0].lat, waypoints[0].lng], 10)
+    } else if (waypoints.length > 1) {
+      // If we have waypoints but no geometry yet, fit to waypoint bounds
+      const bounds = L.latLngBounds(waypoints.map(wp => [wp.lat, wp.lng]))
+      setTimeout(() => {
+        map.fitBounds(bounds, { padding: [50, 50] })
+      }, 150)
     }
   }, [waypoints, routeGeometry, onUpdateWaypoint])
 
