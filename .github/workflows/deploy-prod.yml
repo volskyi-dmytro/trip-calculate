@@ -150,6 +150,12 @@ jobs:
             # Pull latest image
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
 
+            # Verify JAR contents in pulled image
+            echo ""
+            echo "🔍 Verifying application.properties in Docker image..."
+            docker run --rm "${DOCKER_USERNAME}/trip-calculate:latest" jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application.properties" && echo "✅ application.properties found" || echo "❌ application.properties MISSING!"
+            docker run --rm "${DOCKER_USERNAME}/trip-calculate:latest" jar tf /app/trip-calculate.jar | grep "BOOT-INF/classes/application-prod.properties" && echo "✅ application-prod.properties found" || echo "❌ application-prod.properties MISSING!"
+
             # Stop and remove old container
             docker stop trip-calculate-prod || true
             docker rm trip-calculate-prod || true
@@ -194,29 +200,41 @@ jobs:
             # Comprehensive health check with database verification
             echo ""
             echo "⏳ Waiting for application to start..."
-            sleep 15
+            echo "📊 Monitoring startup progress..."
 
-            echo "🏥 Running health checks..."
+            # Wait with progress monitoring - Spring Boot apps can take 30-60 seconds
+            RETRY_COUNT=0
+            MAX_RETRIES=12
+            RETRY_INTERVAL=5
 
-            # Application health endpoint
-            if curl -f http://localhost:8080/actuator/health >/dev/null 2>&1; then
-              echo "✅ Application health check passed"
-              curl -s http://localhost:8080/actuator/health | grep -o '"status":"[^"]*"'
-            else
-              echo "❌ Health check failed!"
-              echo ""
-              echo "📋 Last 30 lines of application logs:"
-              docker logs trip-calculate-prod --tail 30
-              echo ""
-              echo "🗄️ Database container status:"
-              docker ps -a | grep trip-calculate-db
-              echo ""
-              echo "🌐 Network connectivity:"
-              docker exec trip-calculate-prod ping -c 2 trip-calculate-db 2>&1 || echo "Cannot ping database"
-              echo ""
-              echo "❌ Deployment failed - health check unsuccessful"
-              exit 1
-            fi
+            while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
+              sleep $RETRY_INTERVAL
+              RETRY_COUNT=$((RETRY_COUNT + 1))
+
+              echo "⏳ Attempt $RETRY_COUNT/$MAX_RETRIES - checking health endpoint..."
+
+              if curl -f http://localhost:8080/actuator/health >/dev/null 2>&1; then
+                echo "✅ Application health check passed on attempt $RETRY_COUNT"
+                curl -s http://localhost:8080/actuator/health | grep -o '"status":"[^"]*"'
+                break
+              fi
+
+              if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                echo "❌ Health check failed after $MAX_RETRIES attempts!"
+                echo ""
+                echo "📋 Full application logs:"
+                docker logs trip-calculate-prod
+                echo ""
+                echo "🗄️ Database container status:"
+                docker ps -a | grep trip-calculate-db
+                echo ""
+                echo "🌐 Network connectivity:"
+                docker exec trip-calculate-prod ping -c 2 trip-calculate-db 2>&1 || echo "Cannot ping database"
+                echo ""
+                echo "❌ Deployment failed - health check unsuccessful after 60 seconds"
+                exit 1
+              fi
+            done
 
             # Check for database connection errors in logs
             if docker logs trip-calculate-prod --tail 50 | grep -qi "connection.*refused\|unable to.*database\|authentication.*failed"; then
