@@ -196,9 +196,13 @@ export function RoutePlannerPage() {
 
   // Has access - show route planner
   return (
-    <>
-      <Header />
-      <RoutePlanner />
-    </>
+    <div className="flex flex-col h-screen overflow-hidden">
+      <div className="flex-shrink-0">
+        <Header />
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <RoutePlanner />
+      </div>
+    </div>
   );
 }

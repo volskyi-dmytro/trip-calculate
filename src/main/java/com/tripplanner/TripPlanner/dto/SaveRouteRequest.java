@@ -24,6 +24,10 @@ public class SaveRouteRequest {
     @Size(max = 10)
     private String currency;
 
+    @Min(value = 1, message = "At least 1 passenger required")
+    @Max(value = 99, message = "Maximum 99 passengers allowed")
+    private Integer passengerCount = 1;
+
     @NotNull
     @Size(min = 2, message = "At least 2 waypoints required")
     private List<WaypointDTO> waypoints;

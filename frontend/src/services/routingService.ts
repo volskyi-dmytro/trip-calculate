@@ -35,19 +35,24 @@ export const routingService = {
 
       const url = `https://router.project-osrm.org/route/v1/driving/${coordinates}?overview=full&geometries=geojson&steps=true`;
 
+      console.log('🗺️ Requesting route from OSRM:', url);
+
       const response = await fetch(url);
 
       if (!response.ok) {
-        throw new Error('Routing failed');
+        console.error('❌ OSRM API returned error:', response.status, response.statusText);
+        throw new Error(`Routing API error: ${response.status}`);
       }
 
       const data = await response.json();
 
       if (data.code !== 'Ok' || !data.routes || data.routes.length === 0) {
-        throw new Error('No route found');
+        console.error('❌ OSRM returned no routes:', data);
+        throw new Error('No route found between waypoints');
       }
 
       const route = data.routes[0];
+      console.log('✅ Route found! Distance:', (route.distance / 1000).toFixed(2), 'km, Duration:', (route.duration / 60).toFixed(0), 'min');
 
       // Convert GeoJSON coordinates [lng, lat] to [lat, lng] for Leaflet
       const geometry: Array<[number, number]> = route.geometry.coordinates.map(
@@ -70,8 +75,9 @@ export const routingService = {
         segments,
       };
     } catch (error) {
-      console.error('Routing error:', error);
+      console.error('❌ Routing service error:', error);
       // Fallback to straight lines if routing fails
+      console.warn('⚠️ Falling back to straight-line rendering');
       return {
         totalDistance: 0,
         totalDuration: 0,

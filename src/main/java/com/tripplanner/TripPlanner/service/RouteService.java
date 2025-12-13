@@ -44,6 +44,7 @@ public class RouteService {
         route.setFuelConsumption(request.getFuelConsumption());
         route.setFuelCostPerLiter(request.getFuelCostPerLiter());
         route.setCurrency(request.getCurrency());
+        route.setPassengerCount(request.getPassengerCount() != null ? request.getPassengerCount() : 1);
 
         // Calculate totals
         BigDecimal totalDistance = calculateTotalDistance(request.getWaypoints());
@@ -82,6 +83,7 @@ public class RouteService {
         route.setFuelConsumption(request.getFuelConsumption());
         route.setFuelCostPerLiter(request.getFuelCostPerLiter());
         route.setCurrency(request.getCurrency());
+        route.setPassengerCount(request.getPassengerCount() != null ? request.getPassengerCount() : 1);
 
         // Clear existing waypoints
         route.getWaypoints().clear();
@@ -168,6 +170,7 @@ public class RouteService {
         dto.setFuelConsumption(route.getFuelConsumption());
         dto.setFuelCostPerLiter(route.getFuelCostPerLiter());
         dto.setCurrency(route.getCurrency());
+        dto.setPassengerCount(route.getPassengerCount());
         dto.setTotalDistance(route.getTotalDistance());
         dto.setTotalCost(route.getTotalCost());
         dto.setCreatedAt(route.getCreatedAt());

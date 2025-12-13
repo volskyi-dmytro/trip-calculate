@@ -34,6 +34,9 @@ public class Route {
     @Column(nullable = false)
     private String currency = "UAH";
 
+    @Column(name = "passenger_count")
+    private Integer passengerCount = 1;
+
     @Column(name = "total_distance")
     private BigDecimal totalDistance;
 

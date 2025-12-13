@@ -12,6 +12,7 @@ public class RouteDTO {
     private BigDecimal fuelConsumption;
     private BigDecimal fuelCostPerLiter;
     private String currency;
+    private Integer passengerCount;
     private BigDecimal totalDistance;
     private BigDecimal totalCost;
     private List<WaypointDTO> waypoints;

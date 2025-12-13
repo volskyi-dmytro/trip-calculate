@@ -16,6 +16,7 @@ export interface Route {
   fuelConsumption: number;
   fuelCostPerLiter: number;
   currency: string;
+  passengerCount?: number;
   totalDistance?: number;
   totalCost?: number;
   waypoints: Waypoint[];

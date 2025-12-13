@@ -32,6 +32,7 @@ export interface RouteSettings {
   fuelConsumption: number
   fuelCostPerLiter: number
   currency: string
+  passengerCount: number
 }
 
 export function RoutePlanner() {
@@ -50,7 +51,8 @@ export function RoutePlanner() {
     return saved ? JSON.parse(saved) : {
       fuelConsumption: 9.2,
       fuelCostPerLiter: 55,
-      currency: 'UAH'
+      currency: 'UAH',
+      passengerCount: 1
     }
   })
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
@@ -60,6 +62,8 @@ export function RoutePlanner() {
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([])
+  const [routeDistance, setRouteDistance] = useState<number>(0) // in km from OSRM
+  const [routeDuration, setRouteDuration] = useState<number>(0) // in minutes from OSRM
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [showManualInputDialog, setShowManualInputDialog] = useState(false)
   const [manualAddress, setManualAddress] = useState('')
@@ -134,16 +138,29 @@ export function RoutePlanner() {
     const updateRoute = async () => {
       if (waypoints.length < 2) {
         setRouteGeometry([])
+        setRouteDistance(0)
+        setRouteDuration(0)
         return
       }
 
       try {
         const route = await routingService.getRoute(waypoints)
         setRouteGeometry(route.geometry)
+        setRouteDistance(route.totalDistance)
+        setRouteDuration(route.totalDuration)
+
+        // Log routing success/failure for debugging
+        if (route.totalDistance > 0) {
+          console.log('✅ Road-based route calculated:', route.totalDistance.toFixed(2), 'km')
+        } else {
+          console.warn('⚠️ Using straight-line fallback (routing failed)')
+        }
       } catch (error) {
         console.error('Failed to calculate route:', error)
         // Fallback to straight lines
         setRouteGeometry(waypoints.map(w => [w.lat, w.lng]))
+        setRouteDistance(0)
+        setRouteDuration(0)
       }
     }
 
@@ -258,6 +275,7 @@ export function RoutePlanner() {
         fuelConsumption: routeSettings.fuelConsumption,
         fuelCostPerLiter: routeSettings.fuelCostPerLiter,
         currency: routeSettings.currency,
+        passengerCount: routeSettings.passengerCount,
         waypoints: waypoints.map((wp, index) => ({
           positionOrder: index,
           name: wp.name,
@@ -308,7 +326,8 @@ export function RoutePlanner() {
       setRouteSettings({
         fuelConsumption: route.fuelConsumption,
         fuelCostPerLiter: route.fuelCostPerLiter,
-        currency: route.currency
+        currency: route.currency,
+        passengerCount: route.passengerCount || 1
       })
       setRouteName(route.name)
       setShowLoadDialog(false)
@@ -443,6 +462,12 @@ export function RoutePlanner() {
         // Update currency
         if (n8nData.currency) {
           setRouteSettings(prev => ({ ...prev, currency: n8nData.currency! }));
+        }
+
+        // Update passenger count
+        if (n8nData.passengers) {
+          setRouteSettings(prev => ({ ...prev, passengerCount: n8nData.passengers! }));
+          updates.push(`${language === 'uk' ? 'Пасажири' : 'Passengers'}: ${n8nData.passengers}`);
         }
 
         // Add waypoints from n8n data
@@ -713,7 +738,7 @@ export function RoutePlanner() {
 
   // Dashboard view with map and panels
   return (
-    <div className="flex flex-col h-screen overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       {/* SECTION 1: Fixed Header - NO SCROLL */}
       <div className="flex-shrink-0">
         {/* AI Assistant Input - FIXED at top */}
@@ -1087,6 +1112,31 @@ export function RoutePlanner() {
                 />
               </div>
 
+              {/* Passenger Count */}
+              <div>
+                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
+                  {language === 'uk' ? 'ПАСАЖИРИ' : 'PASSENGERS'}
+                </Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="1"
+                  min="1"
+                  max="99"
+                  value={routeSettings.passengerCount > 0 ? routeSettings.passengerCount : ''}
+                  onChange={(e) => {
+                    const numValue = parseInt(e.target.value, 10);
+                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 99) {
+                      setRouteSettings({ ...routeSettings, passengerCount: numValue });
+                    } else if (e.target.value === '') {
+                      // Allow clearing the field temporarily
+                      setRouteSettings({ ...routeSettings, passengerCount: 1 });
+                    }
+                  }}
+                  className="w-full"
+                />
+              </div>
+
               {/* Manual Add Button */}
               <Button
                 variant="outline"
@@ -1099,7 +1149,12 @@ export function RoutePlanner() {
             </div>
 
             {/* Stats Panel */}
-            <StatsPanel waypoints={waypoints} routeSettings={routeSettings} />
+            <StatsPanel
+              waypoints={waypoints}
+              routeSettings={routeSettings}
+              routeDistance={routeDistance}
+              routeDuration={routeDuration}
+            />
           </div>
         </div>
         </div>
