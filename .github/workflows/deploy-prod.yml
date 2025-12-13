@@ -55,10 +55,18 @@ jobs:
       - name: Build Spring Boot JAR
         run: |
           echo "🔨 Building Production JAR..."
-          mvn clean package -DskipTests -Pprod
-          
-          echo "✅ Verifying JAR contents..."
+          mvn clean package -DskipTests
+
+          echo "✅ Verifying static assets in JAR..."
           jar tf target/*.jar | grep "BOOT-INF/classes/static/index.html" || { echo "❌ index.html not in JAR!"; exit 1; }
+
+          echo "✅ Verifying application.properties in JAR..."
+          jar tf target/*.jar | grep "BOOT-INF/classes/application.properties" || { echo "❌ application.properties not in JAR!"; exit 1; }
+
+          echo "✅ Verifying application-prod.properties in JAR..."
+          jar tf target/*.jar | grep "BOOT-INF/classes/application-prod.properties" || { echo "❌ application-prod.properties not in JAR!"; exit 1; }
+
+          echo "✅ All required files verified in JAR"
 
       # Build and push Docker image with production tag
       - uses: docker/setup-buildx-action@v3
