@@ -19,8 +19,15 @@ public class RoutingService {
     );
 
     public RoutingService() {
-        this.restTemplate = new RestTemplate();
-        // Configure timeout
+        // Configure RestTemplate with aggressive timeouts
+        // OSRM public servers are very slow/overloaded, so fail fast and move to next server
+        var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(3000);  // 3 seconds to establish connection
+        factory.setReadTimeout(10000);     // 10 seconds to read response
+        // Total max wait per server: 13 seconds
+        // With 2 servers: max 26 seconds before fallback
+
+        this.restTemplate = new RestTemplate(factory);
         this.restTemplate.getInterceptors().add((request, body, execution) -> {
             request.getHeaders().add("Accept", "application/json");
             return execution.execute(request, body);
