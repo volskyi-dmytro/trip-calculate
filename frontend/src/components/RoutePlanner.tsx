@@ -147,24 +147,43 @@ export function RoutePlanner() {
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
     const updateRoute = async () => {
+      console.log('🟢 [PLANNER] Waypoints changed, count:', waypoints.length);
+
       if (waypoints.length < 2) {
+        console.log('🟢 [PLANNER] Less than 2 waypoints, clearing route');
         setRouteGeometry([])
         setRouteDistance(0)
         setRouteDuration(0)
         return
       }
 
+      console.log('🟢 [PLANNER] Calling calculateRoute...');
+      console.log('🟢 [PLANNER] Waypoints:', waypoints.map(w => ({ id: w.id, name: w.name, lat: w.lat, lng: w.lng })));
+
       try {
         const route = await routingService.getRoute(waypoints)
+
+        console.log('🟢 [PLANNER] Received route result:', {
+          totalDistance: route.totalDistance,
+          totalDuration: route.totalDuration,
+          geometryPoints: route.geometry.length,
+          hasGeometry: route.geometry.length > 0
+        });
+        console.log('🟢 [PLANNER] First 5 geometry points:', route.geometry.slice(0, 5));
+
         setRouteGeometry(route.geometry)
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
 
+        console.log('🟢 [PLANNER] State updated with route geometry');
+
         // Log routing success/failure for debugging
         if (route.totalDistance > 0) {
-          console.log('✅ Road-based route calculated:', route.totalDistance.toFixed(2), 'km')
+          console.log('✅ [PLANNER] Road-based route calculated:', route.totalDistance.toFixed(2), 'km');
+          console.log('✅ [PLANNER] Route geometry has', route.geometry.length, 'points');
         } else {
-          console.warn('⚠️ Using straight-line fallback (routing failed)')
+          console.warn('⚠️ [PLANNER] Using straight-line fallback (routing failed)');
+          console.warn('⚠️ [PLANNER] Geometry:', route.geometry);
           // Notify user that routing service failed
           toast.warning(
             language === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
@@ -177,9 +196,11 @@ export function RoutePlanner() {
           )
         }
       } catch (error) {
-        console.error('Failed to calculate route:', error)
+        console.error('❌ [PLANNER] Failed to calculate route:', error);
         // Fallback to straight lines
-        setRouteGeometry(waypoints.map(w => [w.lat, w.lng]))
+        const fallbackGeometry = waypoints.map(w => [w.lat, w.lng] as [number, number]);
+        console.error('❌ [PLANNER] Using fallback geometry:', fallbackGeometry);
+        setRouteGeometry(fallbackGeometry)
         setRouteDistance(0)
         setRouteDuration(0)
         toast.error(

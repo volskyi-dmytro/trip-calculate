@@ -58,7 +58,12 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
   // Update markers and route line (Issue #2 & #3 fix: Properly handle language changes and route loading)
   useEffect(() => {
-    if (!mapRef.current) return
+    console.log('🟣 [MAP] Effect triggered - waypoints:', waypoints.length, 'geometry points:', routeGeometry.length);
+
+    if (!mapRef.current) {
+      console.warn('⚠️ [MAP] Map not initialized yet');
+      return;
+    }
 
     const map = mapRef.current
 
@@ -76,6 +81,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     })
 
     // Add or update markers
+    console.log('🟣 [MAP] Updating', waypoints.length, 'markers');
     waypoints.forEach((waypoint, index) => {
       let marker = markersRef.current.get(waypoint.id)
 
@@ -102,6 +108,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         })
 
         markersRef.current.set(waypoint.id, marker)
+        console.log('🟣 [MAP] Created new marker', index + 1, 'at', waypoint.lat, waypoint.lng);
       } else {
         // Update existing marker position and icon
         marker.setLatLng([waypoint.lat, waypoint.lng])
@@ -115,34 +122,50 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
         marker.setIcon(icon)
         marker.setPopupContent(waypoint.name)
+        console.log('🟣 [MAP] Updated existing marker', index + 1);
       }
     })
 
     // Update route line - use road-based geometry if available
     if (polylineRef.current) {
+      console.log('🟣 [MAP] Removing existing polyline');
       polylineRef.current.remove()
       polylineRef.current = null
     }
 
     if (routeGeometry.length > 0) {
+      console.log('🟣 [MAP] Creating polyline with', routeGeometry.length, 'points');
+      console.log('🟣 [MAP] First 5 points:', routeGeometry.slice(0, 5));
+      console.log('🟣 [MAP] Last 5 points:', routeGeometry.slice(-5));
+
       polylineRef.current = L.polyline(routeGeometry, {
         color: '#3b82f6',
         weight: 4,
         opacity: 0.7,
       }).addTo(map)
 
+      console.log('✅ [MAP] Polyline added to map');
+
       // Fit bounds to show all waypoints (Issue #3 fix: Ensure proper zoom)
       setTimeout(() => {
-        map.fitBounds(polylineRef.current!.getBounds(), { padding: [50, 50] })
+        if (polylineRef.current) {
+          const bounds = polylineRef.current.getBounds();
+          console.log('🟣 [MAP] Fitting map to polyline bounds:', bounds);
+          map.fitBounds(bounds, { padding: [50, 50] });
+        }
       }, 150)
     } else if (waypoints.length === 1) {
+      console.log('🟣 [MAP] Single waypoint, centering map');
       map.setView([waypoints[0].lat, waypoints[0].lng], 10)
     } else if (waypoints.length > 1) {
       // If we have waypoints but no geometry yet, fit to waypoint bounds
+      console.log('🟣 [MAP] Multiple waypoints but no geometry, fitting to waypoint bounds');
       const bounds = L.latLngBounds(waypoints.map(wp => [wp.lat, wp.lng]))
       setTimeout(() => {
         map.fitBounds(bounds, { padding: [50, 50] })
       }, 150)
+    } else {
+      console.log('🟣 [MAP] No waypoints or geometry to display');
     }
   }, [waypoints, routeGeometry, onUpdateWaypoint])
 
