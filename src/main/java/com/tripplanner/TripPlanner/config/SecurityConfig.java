@@ -77,7 +77,7 @@ public class SecurityConfig {
                 // Enable CSRF protection (OAuth2 requires it)
                 .csrf(csrf -> csrf
                         // Disable CSRF only for public API endpoints
-                        .ignoringRequestMatchers("/calculate")
+                        .ignoringRequestMatchers("/calculate", "/api/routing/**")
                         // Use cookie-based CSRF tokens for JavaScript access
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         // Set token handler to ensure tokens are loaded
@@ -162,8 +162,8 @@ public class SecurityConfig {
                         // OAuth and error pages
                         .requestMatchers("/error", "/oauth2/**", "/login/**").permitAll()
 
-                        // Public API endpoints for auth status check, CSRF token, and avatar proxy
-                        .requestMatchers("/api/user/me", "/api/user/status", "/api/user/csrf", "/api/avatar/proxy").permitAll()
+                        // Public API endpoints for auth status check, CSRF token, avatar proxy, and routing
+                        .requestMatchers("/api/user/me", "/api/user/status", "/api/user/csrf", "/api/avatar/proxy", "/api/routing/**").permitAll()
 
                         // Admin API endpoints (role-based access via @PreAuthorize)
                         .requestMatchers("/api/admin/**").authenticated()
