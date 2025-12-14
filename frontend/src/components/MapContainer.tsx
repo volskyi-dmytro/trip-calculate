@@ -1,76 +1,177 @@
 import { useEffect, useRef } from 'react'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
+import mapboxgl from 'mapbox-gl'
+import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Waypoint } from './RoutePlanner'
-
-// Fix for default marker icons in Leaflet
-delete (L.Icon.Default.prototype as any)._getIconUrl
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-})
+import { useTheme } from '../contexts/ThemeContext'
 
 interface MapContainerProps {
   waypoints: Waypoint[]
-  routeGeometry: Array<[number, number]>
+  routeGeometry: Array<[number, number]> // [lat, lng] format from OSRM
   onAddWaypoint: (lat: number, lng: number) => void
   onUpdateWaypoint: (id: string, lat: number, lng: number) => void
 }
 
 export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint }: MapContainerProps) {
-  const mapRef = useRef<L.Map | null>(null)
-  const markersRef = useRef<Map<string, L.Marker>>(new Map())
-  const polylineRef = useRef<L.Polyline | null>(null)
-  // Use ref to store callback to avoid map re-initialization on language change (Issue #2 fix)
+  const mapRef = useRef<mapboxgl.Map | null>(null)
+  const mapContainerRef = useRef<HTMLDivElement>(null)
+  const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const onAddWaypointRef = useRef(onAddWaypoint)
+  const { theme } = useTheme()
 
   // Update callback ref when it changes
   useEffect(() => {
     onAddWaypointRef.current = onAddWaypoint
   }, [onAddWaypoint])
 
-  // Initialize map ONCE - never re-run this effect (Issue #2 fix)
+  // Initialize map ONCE - never re-run this effect
   useEffect(() => {
-    if (!mapRef.current) {
-      const map = L.map('map').setView([50.4501, 30.5234], 6) // Center on Ukraine
+    if (!mapContainerRef.current || mapRef.current) return
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors',
-        maxZoom: 19,
-      }).addTo(map)
+    // Set Mapbox access token from environment variable
+    mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN || ''
 
-      // Add click handler using ref to avoid re-initialization
-      map.on('click', (e) => {
-        onAddWaypointRef.current(e.latlng.lat, e.latlng.lng)
-      })
-
-      mapRef.current = map
+    if (!mapboxgl.accessToken) {
+      console.error('⚠️ [MAP] VITE_MAPBOX_TOKEN is not set. Map will not load.')
+      return
     }
 
+    // Create map instance
+    const map = new mapboxgl.Map({
+      container: mapContainerRef.current,
+      style: theme === 'dark'
+        ? 'mapbox://styles/mapbox/dark-v11'
+        : 'mapbox://styles/mapbox/streets-v12',
+      center: [30.5234, 50.4501], // [lng, lat] - Kyiv, Ukraine (Mapbox uses lng-first!)
+      zoom: 6,
+      projection: 'mercator' as any, // Explicitly set to mercator (not globe)
+    })
+
+    // Add navigation controls
+    map.addControl(new mapboxgl.NavigationControl(), 'top-right')
+
+    // Add click handler to add waypoints
+    map.on('click', (e) => {
+      const { lat, lng } = e.lngLat
+      onAddWaypointRef.current(lat, lng)
+    })
+
+    // Wait for map to load before adding initial data
+    map.on('load', () => {
+      console.log('✅ [MAP] Mapbox GL JS initialized')
+
+      // Add source for route line (initially empty)
+      if (!map.getSource('route')) {
+        map.addSource('route', {
+          type: 'geojson',
+          data: {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: []
+            }
+          }
+        })
+
+        // Add layer for route line
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6', // Tailwind blue-500
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        })
+      }
+    })
+
+    mapRef.current = map
+
+    // Cleanup on unmount
     return () => {
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
       }
     }
-  }, []) // Empty dependency array - only run once
+  }, []) // Empty dependency array - only run once (theme is handled separately)
 
-  // Update markers and route line (Issue #2 & #3 fix: Properly handle language changes and route loading)
+  // Handle theme changes - update map style
   useEffect(() => {
-    console.log('🟣 [MAP] Effect triggered - waypoints:', waypoints.length, 'geometry points:', routeGeometry.length);
+    if (!mapRef.current) return
+
+    const map = mapRef.current
+    const newStyle = theme === 'dark'
+      ? 'mapbox://styles/mapbox/dark-v11'
+      : 'mapbox://styles/mapbox/streets-v12'
+
+    // Check if style needs to change
+    const currentStyle = map.getStyle()
+    if (currentStyle && currentStyle.sprite && currentStyle.sprite.includes(theme === 'dark' ? 'dark' : 'streets')) {
+      return // Style already matches theme
+    }
+
+    console.log('🎨 [MAP] Switching theme to:', theme)
+
+    // Store current route data before style change
+    const routeData = map.getSource('route')
+      ? (map.getSource('route') as mapboxgl.GeoJSONSource)._data
+      : null
+
+    map.setStyle(newStyle)
+
+    // Re-add layers after style loads
+    map.once('style.load', () => {
+      console.log('🎨 [MAP] Style loaded, re-adding route layer')
+
+      // Re-add route source and layer
+      if (!map.getSource('route')) {
+        map.addSource('route', {
+          type: 'geojson',
+          data: routeData || {
+            type: 'Feature',
+            properties: {},
+            geometry: {
+              type: 'LineString',
+              coordinates: []
+            }
+          }
+        })
+
+        map.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          layout: {
+            'line-join': 'round',
+            'line-cap': 'round'
+          },
+          paint: {
+            'line-color': '#3b82f6',
+            'line-width': 4,
+            'line-opacity': 0.8
+          }
+        })
+      }
+    })
+  }, [theme])
+
+  // Update markers and route line when waypoints or geometry change
+  useEffect(() => {
+    console.log('🟣 [MAP] Effect triggered - waypoints:', waypoints.length, 'geometry points:', routeGeometry.length)
 
     if (!mapRef.current) {
-      console.warn('⚠️ [MAP] Map not initialized yet');
-      return;
+      console.warn('⚠️ [MAP] Map not initialized yet')
+      return
     }
 
     const map = mapRef.current
-
-    // Ensure map is properly sized (important when becoming visible)
-    setTimeout(() => {
-      map.invalidateSize()
-    }, 100)
 
     // Remove markers that no longer exist
     markersRef.current.forEach((marker, id) => {
@@ -81,93 +182,160 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     })
 
     // Add or update markers
-    console.log('🟣 [MAP] Updating', waypoints.length, 'markers');
+    console.log('🟣 [MAP] Updating', waypoints.length, 'markers')
     waypoints.forEach((waypoint, index) => {
       let marker = markersRef.current.get(waypoint.id)
 
       if (!marker) {
-        // Create custom icon with number
-        const icon = L.divIcon({
-          html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
-          className: 'custom-marker',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-        })
+        // Create custom HTML marker element with number
+        const el = document.createElement('div')
+        el.className = 'custom-mapbox-marker'
+        el.style.cssText = `
+          background-color: #3b82f6;
+          color: white;
+          border-radius: 50%;
+          width: 32px;
+          height: 32px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: bold;
+          border: 3px solid white;
+          box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+          cursor: grab;
+          font-size: 14px;
+        `
+        el.textContent = (index + 1).toString()
 
-        marker = L.marker([waypoint.lat, waypoint.lng], {
-          icon,
+        // Create marker at waypoint position (Mapbox uses [lng, lat])
+        marker = new mapboxgl.Marker({
+          element: el,
           draggable: true,
-        }).addTo(map)
-
-        marker.bindPopup(waypoint.name)
+          anchor: 'center'
+        })
+          .setLngLat([waypoint.lng, waypoint.lat])
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
+          .addTo(map)
 
         // Handle marker drag
         marker.on('dragend', () => {
-          const pos = marker!.getLatLng()
-          onUpdateWaypoint(waypoint.id, pos.lat, pos.lng)
+          const lngLat = marker!.getLngLat()
+          onUpdateWaypoint(waypoint.id, lngLat.lat, lngLat.lng)
         })
 
         markersRef.current.set(waypoint.id, marker)
-        console.log('🟣 [MAP] Created new marker', index + 1, 'at', waypoint.lat, waypoint.lng);
+        console.log('🟣 [MAP] Created new marker', index + 1, 'at', waypoint.lat, waypoint.lng)
       } else {
-        // Update existing marker position and icon
-        marker.setLatLng([waypoint.lat, waypoint.lng])
+        // Update existing marker position and number
+        marker.setLngLat([waypoint.lng, waypoint.lat])
 
-        const icon = L.divIcon({
-          html: `<div style="background-color: #3b82f6; color: white; border-radius: 50%; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font-weight: bold; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3);">${index + 1}</div>`,
-          className: 'custom-marker',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16],
-        })
+        const el = marker.getElement()
+        el.textContent = (index + 1).toString()
 
-        marker.setIcon(icon)
-        marker.setPopupContent(waypoint.name)
-        console.log('🟣 [MAP] Updated existing marker', index + 1);
+        marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
+        console.log('🟣 [MAP] Updated existing marker', index + 1)
       }
     })
 
-    // Update route line - use road-based geometry if available
-    if (polylineRef.current) {
-      console.log('🟣 [MAP] Removing existing polyline');
-      polylineRef.current.remove()
-      polylineRef.current = null
-    }
-
+    // Update route line - convert from [lat, lng] to [lng, lat] for Mapbox
     if (routeGeometry.length > 0) {
-      console.log('🟣 [MAP] Creating polyline with', routeGeometry.length, 'points');
-      console.log('🟣 [MAP] First 5 points:', routeGeometry.slice(0, 5));
-      console.log('🟣 [MAP] Last 5 points:', routeGeometry.slice(-5));
+      console.log('🟣 [MAP] Updating route geometry with', routeGeometry.length, 'points')
+      console.log('🟣 [MAP] First point (Leaflet format):', routeGeometry[0])
 
-      polylineRef.current = L.polyline(routeGeometry, {
-        color: '#3b82f6',
-        weight: 4,
-        opacity: 0.7,
-      }).addTo(map)
+      // Convert OSRM geometry from [lat, lng] to Mapbox [lng, lat]
+      const mapboxCoordinates = routeGeometry.map(([lat, lng]) => [lng, lat])
+      console.log('🟣 [MAP] First point (Mapbox format):', mapboxCoordinates[0])
 
-      console.log('✅ [MAP] Polyline added to map');
+      const source = map.getSource('route') as mapboxgl.GeoJSONSource
+      if (source) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: mapboxCoordinates
+          }
+        })
 
-      // Fit bounds to show all waypoints (Issue #3 fix: Ensure proper zoom)
-      setTimeout(() => {
-        if (polylineRef.current) {
-          const bounds = polylineRef.current.getBounds();
-          console.log('🟣 [MAP] Fitting map to polyline bounds:', bounds);
-          map.fitBounds(bounds, { padding: [50, 50] });
+        console.log('✅ [MAP] Route geometry updated')
+
+        // Fit bounds to show entire route
+        if (mapboxCoordinates.length > 0) {
+          const bounds = mapboxCoordinates.reduce(
+            (bounds, coord) => bounds.extend(coord as [number, number]),
+            new mapboxgl.LngLatBounds(mapboxCoordinates[0] as [number, number], mapboxCoordinates[0] as [number, number])
+          )
+
+          map.fitBounds(bounds, {
+            padding: 50,
+            duration: 300
+          })
         }
-      }, 150)
+      }
     } else if (waypoints.length === 1) {
-      console.log('🟣 [MAP] Single waypoint, centering map');
-      map.setView([waypoints[0].lat, waypoints[0].lng], 10)
+      // Single waypoint - center on it
+      console.log('🟣 [MAP] Single waypoint, centering map')
+      map.flyTo({
+        center: [waypoints[0].lng, waypoints[0].lat],
+        zoom: 10,
+        duration: 300
+      })
+
+      // Clear route line
+      const source = map.getSource('route') as mapboxgl.GeoJSONSource
+      if (source) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          }
+        })
+      }
     } else if (waypoints.length > 1) {
-      // If we have waypoints but no geometry yet, fit to waypoint bounds
-      console.log('🟣 [MAP] Multiple waypoints but no geometry, fitting to waypoint bounds');
-      const bounds = L.latLngBounds(waypoints.map(wp => [wp.lat, wp.lng]))
-      setTimeout(() => {
-        map.fitBounds(bounds, { padding: [50, 50] })
-      }, 150)
+      // Multiple waypoints but no geometry yet - fit to waypoint bounds
+      console.log('🟣 [MAP] Multiple waypoints but no geometry, fitting to waypoint bounds')
+
+      const coordinates = waypoints.map(wp => [wp.lng, wp.lat] as [number, number])
+      const bounds = coordinates.reduce(
+        (bounds, coord) => bounds.extend(coord),
+        new mapboxgl.LngLatBounds(coordinates[0], coordinates[0])
+      )
+
+      map.fitBounds(bounds, {
+        padding: 50,
+        duration: 300
+      })
+
+      // Clear route line
+      const source = map.getSource('route') as mapboxgl.GeoJSONSource
+      if (source) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          }
+        })
+      }
     } else {
-      console.log('🟣 [MAP] No waypoints or geometry to display');
+      // No waypoints - clear route line
+      console.log('🟣 [MAP] No waypoints, clearing route')
+      const source = map.getSource('route') as mapboxgl.GeoJSONSource
+      if (source) {
+        source.setData({
+          type: 'Feature',
+          properties: {},
+          geometry: {
+            type: 'LineString',
+            coordinates: []
+          }
+        })
+      }
     }
   }, [waypoints, routeGeometry, onUpdateWaypoint])
 
-  return <div id="map" className="w-full h-full" />
+  return <div id="map" ref={mapContainerRef} className="w-full h-full" />
 }

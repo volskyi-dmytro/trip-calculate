@@ -10,7 +10,6 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminRoute } from './components/auth/AdminRoute';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import './styles/global.css';
-import 'leaflet/dist/leaflet.css';
 
 function App() {
   return (
