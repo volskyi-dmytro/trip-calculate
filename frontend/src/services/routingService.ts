@@ -12,10 +12,14 @@ export interface RoutingResult {
 }
 
 // Multiple OSRM server endpoints for redundancy
+// IMPORTANT: Public OSRM servers can be slow/overloaded. Using 30s timeout per server.
 const OSRM_SERVERS = [
   'https://router.project-osrm.org',
   'https://routing.openstreetmap.de/routed-car',
 ];
+
+// Timeout per server (increased from 10s to 30s due to public server load)
+const SERVER_TIMEOUT_MS = 30000;
 
 export const routingService = {
   /**
@@ -53,9 +57,9 @@ export const routingService = {
       console.log(`🔵 [ROUTING] Full URL:`, url);
 
       try {
-        // Fetch with 10 second timeout
+        // Fetch with configurable timeout (default 30s for public servers)
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        const timeoutId = setTimeout(() => controller.abort(), SERVER_TIMEOUT_MS);
 
         console.log(`🔵 [ROUTING] Sending fetch request to server ${serverIndex + 1}...`);
         const response = await fetch(url, {
@@ -138,7 +142,7 @@ export const routingService = {
         return result;
       } catch (error) {
         if (error instanceof Error && error.name === 'AbortError') {
-          console.error(`❌ [ROUTING] Server ${serverIndex + 1} timed out after 10s, trying next...`);
+          console.error(`❌ [ROUTING] Server ${serverIndex + 1} timed out after ${SERVER_TIMEOUT_MS / 1000}s, trying next...`);
         } else {
           console.error(`❌ [ROUTING] Server ${serverIndex + 1} error:`, error, 'trying next...');
         }
