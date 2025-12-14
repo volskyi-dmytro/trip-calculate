@@ -165,6 +165,16 @@ export function RoutePlanner() {
           console.log('✅ Road-based route calculated:', route.totalDistance.toFixed(2), 'km')
         } else {
           console.warn('⚠️ Using straight-line fallback (routing failed)')
+          // Notify user that routing service failed
+          toast.warning(
+            language === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
+            {
+              description: language === 'uk'
+                ? 'Не вдалося розрахувати маршрут по дорогам. Показано прямі лінії.'
+                : 'Could not calculate road-based route. Showing straight lines.',
+              duration: 5000
+            }
+          )
         }
       } catch (error) {
         console.error('Failed to calculate route:', error)
@@ -172,11 +182,20 @@ export function RoutePlanner() {
         setRouteGeometry(waypoints.map(w => [w.lat, w.lng]))
         setRouteDistance(0)
         setRouteDuration(0)
+        toast.error(
+          language === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
+          {
+            description: language === 'uk'
+              ? 'Виникла помилка при розрахунку маршруту.'
+              : 'An error occurred while calculating the route.',
+            duration: 5000
+          }
+        )
       }
     }
 
     updateRoute()
-  }, [waypoints])
+  }, [waypoints, language])
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
