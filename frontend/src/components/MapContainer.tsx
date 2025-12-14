@@ -19,6 +19,51 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const isMapLoadedRef = useRef(false)
   const { theme } = useTheme()
 
+  const add3DBuildingsLayer = (map: mapboxgl.Map) => {
+    if (map.getLayer('3d-buildings')) return
+
+    const layers = map.getStyle().layers
+    const labelLayerId = layers?.find(layer => {
+      if (layer.type !== 'symbol') return false
+      const symbolLayer = layer as mapboxgl.SymbolLayer
+      return Boolean(symbolLayer.layout?.['text-field'])
+    })?.id
+
+    map.addLayer(
+      {
+        id: '3d-buildings',
+        source: 'composite',
+        'source-layer': 'building',
+        filter: ['==', 'extrude', 'true'],
+        type: 'fill-extrusion',
+        minzoom: 15,
+        paint: {
+          'fill-extrusion-color': '#aaa',
+          'fill-extrusion-opacity': 0.6,
+          'fill-extrusion-height': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            15,
+            ['get', 'height'],
+            15.05,
+            ['get', 'height']
+          ],
+          'fill-extrusion-base': [
+            'interpolate',
+            ['linear'],
+            ['zoom'],
+            15,
+            ['get', 'min_height'],
+            15.05,
+            ['get', 'min_height']
+          ]
+        }
+      },
+      labelLayerId
+    )
+  }
+
   // Update callback ref when it changes
   useEffect(() => {
     onAddWaypointRef.current = onAddWaypoint
@@ -45,6 +90,9 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       center: [30.5234, 50.4501], // [lng, lat] - Kyiv, Ukraine (Mapbox uses lng-first!)
       zoom: 6,
       projection: 'mercator' as any, // Explicitly set to mercator (not globe)
+      pitch: 55,
+      bearing: -15,
+      antialias: true
     })
 
     // Add navigation controls
@@ -90,6 +138,9 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
             'line-opacity': 0.8
           }
         })
+        add3DBuildingsLayer(map)
+      } else if (!map.getLayer('3d-buildings')) {
+        add3DBuildingsLayer(map)
       }
     })
 
@@ -164,6 +215,8 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
             }
           })
         }
+
+        add3DBuildingsLayer(map)
       })
     }
 
