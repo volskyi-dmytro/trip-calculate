@@ -28,7 +28,13 @@ public class RoutingService {
         if (mapboxAccessToken == null || mapboxAccessToken.isBlank()) {
             log.warn("MAPBOX_ACCESS_TOKEN not set - Mapbox routing will be disabled, falling back to OSRM");
         } else {
-            log.info("Mapbox routing enabled with token: {}...", mapboxAccessToken.substring(0, 10));
+            // Validate token format (Mapbox tokens start with 'pk.' or 'sk.')
+            if (!mapboxAccessToken.startsWith("pk.") && !mapboxAccessToken.startsWith("sk.")) {
+                log.error("Invalid Mapbox token format! Token should start with 'pk.' or 'sk.'. Current: {}...",
+                    mapboxAccessToken.length() > 10 ? mapboxAccessToken.substring(0, 10) : mapboxAccessToken);
+            } else {
+                log.info("Mapbox routing enabled with token: {}...", mapboxAccessToken.substring(0, 15));
+            }
         }
 
         // Configure RestTemplate with reasonable timeouts
@@ -39,6 +45,7 @@ public class RoutingService {
         this.restTemplate = new RestTemplate(factory);
         this.restTemplate.getInterceptors().add((request, body, execution) -> {
             request.getHeaders().add("Accept", "application/json");
+            request.getHeaders().add("User-Agent", "TripPlanner/1.0");
             return execution.execute(request, body);
         });
     }
@@ -83,53 +90,122 @@ public class RoutingService {
     private Map<String, Object> tryMapbox(String coordinates) {
         String url = "https://api.mapbox.com/directions/v5/mapbox/driving/" + coordinates +
             "?access_token=" + mapboxAccessToken +
-            "&geometries=geojson&overview=full";
+            "&geometries=geojson" +
+            "&overview=full" +
+            "&steps=false" +
+            "&alternatives=false";
 
-        log.info("Attempting route from Mapbox Directions API");
+        log.info("🗺️ Attempting route from Mapbox Directions API");
+        log.debug("Mapbox URL: {}", url.replace(mapboxAccessToken, "***TOKEN***"));
 
         try {
             @SuppressWarnings("rawtypes")
             ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
 
-            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
-                Map<String, Object> data = response.getBody();
+            log.debug("Mapbox response status: {}", response.getStatusCode());
 
-                if ("Ok".equals(data.get("code")) &&
-                    data.containsKey("routes") &&
-                    !((List<?>) data.get("routes")).isEmpty()) {
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                log.warn("Mapbox returned non-2xx status: {}", response.getStatusCode());
+                return null;
+            }
 
-                    Map<String, Object> route = (Map<String, Object>) ((List<?>) data.get("routes")).get(0);
-                    Map<String, Object> geometry = (Map<String, Object>) route.get("geometry");
+            if (response.getBody() == null) {
+                log.warn("Mapbox returned null body");
+                return null;
+            }
 
-                    if (geometry != null && geometry.containsKey("coordinates")) {
-                        List<List<Double>> coordinates_raw = (List<List<Double>>) geometry.get("coordinates");
+            Map<String, Object> data = response.getBody();
+            log.debug("Mapbox response code: {}", data.get("code"));
 
-                        // Convert [lng, lat] to [lat, lng] for Leaflet
-                        List<List<Double>> geometryLatLng = coordinates_raw.stream()
-                            .map(coord -> List.of(coord.get(1), coord.get(0)))
-                            .toList();
+            // Check for Mapbox API errors
+            if (data.containsKey("code")) {
+                String code = (String) data.get("code");
+                if (!"Ok".equals(code)) {
+                    String message = data.containsKey("message") ? (String) data.get("message") : "Unknown error";
+                    log.error("Mapbox API error - Code: {}, Message: {}", code, message);
 
-                        double distance = ((Number) route.get("distance")).doubleValue() / 1000; // km
-                        double duration = ((Number) route.get("duration")).doubleValue() / 60; // minutes
-
-                        log.info("✅ Mapbox route found! Distance: {} km, Duration: {} min, Points: {}",
-                            String.format("%.2f", distance),
-                            String.format("%.0f", duration),
-                            geometryLatLng.size());
-
-                        return Map.of(
-                            "totalDistance", distance,
-                            "totalDuration", duration,
-                            "geometry", geometryLatLng,
-                            "segments", Collections.emptyList()
-                        );
+                    // Common Mapbox error codes
+                    switch (code) {
+                        case "InvalidInput":
+                            log.error("Invalid coordinates or parameters sent to Mapbox");
+                            break;
+                        case "NoRoute":
+                            log.error("Mapbox could not find a route between the waypoints");
+                            break;
+                        case "NoSegment":
+                            log.error("No road segment found near the coordinates");
+                            break;
+                        case "ProfileNotFound":
+                            log.error("Invalid routing profile (should be 'driving')");
+                            break;
+                        default:
+                            log.error("Unhandled Mapbox error code: {}", code);
                     }
+                    return null;
                 }
             }
 
-            log.warn("Mapbox returned unusable response");
+            // Parse successful response
+            if (!data.containsKey("routes") || ((List<?>) data.get("routes")).isEmpty()) {
+                log.warn("Mapbox response missing routes or routes empty");
+                return null;
+            }
+
+            Map<String, Object> route = (Map<String, Object>) ((List<?>) data.get("routes")).get(0);
+
+            if (!route.containsKey("geometry")) {
+                log.warn("Mapbox route missing geometry");
+                return null;
+            }
+
+            Map<String, Object> geometry = (Map<String, Object>) route.get("geometry");
+
+            if (geometry == null || !geometry.containsKey("coordinates")) {
+                log.warn("Mapbox geometry missing coordinates");
+                return null;
+            }
+
+            List<List<Double>> coordinates_raw = (List<List<Double>>) geometry.get("coordinates");
+
+            if (coordinates_raw == null || coordinates_raw.isEmpty()) {
+                log.warn("Mapbox coordinates array is empty");
+                return null;
+            }
+
+            // Convert [lng, lat] to [lat, lng] for Leaflet
+            List<List<Double>> geometryLatLng = coordinates_raw.stream()
+                .map(coord -> List.of(coord.get(1), coord.get(0)))
+                .toList();
+
+            double distance = ((Number) route.get("distance")).doubleValue() / 1000; // km
+            double duration = ((Number) route.get("duration")).doubleValue() / 60; // minutes
+
+            log.info("✅ Mapbox route found! Distance: {} km, Duration: {} min, Points: {}",
+                String.format("%.2f", distance),
+                String.format("%.0f", duration),
+                geometryLatLng.size());
+
+            return Map.of(
+                "totalDistance", distance,
+                "totalDuration", duration,
+                "geometry", geometryLatLng,
+                "segments", Collections.emptyList()
+            );
+
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            log.error("Mapbox HTTP client error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401) {
+                log.error("⚠️ AUTHENTICATION FAILED - Check your MAPBOX_ACCESS_TOKEN!");
+            } else if (e.getStatusCode().value() == 403) {
+                log.error("⚠️ ACCESS FORBIDDEN - Your Mapbox token may not have permission for Directions API");
+            } else if (e.getStatusCode().value() == 429) {
+                log.error("⚠️ RATE LIMIT EXCEEDED - Too many Mapbox API requests");
+            }
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            log.error("Mapbox network error: {}", e.getMessage());
         } catch (Exception e) {
-            log.warn("Mapbox request failed: {}", e.getMessage());
+            log.error("Mapbox unexpected error: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            log.debug("Stack trace:", e);
         }
 
         return null;
