@@ -16,6 +16,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const onAddWaypointRef = useRef(onAddWaypoint)
+  const isMapLoadedRef = useRef(false)
   const { theme } = useTheme()
 
   // Update callback ref when it changes
@@ -57,6 +58,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
     // Wait for map to load before adding initial data
     map.on('load', () => {
+      isMapLoadedRef.current = true
       console.log('✅ [MAP] Mapbox GL JS initialized')
 
       // Add source for route line (initially empty)
@@ -98,6 +100,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
+        isMapLoadedRef.current = false
       }
     }
   }, []) // Empty dependency array - only run once (theme is handled separately)
@@ -107,59 +110,71 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     if (!mapRef.current) return
 
     const map = mapRef.current
-    const newStyle = theme === 'dark'
+    const desiredStyle = theme === 'dark'
       ? 'mapbox://styles/mapbox/dark-v11'
       : 'mapbox://styles/mapbox/streets-v12'
+    const spriteIdentifier = theme === 'dark' ? 'dark' : 'streets'
 
-    // Check if style needs to change
-    const currentStyle = map.getStyle()
-    if (currentStyle && currentStyle.sprite && currentStyle.sprite.includes(theme === 'dark' ? 'dark' : 'streets')) {
-      return // Style already matches theme
+    const applyStyleChange = () => {
+      if (!map.isStyleLoaded()) return
+
+      const currentStyle = map.getStyle()
+      if (currentStyle && currentStyle.sprite && currentStyle.sprite.includes(spriteIdentifier)) {
+        return
+      }
+
+      console.log('🎨 [MAP] Switching theme to:', theme)
+
+      const routeData = map.getSource('route')
+        ? (map.getSource('route') as mapboxgl.GeoJSONSource)._data
+        : null
+
+      isMapLoadedRef.current = false
+      map.setStyle(desiredStyle)
+
+      map.once('style.load', () => {
+        isMapLoadedRef.current = true
+        console.log('🎨 [MAP] Style loaded, re-adding route layer')
+
+        if (!map.getSource('route')) {
+          map.addSource('route', {
+            type: 'geojson',
+            data: routeData || {
+              type: 'Feature',
+              properties: {},
+              geometry: {
+                type: 'LineString',
+                coordinates: []
+              }
+            }
+          })
+
+          map.addLayer({
+            id: 'route-line',
+            type: 'line',
+            source: 'route',
+            layout: {
+              'line-join': 'round',
+              'line-cap': 'round'
+            },
+            paint: {
+              'line-color': '#3b82f6',
+              'line-width': 4,
+              'line-opacity': 0.8
+            }
+          })
+        }
+      })
     }
 
-    console.log('🎨 [MAP] Switching theme to:', theme)
-
-    // Store current route data before style change
-    const routeData = map.getSource('route')
-      ? (map.getSource('route') as mapboxgl.GeoJSONSource)._data
-      : null
-
-    map.setStyle(newStyle)
-
-    // Re-add layers after style loads
-    map.once('style.load', () => {
-      console.log('🎨 [MAP] Style loaded, re-adding route layer')
-
-      // Re-add route source and layer
-      if (!map.getSource('route')) {
-        map.addSource('route', {
-          type: 'geojson',
-          data: routeData || {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: []
-            }
-          }
-        })
-
-        map.addLayer({
-          id: 'route-line',
-          type: 'line',
-          source: 'route',
-          layout: {
-            'line-join': 'round',
-            'line-cap': 'round'
-          },
-          paint: {
-            'line-color': '#3b82f6',
-            'line-width': 4,
-            'line-opacity': 0.8
-          }
-        })
-      }
-    })
+    if (map.isStyleLoaded()) {
+      applyStyleChange()
+    } else {
+      map.once('load', () => {
+        isMapLoadedRef.current = true
+        applyStyleChange()
+      })
+    }
   }, [theme])
 
   // Update markers and route line when waypoints or geometry change
