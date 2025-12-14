@@ -216,7 +216,8 @@ export function RoutePlanner() {
     }
 
     updateRoute()
-  }, [waypoints, language])
+  }, [waypoints]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Note: language is intentionally omitted from deps to prevent recalculation on language toggle
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
