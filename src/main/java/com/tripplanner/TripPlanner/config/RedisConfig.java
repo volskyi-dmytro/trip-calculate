@@ -8,9 +8,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
 import org.springframework.data.redis.connection.RedisStandaloneConfiguration;
+import org.springframework.data.redis.connection.lettuce.LettuceClientConfiguration;
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.serializer.StringRedisSerializer;
+import io.lettuce.core.ClientOptions;
+import io.lettuce.core.protocol.ProtocolVersion;
 
 /**
  * Redis configuration for production caching
@@ -41,9 +44,18 @@ public class RedisConfig {
             config.setPassword(redisPassword);
         }
 
-        logger.info("Configuring Redis connection: {}:{}", redisHost, redisPort);
+        // Configure Lettuce client to use RESP2 protocol for better password auth compatibility
+        ClientOptions clientOptions = ClientOptions.builder()
+                .protocolVersion(ProtocolVersion.RESP2)
+                .build();
 
-        return new LettuceConnectionFactory(config);
+        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
+                .clientOptions(clientOptions)
+                .build();
+
+        logger.info("Configuring Redis connection: {}:{} with RESP2 protocol", redisHost, redisPort);
+
+        return new LettuceConnectionFactory(config, clientConfig);
     }
 
     @Bean
