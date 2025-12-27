@@ -60,11 +60,20 @@ export const planTripWithN8n = async (query: string, language: string = 'en'): P
   }
 
   try {
+    // Get CSRF token from cookie for Spring Security
+    const csrfToken = getCsrfToken();
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+    };
+
+    // Add CSRF token header if available
+    if (csrfToken) {
+      headers['X-XSRF-TOKEN'] = csrfToken;
+    }
+
     const response = await fetch(AI_INSIGHTS_ENDPOINT, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify({ message: query, language }),
       credentials: 'include', // Include cookies for authentication
     });
@@ -164,6 +173,23 @@ export const planTripWithN8n = async (query: string, language: string = 'en'): P
     return null;
   }
 };
+
+/**
+ * Get CSRF token from cookie for Spring Security
+ */
+function getCsrfToken(): string | null {
+  const name = 'XSRF-TOKEN=';
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookies = decodedCookie.split(';');
+
+  for (let cookie of cookies) {
+    cookie = cookie.trim();
+    if (cookie.indexOf(name) === 0) {
+      return cookie.substring(name.length);
+    }
+  }
+  return null;
+}
 
 /**
  * Generate cache key from query and language
