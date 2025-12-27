@@ -60,20 +60,26 @@ public class AiInsightsController {
      */
     @PostConstruct
     public void validateConfiguration() {
-        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
-            throw new IllegalStateException(
-                "n8n.webhook.url must be configured. Set N8N_WEBHOOK_URL environment variable."
-            );
-        }
-
         // Update RestTemplate timeout to use configured value (from properties)
         SimpleClientHttpRequestFactory factory = (SimpleClientHttpRequestFactory) restTemplate.getRequestFactory();
         factory.setReadTimeout(timeoutSeconds * 1000);
 
+        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
+            logger.warn("========================================");
+            logger.warn("N8N webhook URL is NOT configured!");
+            logger.warn("AI insights functionality will be DISABLED");
+            logger.warn("Set N8N_WEBHOOK_URL environment variable to enable AI features");
+            logger.warn("========================================");
+            return;
+        }
+
         // Log configuration (mask URL for security)
         String maskedUrl = n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***");
-        logger.info("AI Insights Controller initialized with webhook: {}", maskedUrl);
-        logger.info("AI Insights timeout configured: {} seconds", timeoutSeconds);
+        logger.info("========================================");
+        logger.info("AI Insights Controller initialized");
+        logger.info("Webhook URL: {}", maskedUrl);
+        logger.info("Timeout: {} seconds", timeoutSeconds);
+        logger.info("========================================");
     }
 
     /**
@@ -91,6 +97,16 @@ public class AiInsightsController {
 
         if (prompt == null || prompt.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
+        }
+
+        // Check if N8N webhook is configured
+        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
+            logger.error("AI insights request received but N8N webhook URL is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                        "error", "AI insights feature is not available",
+                        "details", "Service not configured"
+                    ));
         }
 
         // Get user info for logging
@@ -179,7 +195,23 @@ public class AiInsightsController {
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             long duration = System.currentTimeMillis() - startTime;
             String errorMsg = String.format("N8N API error: %s %s", e.getStatusCode(), e.getStatusText());
-            logger.error(errorMsg, e);
+
+            // Enhanced error logging based on status code
+            if (e.getStatusCode().value() == 404) {
+                logger.error("========================================");
+                logger.error("N8N WEBHOOK NOT FOUND (404)");
+                logger.error("This means the N8N workflow is NOT ACTIVE");
+                logger.error("========================================");
+                logger.error("To fix this issue:");
+                logger.error("1. Log into your N8N instance at n8n.gojoble.online");
+                logger.error("2. Find the 'route-planner-ai' workflow");
+                logger.error("3. Activate the workflow (switch from test mode to production)");
+                logger.error("4. Ensure the webhook node is properly configured");
+                logger.error("========================================");
+                logger.error("Response body: {}", e.getResponseBodyAsString());
+            } else {
+                logger.error(errorMsg, e);
+            }
 
             usageService.logResponse(logId, "error", errorMsg, duration);
 
