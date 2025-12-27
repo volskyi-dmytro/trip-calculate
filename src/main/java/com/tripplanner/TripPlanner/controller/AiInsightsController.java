@@ -164,10 +164,14 @@ public class AiInsightsController {
             // Proxy request to n8n webhook
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Accept", "*/*");
+            // Set a simple User-Agent to avoid any potential N8N filtering
+            headers.set("User-Agent", "TripPlanner-Backend/1.0");
 
             HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
 
-            logger.debug("Calling N8N webhook with payload: {}", request);
+            logger.info("Calling N8N webhook - Prompt length: {}, Language: {}", prompt.length(), language);
+            logger.debug("Full request payload: {}", request);
             logger.debug("Request headers: {}", headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
@@ -176,6 +180,8 @@ public class AiInsightsController {
                     entity,
                     String.class
             );
+
+            logger.info("N8N webhook response status: {}", response.getStatusCode());
 
             String responseBody = response.getBody();
             long duration = System.currentTimeMillis() - startTime;
@@ -204,16 +210,31 @@ public class AiInsightsController {
 
             // Enhanced error logging based on status code
             if (e.getStatusCode().value() == 404) {
+                // Extract path for debugging (without exposing domain)
+                String pathOnly = "/";
+                try {
+                    String afterProtocol = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
+                    pathOnly = afterProtocol.contains("/") ? afterProtocol.substring(afterProtocol.indexOf("/")) : "/";
+                } catch (Exception ex) {
+                    logger.debug("Could not extract path from URL", ex);
+                }
+
                 logger.error("========================================");
                 logger.error("N8N WEBHOOK NOT FOUND (404)");
-                logger.error("Webhook URL: {}", n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
+                logger.error("Attempted URL: {}", n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
+                logger.error("Path: {}", pathOnly);
+                logger.error("Request method: POST");
+                logger.error("Request payload: message={}, language={}", prompt.substring(0, Math.min(50, prompt.length())), language);
                 logger.error("========================================");
-                logger.error("Possible causes:");
-                logger.error("1. N8N workflow is not activated (switch from test to production mode)");
-                logger.error("2. Webhook path mismatch between N8N_WEBHOOK_URL and actual webhook");
-                logger.error("3. N8N workflow was deleted or renamed");
+                logger.error("Response from N8N:");
+                logger.error("{}", e.getResponseBodyAsString());
                 logger.error("========================================");
-                logger.error("Response body: {}", e.getResponseBodyAsString());
+                logger.error("Troubleshooting:");
+                logger.error("1. Verify curl works: curl -X POST <your-webhook-url> -H 'Content-Type: application/json' -d '{{\"message\":\"test\",\"language\":\"en\"}}'");
+                logger.error("2. Check if N8N_WEBHOOK_URL env var exactly matches your working curl command");
+                logger.error("3. In N8N, check if webhook is in Production mode (not Test mode)");
+                logger.error("4. Compare the 'Path' logged above with your N8N webhook node configuration");
+                logger.error("========================================");
             } else {
                 logger.error(errorMsg, e);
             }
