@@ -60,12 +60,19 @@ public class SecurityConfig {
     }
 
     @Bean
+    public com.tripplanner.TripPlanner.filter.AiRateLimitingFilter aiRateLimitingFilter(
+            com.tripplanner.TripPlanner.repository.UserRepository userRepository) {
+        return new com.tripplanner.TripPlanner.filter.AiRateLimitingFilter(userRepository);
+    }
+
+    @Bean
     public com.tripplanner.TripPlanner.filter.AttackMitigationFilter attackMitigationFilter() {
         return new com.tripplanner.TripPlanner.filter.AttackMitigationFilter();
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http,
+                                          com.tripplanner.TripPlanner.repository.UserRepository userRepository) throws Exception {
         OAuth2AuthorizationRequestResolver authorizationRequestResolver =
                 buildAuthorizationRequestResolver();
 
@@ -101,8 +108,11 @@ public class SecurityConfig {
                 // Add attack mitigation filter AFTER authority restoration to ensure authentication is available
                 .addFilterAfter(attackMitigationFilter(), com.tripplanner.TripPlanner.security.AuthorityRestoreFilter.class)
 
-                // Add rate limiting filter AFTER attack mitigation
-                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
+                // Add AI rate limiting filter AFTER attack mitigation (checks /api/ai/** endpoints only)
+                .addFilterAfter(aiRateLimitingFilter(userRepository), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
+
+                // Add general rate limiting filter AFTER AI rate limiting
+                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AiRateLimitingFilter.class)
 
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2
@@ -167,6 +177,9 @@ public class SecurityConfig {
 
                         // Admin API endpoints (role-based access via @PreAuthorize)
                         .requestMatchers("/api/admin/**").authenticated()
+
+                        // AI API endpoints (require authentication to prevent abuse)
+                        .requestMatchers("/api/ai/**").authenticated()
 
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()

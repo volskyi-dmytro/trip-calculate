@@ -86,7 +86,6 @@ jobs:
                        -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate:prod-${{ github.sha }} .
 
           echo "🔍 Verifying properties files in built Docker image BEFORE pushing..."
-          # Extract JAR from Docker image to verify (JRE doesn't have 'jar' command)
           CONTAINER_ID=$(docker create ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest)
           docker cp $CONTAINER_ID:/app/trip-calculate.jar /tmp/verify-docker.jar
           docker rm $CONTAINER_ID
@@ -131,50 +130,92 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
+          REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}  # 🆕 NEW!
         run: |
-          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' bash -s" <<'REMOTE'
+          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' bash -s" <<'REMOTE'
             echo "🚀 Deploying to Production VPS..."
 
             # Create private Docker network if it doesn't exist
-            # Database and application communicate via this network (no port exposure needed)
             docker network inspect trip-calculate-network >/dev/null 2>&1 || docker network create trip-calculate-network
 
             # Connect database to network if not already connected
             docker network connect trip-calculate-network trip-calculate-db 2>/dev/null || echo "✅ Database already on network"
 
-            # CRITICAL SECURITY CHECK: Verify database port is NOT exposed to internet
-            echo "🔒 Verifying database security..."
+            # ==================== SECURITY CHECKS ====================
+            echo "🔒 Running security verification..."
+            
+            # Check database port exposure
             if docker port trip-calculate-db 2>/dev/null | grep -q "5432"; then
               echo "⚠️ WARNING: Database port 5432 is EXPOSED to internet!"
-              echo "🔒 Security Risk: Your database should NOT expose port 5432"
-              echo ""
-              echo "To fix manually:"
-              echo "  1. Backup: docker exec trip-calculate-db pg_dump -U postgres tripplanner_prod > /tmp/backup.sql"
-              echo "  2. Stop: docker stop trip-calculate-db"
-              echo "  3. Remove: docker rm trip-calculate-db"
-              echo "  4. Recreate WITHOUT -p flag:"
-              echo "     docker run -d --name trip-calculate-db --network trip-calculate-network \\"
-              echo "       -v trip-calculate-postgres-data:/var/lib/postgresql/data \\"
-              echo "       -e POSTGRES_PASSWORD=your_password postgres:15-alpine"
-              echo "  5. Restore: docker exec -i trip-calculate-db psql -U postgres < /tmp/backup.sql"
-              echo ""
               echo "❌ Failing deployment for security reasons"
               exit 1
             else
               echo "✅ Database security verified - port 5432 NOT exposed"
             fi
 
+            # ==================== REDIS SETUP ====================
+            echo ""
+            echo "🔴 Setting up Redis cache..."
+            
+            # Check if Redis container exists
+            if docker ps -a --format '{{.Names}}' | grep -q "^trip-calculate-redis$"; then
+              echo "✅ Redis container exists"
+              
+              # Check if running
+              if ! docker ps --format '{{.Names}}' | grep -q "^trip-calculate-redis$"; then
+                echo "⚠️ Redis container stopped, starting..."
+                docker start trip-calculate-redis
+              else
+                echo "✅ Redis already running"
+              fi
+            else
+              echo "📦 Creating new Redis container..."
+              docker run -d \
+                --name trip-calculate-redis \
+                --network trip-calculate-network \
+                --restart unless-stopped \
+                -v trip-calculate-redis-data:/data \
+                redis:7-alpine redis-server --requirepass "${REDIS_PASSWORD}"
+              
+              echo "✅ Redis container created"
+            fi
+
+            # Wait for Redis to be ready
+            echo "⏳ Waiting for Redis to be ready..."
+            sleep 3
+
+            # Verify Redis health
+            echo "🔍 Verifying Redis connectivity..."
+            if docker exec trip-calculate-redis redis-cli -a "${REDIS_PASSWORD}" ping 2>/dev/null | grep -q "PONG"; then
+              echo "✅ Redis health check passed"
+            else
+              echo "❌ Redis health check failed"
+              echo "📋 Redis logs:"
+              docker logs trip-calculate-redis --tail 20
+              exit 1
+            fi
+
+            # Check Redis port exposure (security)
+            if docker port trip-calculate-redis 2>/dev/null | grep -q "6379"; then
+              echo "⚠️ WARNING: Redis port 6379 is EXPOSED to internet!"
+              echo "🔒 Security Risk: Redis should NOT expose port 6379"
+              exit 1
+            else
+              echo "✅ Redis security verified - port 6379 NOT exposed"
+            fi
+
+            # ==================== APPLICATION DEPLOYMENT ====================
+            echo ""
+            echo "📦 Deploying application..."
+            
             # Pull latest image
             docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
-
-            # Note: JAR contents already verified in build job before pushing to registry
 
             # Stop and remove old container
             docker stop trip-calculate-prod || true
             docker rm trip-calculate-prod || true
 
-            # Run new container on private network (connects to DB via container name)
-            # DATABASE_URL uses container name: jdbc:postgresql://trip-calculate-db:5432/tripplanner_prod
+            # Run new container with Redis connection
             docker run -d -p 8080:8080 \
               --name trip-calculate-prod \
               --restart unless-stopped \
@@ -190,35 +231,42 @@ jobs:
               -e GMAIL_APP_PASSWORD="${GMAIL_APP_PASSWORD}" \
               -e ADMIN_EMAIL="${ADMIN_EMAIL}" \
               -e MAPBOX_ACCESS_TOKEN="${MAPBOX_ACCESS_TOKEN}" \
+              -e REDIS_HOST=trip-calculate-redis \
+              -e REDIS_PORT=6379 \
+              -e REDIS_PASSWORD="${REDIS_PASSWORD}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
 
             echo "✅ Application container started"
-            docker ps -a | grep trip-calculate-prod
+            docker ps -a | grep trip-calculate
 
-            # Verify network connectivity between containers
+            # ==================== CONNECTIVITY VERIFICATION ====================
             echo ""
-            echo "🔍 Verifying database connectivity..."
+            echo "🔍 Verifying inter-container connectivity..."
             sleep 5
+            
+            # Check database connectivity
             if docker exec trip-calculate-prod ping -c 2 trip-calculate-db >/dev/null 2>&1; then
-              echo "✅ Network connectivity verified - app can reach database"
+              echo "✅ Database connectivity verified"
             else
-              echo "❌ Cannot reach database from application container"
-              echo ""
-              echo "📋 Troubleshooting network configuration:"
-              docker network inspect trip-calculate-network | grep -A 5 "Containers"
-              echo ""
-              echo "❌ Deployment failed due to network connectivity issues"
+              echo "❌ Cannot reach database from application"
               exit 1
             fi
 
-            # Comprehensive health check with database verification
+            # Check Redis connectivity
+            if docker exec trip-calculate-prod ping -c 2 trip-calculate-redis >/dev/null 2>&1; then
+              echo "✅ Redis connectivity verified"
+            else
+              echo "❌ Cannot reach Redis from application"
+              exit 1
+            fi
+
+            # ==================== HEALTH CHECK ====================
             echo ""
             echo "⏳ Waiting for application to start..."
             echo "📊 Monitoring startup progress..."
 
-            # Wait with progress monitoring - Spring Boot apps can take 30-60 seconds
             RETRY_COUNT=0
-            MAX_RETRIES=12
+            MAX_RETRIES=15  # Increased for Redis initialization
             RETRY_INTERVAL=5
 
             while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
@@ -236,38 +284,48 @@ jobs:
               if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
                 echo "❌ Health check failed after $MAX_RETRIES attempts!"
                 echo ""
-                echo "📋 Full application logs:"
-                docker logs trip-calculate-prod
+                echo "📋 Application logs:"
+                docker logs trip-calculate-prod --tail 50
                 echo ""
-                echo "🗄️ Database container status:"
-                docker ps -a | grep trip-calculate-db
+                echo "🔴 Redis logs:"
+                docker logs trip-calculate-redis --tail 20
                 echo ""
-                echo "🌐 Network connectivity:"
-                docker exec trip-calculate-prod ping -c 2 trip-calculate-db 2>&1 || echo "Cannot ping database"
-                echo ""
-                echo "❌ Deployment failed - health check unsuccessful after 60 seconds"
                 exit 1
               fi
             done
 
-            # Check for database connection errors in logs
+            # Check for connection errors in logs
+            echo ""
+            echo "🔍 Checking for connection issues..."
+            
             if docker logs trip-calculate-prod --tail 50 | grep -qi "connection.*refused\|unable to.*database\|authentication.*failed"; then
-              echo "⚠️ Warning: Potential database connection issues detected"
-              echo "Last database-related log entries:"
+              echo "⚠️ Warning: Potential database connection issues"
               docker logs trip-calculate-prod --tail 50 | grep -i "database\|postgresql\|hikari"
             fi
 
-            # Deployment summary with security status
+            if docker logs trip-calculate-prod --tail 50 | grep -qi "redis.*connection.*refused\|unable to.*redis"; then
+              echo "⚠️ Warning: Potential Redis connection issues"
+              docker logs trip-calculate-prod --tail 50 | grep -i "redis"
+            fi
+
+            # ==================== DEPLOYMENT SUMMARY ====================
             echo ""
             echo "🎉 Deployment Summary:"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Application: ✅ Running on port 8080"
-            echo "Database:    ✅ Secured on private network"
-            echo "Security:    $(docker port trip-calculate-db >/dev/null 2>&1 && echo '❌ Port exposed!' || echo '✅ Port NOT exposed')"
-            echo "Health:      $(curl -sf http://localhost:8080/actuator/health >/dev/null && echo '✅ Healthy' || echo '❌ Unhealthy')"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Database:    ✅ Secured on private network (172.18.0.2)"
+            echo "Redis:       ✅ Secured on private network"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Security Checks:"
+            echo "  DB Port:    $(docker port trip-calculate-db >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
+            echo "  Redis Port: $(docker port trip-calculate-redis >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
+            echo "  Health:     $(curl -sf http://localhost:8080/actuator/health >/dev/null && echo '✅ Healthy' || echo '❌ Unhealthy')"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
             echo "✅ Production deployment complete!"
+            echo ""
+            echo "📦 Final container status:"
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep trip-calculate
           REMOTE
 
       - name: Cleanup SSH Key

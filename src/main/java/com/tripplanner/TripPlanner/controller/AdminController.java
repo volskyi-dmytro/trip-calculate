@@ -179,4 +179,48 @@ public class AdminController {
 
         return user.getEmail();
     }
+
+    // ========================================
+    // AI Usage Endpoints
+    // ========================================
+
+    /**
+     * Get recent AI usage logs
+     */
+    @GetMapping("/ai-usage/recent")
+    public ResponseEntity<List<AiUsageLogDTO>> getRecentAiUsage(
+            @RequestParam(defaultValue = "100") int limit) {
+        List<AiUsageLogDTO> usage = adminService.getRecentAiUsage(limit);
+        return ResponseEntity.ok(usage);
+    }
+
+    /**
+     * Get top users by AI request count
+     */
+    @GetMapping("/ai-usage/top-users")
+    public ResponseEntity<List<AiUserStatsDTO>> getTopAiUsers(
+            @RequestParam(defaultValue = "10") int limit,
+            @RequestParam(defaultValue = "30") int days) {
+        List<AiUserStatsDTO> topUsers = adminService.getTopAiUsers(limit, days);
+        return ResponseEntity.ok(topUsers);
+    }
+
+    /**
+     * Get daily AI request counts for charts
+     */
+    @GetMapping("/ai-usage/by-day")
+    public ResponseEntity<List<AiDailyStatsDTO>> getAiUsageByDay(
+            @RequestParam(defaultValue = "30") int days) {
+        List<AiDailyStatsDTO> dailyStats = adminService.getAiUsageByDay(days);
+        return ResponseEntity.ok(dailyStats);
+    }
+
+    /**
+     * Clear AI cache (admin action)
+     */
+    @DeleteMapping("/ai-cache")
+    public ResponseEntity<Map<String, String>> clearAiCache() {
+        adminService.clearAiCache();
+        return ResponseEntity.ok(Map.of("message", "AI cache cleared successfully"));
+    }
 }

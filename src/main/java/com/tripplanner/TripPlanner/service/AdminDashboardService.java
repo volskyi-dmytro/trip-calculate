@@ -30,6 +30,8 @@ public class AdminDashboardService {
     private final FeatureAccessRepository featureAccessRepository;
     private final AccessRequestRepository accessRequestRepository;
     private final AccessRequestService accessRequestService;
+    private final AiUsageService aiUsageService;
+    private final AiCacheService aiCacheService;
 
     /**
      * Get system-wide statistics for admin dashboard
@@ -50,6 +52,16 @@ public class AdminDashboardService {
         ).size();
         long usersWithRoutePlanner = featureAccessRepository.countByRoutePlannerEnabled(true);
 
+        // AI usage statistics
+        long aiRequestsLast24h = aiUsageService.getRequestsLast24h();
+        long aiRequestsLastMonth = aiUsageService.getRequestsLastMonth();
+        long aiUniqueUsersLast24h = aiUsageService.getUniqueUsersLast24h();
+        long aiRateLimitHits24h = aiUsageService.getRateLimitHitsLast24h();
+        double aiCacheHitRate = aiUsageService.getCacheHitRate();
+        double aiErrorRate = aiUsageService.getErrorRate();
+        long aiTotalCachedResponses = aiCacheService.getStats() != null ?
+                aiCacheService.getStats().getSize() : 0;
+
         return AdminStatsDTO.builder()
                 .totalUsers(totalUsers)
                 .activeUsers(activeUsers)
@@ -60,6 +72,14 @@ public class AdminDashboardService {
                 .totalWaypoints(totalWaypoints)
                 .pendingAccessRequests(pendingAccessRequests)
                 .usersWithRoutePlanner(usersWithRoutePlanner)
+                // AI statistics
+                .aiRequestsLast24h(aiRequestsLast24h)
+                .aiRequestsLastMonth(aiRequestsLastMonth)
+                .aiUniqueUsersLast24h(aiUniqueUsersLast24h)
+                .aiRateLimitHits24h(aiRateLimitHits24h)
+                .aiCacheHitRate(aiCacheHitRate)
+                .aiErrorRate(aiErrorRate)
+                .aiTotalCachedResponses(aiTotalCachedResponses)
                 .build();
     }
 
@@ -250,6 +270,73 @@ public class AdminDashboardService {
                 .requestedAt(request.getRequestedAt())
                 .processedAt(request.getProcessedAt())
                 .processedBy(request.getProcessedBy())
+                .build();
+    }
+
+    // AI-specific admin methods
+
+    /**
+     * Get recent AI usage logs
+     */
+    @Transactional(readOnly = true)
+    public List<AiUsageLogDTO> getRecentAiUsage(int limit) {
+        return aiUsageService.getRecentUsage(limit).stream()
+                .map(this::convertToAiUsageLogDTO)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get top AI users
+     */
+    @Transactional(readOnly = true)
+    public List<AiUserStatsDTO> getTopAiUsers(int limit, int days) {
+        List<Object[]> topUsers = aiUsageService.getTopUsers(limit, days);
+
+        return topUsers.stream()
+                .map(row -> AiUserStatsDTO.builder()
+                        .userId((Long) row[0])
+                        .userEmail((String) row[1])
+                        .requestCount((Long) row[2])
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Get AI usage by day
+     */
+    @Transactional(readOnly = true)
+    public List<AiDailyStatsDTO> getAiUsageByDay(int days) {
+        List<Object[]> dailyStats = aiUsageService.getDailyStats(days);
+
+        return dailyStats.stream()
+                .map(row -> AiDailyStatsDTO.builder()
+                        .date(((java.sql.Date) row[0]).toLocalDate())
+                        .requestCount((Long) row[1])
+                        .build())
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Clear AI cache (admin action)
+     */
+    @Transactional
+    public void clearAiCache() {
+        aiCacheService.evictAll();
+    }
+
+    private AiUsageLogDTO convertToAiUsageLogDTO(com.tripplanner.TripPlanner.entity.AiUsageLog log) {
+        return AiUsageLogDTO.builder()
+                .id(log.getId())
+                .userId(log.getUserId())
+                .userEmail(log.getUserEmail())
+                .ipAddress(log.getIpAddress())
+                .prompt(log.getPrompt())
+                .promptLength(log.getPromptLength())
+                .language(log.getLanguage())
+                .responseStatus(log.getResponseStatus())
+                .errorMessage(log.getErrorMessage())
+                .timestamp(log.getTimestamp())
+                .durationMs(log.getDurationMs())
                 .build();
     }
 }

@@ -1,7 +1,15 @@
 import type { N8nTripData } from '../types';
 
-// Get webhook URL from environment variables
-const N8N_WEBHOOK_URL = import.meta.env.VITE_N8N_WEBHOOK_URL || '';
+// Backend proxy endpoint (replaces direct n8n webhook URL)
+const AI_INSIGHTS_ENDPOINT = '/api/ai/insights';
+
+// Client-side cache for recent requests (sessionStorage)
+const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_KEY_PREFIX = 'ai_cache_';
+
+// Debouncing state
+let lastRequestTime = 0;
+const MIN_REQUEST_INTERVAL_MS = 2000; // 2 seconds
 
 // Types defining the expected structure from the n8n "Format Final Response" node
 interface N8nWaypoint {
@@ -26,31 +34,68 @@ interface N8nResponse {
 }
 
 /**
- * Sends a natural language query to the n8n webhook and returns structured trip data.
+ * Sends a natural language query to the backend AI proxy and returns structured trip data.
+ * Includes client-side caching and debouncing for better UX.
  * @param query The user's natural language input (e.g. "Trip to Paris")
+ * @param language Language code (default: 'en')
  * @returns Structured trip data or null if the request fails
  */
-export const planTripWithN8n = async (query: string): Promise<N8nTripData | null> => {
-  if (!N8N_WEBHOOK_URL) {
-    console.error('N8N_WEBHOOK_URL not configured. Please set VITE_N8N_WEBHOOK_URL in your .env.local file.');
-    return null;
+export const planTripWithN8n = async (query: string, language: string = 'en'): Promise<N8nTripData | null> => {
+  // Debounce: Prevent too-frequent requests
+  const now = Date.now();
+  const timeSinceLastRequest = now - lastRequestTime;
+  if (timeSinceLastRequest < MIN_REQUEST_INTERVAL_MS) {
+    const waitTime = MIN_REQUEST_INTERVAL_MS - timeSinceLastRequest;
+    console.log(`Debouncing: waiting ${waitTime}ms before next request`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  lastRequestTime = Date.now();
+
+  // Check client-side cache first
+  const cacheKey = generateCacheKey(query, language);
+  const cachedData = getCachedResponse(cacheKey);
+  if (cachedData) {
+    console.log('Using cached AI response (client-side)');
+    return cachedData;
   }
 
   try {
-    const response = await fetch(N8N_WEBHOOK_URL, {
+    const response = await fetch(AI_INSIGHTS_ENDPOINT, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ message: query }),
+      body: JSON.stringify({ message: query, language }),
+      credentials: 'include', // Include cookies for authentication
     });
 
     if (!response.ok) {
-      throw new Error(`N8n Error: ${response.status} ${response.statusText}`);
+      // Handle rate limiting
+      if (response.status === 429) {
+        const errorData = await response.json().catch(() => ({}));
+        const resetTime = errorData.resetTime;
+        const limitType = errorData.limitType || 'unknown';
+
+        if (resetTime) {
+          const resetDate = new Date(resetTime);
+          const now = new Date();
+          const minutesUntilReset = Math.ceil((resetDate.getTime() - now.getTime()) / 1000 / 60);
+          throw new Error(`Rate limit exceeded. ${limitType} limit reached. Please try again in ${minutesUntilReset} minutes.`);
+        }
+        throw new Error('Rate limit exceeded. Please try again later.');
+      }
+
+      throw new Error(`AI service error: ${response.status} ${response.statusText}`);
     }
 
     const rawData = await response.json();
-    console.log("Raw N8n Response:", rawData);
+    console.log("Raw AI Response:", rawData);
+
+    // Check for cache headers
+    const cacheStatus = response.headers.get('X-Cache');
+    if (cacheStatus) {
+      console.log(`Backend cache: ${cacheStatus}`);
+    }
 
     // Normalize data if it comes as an array (common in n8n execution data) or single object
     const data: N8nResponse = Array.isArray(rawData) ? rawData[0] : rawData;
@@ -105,10 +150,64 @@ export const planTripWithN8n = async (query: string): Promise<N8nTripData | null
       }
     }
 
+    // Cache the successful result (client-side)
+    cacheResponse(cacheKey, result);
+
     return result;
 
   } catch (error) {
     console.error('Failed to plan trip with AI:', error);
+    // Re-throw rate limit errors so they can be displayed to the user
+    if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
+      throw error;
+    }
     return null;
   }
 };
+
+/**
+ * Generate cache key from query and language
+ */
+function generateCacheKey(query: string, language: string): string {
+  const normalized = query.toLowerCase().trim().replace(/\s+/g, ' ');
+  return `${CACHE_KEY_PREFIX}${btoa(normalized + '|' + language)}`;
+}
+
+/**
+ * Get cached response from sessionStorage
+ */
+function getCachedResponse(cacheKey: string): N8nTripData | null {
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (!cached) return null;
+
+    const { data, timestamp } = JSON.parse(cached);
+    const now = Date.now();
+
+    // Check if cache is still valid
+    if (now - timestamp > CACHE_TTL_MS) {
+      sessionStorage.removeItem(cacheKey);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error reading from cache:', error);
+    return null;
+  }
+}
+
+/**
+ * Cache response in sessionStorage
+ */
+function cacheResponse(cacheKey: string, data: N8nTripData): void {
+  try {
+    const cacheEntry = {
+      data,
+      timestamp: Date.now()
+    };
+    sessionStorage.setItem(cacheKey, JSON.stringify(cacheEntry));
+  } catch (error) {
+    console.error('Error writing to cache:', error);
+  }
+}

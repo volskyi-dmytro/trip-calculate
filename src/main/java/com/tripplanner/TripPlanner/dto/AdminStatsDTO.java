@@ -13,6 +13,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AdminStatsDTO {
+    // Existing user statistics
     private Long totalUsers;
     private Long activeUsers; // logged in within last 7 days
     private Long newUsersLast24h;
@@ -22,4 +23,13 @@ public class AdminStatsDTO {
     private Long totalWaypoints;
     private Long pendingAccessRequests;
     private Long usersWithRoutePlanner;
+
+    // AI usage statistics
+    private Long aiRequestsLast24h;
+    private Long aiRequestsLastMonth;
+    private Long aiUniqueUsersLast24h;
+    private Long aiRateLimitHits24h;
+    private Double aiCacheHitRate;  // 0.0 to 1.0
+    private Double aiErrorRate;     // 0.0 to 1.0
+    private Long aiTotalCachedResponses;
 }
