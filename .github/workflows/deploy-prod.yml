@@ -235,6 +235,7 @@ jobs:
               -e REDIS_HOST=trip-calculate-redis \
               -e REDIS_PORT=6379 \
               -e REDIS_PASSWORD="${REDIS_PASSWORD}" \
+              -e AI_CACHE_TTL_HOURS=24 \
               -e N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
 
