@@ -83,8 +83,8 @@ public class SecurityConfig {
         http
                 // Enable CSRF protection (OAuth2 requires it)
                 .csrf(csrf -> csrf
-                        // Disable CSRF only for public API endpoints
-                        .ignoringRequestMatchers("/calculate", "/api/routing/**")
+                        // Disable CSRF only for public API endpoints and AI endpoints
+                        .ignoringRequestMatchers("/calculate", "/api/routing/**", "/api/ai/**")
                         // Use cookie-based CSRF tokens for JavaScript access
                         .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
                         // Set token handler to ensure tokens are loaded
