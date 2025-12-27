@@ -73,11 +73,14 @@ public class AiInsightsController {
             return;
         }
 
-        // Log configuration (mask URL for security)
+        // Log configuration (mask URL for security, but show path structure)
         String maskedUrl = n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***");
+        String pathInfo = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
+        String pathOnly = pathInfo.contains("/") ? pathInfo.substring(pathInfo.indexOf("/")) : "/";
         logger.info("========================================");
         logger.info("AI Insights Controller initialized");
         logger.info("Webhook URL: {}", maskedUrl);
+        logger.info("Webhook path structure: {}", pathOnly);
         logger.info("Timeout: {} seconds", timeoutSeconds);
         logger.info("========================================");
     }
@@ -164,6 +167,9 @@ public class AiInsightsController {
 
             HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
 
+            logger.debug("Calling N8N webhook with payload: {}", request);
+            logger.debug("Request headers: {}", headers);
+
             ResponseEntity<String> response = restTemplate.exchange(
                     n8nWebhookUrl,
                     HttpMethod.POST,
@@ -200,13 +206,12 @@ public class AiInsightsController {
             if (e.getStatusCode().value() == 404) {
                 logger.error("========================================");
                 logger.error("N8N WEBHOOK NOT FOUND (404)");
-                logger.error("This means the N8N workflow is NOT ACTIVE");
+                logger.error("Webhook URL: {}", n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
                 logger.error("========================================");
-                logger.error("To fix this issue:");
-                logger.error("1. Log into your N8N instance at n8n.gojoble.online");
-                logger.error("2. Find the 'route-planner-ai' workflow");
-                logger.error("3. Activate the workflow (switch from test mode to production)");
-                logger.error("4. Ensure the webhook node is properly configured");
+                logger.error("Possible causes:");
+                logger.error("1. N8N workflow is not activated (switch from test to production mode)");
+                logger.error("2. Webhook path mismatch between N8N_WEBHOOK_URL and actual webhook");
+                logger.error("3. N8N workflow was deleted or renamed");
                 logger.error("========================================");
                 logger.error("Response body: {}", e.getResponseBodyAsString());
             } else {

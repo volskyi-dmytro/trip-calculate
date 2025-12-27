@@ -11,14 +11,14 @@ The Trip Planner application uses an N8N workflow to provide AI-powered trip ins
 Set the N8N webhook URL using the `N8N_WEBHOOK_URL` environment variable:
 
 ```bash
-export N8N_WEBHOOK_URL="https://n8n.gojoble.online/webhook/route-planner-ai"
+export N8N_WEBHOOK_URL="https://your-n8n-instance.com/webhook/your-webhook-path"
 ```
 
 Or in your deployment configuration (Docker, Kubernetes, etc.):
 
 ```yaml
 environment:
-  - N8N_WEBHOOK_URL=https://n8n.gojoble.online/webhook/route-planner-ai
+  - N8N_WEBHOOK_URL=https://your-n8n-instance.com/webhook/your-webhook-path
 ```
 
 ### Optional Configuration
@@ -44,9 +44,9 @@ The N8N workflow is not activated or is still in test mode.
 
 **Solution:**
 
-1. **Log into N8N instance**: Access your N8N instance at `https://n8n.gojoble.online`
+1. **Log into N8N instance**: Access your N8N instance
 
-2. **Locate the workflow**: Find the workflow named "route-planner-ai" or similar
+2. **Locate the workflow**: Find the workflow with the webhook for trip planner AI insights
 
 3. **Activate the workflow**:
    - Look for the "Inactive" toggle at the top of the workflow canvas
@@ -55,8 +55,7 @@ The N8N workflow is not activated or is still in test mode.
 
 4. **Verify webhook configuration**:
    - Click on the Webhook node in the workflow
-   - Ensure the webhook path matches your configuration
-   - The path should be: `route-planner-ai`
+   - Ensure the webhook path matches your N8N_WEBHOOK_URL configuration
    - The HTTP method should be: `POST`
 
 5. **Save the workflow**: Click "Save" to persist your changes
@@ -112,7 +111,7 @@ Look for the `n8nWebhook` component in the response:
     "n8nWebhook": {
       "status": "UP",
       "details": {
-        "webhookUrl": "https://n8n.gojoble.online/***",
+        "webhookUrl": "https://your-n8n-instance.com/***",
         "status": "CONFIGURED",
         "message": "N8N webhook is configured..."
       }
@@ -126,7 +125,7 @@ Look for the `n8nWebhook` component in the response:
 ### Required Nodes
 
 1. **Webhook Node**:
-   - Path: `route-planner-ai`
+   - Path: (set according to your N8N_WEBHOOK_URL)
    - Method: `POST`
    - Response Mode: "When Last Node Finishes"
 
@@ -188,7 +187,7 @@ If issues persist:
 3. Test the webhook directly using curl:
 
 ```bash
-curl -X POST https://n8n.gojoble.online/webhook/route-planner-ai \
+curl -X POST $N8N_WEBHOOK_URL \
   -H "Content-Type: application/json" \
   -d '{"message":"Test prompt","language":"en"}'
 ```
