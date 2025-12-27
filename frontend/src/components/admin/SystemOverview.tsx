@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, UserPlus, Navigation, MapPin, Clock, CheckCircle, Brain, Zap, AlertCircle, Database } from 'lucide-react';
+import { Users, UserCheck, UserPlus, Navigation, MapPin, Clock, CheckCircle, Brain, AlertCircle, Database } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
