@@ -60,20 +60,29 @@ public class AiInsightsController {
      */
     @PostConstruct
     public void validateConfiguration() {
-        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
-            throw new IllegalStateException(
-                "n8n.webhook.url must be configured. Set N8N_WEBHOOK_URL environment variable."
-            );
-        }
-
         // Update RestTemplate timeout to use configured value (from properties)
         SimpleClientHttpRequestFactory factory = (SimpleClientHttpRequestFactory) restTemplate.getRequestFactory();
         factory.setReadTimeout(timeoutSeconds * 1000);
 
-        // Log configuration (mask URL for security)
+        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
+            logger.warn("========================================");
+            logger.warn("N8N webhook URL is NOT configured!");
+            logger.warn("AI insights functionality will be DISABLED");
+            logger.warn("Set N8N_WEBHOOK_URL environment variable to enable AI features");
+            logger.warn("========================================");
+            return;
+        }
+
+        // Log configuration (mask URL for security, but show path structure)
         String maskedUrl = n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***");
-        logger.info("AI Insights Controller initialized with webhook: {}", maskedUrl);
-        logger.info("AI Insights timeout configured: {} seconds", timeoutSeconds);
+        String pathInfo = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
+        String pathOnly = pathInfo.contains("/") ? pathInfo.substring(pathInfo.indexOf("/")) : "/";
+        logger.info("========================================");
+        logger.info("AI Insights Controller initialized");
+        logger.info("Webhook URL: {}", maskedUrl);
+        logger.info("Webhook path structure: {}", pathOnly);
+        logger.info("Timeout: {} seconds", timeoutSeconds);
+        logger.info("========================================");
     }
 
     /**
@@ -91,6 +100,16 @@ public class AiInsightsController {
 
         if (prompt == null || prompt.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
+        }
+
+        // Check if N8N webhook is configured
+        if (n8nWebhookUrl == null || n8nWebhookUrl.isEmpty()) {
+            logger.error("AI insights request received but N8N webhook URL is not configured");
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                        "error", "AI insights feature is not available",
+                        "details", "Service not configured"
+                    ));
         }
 
         // Get user info for logging
@@ -145,8 +164,15 @@ public class AiInsightsController {
             // Proxy request to n8n webhook
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("Accept", "*/*");
+            // Set a simple User-Agent to avoid any potential N8N filtering
+            headers.set("User-Agent", "TripPlanner-Backend/1.0");
 
             HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
+
+            logger.info("Calling N8N webhook - Prompt length: {}, Language: {}", prompt.length(), language);
+            logger.debug("Full request payload: {}", request);
+            logger.debug("Request headers: {}", headers);
 
             ResponseEntity<String> response = restTemplate.exchange(
                     n8nWebhookUrl,
@@ -154,6 +180,8 @@ public class AiInsightsController {
                     entity,
                     String.class
             );
+
+            logger.info("N8N webhook response status: {}", response.getStatusCode());
 
             String responseBody = response.getBody();
             long duration = System.currentTimeMillis() - startTime;
@@ -179,7 +207,37 @@ public class AiInsightsController {
         } catch (HttpClientErrorException | HttpServerErrorException e) {
             long duration = System.currentTimeMillis() - startTime;
             String errorMsg = String.format("N8N API error: %s %s", e.getStatusCode(), e.getStatusText());
-            logger.error(errorMsg, e);
+
+            // Enhanced error logging based on status code
+            if (e.getStatusCode().value() == 404) {
+                // Extract path for debugging (without exposing domain)
+                String pathOnly = "/";
+                try {
+                    String afterProtocol = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
+                    pathOnly = afterProtocol.contains("/") ? afterProtocol.substring(afterProtocol.indexOf("/")) : "/";
+                } catch (Exception ex) {
+                    logger.debug("Could not extract path from URL", ex);
+                }
+
+                logger.error("========================================");
+                logger.error("N8N WEBHOOK NOT FOUND (404)");
+                logger.error("Attempted URL: {}", n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
+                logger.error("Path: {}", pathOnly);
+                logger.error("Request method: POST");
+                logger.error("Request payload: message={}, language={}", prompt.substring(0, Math.min(50, prompt.length())), language);
+                logger.error("========================================");
+                logger.error("Response from N8N:");
+                logger.error("{}", e.getResponseBodyAsString());
+                logger.error("========================================");
+                logger.error("Troubleshooting:");
+                logger.error("1. Verify curl works: curl -X POST <your-webhook-url> -H 'Content-Type: application/json' -d '{{\"message\":\"test\",\"language\":\"en\"}}'");
+                logger.error("2. Check if N8N_WEBHOOK_URL env var exactly matches your working curl command");
+                logger.error("3. In N8N, check if webhook is in Production mode (not Test mode)");
+                logger.error("4. Compare the 'Path' logged above with your N8N webhook node configuration");
+                logger.error("========================================");
+            } else {
+                logger.error(errorMsg, e);
+            }
 
             usageService.logResponse(logId, "error", errorMsg, duration);
 
