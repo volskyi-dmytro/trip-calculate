@@ -167,10 +167,13 @@ export const planTripWithN8n = async (query: string, language: string = 'en'): P
 
 /**
  * Generate cache key from query and language
+ * Uses Unicode-safe encoding to support all characters including Cyrillic
  */
 function generateCacheKey(query: string, language: string): string {
   const normalized = query.toLowerCase().trim().replace(/\s+/g, ' ');
-  return `${CACHE_KEY_PREFIX}${btoa(normalized + '|' + language)}`;
+  // Use encodeURIComponent for Unicode safety, then btoa for base64 encoding
+  const unicodeSafe = encodeURIComponent(normalized + '|' + language);
+  return `${CACHE_KEY_PREFIX}${btoa(unicodeSafe)}`;
 }
 
 /**
