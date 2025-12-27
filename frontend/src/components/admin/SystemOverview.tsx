@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Users, UserCheck, UserPlus, Navigation, MapPin, Clock, CheckCircle } from 'lucide-react';
+import { Users, UserCheck, UserPlus, Navigation, MapPin, Clock, CheckCircle, Brain, Zap, AlertCircle, Database } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -151,6 +151,87 @@ export function SystemOverview() {
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 {t('admin.overview.last30d')}
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* AI Usage Statistics */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center">
+            <Brain className="h-5 w-5 mr-2" />
+            AI Usage Statistics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+                {stats.aiRequestsLast24h}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Requests (24h)
+              </p>
+            </div>
+            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+                {stats.aiRequestsLastMonth}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Requests (30d)
+              </p>
+            </div>
+            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+                {(stats.aiCacheHitRate * 100).toFixed(1)}%
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Cache Hit Rate
+              </p>
+            </div>
+            <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+                {(stats.aiErrorRate * 100).toFixed(1)}%
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Error Rate
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-center mb-2">
+                <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+              </div>
+              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+                {stats.aiUniqueUsersLast24h}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Unique Users (24h)
+              </p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-center mb-2">
+                <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+              </div>
+              <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+                {stats.aiTotalCachedResponses}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Cached Responses
+              </p>
+            </div>
+            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div className="flex items-center justify-center mb-2">
+                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+              </div>
+              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+                {stats.aiRateLimitHits24h}
+              </p>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Rate Limit Hits (24h)
               </p>
             </div>
           </div>

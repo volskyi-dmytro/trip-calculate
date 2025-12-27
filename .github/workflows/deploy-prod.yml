@@ -67,6 +67,15 @@ jobs:
           echo "✅ Verifying application-prod.properties in JAR..."
           jar tf target/*.jar | grep "BOOT-INF/classes/application-prod.properties" || { echo "❌ application-prod.properties not in JAR!"; exit 1; }
 
+          echo "✅ Verifying application-prod.properties has content..."
+          PROD_PROPS=$(jar xf target/*.jar BOOT-INF/classes/application-prod.properties && cat BOOT-INF/classes/application-prod.properties && rm -rf BOOT-INF)
+          if [ $(echo "$PROD_PROPS" | wc -l) -lt 10 ]; then
+            echo "❌ application-prod.properties appears to be empty or corrupted!"
+            echo "Content: $PROD_PROPS"
+            exit 1
+          fi
+          echo "   File has $(echo "$PROD_PROPS" | wc -l) lines ✓"
+
           echo "✅ All required files verified in JAR"
 
       # Build and push Docker image with production tag

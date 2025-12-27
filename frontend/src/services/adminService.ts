@@ -10,6 +10,14 @@ export interface AdminStats {
   totalWaypoints: number;
   pendingAccessRequests: number;
   usersWithRoutePlanner: number;
+  // AI Usage Statistics
+  aiRequestsLast24h: number;
+  aiRequestsLastMonth: number;
+  aiUniqueUsersLast24h: number;
+  aiRateLimitHits24h: number;
+  aiCacheHitRate: number;
+  aiErrorRate: number;
+  aiTotalCachedResponses: number;
 }
 
 export interface UserManagement {
