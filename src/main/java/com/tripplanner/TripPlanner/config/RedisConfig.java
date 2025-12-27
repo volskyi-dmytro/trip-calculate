@@ -42,6 +42,7 @@ public class RedisConfig {
 
         if (redisPassword != null && !redisPassword.isEmpty()) {
             config.setPassword(redisPassword);
+            logger.info("Redis password configured (length: {})", redisPassword.length());
         }
 
         // Configure Lettuce client to use RESP2 protocol for better password auth compatibility
@@ -55,7 +56,14 @@ public class RedisConfig {
 
         logger.info("Configuring Redis connection: {}:{} with RESP2 protocol", redisHost, redisPort);
 
-        return new LettuceConnectionFactory(config, clientConfig);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(config, clientConfig);
+
+        // CRITICAL: Initialize the connection factory
+        factory.afterPropertiesSet();
+
+        logger.info("Redis connection factory initialized");
+
+        return factory;
     }
 
     @Bean
