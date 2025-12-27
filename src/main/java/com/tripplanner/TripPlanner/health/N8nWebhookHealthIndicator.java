@@ -5,17 +5,14 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
 import java.util.Map;
 
 /**
  * Health indicator for N8N webhook availability
- * Checks if the N8N webhook is configured and reachable
+ * Checks if the N8N webhook is configured
  */
 @Component
 public class N8nWebhookHealthIndicator implements HealthIndicator {
@@ -24,8 +21,6 @@ public class N8nWebhookHealthIndicator implements HealthIndicator {
 
     @Value("${n8n.webhook.url:}")
     private String n8nWebhookUrl;
-
-    private final RestTemplate restTemplate = new RestTemplate();
 
     @Override
     public Health health() {
@@ -36,42 +31,36 @@ public class N8nWebhookHealthIndicator implements HealthIndicator {
             details.put("status", "NOT_CONFIGURED");
             details.put("message", "N8N webhook URL is not set");
             details.put("impact", "AI insights feature is disabled");
+            details.put("action", "Set N8N_WEBHOOK_URL environment variable to enable AI insights");
+
+            // Return DOWN for health check since feature is not configured
             return Health.down()
                     .withDetails(details)
                     .build();
         }
 
-        // Mask URL for security
+        // Mask URL for security (show domain but hide path)
         String maskedUrl = n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***");
-        details.put("webhookUrl", maskedUrl);
 
-        // Try to ping the webhook (OPTIONS or HEAD request)
-        // Note: We don't actually call it with POST as that would trigger the workflow
+        // Extract path structure (without exposing domain)
+        String pathOnly = "/";
         try {
-            ResponseEntity<String> response = restTemplate.optionsForAllow(n8nWebhookUrl);
-
-            details.put("status", "CONFIGURED");
-            details.put("reachable", "UNKNOWN");
-            details.put("message", "N8N webhook is configured. Actual availability check skipped to avoid triggering workflow.");
-            details.put("note", "If you see 404 errors when using AI insights, the N8N workflow may not be activated.");
-
-            return Health.up()
-                    .withDetails(details)
-                    .build();
-
-        } catch (Exception e) {
-            details.put("status", "CONFIGURED_BUT_UNREACHABLE");
-            details.put("error", e.getMessage());
-            details.put("message", "N8N webhook URL is configured but may not be reachable");
-            details.put("recommendation", "Check if N8N workflow is activated in production mode");
-
-            logger.debug("N8N webhook health check failed (this is informational only): {}", e.getMessage());
-
-            // Return UP status because we don't want to fail health checks just because N8N is down
-            // The application itself is healthy
-            return Health.up()
-                    .withDetails(details)
-                    .build();
+            String afterProtocol = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
+            pathOnly = afterProtocol.contains("/") ? afterProtocol.substring(afterProtocol.indexOf("/")) : "/";
+        } catch (Exception ex) {
+            logger.debug("Could not extract path from URL", ex);
         }
+
+        details.put("status", "CONFIGURED");
+        details.put("webhookUrl", maskedUrl);
+        details.put("webhookPath", pathOnly);
+        details.put("message", "N8N webhook is configured");
+        details.put("note", "Connectivity check skipped to avoid triggering workflow. Check application logs for actual webhook call results.");
+
+        // Return UP status - the application is healthy if webhook is configured
+        // Actual connectivity will be validated when the endpoint is used
+        return Health.up()
+                .withDetails(details)
+                .build();
     }
 }
