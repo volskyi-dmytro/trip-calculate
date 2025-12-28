@@ -306,11 +306,11 @@ public class AiInsightsController {
 
             HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
 
-            // Set shorter timeout for parameter extraction (500ms)
+            // Set timeout for parameter extraction (2000ms - LLM can be slow)
             RestTemplate fastRestTemplate = new RestTemplate();
             SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-            factory.setConnectTimeout(500);
-            factory.setReadTimeout(500);
+            factory.setConnectTimeout(1000);  // 1 second to connect
+            factory.setReadTimeout(2000);     // 2 seconds to read response
             fastRestTemplate.setRequestFactory(factory);
 
             logger.info("🔍 Calling N8N parameter extractor: {}", n8nExtractorUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
@@ -341,7 +341,7 @@ public class AiInsightsController {
         } catch (Exception e) {
             // Timeout or other errors - this is OK, we'll fall back to full workflow
             if (e.getMessage() != null && e.getMessage().contains("timed out")) {
-                logger.warn("⚠️ Parameter extraction timed out after 500ms (falling back to full workflow)");
+                logger.warn("⚠️ Parameter extraction timed out after 2000ms (falling back to full workflow)");
             } else {
                 logger.warn("⚠️ Failed to extract parameters: {} (falling back to prompt-based cache)",
                     e.getMessage());
