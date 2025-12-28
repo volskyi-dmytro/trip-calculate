@@ -8,7 +8,7 @@ RUN addgroup -S spring && adduser -S spring -G spring
 WORKDIR /app
 
 # Copy JAR file (explicitly use the repackaged JAR, not .original)
-ARG JAR_FILE=target/TripPlanner-v2.jar
+ARG JAR_FILE=target/TripPlanner-v2.1.jar
 COPY ${JAR_FILE} trip-calculate.jar
 
 # Change ownership to non-root user
