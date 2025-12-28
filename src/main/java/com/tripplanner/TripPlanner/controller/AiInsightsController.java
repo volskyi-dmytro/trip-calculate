@@ -1,5 +1,8 @@
 package com.tripplanner.TripPlanner.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tripplanner.TripPlanner.dto.N8nAiResponse;
+import com.tripplanner.TripPlanner.dto.RouteParameters;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
 import jakarta.annotation.PostConstruct;
@@ -17,7 +20,6 @@ import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.MessageDigest;
-import java.time.LocalDateTime;
 import java.util.Map;
 
 /**
@@ -39,13 +41,15 @@ public class AiInsightsController {
     private final RestTemplate restTemplate;
     private final AiCacheService cacheService;
     private final AiUsageService usageService;
+    private final ObjectMapper objectMapper;
 
     /**
      * Constructor initializes RestTemplate with proper timeout configuration
      */
-    public AiInsightsController(AiCacheService cacheService, AiUsageService usageService) {
+    public AiInsightsController(AiCacheService cacheService, AiUsageService usageService, ObjectMapper objectMapper) {
         this.cacheService = cacheService;
         this.usageService = usageService;
+        this.objectMapper = objectMapper;
 
         // Configure RestTemplate with connection and read timeouts
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
@@ -132,7 +136,8 @@ public class AiInsightsController {
 
         String clientIp = getClientIp(httpRequest);
 
-        // Generate cache key
+        // Generate initial cache key from prompt (for backward compatibility)
+        // This will be updated if N8N returns parameters
         String cacheKey = generateCacheKey(prompt, language);
 
         // Check cache first
@@ -186,10 +191,30 @@ public class AiInsightsController {
             String responseBody = response.getBody();
             long duration = System.currentTimeMillis() - startTime;
 
-            // Cache the successful response
             if (responseBody != null && response.getStatusCode().is2xxSuccessful()) {
-                cacheService.put(cacheKey, responseBody);
-                logger.info("Cached response for prompt length: {}", prompt.length());
+                // Try to parse as new format with parameters
+                try {
+                    N8nAiResponse aiResponse = objectMapper.readValue(responseBody, N8nAiResponse.class);
+
+                    if (aiResponse.hasParameters()) {
+                        // Use parameter-based cache key for better semantic caching
+                        String paramCacheKey = generateParameterCacheKey(aiResponse.getParameters(), language);
+                        cacheService.put(paramCacheKey, responseBody);
+                        logger.info("✓ Cached with PARAMETERS: {} -> Cache key: {}",
+                            aiResponse.getParameters().toCacheKey(), paramCacheKey);
+
+                        // Also cache with prompt-based key for backward compatibility
+                        cacheService.put(cacheKey, responseBody);
+                    } else {
+                        // Old format or no parameters - use prompt-based caching
+                        cacheService.put(cacheKey, responseBody);
+                        logger.info("✓ Cached with PROMPT (no parameters): length={}", prompt.length());
+                    }
+                } catch (Exception e) {
+                    // Failed to parse as new format - treat as raw response (backward compatibility)
+                    cacheService.put(cacheKey, responseBody);
+                    logger.debug("Response doesn't have parameter structure, using prompt-based caching", e);
+                }
             }
 
             // Log successful response
@@ -258,6 +283,7 @@ public class AiInsightsController {
     /**
      * Generate cache key from prompt and language
      * Uses MD5 hash of normalized prompt
+     * LEGACY METHOD - kept for backward compatibility
      */
     private String generateCacheKey(String prompt, String language) {
         try {
@@ -276,6 +302,42 @@ public class AiInsightsController {
         } catch (Exception e) {
             logger.error("Failed to generate cache key, using fallback", e);
             return String.valueOf((prompt + language).hashCode());
+        }
+    }
+
+    /**
+     * Generate cache key from extracted parameters
+     * This provides semantic caching - similar trips cache together regardless of phrasing
+     *
+     * Examples:
+     * - "Trip from Kyiv to Lviv" + "Поїздка з Києва до Львова" -> SAME cache key
+     * - "2 passengers" + "двох пасажирів" -> SAME cache key
+     *
+     * @param parameters Extracted route parameters from N8N
+     * @param language Language code
+     * @return MD5 hash of normalized parameters
+     */
+    private String generateParameterCacheKey(RouteParameters parameters, String language) {
+        try {
+            // Get normalized parameter string (e.g., "kyiv->lviv|p2")
+            String paramString = parameters.toCacheKey();
+            String input = paramString + "|" + language;
+
+            MessageDigest md = MessageDigest.getInstance("MD5");
+            byte[] hashBytes = md.digest(input.getBytes());
+
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hashBytes) {
+                sb.append(String.format("%02x", b));
+            }
+
+            logger.debug("Parameter cache key: {} -> {}", paramString, sb.toString());
+            return sb.toString();
+
+        } catch (Exception e) {
+            logger.error("Failed to generate parameter cache key, falling back to prompt-based", e);
+            // Fallback to simple hash
+            return String.valueOf((parameters.toCacheKey() + language).hashCode());
         }
     }
 
