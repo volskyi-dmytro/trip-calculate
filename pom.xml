@@ -10,7 +10,7 @@
 	</parent>
 	<groupId>com.tripplanner</groupId>
 	<artifactId>TripPlanner</artifactId>
-	<version>v2</version>
+	<version>v2.1</version>
 	<name>TripPlanner</name>
 	<description>TripPlanner </description>
 	<url/>
