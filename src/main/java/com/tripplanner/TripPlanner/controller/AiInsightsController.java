@@ -171,9 +171,9 @@ public class AiInsightsController {
                         .body(cachedParamResponse);
             }
 
-            logger.debug("Parameter-based cache MISS: {}", extractedParams.toCacheKey());
+            logger.info("⚠️ Parameter-based cache MISS: {}", extractedParams.toCacheKey());
         } else {
-            logger.debug("Could not extract parameters, skipping parameter-based cache");
+            logger.warn("⚠️ Could not extract parameters, skipping parameter-based cache");
         }
 
         // ============================================================
@@ -288,6 +288,12 @@ public class AiInsightsController {
      * @return RouteParameters if successful, null if extraction failed
      */
     private RouteParameters extractParametersOnly(String prompt, String language) {
+        // Check if extractor URL is configured
+        if (n8nExtractorUrl == null || n8nExtractorUrl.isEmpty()) {
+            logger.warn("⚠️ N8N extractor URL not configured, skipping parameter extraction");
+            return null;
+        }
+
         try {
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
@@ -307,7 +313,7 @@ public class AiInsightsController {
             factory.setReadTimeout(500);
             fastRestTemplate.setRequestFactory(factory);
 
-            logger.debug("Calling N8N parameter extractor at: {}", n8nExtractorUrl);
+            logger.info("🔍 Calling N8N parameter extractor: {}", n8nExtractorUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
             ResponseEntity<String> response = fastRestTemplate.postForEntity(
                 n8nExtractorUrl, request, String.class);
 
@@ -319,21 +325,25 @@ public class AiInsightsController {
 
                     if (!paramsNode.isMissingNode()) {
                         RouteParameters params = objectMapper.treeToValue(paramsNode, RouteParameters.class);
-                        logger.debug("✓ Extracted parameters: {}", params.toCacheKey());
+                        logger.info("✅ Extracted parameters: {}", params.toCacheKey());
                         return params;
+                    } else {
+                        logger.warn("⚠️ Parameter extraction response missing 'parameters' field");
                     }
                 } else {
-                    logger.debug("Parameter extraction returned success=false: {}",
+                    logger.warn("⚠️ Parameter extraction returned success=false: {}",
                         root.path("error").asText("unknown error"));
                 }
+            } else {
+                logger.warn("⚠️ Parameter extractor returned non-2xx status: {}", response.getStatusCode());
             }
 
         } catch (Exception e) {
             // Timeout or other errors - this is OK, we'll fall back to full workflow
             if (e.getMessage() != null && e.getMessage().contains("timed out")) {
-                logger.debug("Parameter extraction timed out (this is OK, will use full workflow)");
+                logger.warn("⚠️ Parameter extraction timed out after 500ms (falling back to full workflow)");
             } else {
-                logger.debug("Failed to extract parameters: {} (will fall back to prompt-based cache)",
+                logger.warn("⚠️ Failed to extract parameters: {} (falling back to prompt-based cache)",
                     e.getMessage());
             }
         }

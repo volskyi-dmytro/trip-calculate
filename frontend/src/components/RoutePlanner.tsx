@@ -498,7 +498,7 @@ export function RoutePlanner() {
     }
 
     try {
-      const n8nData = await planTripWithN8n(userMsg.content);
+      const n8nData = await planTripWithN8n(userMsg.content, language);
 
       if (n8nData) {
         const updates: string[] = [];
