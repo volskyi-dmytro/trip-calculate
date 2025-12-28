@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tripplanner.TripPlanner.dto.N8nAiResponse;
 import com.tripplanner.TripPlanner.dto.RouteParameters;
@@ -15,11 +16,10 @@ import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.HttpClientErrorException;
-import org.springframework.web.client.HttpServerErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.security.MessageDigest;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -34,6 +34,9 @@ public class AiInsightsController {
 
     @Value("${n8n.webhook.url}")
     private String n8nWebhookUrl;
+
+    @Value("${n8n.extractor.url}")
+    private String n8nExtractorUrl;
 
     @Value("${n8n.timeout.seconds:30}")
     private int timeoutSeconds;
@@ -91,7 +94,10 @@ public class AiInsightsController {
 
     /**
      * Proxy endpoint for AI trip insights
-     * Handles caching, logging, and proxying requests to n8n webhook
+     * Implements two-phase semantic caching:
+     * 1. Extract parameters quickly (200ms)
+     * 2. Check parameter-based cache
+     * 3. Fall back to full N8N workflow if needed
      */
     @PostMapping("/insights")
     public ResponseEntity<?> generateInsights(
@@ -101,6 +107,8 @@ public class AiInsightsController {
         long startTime = System.currentTimeMillis();
         String prompt = request.get("message");
         String language = request.getOrDefault("language", "en");
+
+        logger.info("AI Insights request - Prompt length: {}, Language: {}", prompt.length(), language);
 
         if (prompt == null || prompt.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
@@ -128,7 +136,6 @@ public class AiInsightsController {
                 org.springframework.security.oauth2.core.user.OAuth2User oAuth2User =
                     (org.springframework.security.oauth2.core.user.OAuth2User) auth.getPrincipal();
                 userEmail = oAuth2User.getAttribute("email");
-                // We'll fetch userId in the service layer
             } catch (Exception e) {
                 logger.warn("Failed to extract user email from authentication", e);
             }
@@ -136,148 +143,202 @@ public class AiInsightsController {
 
         String clientIp = getClientIp(httpRequest);
 
-        // Generate initial cache key from prompt (for backward compatibility)
-        // This will be updated if N8N returns parameters
-        String cacheKey = generateCacheKey(prompt, language);
+        // ============================================================
+        // PHASE 1: Try parameter-based cache (semantic caching)
+        // ============================================================
+        RouteParameters extractedParams = extractParametersOnly(prompt, language);
 
-        // Check cache first
-        String cachedResponse = cacheService.get(cacheKey);
-        if (cachedResponse != null) {
-            logger.info("Cache HIT for prompt length: {}", prompt.length());
+        if (extractedParams != null && extractedParams.isValid()) {
+            String paramCacheKey = generateParameterCacheKey(extractedParams, language);
+            String cachedParamResponse = cacheService.get(paramCacheKey);
+
+            if (cachedParamResponse != null) {
+                logger.info("✓ SEMANTIC CACHE HIT: {} -> key: {}",
+                    extractedParams.toCacheKey(), paramCacheKey);
+
+                // Log cache hit request
+                Long logId = usageService.logRequest(userId, userEmail, clientIp, prompt, language);
+                long duration = System.currentTimeMillis() - startTime;
+                usageService.logResponse(logId, "success_cached", null, duration);
+
+                HttpHeaders headers = new HttpHeaders();
+                headers.setContentType(MediaType.APPLICATION_JSON);
+                headers.set("X-Cache-Status", "HIT-SEMANTIC");
+                headers.set("X-Cache-Key-Type", "parameter");
+
+                return ResponseEntity.ok()
+                        .headers(headers)
+                        .body(cachedParamResponse);
+            }
+
+            logger.debug("Parameter-based cache MISS: {}", extractedParams.toCacheKey());
+        } else {
+            logger.debug("Could not extract parameters, skipping parameter-based cache");
+        }
+
+        // ============================================================
+        // PHASE 2: Try prompt-based cache (backward compatibility)
+        // ============================================================
+        String promptCacheKey = generateCacheKey(prompt, language);
+        String cachedPromptResponse = cacheService.get(promptCacheKey);
+
+        if (cachedPromptResponse != null) {
+            logger.info("✓ PROMPT CACHE HIT for length: {}", prompt.length());
 
             // Log cache hit request
             Long logId = usageService.logRequest(userId, userEmail, clientIp, prompt, language);
             long duration = System.currentTimeMillis() - startTime;
             usageService.logResponse(logId, "success_cached", null, duration);
 
-            // Return cached response with cache headers
             HttpHeaders headers = new HttpHeaders();
-            headers.add("X-Cache", "HIT");
-            headers.add("X-Cache-Implementation", cacheService.getImplementationType());
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Cache-Status", "HIT-PROMPT");
+            headers.set("X-Cache-Key-Type", "prompt");
 
             return ResponseEntity.ok()
                     .headers(headers)
-                    .body(cachedResponse);
+                    .body(cachedPromptResponse);
         }
 
-        logger.info("Cache MISS for prompt length: {}", prompt.length());
+        logger.info("Cache MISS - calling N8N for full response");
 
         // Log the request
         Long logId = usageService.logRequest(userId, userEmail, clientIp, prompt, language);
 
+        // ============================================================
+        // PHASE 3: Cache miss - call full N8N workflow
+        // ============================================================
         try {
-            // Proxy request to n8n webhook
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Accept", "*/*");
-            // Set a simple User-Agent to avoid any potential N8N filtering
-            headers.set("User-Agent", "TripPlanner-Backend/1.0");
+            headers.add("User-Agent", "TripPlanner-Backend/1.0");
 
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(request, headers);
+            Map<String, Object> requestBody = new HashMap<>();
+            requestBody.put("message", prompt);
+            requestBody.put("language", language);
 
-            logger.info("Calling N8N webhook - Prompt length: {}, Language: {}", prompt.length(), language);
-            logger.debug("Full request payload: {}", request);
-            logger.debug("Request headers: {}", headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(requestBody, headers);
+            ResponseEntity<String> response = restTemplate.postForEntity(n8nWebhookUrl, entity, String.class);
 
-            ResponseEntity<String> response = restTemplate.exchange(
-                    n8nWebhookUrl,
-                    HttpMethod.POST,
-                    entity,
-                    String.class
-            );
+            if (response.getStatusCode().is2xxSuccessful()) {
+                String responseBody = response.getBody();
 
-            logger.info("N8N webhook response status: {}", response.getStatusCode());
-
-            String responseBody = response.getBody();
-            long duration = System.currentTimeMillis() - startTime;
-
-            if (responseBody != null && response.getStatusCode().is2xxSuccessful()) {
                 // Try to parse as new format with parameters
                 try {
                     N8nAiResponse aiResponse = objectMapper.readValue(responseBody, N8nAiResponse.class);
 
                     if (aiResponse.hasParameters()) {
-                        // Use parameter-based cache key for better semantic caching
+                        // Store with parameter-based key (semantic caching)
                         String paramCacheKey = generateParameterCacheKey(aiResponse.getParameters(), language);
                         cacheService.put(paramCacheKey, responseBody);
                         logger.info("✓ Cached with PARAMETERS: {} -> Cache key: {}",
-                            aiResponse.getParameters().toCacheKey(), paramCacheKey);
+                                aiResponse.getParameters().toCacheKey(), paramCacheKey);
 
                         // Also cache with prompt-based key for backward compatibility
-                        cacheService.put(cacheKey, responseBody);
+                        cacheService.put(promptCacheKey, responseBody);
+                        logger.debug("✓ Also cached with PROMPT key for backward compat");
                     } else {
                         // Old format or no parameters - use prompt-based caching
-                        cacheService.put(cacheKey, responseBody);
+                        cacheService.put(promptCacheKey, responseBody);
                         logger.info("✓ Cached with PROMPT (no parameters): length={}", prompt.length());
                     }
                 } catch (Exception e) {
-                    // Failed to parse as new format - treat as raw response (backward compatibility)
-                    cacheService.put(cacheKey, responseBody);
+                    // Failed to parse as new format - treat as raw response
+                    cacheService.put(promptCacheKey, responseBody);
                     logger.debug("Response doesn't have parameter structure, using prompt-based caching", e);
                 }
-            }
 
-            // Log successful response
-            usageService.logResponse(logId, "success", null, duration);
+                // Log successful response
+                long duration = System.currentTimeMillis() - startTime;
+                usageService.logResponse(logId, "success", null, duration);
 
-            // Add cache headers
-            HttpHeaders responseHeaders = new HttpHeaders();
-            responseHeaders.add("X-Cache", "MISS");
-            responseHeaders.add("X-Cache-Implementation", cacheService.getImplementationType());
+                HttpHeaders responseHeaders = new HttpHeaders();
+                responseHeaders.setContentType(MediaType.APPLICATION_JSON);
+                responseHeaders.set("X-Cache-Status", "MISS");
 
-            return ResponseEntity.ok()
-                    .headers(responseHeaders)
-                    .body(responseBody);
-
-        } catch (HttpClientErrorException | HttpServerErrorException e) {
-            long duration = System.currentTimeMillis() - startTime;
-            String errorMsg = String.format("N8N API error: %s %s", e.getStatusCode(), e.getStatusText());
-
-            // Enhanced error logging based on status code
-            if (e.getStatusCode().value() == 404) {
-                // Extract path for debugging (without exposing domain)
-                String pathOnly = "/";
-                try {
-                    String afterProtocol = n8nWebhookUrl.substring(n8nWebhookUrl.indexOf("://") + 3);
-                    pathOnly = afterProtocol.contains("/") ? afterProtocol.substring(afterProtocol.indexOf("/")) : "/";
-                } catch (Exception ex) {
-                    logger.debug("Could not extract path from URL", ex);
-                }
-
-                logger.error("========================================");
-                logger.error("N8N WEBHOOK NOT FOUND (404)");
-                logger.error("Attempted URL: {}", n8nWebhookUrl.replaceAll("(https?://[^/]+).*", "$1/***"));
-                logger.error("Path: {}", pathOnly);
-                logger.error("Request method: POST");
-                logger.error("Request payload: message={}, language={}", prompt.substring(0, Math.min(50, prompt.length())), language);
-                logger.error("========================================");
-                logger.error("Response from N8N:");
-                logger.error("{}", e.getResponseBodyAsString());
-                logger.error("========================================");
-                logger.error("Troubleshooting:");
-                logger.error("1. Verify curl works: curl -X POST <your-webhook-url> -H 'Content-Type: application/json' -d '{{\"message\":\"test\",\"language\":\"en\"}}'");
-                logger.error("2. Check if N8N_WEBHOOK_URL env var exactly matches your working curl command");
-                logger.error("3. In N8N, check if webhook is in Production mode (not Test mode)");
-                logger.error("4. Compare the 'Path' logged above with your N8N webhook node configuration");
-                logger.error("========================================");
+                return ResponseEntity.ok()
+                        .headers(responseHeaders)
+                        .body(responseBody);
             } else {
-                logger.error(errorMsg, e);
+                logger.error("N8N returned non-2xx status: {}", response.getStatusCode());
+                long duration = System.currentTimeMillis() - startTime;
+                usageService.logResponse(logId, "error", "N8N returned " + response.getStatusCode(), duration);
+                return ResponseEntity
+                        .status(response.getStatusCode())
+                        .body(Map.of("error", "N8N workflow failed", "status", response.getStatusCode().toString()));
             }
-
-            usageService.logResponse(logId, "error", errorMsg, duration);
-
-            return ResponseEntity.status(e.getStatusCode())
-                    .body(Map.of("error", "AI service temporarily unavailable"));
 
         } catch (Exception e) {
             long duration = System.currentTimeMillis() - startTime;
-            logger.error("Failed to proxy request to n8n", e);
-
+            logger.error("Failed to call N8N workflow", e);
             usageService.logResponse(logId, "error", e.getMessage(), duration);
 
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to process AI request"));
+            return ResponseEntity
+                    .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", "Failed to generate route", "message", e.getMessage()));
         }
+    }
+
+    /**
+     * Quickly extract route parameters without full geocoding/processing.
+     * Calls lightweight N8N workflow that only returns parameters.
+     *
+     * @param prompt User's route request
+     * @param language Language code (en/uk)
+     * @return RouteParameters if successful, null if extraction failed
+     */
+    private RouteParameters extractParametersOnly(String prompt, String language) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.add("User-Agent", "TripPlanner-Backend/1.0");
+
+            Map<String, Object> requestBody = Map.of(
+                "message", prompt,
+                "language", language
+            );
+
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestBody, headers);
+
+            // Set shorter timeout for parameter extraction (500ms)
+            RestTemplate fastRestTemplate = new RestTemplate();
+            SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+            factory.setConnectTimeout(500);
+            factory.setReadTimeout(500);
+            fastRestTemplate.setRequestFactory(factory);
+
+            logger.debug("Calling N8N parameter extractor at: {}", n8nExtractorUrl);
+            ResponseEntity<String> response = fastRestTemplate.postForEntity(
+                n8nExtractorUrl, request, String.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                JsonNode root = objectMapper.readTree(response.getBody());
+
+                if (root.path("success").asBoolean(false)) {
+                    JsonNode paramsNode = root.path("parameters");
+
+                    if (!paramsNode.isMissingNode()) {
+                        RouteParameters params = objectMapper.treeToValue(paramsNode, RouteParameters.class);
+                        logger.debug("✓ Extracted parameters: {}", params.toCacheKey());
+                        return params;
+                    }
+                } else {
+                    logger.debug("Parameter extraction returned success=false: {}",
+                        root.path("error").asText("unknown error"));
+                }
+            }
+
+        } catch (Exception e) {
+            // Timeout or other errors - this is OK, we'll fall back to full workflow
+            if (e.getMessage() != null && e.getMessage().contains("timed out")) {
+                logger.debug("Parameter extraction timed out (this is OK, will use full workflow)");
+            } else {
+                logger.debug("Failed to extract parameters: {} (will fall back to prompt-based cache)",
+                    e.getMessage());
+            }
+        }
+
+        return null;
     }
 
     /**
