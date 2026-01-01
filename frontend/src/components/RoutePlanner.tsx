@@ -1171,6 +1171,11 @@ export function RoutePlanner() {
                   onChange={(e) => {
                     let value = e.target.value.replace(',', '.');
                     if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      if (value === '') {
+                        // Set to 0 when field is cleared
+                        setRouteSettings({ ...routeSettings, fuelConsumption: 0 });
+                        return;
+                      }
                       const numValue = parseFloat(value);
                       if (!isNaN(numValue) && numValue >= 0) {
                         setRouteSettings({ ...routeSettings, fuelConsumption: numValue });
@@ -1194,6 +1199,11 @@ export function RoutePlanner() {
                   onChange={(e) => {
                     let value = e.target.value.replace(',', '.');
                     if (value === '' || /^\d*\.?\d*$/.test(value)) {
+                      if (value === '') {
+                        // Set to 0 when field is cleared
+                        setRouteSettings({ ...routeSettings, fuelCostPerLiter: 0 });
+                        return;
+                      }
                       const numValue = parseFloat(value);
                       if (!isNaN(numValue) && numValue >= 0) {
                         setRouteSettings({ ...routeSettings, fuelCostPerLiter: numValue });

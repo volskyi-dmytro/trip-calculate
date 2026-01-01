@@ -51,8 +51,16 @@ export function TripDetailsForm({
 
   const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(',', '.');
+
+    // Allow empty string or valid decimal numbers
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setFuelConsumptionInput(value);
+
+      // If empty, don't update settings (keep previous value)
+      if (value === '') {
+        return;
+      }
+
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue >= 0) {
         onUpdateSettings({
@@ -65,8 +73,16 @@ export function TripDetailsForm({
 
   const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value.replace(',', '.');
+
+    // Allow empty string or valid decimal numbers
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setFuelCostInput(value);
+
+      // If empty, don't update settings (keep previous value)
+      if (value === '') {
+        return;
+      }
+
       const numValue = parseFloat(value);
       if (!isNaN(numValue) && numValue >= 0) {
         onUpdateSettings({

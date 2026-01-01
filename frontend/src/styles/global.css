@@ -102,29 +102,32 @@ body[data-theme="dark"]::before {
 
 .header {
     position: relative;
-    background: var(--gradient-hero);
     padding: 40px 0;
     text-align: center;
     overflow: hidden;
+    background-size: cover;
+    background-position: center center;
+    background-repeat: no-repeat;
 }
 
-/* Overlay seasonal image with blend mode */
-.header::after {
+/* Gradient overlay on top of seasonal image */
+.header::before {
     content: '';
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background: inherit;
-    mix-blend-mode: overlay;
-    opacity: 0.3;
+    background: var(--gradient-hero);
+    mix-blend-mode: multiply;
+    opacity: 0.7;
     z-index: 0;
     pointer-events: none;
 }
 
 .header .container {
     position: relative;
+    z-index: 1;
     display: grid;
     grid-template-columns: auto 1fr auto;
     grid-template-areas:
@@ -646,8 +649,9 @@ body[data-theme="dark"] {
     color: var(--text-color-dark);
 }
 
-body[data-theme="dark"] .header {
+body[data-theme="dark"] .header::before {
     background: linear-gradient(135deg, #1a1f3a 0%, #2d1b4e 50%, #1a1f3a 100%);
+    opacity: 0.85;
 }
 
 body[data-theme="dark"] header h1 {
