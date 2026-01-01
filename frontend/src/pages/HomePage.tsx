@@ -14,18 +14,58 @@ export function HomePage() {
 
       <section className="intro">
         <div className="container">
-          <h2>{t('intro.title')}</h2>
-          <p>{t('intro.description')}</p>
+          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+            <h2>{t('intro.title')}</h2>
+            <p style={{
+              fontSize: '1.2em',
+              color: 'var(--text-secondary)',
+              maxWidth: '700px',
+              margin: '0 auto',
+              lineHeight: '1.6'
+            }}>
+              {t('intro.description')}
+            </p>
+          </div>
           <div className="features">
             <div className="feature">
+              <div style={{
+                fontSize: '3em',
+                marginBottom: '16px',
+                background: 'var(--gradient-ocean)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                ✨
+              </div>
               <h3>{t('intro.userFriendly.title')}</h3>
               <p>{t('intro.userFriendly.text')}</p>
             </div>
             <div className="feature">
+              <div style={{
+                fontSize: '3em',
+                marginBottom: '16px',
+                background: 'var(--gradient-sunset)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                🗺️
+              </div>
               <h3>{t('intro.routePlanner.title')}</h3>
               <p>{t('intro.routePlanner.text')}</p>
             </div>
             <div className="feature">
+              <div style={{
+                fontSize: '3em',
+                marginBottom: '16px',
+                background: 'var(--gradient-hero)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                backgroundClip: 'text'
+              }}>
+                ⚡
+              </div>
               <h3>{t('intro.quickLookup.title')}</h3>
               <p>{t('intro.quickLookup.text')}</p>
             </div>
