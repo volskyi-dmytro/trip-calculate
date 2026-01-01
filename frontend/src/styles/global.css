@@ -110,7 +110,7 @@ body[data-theme="dark"]::before {
     background-repeat: no-repeat;
 }
 
-/* Gradient overlay on top of seasonal image */
+/* Subtle overlay on top of seasonal image for better text contrast */
 .header::before {
     content: '';
     position: absolute;
@@ -118,9 +118,7 @@ body[data-theme="dark"]::before {
     left: 0;
     right: 0;
     bottom: 0;
-    background: var(--gradient-hero);
-    mix-blend-mode: multiply;
-    opacity: 0.7;
+    background: linear-gradient(135deg, rgba(0, 0, 0, 0.15) 0%, rgba(0, 0, 0, 0.05) 100%);
     z-index: 0;
     pointer-events: none;
 }
@@ -650,8 +648,7 @@ body[data-theme="dark"] {
 }
 
 body[data-theme="dark"] .header::before {
-    background: linear-gradient(135deg, #1a1f3a 0%, #2d1b4e 50%, #1a1f3a 100%);
-    opacity: 0.85;
+    background: linear-gradient(135deg, rgba(10, 25, 41, 0.7) 0%, rgba(10, 25, 41, 0.5) 100%);
 }
 
 body[data-theme="dark"] header h1 {
