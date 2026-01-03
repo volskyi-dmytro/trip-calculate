@@ -347,3 +347,166 @@ body[data-theme="dark"] .map-instructions-overlay {
     border-top-color: #374151;
   }
 }
+
+/* ============================================
+   Interactive Route Editing - Drag & Drop
+   ============================================ */
+
+/* Waypoint card wrapper with smooth transitions */
+.waypoint-card-wrapper {
+  position: relative;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Enhanced hover state for draggable cards */
+.waypoint-card-wrapper:not(.calculating):hover .waypoint-card {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
+  border-color: rgba(78, 205, 196, 0.3);
+}
+
+/* Dragging state - subtle opacity and lift effect */
+.waypoint-card-wrapper.dragging {
+  opacity: 0.4;
+  transform: scale(0.98);
+}
+
+.waypoint-card-wrapper.dragging .waypoint-card {
+  box-shadow: 0 8px 24px rgba(78, 205, 196, 0.25);
+  border-color: #4ECDC4;
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(85, 111, 230, 0.1));
+}
+
+/* Drop target indicator - Neo-Travel ocean gradient accent */
+.waypoint-card-wrapper.drop-target {
+  position: relative;
+  animation: pulseDropZone 0.6s ease-in-out infinite;
+}
+
+.waypoint-card-wrapper.drop-target::before {
+  content: '';
+  position: absolute;
+  top: -8px;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(120deg, #4ECDC4 0%, #556FE6 100%);
+  border-radius: 2px;
+  box-shadow: 0 0 12px rgba(78, 205, 196, 0.6);
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseDropZone {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.02);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    opacity: 0.5;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0.5;
+  }
+}
+
+/* Disabled state during calculation */
+.waypoint-card-wrapper.calculating {
+  pointer-events: none;
+  opacity: 0.7;
+}
+
+.waypoint-card-wrapper.calculating .waypoint-card {
+  background: rgba(200, 200, 200, 0.1);
+  cursor: not-allowed;
+}
+
+/* Smooth number badge with gradient */
+.waypoint-card .w-6.h-6.rounded-full {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.waypoint-card-wrapper:hover .w-6.h-6.rounded-full {
+  transform: scale(1.1);
+  box-shadow: 0 4px 8px rgba(78, 205, 196, 0.3);
+}
+
+/* Delete button enhanced hover */
+.waypoint-card button[title*="Delete"]:hover,
+.waypoint-card button[title*="Видалити"]:hover {
+  transform: scale(1.1);
+}
+
+/* Grip icon animation */
+.waypoint-card .cursor-grab:hover {
+  color: #4ECDC4;
+  transform: scale(1.1);
+}
+
+.waypoint-card .cursor-grab:active {
+  cursor: grabbing;
+}
+
+/* Dark mode adjustments */
+body[data-theme="dark"] .waypoint-card-wrapper:not(.calculating):hover .waypoint-card {
+  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
+  border-color: rgba(78, 205, 196, 0.4);
+}
+
+body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
+  background: linear-gradient(135deg, rgba(78, 205, 196, 0.15), rgba(85, 111, 230, 0.15));
+  border-color: #4ECDC4;
+}
+
+/* Loading spinner with ocean gradient color */
+.animate-spin.text-\[\#4ECDC4\] {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Smooth entrance animation for waypoint cards */
+.waypoint-card {
+  animation: slideInCard 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes slideInCard {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  .waypoint-card-wrapper:not(.calculating):active .waypoint-card {
+    transform: scale(0.98);
+    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.2);
+  }
+
+  .waypoint-card .cursor-grab {
+    cursor: grab;
+  }
+
+  .waypoint-card .cursor-grab:active {
+    cursor: grabbing;
+  }
+}

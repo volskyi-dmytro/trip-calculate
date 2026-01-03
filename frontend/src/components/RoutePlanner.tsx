@@ -4,6 +4,7 @@ import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
 import { TopChatBar } from './TopChatBar'
 import { StatsPanel } from './StatsPanel'
+import { RoutePanel } from './RoutePanel'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -97,6 +98,9 @@ export function RoutePlanner() {
     return saved ? JSON.parse(saved) : false // Default to hidden
   })
 
+  // Route calculation state
+  const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
@@ -175,11 +179,14 @@ export function RoutePlanner() {
         setRouteGeometry([])
         setRouteDistance(0)
         setRouteDuration(0)
+        setIsCalculatingRoute(false)
         return
       }
 
       console.log('🟢 [PLANNER] Calling calculateRoute...');
       console.log('🟢 [PLANNER] Waypoints:', waypoints.map(w => ({ id: w.id, name: w.name, lat: w.lat, lng: w.lng })));
+
+      setIsCalculatingRoute(true)
 
       try {
         const route = await routingService.getRoute(waypoints)
@@ -216,6 +223,8 @@ export function RoutePlanner() {
             }
           )
         }
+
+        setIsCalculatingRoute(false)
       } catch (error) {
         console.error('❌ [PLANNER] Failed to calculate route:', error);
         // Fallback to straight lines
@@ -224,6 +233,7 @@ export function RoutePlanner() {
         setRouteGeometry(fallbackGeometry)
         setRouteDistance(0)
         setRouteDuration(0)
+        setIsCalculatingRoute(false)
         toast.error(
           language === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
           {
@@ -300,10 +310,32 @@ export function RoutePlanner() {
     }
   }, [])
 
-  // const removeWaypoint = useCallback((id: string) => {
-  //   setWaypoints(prev => prev.filter(wp => wp.id !== id))
-  //   toast.success(t.toasts.waypointRemoved)
-  // }, [t])
+  const removeWaypoint = useCallback((id: string) => {
+    if (waypoints.length <= 2) {
+      toast.error(
+        language === 'uk'
+          ? 'Потрібно мінімум 2 точки для маршруту'
+          : 'Minimum 2 waypoints required'
+      )
+      return
+    }
+    setWaypoints(prev => prev.filter(wp => wp.id !== id))
+    toast.success(t.toasts.waypointRemoved)
+  }, [waypoints.length, t, language])
+
+  const reorderWaypoints = useCallback((reorderedWaypoints: Waypoint[]) => {
+    setWaypoints(reorderedWaypoints)
+  }, [])
+
+  const updateWaypointName = useCallback((id: string, name: string) => {
+    setWaypoints(prev =>
+      prev.map(wp => wp.id === id ? { ...wp, name } : wp)
+    )
+  }, [])
+
+  const updateRouteSettings = useCallback((settings: RouteSettings) => {
+    setRouteSettings(settings)
+  }, [])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
@@ -1213,14 +1245,20 @@ export function RoutePlanner() {
                       routeGeometry={routeGeometry}
                       onAddWaypoint={addWaypoint}
                       onUpdateWaypoint={updateWaypoint}
+                      onDeleteWaypoint={removeWaypoint}
                     />
 
                     {/* Instructions overlay */}
                     {waypoints.length === 0 && (
                       <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[500]">
-                        <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300">
-                          <MapPin className="h-4 w-4" />
-                          <span>{t.waypoints.clickMap}</span>
+                        <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
+                          <div className="flex items-center gap-2">
+                            <MapPin className="h-4 w-4" />
+                            <span>{language === 'uk' ? 'Клікніть на карту, щоб додати точку' : 'Click map to add waypoint'}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 ml-6">
+                            {language === 'uk' ? 'ПКМ на маркері - видалити' : 'Right-click marker to delete'}
+                          </div>
                         </div>
                       </div>
                     )}
@@ -1291,98 +1329,19 @@ export function RoutePlanner() {
                   </p>
                 )}
               </div>
-
-              {/* Fuel Consumption */}
-              <div>
-                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
-                  {language === 'uk' ? 'Л/100КМ' : 'L/100KM'}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="9.2"
-                  value={routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : ''}
-                  onChange={(e) => {
-                    let value = e.target.value.replace(',', '.');
-                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      if (value === '') {
-                        // Set to 0 when field is cleared
-                        setRouteSettings({ ...routeSettings, fuelConsumption: 0 });
-                        return;
-                      }
-                      const numValue = parseFloat(value);
-                      if (!isNaN(numValue) && numValue >= 0) {
-                        setRouteSettings({ ...routeSettings, fuelConsumption: numValue });
-                      }
-                    }
-                  }}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Fuel Price */}
-              <div>
-                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
-                  {language === 'uk' ? 'ЦІНА' : 'PRICE'}
-                </Label>
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  placeholder="55"
-                  value={routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : ''}
-                  onChange={(e) => {
-                    let value = e.target.value.replace(',', '.');
-                    if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                      if (value === '') {
-                        // Set to 0 when field is cleared
-                        setRouteSettings({ ...routeSettings, fuelCostPerLiter: 0 });
-                        return;
-                      }
-                      const numValue = parseFloat(value);
-                      if (!isNaN(numValue) && numValue >= 0) {
-                        setRouteSettings({ ...routeSettings, fuelCostPerLiter: numValue });
-                      }
-                    }
-                  }}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Passenger Count */}
-              <div>
-                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
-                  {language === 'uk' ? 'ПАСАЖИРИ' : 'PASSENGERS'}
-                </Label>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="1"
-                  min="1"
-                  max="99"
-                  value={routeSettings.passengerCount > 0 ? routeSettings.passengerCount : ''}
-                  onChange={(e) => {
-                    const numValue = parseInt(e.target.value, 10);
-                    if (!isNaN(numValue) && numValue >= 1 && numValue <= 99) {
-                      setRouteSettings({ ...routeSettings, passengerCount: numValue });
-                    } else if (e.target.value === '') {
-                      // Allow clearing the field temporarily
-                      setRouteSettings({ ...routeSettings, passengerCount: 1 });
-                    }
-                  }}
-                  className="w-full"
-                />
-              </div>
-
-              {/* Manual Add Button */}
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => setShowManualInputDialog(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                {t.buttons.addManually}
-              </Button>
             </div>
+
+            {/* Draggable Waypoint List */}
+            <RoutePanel
+              waypoints={waypoints}
+              routeSettings={routeSettings}
+              onUpdateWaypointName={updateWaypointName}
+              onRemoveWaypoint={removeWaypoint}
+              onReorderWaypoints={reorderWaypoints}
+              onUpdateSettings={updateRouteSettings}
+              onAddManually={() => setShowManualInputDialog(true)}
+              isCalculating={isCalculatingRoute}
+            />
 
             {/* Stats Panel */}
             <StatsPanel

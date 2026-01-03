@@ -9,13 +9,15 @@ interface MapContainerProps {
   routeGeometry: Array<[number, number]> // [lat, lng] format from OSRM
   onAddWaypoint: (lat: number, lng: number) => void
   onUpdateWaypoint: (id: string, lat: number, lng: number) => void
+  onDeleteWaypoint?: (id: string) => void
 }
 
-export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint }: MapContainerProps) {
+export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint, onDeleteWaypoint }: MapContainerProps) {
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const onAddWaypointRef = useRef(onAddWaypoint)
+  const onDeleteWaypointRef = useRef(onDeleteWaypoint)
   const isMapLoadedRef = useRef(false)
   const { theme } = useTheme()
 
@@ -64,10 +66,11 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     )
   }
 
-  // Update callback ref when it changes
+  // Update callback refs when they change
   useEffect(() => {
     onAddWaypointRef.current = onAddWaypoint
-  }, [onAddWaypoint])
+    onDeleteWaypointRef.current = onDeleteWaypoint
+  }, [onAddWaypoint, onDeleteWaypoint])
 
   // Initialize map ONCE - never re-run this effect
   useEffect(() => {
@@ -272,8 +275,35 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           box-shadow: 0 2px 5px rgba(0,0,0,0.3);
           cursor: grab;
           font-size: 14px;
+          transition: all 0.2s ease;
         `
         el.textContent = (index + 1).toString()
+
+        // Add hover effect
+        el.addEventListener('mouseenter', () => {
+          el.style.transform = 'scale(1.1)'
+          el.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.5)'
+        })
+        el.addEventListener('mouseleave', () => {
+          el.style.transform = 'scale(1)'
+          el.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)'
+        })
+
+        // Add right-click handler for deletion
+        el.addEventListener('contextmenu', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+
+          if (onDeleteWaypointRef.current) {
+            // Visual feedback before deletion
+            el.style.backgroundColor = '#ef4444'
+            el.style.transform = 'scale(0.8)'
+
+            setTimeout(() => {
+              onDeleteWaypointRef.current!(waypoint.id)
+            }, 150)
+          }
+        })
 
         // Create marker at waypoint position (Mapbox uses [lng, lat])
         marker = new mapboxgl.Marker({
