@@ -6,7 +6,16 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Configuration properties for AI rate limiting and caching
- * Values can be overridden in application.properties
+ *
+ * Default Strategy (Beta Testing Phase):
+ * - Authenticated (Beta Testers): 20/min, 400/hour, 1500/day
+ * - Unauthenticated: 3/min, 10/hour, 30/day
+ * - Premium (Future): 30/min, 600/hour, 2000/day
+ *
+ * Values can be overridden in application.properties using prefix "ai."
+ * Example: ai.ratelimit.authenticated.minute=20
+ *
+ * @see application.properties for detailed configuration
  */
 @Configuration
 @ConfigurationProperties(prefix = "ai")
@@ -14,7 +23,8 @@ import org.springframework.context.annotation.Configuration;
 public class AiRateLimitConfig {
 
     /**
-     * Rate limit configuration
+     * Rate limit configuration with three-tier system
+     * Each tier has per-minute, per-hour, and per-day limits
      */
     private RateLimit ratelimit = new RateLimit();
 
@@ -30,18 +40,21 @@ public class AiRateLimitConfig {
 
     @Data
     public static class RateLimit {
-        private Tier unauthenticated = new Tier(5, 20);
-        private Tier authenticated = new Tier(10, 50);
+        private Tier unauthenticated = new Tier(3, 10, 30);
+        private Tier authenticated = new Tier(20, 400, 1500);
+        private Tier premium = new Tier(30, 600, 2000);
 
         @Data
         public static class Tier {
+            private int minute;
             private int hourly;
             private int daily;
 
             public Tier() {
             }
 
-            public Tier(int hourly, int daily) {
+            public Tier(int minute, int hourly, int daily) {
+                this.minute = minute;
                 this.hourly = hourly;
                 this.daily = daily;
             }
