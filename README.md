@@ -4,6 +4,16 @@ A modern full-stack web application for trip expense calculation and route plann
 
 **Live Demo:** [trip-calculate.online](https://trip-calculate.online)
 
+## Recent Updates (v2.1)
+
+- 🤖 **AI-Powered Trip Planning** - Intelligent route recommendations via n8n workflow integration
+- 🗺️ **3D Map Visualization** - Mapbox GL with terrain and satellite views
+- 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL for faster results
+- 🎨 **Neo-Travel Design** - Modern terminal-inspired interface with seasonal backgrounds
+- 📊 **Admin Dashboard** - AI usage statistics and system monitoring
+- 🚀 **Performance** - Optimized rate limits and improved parameter extraction (2s timeout)
+- 🌍 **Unicode Support** - Full Cyrillic and international character support in routes
+
 ## Features
 
 ### Trip Expense Calculator
@@ -11,21 +21,24 @@ A modern full-stack web application for trip expense calculation and route plann
 - 🧮 **Smart Cost Splitting** - Automatic per-person expense breakdown
 - 🔐 **Secure Authentication** - Google OAuth 2.0 with session persistence
 
-### Route Planner
-- 🗺️ **Interactive Map** - Leaflet-powered mapping with waypoint management
-- 🛣️ **Road-Based Routing** - Real-time route calculation on actual roads
-- 📍 **Geocoding & Reverse Geocoding** - Search locations and get addresses from coordinates
-- 💾 **Save & Load Routes** - Persistent route storage with user authentication
-- 🎯 **Manual Address Input** - Add waypoints by typing addresses
-- ⛽ **Fuel Cost Estimation** - Calculate trip costs based on distance and fuel consumption
-- 🔒 **Access Control** - Restricted feature with email-based access requests
+### AI-Powered Route Planner (Beta)
+- 🤖 **AI Trip Insights** - Intelligent recommendations via n8n workflow integration
+- 🗺️ **3D Map Visualization** - Mapbox-powered 3D terrain and satellite views
+- 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL
+- 🛣️ **Road-Based Routing** - Multi-provider routing (Mapbox + OSRM fallback)
+- 📍 **Geocoding** - Search locations and get addresses from coordinates
+- 💾 **Cloud Storage** - Save and load routes with user authentication
+- 🎯 **Manual Waypoints** - Add locations by address or map click
+- ⛽ **Cost Estimation** - Real-time fuel cost calculation with caching
+- 🔒 **Access Control** - Beta feature with request-based access
 
 ### General Features
+- 🎨 **Neo-Travel Design** - Modern terminal-inspired interface with seasonal backgrounds
 - 🌓 **Dark/Light Theme** - Seamless theme switching with persistence
 - 🌍 **Bilingual Support** - Full English/Ukrainian localization
-- 🎨 **Seasonal Backgrounds** - Dynamic header imagery
 - 📱 **Fully Responsive** - Optimized for desktop, tablet, and mobile
 - 🔔 **Toast Notifications** - Real-time user feedback with Sonner
+- 📊 **Admin Dashboard** - AI usage statistics and user management
 - 🐳 **Docker Ready** - Containerized deployment
 
 ## Tech Stack
@@ -34,9 +47,10 @@ A modern full-stack web application for trip expense calculation and route plann
 - **React 19** with TypeScript
 - **Tailwind CSS v4** - Modern utility-first styling
 - **React Router v7** - Client-side routing
-- **Leaflet + React Leaflet** - Interactive maps
+- **Mapbox GL JS** - 3D map visualization with terrain
+- **Leaflet + React Leaflet** - Interactive 2D mapping
 - **Vite 7** - Lightning-fast build tool
-- **Axios** - HTTP client
+- **Axios** - HTTP client with smart caching
 - **Sonner** - Toast notifications
 - **Lucide React** - Icon system
 - **Context API** - State management
@@ -46,7 +60,9 @@ A modern full-stack web application for trip expense calculation and route plann
 - **Spring Security + OAuth2** - Google authentication
 - **Spring Data JPA** - Database abstraction
 - **Spring Session JDBC** - Session persistence
+- **Redis** - Semantic caching with 24h TTL
 - **PostgreSQL** - Primary database (MySQL/H2 supported)
+- **n8n Integration** - AI-powered trip insights via webhooks
 - **Spring Actuator + Prometheus** - Monitoring & metrics
 - **Lombok** - Code generation
 
@@ -130,6 +146,18 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 
 # OAuth Redirect (production only, leave blank for dev)
 OAUTH_REDIRECT_URI=https://trip-calculate.online/login/oauth2/code/google
+
+# AI Integration (Optional - for Route Planner AI features)
+N8N_WEBHOOK_URL=your_n8n_webhook_url
+N8N_EXTRACTOR_URL=your_n8n_parameter_extractor_url
+
+# Redis (Optional - for AI response caching)
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=your_redis_password
+
+# Mapbox (Optional - for 3D map visualization)
+MAPBOX_ACCESS_TOKEN=pk.your_mapbox_token
 ```
 
 ### Frontend Configuration
@@ -141,6 +169,9 @@ VITE_API_URL=
 
 # For standalone frontend dev, uncomment:
 # VITE_API_URL=http://localhost:8080
+
+# Mapbox (Optional - for 3D map visualization in Route Planner)
+VITE_MAPBOX_TOKEN=pk.your_mapbox_token
 ```
 
 ### Google Cloud Console Setup
@@ -327,6 +358,10 @@ java -jar target/TripPlanner-v2.jar
 - `DELETE /api/routes/{id}` - Delete route
 - `GET /api/routes/access` - Check route planner access
 - `POST /api/routes/request-access` - Request access via email
+
+### AI Integration (Beta)
+- `POST /api/ai/trip-insights` - Get AI-powered trip recommendations
+- `POST /api/routing/calculate` - Multi-provider routing with fallback
 
 ### Monitoring
 - `GET /actuator/health` - Health check

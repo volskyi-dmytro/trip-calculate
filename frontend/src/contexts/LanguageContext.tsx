@@ -30,23 +30,23 @@ const translations: Record<Language, Record<string, string>> = {
     'userMenu.myRoutes': 'My Routes',
 
     // Intro
-    'intro.title': 'All-In-One Trip Manager',
-    'intro.description': 'Are you bored and annoyed when it comes to fuel cost calculation before or after the trip? You can use quick calculation instead! Spend more time on your journey rather arguing about expenses with our platform!',
+    'intro.title': 'AI-Powered Trip Manager',
+    'intro.description': 'Smart trip planning with AI-powered insights and 3D visualization. Calculate costs instantly, optimize routes intelligently, and split expenses effortlessly!',
     'intro.userFriendly.title': 'User-Friendly',
-    'intro.userFriendly.text': 'Our interface is designed with simplicity in mind. Easily navigate through trip planning and expense splitting.',
-    'intro.routePlanner.title': 'Route Planner',
-    'intro.routePlanner.text': 'Plan the most efficient routes to save fuel and time.',
-    'intro.quickLookup.title': 'Quick Lookup',
-    'intro.quickLookup.text': 'Quickly find routes, fuel stops, and more with Quick Lookup.',
+    'intro.userFriendly.text': 'Modern terminal-inspired interface with intuitive controls. Navigate seamlessly between trip planning and expense management.',
+    'intro.routePlanner.title': 'AI Route Planner',
+    'intro.routePlanner.text': 'AI-powered route optimization with 3D map visualization and intelligent trip recommendations.',
+    'intro.quickLookup.title': 'Quick Calculator',
+    'intro.quickLookup.text': 'Instant fuel cost calculation with smart caching for faster results.',
 
     // FAQ
     'faq.title': 'Frequently Asked Questions',
-    'faq.howWorks.question': 'How does Trip Planner work?',
-    'faq.howWorks.answer': 'Trip Planner allows you to easily plan and split expenses among your trip participants. Simply enter your trip details, and we\'ll do the rest.',
-    'faq.free.question': 'Is Trip Planner free to use?',
-    'faq.free.answer': 'Yes, Trip Planner offers a free version with basic features. Additional premium features will be available for a small fee.',
-    'faq.abroad.question': 'Can I use Trip Planner abroad?',
-    'faq.abroad.answer': 'Absolutely! Trip Planner works globally, making it easy to plan trips and split expenses with friends and family anywhere in the world.',
+    'faq.howWorks.question': 'How does the AI-powered Route Planner work?',
+    'faq.howWorks.answer': 'Our AI analyzes your route and provides intelligent recommendations for optimization, cost savings, and trip planning. The system uses semantic caching for faster responses and supports 3D map visualization for better route understanding.',
+    'faq.free.question': 'Is Trip Calculate free to use?',
+    'faq.free.answer': 'Yes! The basic expense calculator is completely free. The AI-powered Route Planner with 3D visualization is a premium feature currently in beta - request access to try it out!',
+    'faq.abroad.question': 'Can I use Trip Calculate abroad?',
+    'faq.abroad.answer': 'Absolutely! Trip Calculate works globally with support for multiple currencies and international routes. Plan trips anywhere in the world with real-time road-based routing.',
 
     // Calculator
     'calculator.title': 'Calculate Trip Expenses',
@@ -267,23 +267,23 @@ const translations: Record<Language, Record<string, string>> = {
     'userMenu.myRoutes': 'Мої Маршрути',
 
     // Intro
-    'intro.title': 'Менеджер поїздок все-в-одному',
-    'intro.description': 'Чи втомилися ви від розрахунку вартості палива до чи після поїздки? Використовуйте Швидкий Розрахунок замість цього! Не сперечайтеся про витрати - проведіть більше часу в подорожі за допомогою нашої платформи!',
+    'intro.title': 'Менеджер поїздок з AI',
+    'intro.description': 'Розумне планування поїздок з AI-аналізом та 3D візуалізацією. Миттєвий розрахунок витрат, інтелектуальна оптимізація маршрутів та легкий поділ витрат!',
     'intro.userFriendly.title': 'Зручний у використанні',
-    'intro.userFriendly.text': 'Наш інтерфейс розроблений з урахуванням простоти. Легко перемикайтеся між плануванням поїздок та розподілом витрат.',
-    'intro.routePlanner.title': 'Планування маршрутів',
-    'intro.routePlanner.text': 'Плануйте найефективніші маршрути для економії палива та часу.',
-    'intro.quickLookup.title': 'Швидкий пошук',
-    'intro.quickLookup.text': 'Знаходьте маршрути, зупинки для заправки тощо за допомогою Швидкого Пошуку.',
+    'intro.userFriendly.text': 'Сучасний інтерфейс у стилі терміналу з інтуїтивним керуванням. Легко переходьте між плануванням поїздок та управлінням витратами.',
+    'intro.routePlanner.title': 'AI Планувальник',
+    'intro.routePlanner.text': 'Оптимізація маршрутів на базі AI з 3D картою та інтелектуальними рекомендаціями.',
+    'intro.quickLookup.title': 'Швидкий калькулятор',
+    'intro.quickLookup.text': 'Миттєвий розрахунок вартості палива з розумним кешуванням для швидших результатів.',
 
     // FAQ
     'faq.title': 'Часто задавані питання',
-    'faq.howWorks.question': 'Як працює Trip Planner?',
-    'faq.howWorks.answer': 'Trip Planner дозволяє легко планувати та розподіляти витрати між учасниками поїздки. Просто введіть деталі поїздки, і ми зробимо все інше.',
-    'faq.free.question': 'Чи є Trip Planner безкоштовним для використання?',
-    'faq.free.answer': 'Так, Trip Planner пропонує безкоштовну версію з базовими функціями. Додаткові преміум-функції будуть доступні за невелику плату.',
-    'faq.abroad.question': 'Чи можу я використовувати Trip Planner за кордоном?',
-    'faq.abroad.answer': 'Звичайно! Trip Planner працює по всьому світу, що дозволяє легко планувати поїздки та розподіляти витрати з друзями та родиною будь-де у світі.',
+    'faq.howWorks.question': 'Як працює планувальник маршрутів з AI?',
+    'faq.howWorks.answer': 'Наш AI аналізує ваш маршрут та надає інтелектуальні рекомендації щодо оптимізації, економії витрат та планування поїздки. Система використовує семантичне кешування для швидших відповідей та підтримує 3D візуалізацію карти для кращого розуміння маршруту.',
+    'faq.free.question': 'Чи є Trip Calculate безкоштовним?',
+    'faq.free.answer': 'Так! Базовий калькулятор витрат повністю безкоштовний. Планувальник маршрутів з AI та 3D візуалізацією - це преміум функція, яка зараз у бета-тестуванні. Запросіть доступ, щоб спробувати!',
+    'faq.abroad.question': 'Чи можу я використовувати Trip Calculate за кордоном?',
+    'faq.abroad.answer': 'Звичайно! Trip Calculate працює по всьому світу з підтримкою кількох валют та міжнародних маршрутів. Плануйте поїздки будь-де у світі з маршрутизацією по реальних дорогах.',
 
     // Calculator
     'calculator.title': 'Розрахувати витрати на поїздку',
