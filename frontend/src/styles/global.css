@@ -172,16 +172,22 @@ body[data-theme="dark"]::before {
 }
 
 .language-switch label:before {
-    content: "🇬🇧";
-    font-size: 18px;
+    content: "EN";
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     z-index: 1;
     position: relative;
     transition: opacity 0.3s;
 }
 
 .language-switch label:after {
-    content: "🇺🇦";
-    font-size: 18px;
+    content: "UA";
+    font-size: 14px;
+    font-weight: 700;
+    color: #ffffff;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
     z-index: 1;
     position: relative;
     transition: opacity 0.3s;
@@ -468,7 +474,7 @@ h2 {
     }
     .language-switch label:before,
     .language-switch label:after {
-        font-size: 16px;
+        font-size: 12px;
     }
     .language-switch label .slider {
         width: 35px;
@@ -487,12 +493,17 @@ h2 {
     .mode-switch label {
         width: 90px;
         height: 45px;
+        padding: 0 6px;
     }
+    .mode-switch label:before,
     .mode-switch label:after {
+        font-size: 16px;
+    }
+    .mode-switch label .slider {
         width: 35px;
         height: 35px;
     }
-    .mode-switch input:checked + label:after {
+    .mode-switch input:checked + label .slider {
         transform: translateX(45px);
     }
     header h1 {
@@ -717,7 +728,10 @@ body[data-theme="dark"] .mode-switch label {
     width: 100px;
     height: 50px;
     position: relative;
-    display: block;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 8px;
     background: rgba(255, 255, 255, 0.2);
     backdrop-filter: blur(10px);
     border-radius: 50px;
@@ -725,7 +739,7 @@ body[data-theme="dark"] .mode-switch label {
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
     cursor: pointer;
     box-sizing: border-box;
-    overflow: hidden;
+    overflow: visible;
     transition: all 0.3s ease;
     z-index: 10;
 }
@@ -736,7 +750,24 @@ body[data-theme="dark"] .mode-switch label {
     box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
 }
 
+.mode-switch label:before {
+    content: "☀️";
+    font-size: 18px;
+    z-index: 1;
+    position: relative;
+    transition: opacity 0.3s;
+}
+
 .mode-switch label:after {
+    content: "🌙";
+    font-size: 18px;
+    z-index: 1;
+    position: relative;
+    transition: opacity 0.3s;
+}
+
+/* Sliding indicator ball for mode switch */
+.mode-switch label .slider {
     content: "";
     width: 40px;
     height: 40px;
@@ -747,15 +778,17 @@ body[data-theme="dark"] .mode-switch label {
     border-radius: 40px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    z-index: 0;
 }
 
 .mode-switch input {
     width: 0;
     height: 0;
     visibility: hidden;
+    position: absolute;
 }
 
-.mode-switch input:checked + label:after {
+.mode-switch input:checked + label .slider {
     transform: translateX(50px);
     background: linear-gradient(135deg, #1a1f3a 0%, #2d1b4e 100%);
     box-shadow: 0 4px 12px rgba(78, 205, 196, 0.4);

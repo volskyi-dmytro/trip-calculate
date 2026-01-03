@@ -53,7 +53,9 @@ export function Header({ onCalculateClick }: HeaderProps) {
             checked={theme === 'dark'}
             onChange={toggleTheme}
           />
-          <label htmlFor="darkmode-toggle"></label>
+          <label htmlFor="darkmode-toggle">
+            <span className="slider"></span>
+          </label>
         </div>
 
         <div className="auth-section">
