@@ -69,6 +69,12 @@ export function RoutePlanner() {
   const [manualAddress, setManualAddress] = useState('')
   const [isSearching, setIsSearching] = useState(false)
 
+  // Search input state for start/destination fields
+  const [startLocationInput, setStartLocationInput] = useState('')
+  const [destinationInput, setDestinationInput] = useState('')
+  const [isSearchingStart, setIsSearchingStart] = useState(false)
+  const [isSearchingDestination, setIsSearchingDestination] = useState(false)
+
   // Edit mode state
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
@@ -114,6 +120,21 @@ export function RoutePlanner() {
   useEffect(() => {
     localStorage.setItem('tripCalculate_mapVisible', JSON.stringify(isMapVisible))
   }, [isMapVisible])
+
+  // Sync search inputs with waypoints
+  useEffect(() => {
+    if (waypoints.length > 0) {
+      setStartLocationInput(waypoints[0].name)
+    } else {
+      setStartLocationInput('')
+    }
+
+    if (waypoints.length > 1) {
+      setDestinationInput(waypoints[waypoints.length - 1].name)
+    } else {
+      setDestinationInput('')
+    }
+  }, [waypoints])
 
   // Initialize welcome message
   useEffect(() => {
@@ -277,12 +298,6 @@ export function RoutePlanner() {
       console.error('Failed to reverse geocode on drag:', error)
       // Keep the old name if reverse geocoding fails
     }
-  }, [])
-
-  const updateWaypointName = useCallback((id: string, name: string) => {
-    setWaypoints(prev =>
-      prev.map(wp => wp.id === id ? { ...wp, name } : wp)
-    )
   }, [])
 
   // const removeWaypoint = useCallback((id: string) => {
@@ -475,6 +490,109 @@ export function RoutePlanner() {
       setIsSearching(false)
     }
   }, [manualAddress, t])
+
+  // Handle start location search
+  const handleStartLocationSearch = useCallback(async () => {
+    if (!startLocationInput.trim()) {
+      toast.error(t.toasts.enterAddress)
+      return
+    }
+
+    setIsSearchingStart(true)
+
+    try {
+      const result = await geocodingService.forwardGeocode(startLocationInput)
+
+      if (!result) {
+        toast.error(t.toasts.locationNotFound)
+        setIsSearchingStart(false)
+        return
+      }
+
+      // Get proper location name via reverse geocoding
+      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+
+      // Update or add start waypoint
+      if (waypoints.length > 0) {
+        // Update existing start waypoint
+        setWaypoints(prev => [
+          { ...prev[0], lat: result.lat, lng: result.lng, name: locationName },
+          ...prev.slice(1)
+        ])
+      } else {
+        // Add new start waypoint
+        const newWaypoint: Waypoint = {
+          id: Date.now().toString(),
+          lat: result.lat,
+          lng: result.lng,
+          name: locationName
+        }
+        setWaypoints([newWaypoint])
+      }
+
+      setStartLocationInput(locationName)
+      toast.success(`${t.toasts.locationAdded} ${locationName}`)
+    } catch (error) {
+      console.error('Start location search error:', error)
+      toast.error(t.toasts.locationFailed)
+    } finally {
+      setIsSearchingStart(false)
+    }
+  }, [startLocationInput, waypoints, t])
+
+  // Handle destination search
+  const handleDestinationSearch = useCallback(async () => {
+    if (!destinationInput.trim()) {
+      toast.error(t.toasts.enterAddress)
+      return
+    }
+
+    setIsSearchingDestination(true)
+
+    try {
+      const result = await geocodingService.forwardGeocode(destinationInput)
+
+      if (!result) {
+        toast.error(t.toasts.locationNotFound)
+        setIsSearchingDestination(false)
+        return
+      }
+
+      // Get proper location name via reverse geocoding
+      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+
+      // Update or add destination waypoint
+      if (waypoints.length > 1) {
+        // Update existing destination waypoint
+        setWaypoints(prev => [
+          ...prev.slice(0, -1),
+          { ...prev[prev.length - 1], lat: result.lat, lng: result.lng, name: locationName }
+        ])
+      } else if (waypoints.length === 1) {
+        // Add destination waypoint
+        const newWaypoint: Waypoint = {
+          id: Date.now().toString(),
+          lat: result.lat,
+          lng: result.lng,
+          name: locationName
+        }
+        setWaypoints(prev => [...prev, newWaypoint])
+      } else {
+        // No waypoints exist, can't add destination without start
+        toast.error(language === 'uk' ? 'Спочатку додайте початкову локацію' : 'Add start location first')
+        setIsSearchingDestination(false)
+        return
+      }
+
+      setDestinationInput(locationName)
+      toast.success(`${t.toasts.locationAdded} ${locationName}`)
+    } catch (error) {
+      console.error('Destination search error:', error)
+      toast.error(t.toasts.locationFailed)
+    } finally {
+      setIsSearchingDestination(false)
+    }
+  }, [destinationInput, waypoints, t, language])
 
   // AI Chat Handler
   const handleSendChat = useCallback(async () => {
@@ -1130,14 +1248,22 @@ export function RoutePlanner() {
                 <Input
                   type="text"
                   placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
-                  value={waypoints.length > 0 ? waypoints[0].name : ''}
-                  onChange={(e) => {
-                    if (waypoints.length > 0) {
-                      updateWaypointName(waypoints[0].id, e.target.value);
+                  value={startLocationInput}
+                  onChange={(e) => setStartLocationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isSearchingStart) {
+                      handleStartLocationSearch()
                     }
                   }}
+                  disabled={isSearchingStart}
                   className="w-full"
                 />
+                {isSearchingStart && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                    {language === 'uk' ? 'Пошук...' : 'Searching...'}
+                  </p>
+                )}
               </div>
 
               {/* Destination */}
@@ -1148,14 +1274,22 @@ export function RoutePlanner() {
                 <Input
                   type="text"
                   placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
-                  value={waypoints.length > 1 ? waypoints[waypoints.length - 1].name : ''}
-                  onChange={(e) => {
-                    if (waypoints.length > 1) {
-                      updateWaypointName(waypoints[waypoints.length - 1].id, e.target.value);
+                  value={destinationInput}
+                  onChange={(e) => setDestinationInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !isSearchingDestination) {
+                      handleDestinationSearch()
                     }
                   }}
+                  disabled={isSearchingDestination}
                   className="w-full"
                 />
+                {isSearchingDestination && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
+                    {language === 'uk' ? 'Пошук...' : 'Searching...'}
+                  </p>
+                )}
               </div>
 
               {/* Fuel Consumption */}
