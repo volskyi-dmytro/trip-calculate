@@ -19,6 +19,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const onAddWaypointRef = useRef(onAddWaypoint)
   const onDeleteWaypointRef = useRef(onDeleteWaypoint)
   const isMapLoadedRef = useRef(false)
+  const isDraggingMarkerRef = useRef(false) // Track marker drag state to prevent click event
   const { theme } = useTheme()
 
   const add3DBuildingsLayer = (map: mapboxgl.Map) => {
@@ -103,6 +104,12 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
     // Add click handler to add waypoints
     map.on('click', (e) => {
+      // Prevent adding waypoint if a marker was just dragged
+      if (isDraggingMarkerRef.current) {
+        console.log('🚫 [MAP] Click blocked - marker was just dragged')
+        return
+      }
+
       const { lat, lng } = e.lngLat
       onAddWaypointRef.current(lat, lng)
     })
@@ -321,10 +328,23 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
           .addTo(map)
 
-        // Handle marker drag
+        // Handle marker drag start
+        marker.on('dragstart', () => {
+          isDraggingMarkerRef.current = true
+          console.log('🔵 [MAP] Marker drag started')
+        })
+
+        // Handle marker drag end
         marker.on('dragend', () => {
           const lngLat = marker!.getLngLat()
+          console.log('🔵 [MAP] Marker drag ended at', lngLat.lat, lngLat.lng)
           onUpdateWaypoint(waypoint.id, lngLat.lat, lngLat.lng)
+
+          // Keep the flag set for a brief moment to prevent the click event from firing
+          setTimeout(() => {
+            isDraggingMarkerRef.current = false
+            console.log('🔵 [MAP] Drag flag cleared, clicks allowed again')
+          }, 100)
         })
 
         markersRef.current.set(waypoint.id, marker)

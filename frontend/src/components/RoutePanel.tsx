@@ -304,7 +304,8 @@ export function RoutePanel({
                 ...routeSettings,
                 currency: e.target.value as CurrencyCode
               })}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-white"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-white"
+              style={{ paddingRight: '2rem' }}
             >
               {CURRENCIES.map((curr) => (
                 <option key={curr.code} value={curr.code}>
@@ -312,6 +313,26 @@ export function RoutePanel({
                 </option>
               ))}
             </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="passengers">{t.routeSettings.passengers}</Label>
+            <Input
+              id="passengers"
+              type="number"
+              min="1"
+              max="10"
+              value={routeSettings.passengerCount}
+              onChange={(e) => {
+                const value = parseInt(e.target.value, 10)
+                if (!isNaN(value) && value >= 1 && value <= 10) {
+                  onUpdateSettings({
+                    ...routeSettings,
+                    passengerCount: value
+                  })
+                }
+              }}
+            />
           </div>
         </CardContent>
       </Card>

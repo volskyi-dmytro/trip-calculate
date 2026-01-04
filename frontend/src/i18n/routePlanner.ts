@@ -48,6 +48,7 @@ export const routePlannerTranslations = {
       fuelConsumption: 'Fuel Consumption (L/100km)',
       fuelCost: 'Fuel Cost (per liter)',
       currency: 'Currency',
+      passengers: 'Passengers',
     },
     waypoints: {
       title: 'Waypoints',
@@ -172,6 +173,7 @@ export const routePlannerTranslations = {
       fuelConsumption: 'Витрата палива (Л/100км)',
       fuelCost: 'Вартість палива (за літр)',
       currency: 'Валюта',
+      passengers: 'Пасажири',
     },
     waypoints: {
       title: 'Точки маршруту',
