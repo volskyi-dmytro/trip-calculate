@@ -258,10 +258,15 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       let marker = markersRef.current.get(waypoint.id)
 
       if (!marker) {
-        // Create custom HTML marker element with number
+        // Create custom HTML marker element with nested structure
+        // Outer wrapper: Mapbox controls positioning (DO NOT apply transforms here)
         const el = document.createElement('div')
-        el.className = 'custom-mapbox-marker'
-        el.style.cssText = `
+        el.className = 'custom-mapbox-marker-wrapper'
+
+        // Inner element: We control visual effects here
+        const inner = document.createElement('div')
+        inner.className = 'custom-mapbox-marker-inner'
+        inner.style.cssText = `
           background-color: #3b82f6;
           color: white;
           border-radius: 50%;
@@ -277,16 +282,17 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           font-size: 14px;
           transition: all 0.2s ease;
         `
-        el.textContent = (index + 1).toString()
+        inner.textContent = (index + 1).toString()
+        el.appendChild(inner)
 
-        // Add hover effect
+        // Add hover effect to INNER element only
         el.addEventListener('mouseenter', () => {
-          el.style.transform = 'scale(1.1)'
-          el.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.5)'
+          inner.style.transform = 'scale(1.1)'
+          inner.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.5)'
         })
         el.addEventListener('mouseleave', () => {
-          el.style.transform = 'scale(1)'
-          el.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)'
+          inner.style.transform = 'scale(1)'
+          inner.style.boxShadow = '0 2px 5px rgba(0,0,0,0.3)'
         })
 
         // Add right-click handler for deletion
@@ -295,9 +301,9 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           e.stopPropagation()
 
           if (onDeleteWaypointRef.current) {
-            // Visual feedback before deletion
-            el.style.backgroundColor = '#ef4444'
-            el.style.transform = 'scale(0.8)'
+            // Visual feedback before deletion on INNER element
+            inner.style.backgroundColor = '#ef4444'
+            inner.style.transform = 'scale(0.8)'
 
             setTimeout(() => {
               onDeleteWaypointRef.current!(waypoint.id)
@@ -328,7 +334,10 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         marker.setLngLat([waypoint.lng, waypoint.lat])
 
         const el = marker.getElement()
-        el.textContent = (index + 1).toString()
+        const inner = el.querySelector('.custom-mapbox-marker-inner')
+        if (inner) {
+          inner.textContent = (index + 1).toString()
+        }
 
         marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
         console.log('🟣 [MAP] Updated existing marker', index + 1)

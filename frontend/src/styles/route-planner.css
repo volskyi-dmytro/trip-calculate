@@ -510,3 +510,32 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
     cursor: grabbing;
   }
 }
+
+/* ============================================
+   Mapbox Custom Marker Styles
+   ============================================ */
+
+/* Outer wrapper - CRITICAL: No transforms here! Mapbox controls positioning */
+.custom-mapbox-marker-wrapper {
+  position: relative;
+  /* Do not add transform, width, or height - let Mapbox control positioning */
+}
+
+/* Inner element - Safe to transform for hover effects */
+.custom-mapbox-marker-inner {
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  will-change: transform, box-shadow;
+}
+
+/* Dragging state for markers */
+.custom-mapbox-marker-wrapper:active .custom-mapbox-marker-inner {
+  cursor: grabbing !important;
+  opacity: 0.8;
+}
+
+/* Smooth transitions for all marker interactions */
+.custom-mapbox-marker-inner * {
+  transition: inherit;
+}
