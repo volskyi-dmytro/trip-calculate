@@ -15,7 +15,7 @@
     "@tailwindcss/vite": "4.1.17",
     "axios": "1.15.0",
     "date-fns": "4.1.0",
-    "lucide-react": "0.553.0",
+    "lucide-react": "1.8.0",
     "mapbox-gl": "3.17.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
