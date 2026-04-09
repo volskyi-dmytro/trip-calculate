@@ -19,7 +19,7 @@
     "mapbox-gl": "3.17.0",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "react-router-dom": "7.9.4",
+    "react-router-dom": "7.14.0",
     "recharts": "3.4.1",
     "sonner": "2.0.7",
     "tailwindcss": "4.1.17"
