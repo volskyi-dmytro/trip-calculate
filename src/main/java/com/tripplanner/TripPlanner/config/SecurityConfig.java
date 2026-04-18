@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.config;
 
+import com.tripplanner.TripPlanner.ai.access.AiAccessFilter;
 import com.tripplanner.TripPlanner.security.AuthorityRestoreFilter;
 import com.tripplanner.TripPlanner.security.CustomOAuth2UserService;
 import com.tripplanner.TripPlanner.security.CustomOidcUserService;
@@ -32,19 +33,22 @@ public class SecurityConfig {
     private final CustomOAuth2UserService customOAuth2UserService;
     private final CustomOidcUserService customOidcUserService;
     private final AuthorityRestoreFilter authorityRestoreFilter;
+    private final AiAccessFilter aiAccessFilter;
 
     public SecurityConfig(OAuth2LoginSuccessHandler oAuth2LoginSuccessHandler,
                          OAuth2LogoutSuccessHandler oAuth2LogoutSuccessHandler,
                          ClientRegistrationRepository clientRegistrationRepository,
                          CustomOAuth2UserService customOAuth2UserService,
                          CustomOidcUserService customOidcUserService,
-                         AuthorityRestoreFilter authorityRestoreFilter) {
+                         AuthorityRestoreFilter authorityRestoreFilter,
+                         AiAccessFilter aiAccessFilter) {
         this.oAuth2LoginSuccessHandler = oAuth2LoginSuccessHandler;
         this.oAuth2LogoutSuccessHandler = oAuth2LogoutSuccessHandler;
         this.clientRegistrationRepository = clientRegistrationRepository;
         this.customOAuth2UserService = customOAuth2UserService;
         this.customOidcUserService = customOidcUserService;
         this.authorityRestoreFilter = authorityRestoreFilter;
+        this.aiAccessFilter = aiAccessFilter;
 
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("========================================");
         org.slf4j.LoggerFactory.getLogger(SecurityConfig.class).info("SecurityConfig injected with CustomOidcUserService: {}",
@@ -113,6 +117,13 @@ public class SecurityConfig {
 
                 // Add general rate limiting filter AFTER AI rate limiting
                 .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AiRateLimitingFilter.class)
+
+                // Add AiAccessFilter AFTER general rate limiting.
+                // This filter matches /api/ai/** only (via shouldNotFilter) and enforces:
+                // Bucket4j rate limits → Supabase grant → usage caps → prompt injection screen.
+                // It must run AFTER OAuth2 / AuthorityRestoreFilter so the SecurityContext is
+                // fully populated before we inspect the principal.
+                .addFilterAfter(aiAccessFilter, com.tripplanner.TripPlanner.filter.RateLimitingFilter.class)
 
                 // Configure OAuth2 login
                 .oauth2Login(oauth2 -> oauth2

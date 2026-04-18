@@ -23,8 +23,14 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * AI-specific rate limiting filter with multi-tier limits
- * Applies only to /api/ai/** endpoints
+ * AI-specific rate limiting filter with multi-tier limits.
+ *
+ * NOTE (M1): /api/ai/** is EXCLUDED from this filter as of M1.
+ * AiAccessFilter (Bucket4j, 60/min user + 120/min IP) is the single authoritative
+ * rate limiter for /api/ai/**. This filter having an additional 20/min limit there
+ * caused a conflict: the lower limit was the effective prod limit, violating CLAUDE.md.
+ * This filter now only applies to non-/api/ai/** paths (currently no other AI paths exist,
+ * so the filter effectively passes all remaining traffic through).
  *
  * Rate Limit Strategy - Beta Testing Phase:
  * ==========================================
@@ -118,8 +124,11 @@ public class AiRateLimitingFilter implements Filter {
 
         String requestUri = httpRequest.getRequestURI();
 
-        // Only apply to /api/ai/** endpoints
-        if (!requestUri.startsWith("/api/ai/")) {
+        // /api/ai/** is handled exclusively by AiAccessFilter (Bucket4j) since M1.
+        // This filter must not intercept those paths — see class-level Javadoc.
+        // Any future AI-adjacent paths outside /api/ai/** that need rate limiting
+        // can be added here by extending the path check below.
+        if (requestUri.startsWith("/api/ai/") || !isAiAdjacentPath(requestUri)) {
             chain.doFilter(request, response);
             return;
         }
@@ -339,6 +348,17 @@ public class AiRateLimitingFilter implements Filter {
                 beforeMinute, minuteLimits.size(),
                 beforeHourly, hourlyLimits.size(),
                 beforeDaily, dailyLimits.size());
+    }
+
+    /**
+     * Returns true if this path is an AI-adjacent path that this filter should rate-limit.
+     * /api/ai/** is excluded — it is rate-limited by AiAccessFilter (Bucket4j) since M1.
+     * Currently no other AI-adjacent paths exist; this method always returns false,
+     * meaning the filter passes all traffic through until new paths are added here.
+     */
+    private boolean isAiAdjacentPath(String requestUri) {
+        // Placeholder: add future AI-adjacent paths here (e.g. "/api/chat-legacy/**")
+        return false;
     }
 
     /**

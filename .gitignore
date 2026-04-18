@@ -93,6 +93,7 @@ application-dev.properties
 
 INFRASTRUCTURE.md
 CLAUDE.md
+old_CLAUDE.md
 # Environment and development files
 *.sh
 .env
