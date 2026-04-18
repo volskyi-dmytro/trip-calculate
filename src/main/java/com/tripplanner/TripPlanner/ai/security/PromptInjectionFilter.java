@@ -97,7 +97,8 @@ public final class PromptInjectionFilter {
         // Step 1: length cap (before any processing to avoid DoS)
         if (input.length() > MAX_LENGTH) {
             throw new InvalidInputException(
-                    "Input exceeds maximum length of " + MAX_LENGTH + " characters");
+                    "Input exceeds maximum length",
+                    "Input length " + input.length() + " exceeds cap " + MAX_LENGTH);
         }
 
         // Step 2: strip control characters (modifies the string silently)
@@ -106,15 +107,20 @@ public final class PromptInjectionFilter {
         // Step 3: reject long blob (possible base64 / encoded payload)
         if (LONG_BLOB.matcher(cleaned).find()) {
             throw new InvalidInputException(
-                    "Input contains a token exceeding " + MAX_BLOB_LENGTH + " characters");
+                    "Input contains a disallowed token",
+                    "Long non-whitespace blob exceeding " + MAX_BLOB_LENGTH + " characters");
         }
 
         // Step 4: deny-list patterns
+        // Public message is fixed — the matching pattern is operator-only diagnostic detail
+        // exposed via getDetail(). Echoing pattern.toString() into the message would leak the
+        // deny-list to any caller that propagates getMessage() to a response (e.g. AgentController).
         String lower = cleaned.toLowerCase();
         for (Pattern p : DENY_PATTERNS) {
             if (p.matcher(lower).find()) {
                 throw new InvalidInputException(
-                        "Input contains a disallowed pattern: " + p.pattern());
+                        "Input contains a disallowed pattern",
+                        "Matched deny-list pattern: " + p.pattern());
             }
         }
 

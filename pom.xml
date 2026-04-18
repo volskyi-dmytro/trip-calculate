@@ -111,6 +111,13 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- spring-security-test: SecurityMockMvcConfigurers for slice tests (M3 AgentControllerTest) -->
+		<dependency>
+			<groupId>org.springframework.security</groupId>
+			<artifactId>spring-security-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- Spring Data Redis for caching (production profile) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

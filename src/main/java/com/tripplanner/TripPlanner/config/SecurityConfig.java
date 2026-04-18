@@ -64,19 +64,12 @@ public class SecurityConfig {
     }
 
     @Bean
-    public com.tripplanner.TripPlanner.filter.AiRateLimitingFilter aiRateLimitingFilter(
-            com.tripplanner.TripPlanner.repository.UserRepository userRepository) {
-        return new com.tripplanner.TripPlanner.filter.AiRateLimitingFilter(userRepository);
-    }
-
-    @Bean
     public com.tripplanner.TripPlanner.filter.AttackMitigationFilter attackMitigationFilter() {
         return new com.tripplanner.TripPlanner.filter.AttackMitigationFilter();
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http,
-                                          com.tripplanner.TripPlanner.repository.UserRepository userRepository) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationRequestResolver authorizationRequestResolver =
                 buildAuthorizationRequestResolver();
 
@@ -112,11 +105,10 @@ public class SecurityConfig {
                 // Add attack mitigation filter AFTER authority restoration to ensure authentication is available
                 .addFilterAfter(attackMitigationFilter(), com.tripplanner.TripPlanner.security.AuthorityRestoreFilter.class)
 
-                // Add AI rate limiting filter AFTER attack mitigation (checks /api/ai/** endpoints only)
-                .addFilterAfter(aiRateLimitingFilter(userRepository), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
-
-                // Add general rate limiting filter AFTER AI rate limiting
-                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AiRateLimitingFilter.class)
+                // Add general rate limiting filter AFTER attack mitigation.
+                // AiRateLimitingFilter was removed in M3 — it was dead code (isAiAdjacentPath()
+                // always returned false) and /api/ai/** is rate-limited by AiAccessFilter (Bucket4j).
+                .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
 
                 // Add AiAccessFilter AFTER general rate limiting.
                 // This filter matches /api/ai/** only (via shouldNotFilter) and enforces:

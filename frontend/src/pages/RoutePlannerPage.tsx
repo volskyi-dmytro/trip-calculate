@@ -11,6 +11,7 @@ import { Loader2, MapPin, Navigation } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation, type Language } from '../i18n/routePlanner';
 import { toast } from 'sonner';
+import { AgentChat } from '../components/ai/AgentChat';
 
 export function RoutePlannerPage() {
   const { language } = useLanguage();
@@ -32,8 +33,9 @@ export function RoutePlannerPage() {
       setHasAccess(access);
     } catch (error) {
       console.error('Failed to check route planner access:', error);
-      // Default to true since the backend API is confirmed working
-      setHasAccess(true);
+      // Fail closed: a transient access-check error must not auto-mount the AgentChat
+      // (which would then attempt /api/ai/chat). Show the existing CTA path instead.
+      setHasAccess(false);
     }
   };
 
@@ -194,10 +196,15 @@ export function RoutePlannerPage() {
     );
   }
 
-  // Has access - show route planner
+  // Has access - show route planner and AI chat section
   return (
     <>
       <Header />
+      {/* AgentChat section: rendered only when hasAccess === true, so /api/ai/chat
+          is never called for non-granted users. Non-granted users see the CTA above. */}
+      <div className="container mx-auto max-w-4xl px-4 py-6">
+        <AgentChat />
+      </div>
       <RoutePlanner />
     </>
   );
