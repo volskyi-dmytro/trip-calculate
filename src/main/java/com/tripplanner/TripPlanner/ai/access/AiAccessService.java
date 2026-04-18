@@ -10,9 +10,6 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.Duration;
-import java.time.LocalDate;
-import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
@@ -30,10 +27,7 @@ import java.util.concurrent.TimeUnit;
  * marks the upgrade path to Redis-backed Bucket4j for M2/M3 multi-instance deploys.
  *
  * Grant cache: Redis key {@code ai:grant:{userId}}, serialised as JSON.
- * Usage counters: Redis keys {@code ai:usage:{userId}:day:{YYYY-MM-DD}:usd},
- *                             {@code ai:usage:{userId}:month:{YYYY-MM}:usd},
- *                             {@code ai:usage:{userId}:month:{YYYY-MM}:tokens},
- *                             {@code ai:usage:{userId}:month:{YYYY-MM}:req}
+ * Usage counters: delegated to {@link RedisUsageCounters} (extracted in M2).
  */
 @Service
 @RequiredArgsConstructor
@@ -44,12 +38,9 @@ public class AiAccessService {
     // Constants
     // -------------------------------------------------------------------------
 
-    private static final String GRANT_KEY_PREFIX    = "ai:grant:";
-    private static final String USAGE_KEY_PREFIX    = "ai:usage:";
-    private static final long   GRANT_TTL_POS_SEC   = 60L;   // positive cache TTL
-    private static final long   GRANT_TTL_NEG_SEC   = 10L;   // negative cache TTL
-    private static final long   USAGE_DAY_TTL_SEC   = 48L * 3600;   // 48h rolling
-    private static final long   USAGE_MONTH_TTL_SEC = 45L * 24 * 3600; // 45 days
+    private static final String GRANT_KEY_PREFIX  = "ai:grant:";
+    private static final long   GRANT_TTL_POS_SEC = 60L;   // positive cache TTL
+    private static final long   GRANT_TTL_NEG_SEC = 10L;   // negative cache TTL
 
     // Bucket4j limits (per CLAUDE.md rule 4)
     private static final int USER_RATE_PER_MIN = 60;
@@ -62,6 +53,7 @@ public class AiAccessService {
     private final RedisTemplate<String, String> redisTemplate;
     private final SupabaseClient supabaseClient;
     private final ObjectMapper objectMapper;
+    private final RedisUsageCounters usageCounters;
 
     // -------------------------------------------------------------------------
     // In-memory Bucket4j state
@@ -77,9 +69,9 @@ public class AiAccessService {
     // -------------------------------------------------------------------------
 
     /**
-     * Runs the full M1 access check pipeline for a given user + IP pair.
+     * Runs the full access check pipeline for a given user + IP pair.
      *
-     * @param userId the authenticated user's Google sub claim
+     * @param userId   the authenticated user's Google sub claim
      * @param clientIp the remote IP address (after proxy resolution)
      * @return AccessResult indicating whether the request should proceed
      */
@@ -111,11 +103,11 @@ public class AiAccessService {
     }
 
     /**
-     * Records usage increments in Redis (synchronous) and asynchronously posts
-     * to Supabase's increment_ai_usage RPC.
+     * Records usage increments in Redis (via {@link RedisUsageCounters}) and
+     * asynchronously posts to Supabase's increment_ai_usage RPC.
      *
      * Fire-and-forget: errors are logged at WARN but never propagate to the caller.
-     * Called by AgentController on stream completion (M3 will wire the doOnComplete).
+     * Called by AgentController on stream completion (M3 wires the doOnComplete).
      *
      * @param userId   the authenticated user's Google sub claim
      * @param tokens   number of LLM tokens consumed
@@ -123,20 +115,7 @@ public class AiAccessService {
      */
     public void recordUsage(String userId, int tokens, double costUsd) {
         try {
-            String today   = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-            String month   = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-
-            String dayUsdKey      = USAGE_KEY_PREFIX + userId + ":day:" + today + ":usd";
-            String monthUsdKey    = USAGE_KEY_PREFIX + userId + ":month:" + month + ":usd";
-            String monthTokensKey = USAGE_KEY_PREFIX + userId + ":month:" + month + ":tokens";
-            String monthReqKey    = USAGE_KEY_PREFIX + userId + ":month:" + month + ":req";
-
-            // Increment Redis counters atomically; set TTL on first write
-            incrementDoubleWithTtl(dayUsdKey, costUsd, USAGE_DAY_TTL_SEC);
-            incrementDoubleWithTtl(monthUsdKey, costUsd, USAGE_MONTH_TTL_SEC);
-            incrementLongWithTtl(monthTokensKey, tokens, USAGE_MONTH_TTL_SEC);
-            incrementLongWithTtl(monthReqKey, 1, USAGE_MONTH_TTL_SEC);
-
+            usageCounters.increment(userId, tokens, costUsd);
         } catch (Exception e) {
             // userId not logged at WARN — Blocker 5 PII constraint
             log.warn("Failed to record Redis usage: {}", e.getMessage());
@@ -198,16 +177,13 @@ public class AiAccessService {
     }
 
     // -------------------------------------------------------------------------
-    // Usage cap check
+    // Usage cap check — reads current counters from RedisUsageCounters
     // -------------------------------------------------------------------------
 
     private boolean isOverCap(String userId, GrantCacheEntry grant) {
-        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        String month = YearMonth.now().format(DateTimeFormatter.ofPattern("yyyy-MM"));
-
         // Daily USD cap — BigDecimal comparison avoids floating-point drift
         if (grant.dailyUsdCap().compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal dailyUsd = BigDecimal.valueOf(readDouble(USAGE_KEY_PREFIX + userId + ":day:" + today + ":usd"));
+            BigDecimal dailyUsd = usageCounters.getDailyUsdBigDecimal(userId);
             if (dailyUsd.compareTo(grant.dailyUsdCap()) >= 0) {
                 log.debug("Daily USD cap reached");
                 return true;
@@ -216,7 +192,7 @@ public class AiAccessService {
 
         // Monthly USD cap — BigDecimal comparison avoids floating-point drift
         if (grant.monthlyUsdCap().compareTo(BigDecimal.ZERO) > 0) {
-            BigDecimal monthlyUsd = BigDecimal.valueOf(readDouble(USAGE_KEY_PREFIX + userId + ":month:" + month + ":usd"));
+            BigDecimal monthlyUsd = usageCounters.getMonthlyUsdBigDecimal(userId);
             if (monthlyUsd.compareTo(grant.monthlyUsdCap()) >= 0) {
                 log.debug("Monthly USD cap reached");
                 return true;
@@ -225,7 +201,7 @@ public class AiAccessService {
 
         // Monthly token cap
         if (grant.monthlyTokenCap() > 0) {
-            long tokens = readLong(USAGE_KEY_PREFIX + userId + ":month:" + month + ":tokens");
+            long tokens = usageCounters.getMonthlyTokensRaw(userId);
             if (tokens >= grant.monthlyTokenCap()) {
                 log.debug("Monthly token cap reached");
                 return true;
@@ -234,7 +210,7 @@ public class AiAccessService {
 
         // Monthly request cap
         if (grant.monthlyReqCap() > 0) {
-            long reqs = readLong(USAGE_KEY_PREFIX + userId + ":month:" + month + ":req");
+            long reqs = usageCounters.getMonthlyRequestsRaw(userId);
             if (reqs >= grant.monthlyReqCap()) {
                 log.debug("Monthly req cap reached");
                 return true;
@@ -268,60 +244,5 @@ public class AiAccessService {
                                 .build())
                         .build());
         return bucket.tryConsume(1);
-    }
-
-    // -------------------------------------------------------------------------
-    // Redis numeric helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Atomically increments a floating-point value in Redis.
-     * Sets TTL only on first write (when the key doesn't exist yet).
-     */
-    private void incrementDoubleWithTtl(String key, double delta, long ttlSeconds) {
-        try {
-            Double newVal = redisTemplate.opsForValue().increment(key, delta);
-            // Increment returns the new value; set TTL only if this looks like the first write
-            if (newVal != null && newVal <= delta + 0.0001) {
-                redisTemplate.expire(key, ttlSeconds, TimeUnit.SECONDS);
-            }
-        } catch (Exception e) {
-            log.warn("Redis INCRBYFLOAT failed for key [{}]: {}", key, e.getMessage());
-        }
-    }
-
-    /**
-     * Atomically increments an integer value in Redis.
-     * Sets TTL on first write.
-     */
-    private void incrementLongWithTtl(String key, long delta, long ttlSeconds) {
-        try {
-            Long newVal = redisTemplate.opsForValue().increment(key, delta);
-            if (newVal != null && newVal <= delta) {
-                redisTemplate.expire(key, ttlSeconds, TimeUnit.SECONDS);
-            }
-        } catch (Exception e) {
-            log.warn("Redis INCRBY failed for key [{}]: {}", key, e.getMessage());
-        }
-    }
-
-    private double readDouble(String key) {
-        try {
-            String val = redisTemplate.opsForValue().get(key);
-            return val != null ? Double.parseDouble(val) : 0.0;
-        } catch (Exception e) {
-            log.warn("Failed to read double from Redis key [{}]: {}", key, e.getMessage());
-            return 0.0;
-        }
-    }
-
-    private long readLong(String key) {
-        try {
-            String val = redisTemplate.opsForValue().get(key);
-            return val != null ? Long.parseLong(val) : 0L;
-        } catch (Exception e) {
-            log.warn("Failed to read long from Redis key [{}]: {}", key, e.getMessage());
-            return 0L;
-        }
     }
 }

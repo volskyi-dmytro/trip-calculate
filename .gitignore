@@ -99,3 +99,10 @@ old_CLAUDE.md
 .env
 cookies.txt
 run-with-oauth.sh
+
+# Python
+.venv/
+**/__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/

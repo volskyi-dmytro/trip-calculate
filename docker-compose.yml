@@ -1,0 +1,101 @@
+# TripCalculate — Docker Compose
+#
+# M2 services: app (Spring Boot), langgraph-agent (FastAPI), postgres.
+# M5 will add: redis, langfuse-web, langfuse-worker, otel-collector.
+#
+# IMPORTANT: langgraph-agent port 8000 is NOT published to the host.
+# It is reachable only from Spring Boot over the internal `agent-net` network.
+# This enforces the architecture diagram in CLAUDE.md §Architecture.
+
+services:
+
+  # --------------------------------------------------------------------------
+  # PostgreSQL — shared by Spring Boot (tripplanner DB) and the agent (langgraph DB).
+  # In production a managed Postgres is used; this service is for local dev only.
+  # --------------------------------------------------------------------------
+  postgres:
+    image: pgvector/pgvector:pg15
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: tripplanner
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      # Both databases are created by init scripts below.
+      POSTGRES_DB: tripplanner
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/db-init:/docker-entrypoint-initdb.d:ro
+    networks:
+      - agent-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tripplanner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # --------------------------------------------------------------------------
+  # Spring Boot application — serves the React SPA and relays SSE to the agent.
+  # --------------------------------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      # Override DATABASE_URL to point to the compose postgres service.
+      DATABASE_URL: jdbc:postgresql://postgres:5432/tripplanner
+      # URL for the agent service — internal only, never the published host port.
+      AGENT_SERVICE_URL: http://langgraph-agent:8000
+    ports:
+      - "8080:8080"
+    networks:
+      - agent-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+  # --------------------------------------------------------------------------
+  # LangGraph agent — FastAPI + LangGraph microservice.
+  #
+  # Port 8000 is exposed on the compose network ONLY (expose:, not ports:).
+  # CLAUDE.md §Non-negotiable: the agent is internal-only; Spring Boot is the
+  # only ingress for external traffic.
+  # --------------------------------------------------------------------------
+  langgraph-agent:
+    build:
+      context: ./agent
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    env_file:
+      - ./agent/.env
+    environment:
+      # Override PG_URL to point to the compose postgres service.
+      PG_URL: postgresql://tripplanner:${DATABASE_PASSWORD}@postgres:5432/langgraph
+    expose:
+      - "8000"
+    networks:
+      - agent-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')\" || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+
+networks:
+  agent-net:
+    driver: bridge
+
+volumes:
+  postgres_data:

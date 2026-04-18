@@ -104,6 +104,13 @@
 			<scope>test</scope>
 		</dependency>
 
+		<!-- reactor-test: StepVerifier for asserting reactive streams (M2 AgentServiceClientTest) -->
+		<dependency>
+			<groupId>io.projectreactor</groupId>
+			<artifactId>reactor-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
 		<!-- Spring Data Redis for caching (production profile) -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>

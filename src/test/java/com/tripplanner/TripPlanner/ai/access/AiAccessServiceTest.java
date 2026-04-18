@@ -57,7 +57,12 @@ class AiAccessServiceTest {
         objectMapper = new ObjectMapper();
         when(redisTemplate.opsForValue()).thenReturn(valueOps);
 
-        service = new AiAccessService(redisTemplate, supabaseClient, objectMapper);
+        // RedisUsageCounters is a pure collaborator wrapping the same RedisTemplate mock.
+        // Constructing it here rather than mocking it means the existing valueOps stubs
+        // in each test continue to drive the cap-check logic unchanged.
+        RedisUsageCounters usageCounters = new RedisUsageCounters(redisTemplate);
+
+        service = new AiAccessService(redisTemplate, supabaseClient, objectMapper, usageCounters);
     }
 
     // -------------------------------------------------------------------------
