@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tripplanner.TripPlanner.ai.access.AiAccessFilter;
 import com.tripplanner.TripPlanner.ai.access.AiAccessService;
 import com.tripplanner.TripPlanner.ai.access.AccessResult;
+import com.tripplanner.TripPlanner.ai.access.GrantCacheEntry;
 import com.tripplanner.TripPlanner.ai.client.AgentServiceClient;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,8 +31,10 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -256,7 +259,8 @@ class AgentControllerTest {
                         .data("{\"status\":\"ok\"}")
                         .build()
         );
-        when(agentServiceClient.stream(anyString(), anyString(), anyString()))
+        when(aiAccessService.getCachedGrant(anyString())).thenReturn(Optional.empty());
+        when(agentServiceClient.stream(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(mockFlux);
 
         buildMockMvc().perform(post(CHAT_URL)
@@ -278,7 +282,8 @@ class AgentControllerTest {
     void chat_emits_synthetic_error_on_timeout() throws Exception {
         currentTestUserId = USER_ID;
         when(aiAccessService.check(anyString(), anyString())).thenReturn(AccessResult.GRANTED);
-        when(agentServiceClient.stream(anyString(), anyString(), anyString()))
+        when(aiAccessService.getCachedGrant(anyString())).thenReturn(Optional.empty());
+        when(agentServiceClient.stream(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(Flux.error(new TimeoutException("agent timed out")));
 
         MvcResult result = buildMockMvc().perform(post(CHAT_URL)
@@ -315,7 +320,8 @@ class AgentControllerTest {
                         .data("{\"status\":\"ok\"}")
                         .build()
         );
-        when(agentServiceClient.stream(anyString(), anyString(), anyString()))
+        when(aiAccessService.getCachedGrant(anyString())).thenReturn(Optional.empty());
+        when(agentServiceClient.stream(anyString(), anyString(), anyString(), any(), any()))
                 .thenReturn(mockFlux);
 
         // Consume the full response so the Flux completes and doOnComplete fires

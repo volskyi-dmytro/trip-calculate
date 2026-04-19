@@ -1,15 +1,14 @@
 # Grafana alert rules for TripCalculate agent observability.
 # Provisioned via filesystem; Grafana applies on startup or reload.
 #
-# IMPORTANT: These rules are SCAFFOLDED for M4. They will evaluate to
-# "No data" (not-firing) until M5 wires the OTEL SDK and the agent emits
-# real metrics. This is intentional — alerts are configured but silent.
+# M5: rules updated.
+#  - Rule 1: div-by-zero guard added — fires only when total session count > 0.
+#  - Rule 2: static $0.10 threshold replaced with dynamic median × 3 from the
+#    agent_session_cost_usd histogram (emitted by app.py on stream completion).
 #
-# TODO (M5): Wire a Grafana contact point (Slack webhook or email) and
-# assign it to the "agent-ops" notification policy below.
-# TODO (M5): Replace the static cost-per-session threshold ($0.10) with
-# a dynamic median computed via histogram_quantile(0.5, ...) once the
-# agent_cost_per_session histogram metric is emitted.
+# TODO (M6): Wire a Grafana contact point (Slack webhook or email) and assign
+# it to the "agent-ops" notification policy below. Pending human's preferred
+# channel choice (CLAUDE.md M5 row: "ask if undefined").
 
 apiVersion: 1
 
@@ -61,7 +60,9 @@ groups:
             datasourceUid: __expr__
             model:
               type: math
-              expression: "$A / $B > 0.2"
+              # M5: div-by-zero guard. Without "$B > 0", zero-traffic windows
+              # would compute 0/0 = +Inf and trip the alert immediately.
+              expression: "$B > 0 && $A / $B > 0.2"
         noDataState: NoData
         execErrState: Error
         for: 5m
@@ -76,17 +77,19 @@ groups:
           team: agent-ops
 
       # -----------------------------------------------------------------------
-      # Rule 2: Cost per session > static threshold ($0.10)
-      # TODO M5: Replace with dynamic median × 3 once agent_cost_per_session
-      # histogram is emitted. The formula will be:
-      #   increase(agent_llm_cost_usd_total[1h]) /
-      #   increase(agent_sessions_total{status="ok"}[1h])
-      #   > on() group_left()
-      #   3 * histogram_quantile(0.5, rate(agent_cost_per_session_bucket[1d]))
+      # Rule 2 (M5): Cost per session > 3 × historical median.
+      #
+      # Compares the recent (1h) average cost-per-session to the long-window
+      # (1d) median computed from agent_session_cost_usd. A 3× spike above
+      # the median typically means a runaway loop or a much harder query
+      # mix — both warrant operator attention.
+      #
+      # Guarded against zero traffic via $B > 0; histogram_quantile returns
+      # NaN on empty buckets which Prometheus expression treats as no-data.
       # -----------------------------------------------------------------------
       - uid: agent-cost-per-session
-        title: "Agent cost-per-session > $0.10 (static threshold — upgrade in M5)"
-        condition: C
+        title: "Agent cost-per-session > 3× historical median (1h)"
+        condition: D
         data:
           - refId: A
             relativeTimeRange: { from: 3600, to: 0 }
@@ -105,23 +108,32 @@ groups:
               intervalMs: 1000
               maxDataPoints: 43200
           - refId: C
+            relativeTimeRange: { from: 86400, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                histogram_quantile(0.5, sum by (le) (rate(agent_session_cost_usd_bucket[1d])))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: D
             relativeTimeRange: { from: 3600, to: 0 }
             datasourceUid: __expr__
             model:
               type: math
-              # $0.10 per session is 3× the expected ~$0.03 per session for
-              # a 4-tool Claude Haiku call. Adjust after M5 baseline is known.
-              expression: "($A / $B) > 0.10"
+              # Fire if recent_cost_per_session > 3 × historical_median.
+              # Guard against zero traffic ($B > 0) and against missing histogram
+              # data ($C > 0) — both yield NoData rather than firing.
+              expression: "$B > 0 && $C > 0 && ($A / $B) > 3 * $C"
         noDataState: NoData
         execErrState: Error
         for: 5m
         annotations:
-          summary: "Cost per session has exceeded $0.10 — possible runaway loop"
+          summary: "Cost per session is more than 3× the historical median"
           description: >
-            Cost per successful session over the last hour is above $0.10.
-            Check agent_steps_per_session p95 in Grafana — a runaway model loop
-            is the most common cause. Verify ModelCallLimitMiddleware(15) is active.
-            TODO M5: Replace this static threshold with dynamic median × 3.
+            Average cost-per-session over the last hour is more than 3× the
+            historical median (1d window). Check agent_steps_per_session p95 —
+            a runaway model loop is the most common cause. Verify
+            ModelCallLimitMiddleware(15) is active.
         labels:
           severity: warning
           team: agent-ops

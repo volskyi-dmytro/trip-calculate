@@ -8,6 +8,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import javax.crypto.SecretKey;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
@@ -103,5 +104,57 @@ class InternalTokenIssuerTest {
         assertThatThrownBy(() -> issuer.issue("   "))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("userId");
+    }
+
+    // -------------------------------------------------------------------------
+    // M5: cap claim emission
+    // -------------------------------------------------------------------------
+
+    @Test
+    @DisplayName("M5: caps are embedded as numeric claims when supplied")
+    void issuedToken_includesCapClaims_whenProvided() {
+        String token = issuer.issue(
+                "google-sub-with-caps",
+                new BigDecimal("0.50"),
+                new BigDecimal("10.00"));
+
+        Claims claims = Jwts.parser()
+                .verifyWith(verifyKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.get("daily_cap_usd", Double.class)).isEqualTo(0.50);
+        assertThat(claims.get("monthly_cap_usd", Double.class)).isEqualTo(10.00);
+    }
+
+    @Test
+    @DisplayName("M5: cap claims are omitted when null is passed")
+    void issuedToken_omitsCapClaims_whenNull() {
+        String token = issuer.issue("google-sub-no-caps", null, null);
+
+        Claims claims = Jwts.parser()
+                .verifyWith(verifyKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.get("daily_cap_usd")).isNull();
+        assertThat(claims.get("monthly_cap_usd")).isNull();
+    }
+
+    @Test
+    @DisplayName("M5: legacy 1-arg issue() omits cap claims (backward compatible)")
+    void legacyIssue_omitsCapClaims() {
+        String token = issuer.issue("google-sub-legacy");
+
+        Claims claims = Jwts.parser()
+                .verifyWith(verifyKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        assertThat(claims.get("daily_cap_usd")).isNull();
+        assertThat(claims.get("monthly_cap_usd")).isNull();
     }
 }

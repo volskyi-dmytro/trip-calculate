@@ -35,3 +35,24 @@ anyio==4.13.0
 pytest==9.0.3
 pytest-asyncio==1.3.0
 respx==0.23.1
+fakeredis==2.27.0  # M5: in-memory Redis for BudgetGuard tests
+
+## M5: routing & budget guard ------------------------------------------------
+# Multi-provider chat models for the routing chain (Anthropic primary; Gemini
+# and OpenRouter fallbacks on infra failure only — see model_router.py).
+langchain-google-genai==2.1.5
+langchain-openai==0.4.4
+# Async Redis client used by BudgetGuardMiddleware to read Spring's usage counters.
+# Same key shape as RedisUsageCounters.java (ai:usage:{userId}:day:{YYYY-MM-DD}:usd).
+redis==5.4.0
+
+## M5: observability --------------------------------------------------------
+# OpenTelemetry SDK + OTLP gRPC exporter for traces/metrics → otel-collector
+# → Langfuse (traces) + Prometheus (metrics). Auto-instrumentation for FastAPI
+# and httpx so spans cover the inbound SSE endpoint and outbound tool calls.
+opentelemetry-sdk==1.28.2
+opentelemetry-exporter-otlp-proto-grpc==1.28.2
+opentelemetry-instrumentation-fastapi==0.49b2
+opentelemetry-instrumentation-httpx==0.49b2
+# Langfuse Python SDK (LangChain-native CallbackHandler) for richer trace UI.
+langfuse==3.4.0

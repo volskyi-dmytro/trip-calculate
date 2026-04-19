@@ -103,6 +103,25 @@ public class AiAccessService {
     }
 
     /**
+     * Returns the cached/resolved grant for the given user, if one exists and is enabled.
+     *
+     * Used by AgentController (M5) to read the user's per-call USD caps so they can
+     * be embedded in the internal JWT issued to the langgraph-agent service. The
+     * BudgetGuardMiddleware on the Python side reads these caps from the JWT instead
+     * of round-tripping to Supabase.
+     *
+     * Hits the same cache path as {@link #check(String, String)} — no extra Supabase
+     * load when called immediately after a successful access check.
+     *
+     * @param userId the authenticated user's Google sub claim
+     * @return Optional containing the grant if present and enabled, empty otherwise
+     */
+    public Optional<GrantCacheEntry> getCachedGrant(String userId) {
+        GrantCacheEntry grant = resolveGrant(userId);
+        return Optional.ofNullable(grant);
+    }
+
+    /**
      * Records usage increments in Redis (via {@link RedisUsageCounters}) and
      * asynchronously posts to Supabase's increment_ai_usage RPC.
      *

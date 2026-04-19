@@ -11,7 +11,12 @@ import { Loader2, MapPin, Navigation } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation, type Language } from '../i18n/routePlanner';
 import { toast } from 'sonner';
-import { AgentChat } from '../components/ai/AgentChat';
+// AgentChat (LangGraph) is intentionally not mounted here pre-M6 — the agent
+// container is not yet deployed by .github/workflows/deploy-prod.yml, so showing
+// it would surface a broken endpoint to granted users. The n8n-backed TopChatBar
+// inside <RoutePlanner /> remains the working chat per CLAUDE.md ("Until M6 ships,
+// the existing n8n-backed beta AI features remain in place"). M6 deploy step
+// will plumb the langgraph-agent container; re-import + re-mount AgentChat then.
 
 export function RoutePlannerPage() {
   const { language } = useLanguage();
@@ -196,15 +201,13 @@ export function RoutePlannerPage() {
     );
   }
 
-  // Has access - show route planner and AI chat section
+  // Has access - show route planner (which contains the n8n TopChatBar).
+  // The new LangGraph-backed AgentChat is deferred to M6 — it lives at
+  // src/components/ai/AgentChat.tsx and stays in the bundle so M6 only needs
+  // to re-import + re-mount once the prod agent container is wired.
   return (
     <>
       <Header />
-      {/* AgentChat section: rendered only when hasAccess === true, so /api/ai/chat
-          is never called for non-granted users. Non-granted users see the CTA above. */}
-      <div className="container mx-auto max-w-4xl px-4 py-6">
-        <AgentChat />
-      </div>
       <RoutePlanner />
     </>
   );

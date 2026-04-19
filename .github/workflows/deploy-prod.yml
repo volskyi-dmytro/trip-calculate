@@ -146,9 +146,27 @@ jobs:
           SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           INTERNAL_JWT_SECRET: ${{ secrets.PROD_INTERNAL_JWT_SECRET }}
-          # Plumbed for the M4 langgraph-agent container deploy. No consumer in the
-          # current SSH heredoc — see Path B in M3 wrap-up notes for the agent run step.
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          # ----------------------------------------------------------------------
+          # langgraph-agent container env vars — plumbed but UNUSED in this
+          # workflow. The agent container itself is deferred to M6; see
+          # `docs/progress.md` §M5 Deferred. Once the M6 deploy step lands
+          # (mirror the trip-calculate-prod docker run pattern with image
+          # `tripcalc-agent:prod-${{ github.sha }}` on `trip-calculate-network`,
+          # internal-only — no `-p`), forward these vars into the container's
+          # `-e` flags. Adding them here now means the secrets list in the
+          # GitHub UI is the source of truth before M6 touches code.
+          # ----------------------------------------------------------------------
+          ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
+          GEMINI_API_KEY:       ${{ secrets.PROD_GEMINI_API_KEY }}
+          OPENROUTER_API_KEY:   ${{ secrets.PROD_OPENROUTER_API_KEY }}
+          OTM_KEY:              ${{ secrets.PROD_OTM_KEY }}
+          # Langfuse v3 — observability profile, also M6 deploy work.
+          LANGFUSE_PUBLIC_KEY:  ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY:  ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST:        ${{ secrets.PROD_LANGFUSE_HOST }}
+          # OTEL collector endpoint inside the docker network (default
+          # http://otel-collector:4317 once the observability profile is up).
+          OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.PROD_OTEL_EXPORTER_OTLP_ENDPOINT }}
         run: |
           ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' N8N_WEBHOOK_URL='${N8N_WEBHOOK_URL}' N8N_EXTRACTOR_URL='${N8N_EXTRACTOR_URL}' SUPABASE_URL='${SUPABASE_URL}' SUPABASE_SERVICE_ROLE_KEY='${SUPABASE_SERVICE_ROLE_KEY}' INTERNAL_JWT_SECRET='${INTERNAL_JWT_SECRET}' bash -s" <<'REMOTE'
             echo "🚀 Deploying to Production VPS..."

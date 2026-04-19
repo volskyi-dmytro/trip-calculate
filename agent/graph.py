@@ -27,16 +27,20 @@ CLAUDE.md §Non-negotiable:
 
 import logging
 import os
+from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from langchain.agents import create_agent
-from langchain_anthropic import ChatAnthropic
 from langchain_core.messages import AIMessage, AnyMessage, HumanMessage, SystemMessage
+from langgraph.config import get_config, get_stream_writer
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.message import add_messages
 from typing_extensions import TypedDict
 
+import metrics
+from cost_tracking import CostTrackingCallback
 from middleware import build_middleware_stack
+from model_router import build_routed_model
 from models import FinalItinerary
 from tools import (
     estimate_time,
@@ -63,20 +67,13 @@ _ALL_TOOLS = [
 
 
 # ---------------------------------------------------------------------------
-# Model factory
-# TODO M5: replace with full routing chain ChatAnthropic → ChatGemini → OpenRouter fallback.
+# Model factory — M5
+# Delegates to model_router.build_routed_model() which wires Anthropic →
+# Gemini → OpenRouter fallback on infra failures (HTTP 429, 5xx, timeouts).
+# Semantic failures stay the critic's responsibility.
 # ---------------------------------------------------------------------------
-def _build_model() -> ChatAnthropic:
-    api_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY env var is required but not set."
-        )
-    return ChatAnthropic(
-        model="claude-sonnet-4-5-20250929",
-        api_key=api_key,
-        temperature=0,
-    )
+def _build_model() -> Any:
+    return build_routed_model()
 
 
 # ---------------------------------------------------------------------------
@@ -107,6 +104,92 @@ def _initial_state() -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# Manual budget check for the finalize direct model call (M5)
+# ---------------------------------------------------------------------------
+async def _finalize_budget_blocked(state: OuterState) -> bool:
+    """
+    Return True if the configured user is over their daily or monthly USD cap.
+    Mirrors BudgetGuardMiddleware's logic but operates outside the create_agent
+    middleware boundary (the finalize node calls structured_model.ainvoke
+    directly, bypassing middleware).
+
+    Fail-open semantics: any error returns False (call goes through).
+    """
+    try:
+        config = get_config()
+        configurable = config.get("configurable", {})
+        user_id = configurable.get("user_id")
+        daily_cap_usd = float(configurable.get("daily_cap_usd", 0))
+        monthly_cap_usd = float(configurable.get("monthly_cap_usd", 0))
+    except Exception:
+        return False
+
+    if not user_id or (daily_cap_usd <= 0 and monthly_cap_usd <= 0):
+        return False
+
+    try:
+        import redis.asyncio as redis_async  # noqa: PLC0415
+    except ImportError:
+        return False
+
+    redis_url = os.environ.get("REDIS_URL", "redis://redis:6379/0")
+    try:
+        client = redis_async.from_url(redis_url, decode_responses=True)
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        month = datetime.now(timezone.utc).strftime("%Y-%m")
+        daily_val = await client.get(f"ai:usage:{user_id}:day:{today}:usd")
+        monthly_val = await client.get(f"ai:usage:{user_id}:month:{month}:usd")
+        await client.aclose()
+    except Exception as exc:
+        logger.warning(
+            "finalize: Redis read failed (%s) — failing open",
+            type(exc).__name__,
+        )
+        return False
+
+    daily_spend = float(daily_val) if daily_val is not None else 0.0
+    monthly_spend = float(monthly_val) if monthly_val is not None else 0.0
+
+    blocked_scope: str | None = None
+    if daily_cap_usd > 0 and daily_spend >= daily_cap_usd:
+        blocked_scope = "daily"
+    elif monthly_cap_usd > 0 and monthly_spend >= monthly_cap_usd:
+        blocked_scope = "monthly"
+
+    if blocked_scope is None:
+        return False
+
+    try:
+        metrics.agent_budget_blocks_total.add(1, {"scope": blocked_scope})
+    except Exception:
+        pass
+
+    try:
+        writer = get_stream_writer()
+        writer(
+            {
+                "type": "budget_exhausted",
+                "scope": blocked_scope,
+                "retry_after_seconds": 60,
+            }
+        )
+    except Exception:
+        pass
+
+    logger.info(
+        "finalize: budget block user_id=%s scope=%s daily_spend=%.4f daily_cap=%.4f "
+        "monthly_spend=%.4f monthly_cap=%.4f",
+        user_id,
+        blocked_scope,
+        daily_spend,
+        daily_cap_usd,
+        monthly_spend,
+        monthly_cap_usd,
+    )
+    return True
+
+
+# ---------------------------------------------------------------------------
 # finalize node
 # ---------------------------------------------------------------------------
 def _build_finalize_node(model: Any) -> Any:
@@ -123,7 +206,25 @@ def _build_finalize_node(model: Any) -> Any:
         Uses model.with_structured_output(FinalItinerary) so the LLM produces a
         validated Pydantic model in one structured call. Stashes the result on
         `final_itinerary` in the outer state.
+
+        M5: BudgetGuardMiddleware does not wrap this direct model call (it only
+        runs around create_agent's react-loop calls). We perform a manual
+        pre-call Redis budget check here so the budget gate has no per-session
+        hole. This duplicates a small amount of logic from middleware.py
+        intentionally — the closest alternative (wrapping structured_model with
+        the middleware stack) is harder to test and brittle to LangChain version
+        changes.
         """
+        if await _finalize_budget_blocked(state):
+            # Block: return a minimal fallback itinerary so the critic has
+            # something to inspect, but do NOT call the model.
+            return {
+                "final_itinerary": FinalItinerary(
+                    summary="Budget cap reached — itinerary could not be finalized.",
+                    legs=[],
+                )
+            }
+
         messages = state.get("messages", [])
         # Prepend a system instruction to guide extraction.
         extraction_system = SystemMessage(
@@ -137,9 +238,6 @@ def _build_finalize_node(model: Any) -> Any:
         prompt_messages = list(messages) + [extraction_system]
 
         try:
-            # TODO M5: BudgetGuardMiddleware does not wrap this direct model call.
-            # M5 must either wrap `structured_model` with the middleware before this point,
-            # or do a manual pre-call Redis budget check here.
             itinerary: FinalItinerary = await structured_model.ainvoke(prompt_messages)
         except Exception as exc:
             # Log class name only at WARNING — tracebacks from ainvoke() can echo back

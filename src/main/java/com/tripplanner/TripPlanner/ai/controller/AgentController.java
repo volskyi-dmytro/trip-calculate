@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tripplanner.TripPlanner.ai.access.AiAccessFilter;
 import com.tripplanner.TripPlanner.ai.access.AiAccessService;
+import com.tripplanner.TripPlanner.ai.access.GrantCacheEntry;
 import com.tripplanner.TripPlanner.ai.client.AgentServiceClient;
 import com.tripplanner.TripPlanner.ai.security.InvalidInputException;
 import com.tripplanner.TripPlanner.ai.security.PromptInjectionFilter;
@@ -22,7 +23,9 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
@@ -133,9 +136,16 @@ public class AgentController {
         AtomicInteger tokenAccumulator  = new AtomicInteger(0);
         AtomicReference<Double> costAccumulator = new AtomicReference<>(0.0);
 
+        // M5: read this user's USD caps from the cached grant so they can be embedded
+        // in the internal JWT and consumed by BudgetGuardMiddleware on the agent side
+        // without round-tripping to Supabase.
+        Optional<GrantCacheEntry> grant = aiAccessService.getCachedGrant(userId);
+        BigDecimal dailyCapUsd   = grant.map(GrantCacheEntry::dailyUsdCap).orElse(null);
+        BigDecimal monthlyCapUsd = grant.map(GrantCacheEntry::monthlyUsdCap).orElse(null);
+
         // Step 4 — build the streaming Flux
         Flux<ServerSentEvent<String>> sseFlux = agentServiceClient
-                .stream(userId, sanitisedMessage, sessionId)
+                .stream(userId, sanitisedMessage, sessionId, dailyCapUsd, monthlyCapUsd)
 
                 // Parse the done event to extract tokens + cost_usd for usage recording.
                 // Missing fields are treated as 0 and logged at DEBUG so the gap is visible

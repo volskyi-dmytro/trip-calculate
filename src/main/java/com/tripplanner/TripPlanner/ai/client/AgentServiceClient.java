@@ -11,6 +11,7 @@ import org.springframework.web.reactive.function.client.WebClientResponseExcepti
 import reactor.core.publisher.Flux;
 import org.springframework.http.codec.ServerSentEvent;
 
+import java.math.BigDecimal;
 import java.time.Duration;
 
 /**
@@ -59,7 +60,33 @@ public class AgentServiceClient {
      *         {@code done} or {@code error} event, or after 5-minute hard timeout
      */
     public Flux<ServerSentEvent<String>> stream(String userId, String prompt, String sessionId) {
-        String token = tokenIssuer.issue(userId);
+        return stream(userId, prompt, sessionId, null, null);
+    }
+
+    /**
+     * Opens an SSE stream from the langgraph-agent service with per-user USD caps
+     * embedded in the JWT (M5).
+     *
+     * BudgetGuardMiddleware on the Python side reads the caps from the JWT to
+     * perform pre-call enforcement against Redis usage counters — this avoids
+     * a synchronous Supabase round trip on every model call.
+     *
+     * Null caps are omitted from the token; the Python side falls back to a
+     * conservative default (essentially uncapped) and logs WARNING.
+     *
+     * @param userId         the authenticated user's Google sub claim
+     * @param prompt         the sanitised user message
+     * @param sessionId      LangGraph thread ID
+     * @param dailyCapUsd    daily USD cap from ai_access_grants (nullable)
+     * @param monthlyCapUsd  monthly USD cap from ai_access_grants (nullable)
+     */
+    public Flux<ServerSentEvent<String>> stream(
+            String userId,
+            String prompt,
+            String sessionId,
+            BigDecimal dailyCapUsd,
+            BigDecimal monthlyCapUsd) {
+        String token = tokenIssuer.issue(userId, dailyCapUsd, monthlyCapUsd);
 
         // User identity travels in the JWT sub claim — not duplicated in the body.
         AgentStreamRequest body = AgentStreamRequest.builder()
