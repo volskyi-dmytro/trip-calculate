@@ -1,0 +1,162 @@
+# Grafana alert rules for TripCalculate agent observability.
+# Provisioned via filesystem; Grafana applies on startup or reload.
+#
+# IMPORTANT: These rules are SCAFFOLDED for M4. They will evaluate to
+# "No data" (not-firing) until M5 wires the OTEL SDK and the agent emits
+# real metrics. This is intentional — alerts are configured but silent.
+#
+# TODO (M5): Wire a Grafana contact point (Slack webhook or email) and
+# assign it to the "agent-ops" notification policy below.
+# TODO (M5): Replace the static cost-per-session threshold ($0.10) with
+# a dynamic median computed via histogram_quantile(0.5, ...) once the
+# agent_cost_per_session histogram metric is emitted.
+
+apiVersion: 1
+
+# --- Notification policy scaffold (no contact point wired until M5) ---
+# policies:
+#   - orgId: 1
+#     receiver: agent-ops          # TODO M5: create this contact point in Grafana UI
+#     matchers:
+#       - alertname =~ "agent-.*"
+#     group_wait: 30s
+#     group_interval: 5m
+#     repeat_interval: 1h
+
+groups:
+  - orgId: 1
+    name: agent-ops
+    folder: Agent
+    interval: 1m
+    rules:
+
+      # -----------------------------------------------------------------------
+      # Rule 1: Agent failure rate > 20% over 5 min
+      # Fires when more than 1 in 5 agent sessions ends in error.
+      # Root cause candidates: LLM provider outage, tool returning raw exception,
+      # ModelCallLimitMiddleware not active (check agent_steps_per_session p95).
+      # -----------------------------------------------------------------------
+      - uid: agent-failure-rate
+        title: "Agent failure rate > 20% (5m)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                sum(rate(agent_sessions_total{status="error"}[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                sum(rate(agent_sessions_total[5m]))
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: math
+              expression: "$A / $B > 0.2"
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Agent error rate is {{ $values.C | humanizePercentage }} over the last 5 minutes"
+          description: >
+            More than 20% of agent sessions are ending in error.
+            Check langgraph-agent logs: docker logs langgraph-agent --tail 100
+            Check Langfuse for repeated error traces in the last 5 minutes.
+        labels:
+          severity: warning
+          team: agent-ops
+
+      # -----------------------------------------------------------------------
+      # Rule 2: Cost per session > static threshold ($0.10)
+      # TODO M5: Replace with dynamic median × 3 once agent_cost_per_session
+      # histogram is emitted. The formula will be:
+      #   increase(agent_llm_cost_usd_total[1h]) /
+      #   increase(agent_sessions_total{status="ok"}[1h])
+      #   > on() group_left()
+      #   3 * histogram_quantile(0.5, rate(agent_cost_per_session_bucket[1d]))
+      # -----------------------------------------------------------------------
+      - uid: agent-cost-per-session
+        title: "Agent cost-per-session > $0.10 (static threshold — upgrade in M5)"
+        condition: C
+        data:
+          - refId: A
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                increase(agent_llm_cost_usd_total[1h])
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: B
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                increase(agent_sessions_total{status="ok"}[1h])
+              intervalMs: 1000
+              maxDataPoints: 43200
+          - refId: C
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: __expr__
+            model:
+              type: math
+              # $0.10 per session is 3× the expected ~$0.03 per session for
+              # a 4-tool Claude Haiku call. Adjust after M5 baseline is known.
+              expression: "($A / $B) > 0.10"
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Cost per session has exceeded $0.10 — possible runaway loop"
+          description: >
+            Cost per successful session over the last hour is above $0.10.
+            Check agent_steps_per_session p95 in Grafana — a runaway model loop
+            is the most common cause. Verify ModelCallLimitMiddleware(15) is active.
+            TODO M5: Replace this static threshold with dynamic median × 3.
+        labels:
+          severity: warning
+          team: agent-ops
+
+      # -----------------------------------------------------------------------
+      # Rule 3: Tool success rate < 80% on any single tool (5m)
+      # Fires if any individual tool's success rate drops below 80%.
+      # Root cause candidates: external API rate limit, bad structured-output
+      # schema, tool returning raw exception instead of {"status": ..., "hint": ...}.
+      # -----------------------------------------------------------------------
+      - uid: agent-tool-success-rate
+        title: "Tool success rate < 80% on any tool (5m)"
+        condition: A
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: prometheus-local
+            model:
+              expr: >
+                sum by (tool_name) (rate(agent_tool_calls_total{status="ok"}[5m]))
+                /
+                sum by (tool_name) (rate(agent_tool_calls_total[5m]))
+                < 0.8
+              intervalMs: 1000
+              maxDataPoints: 43200
+        noDataState: NoData
+        execErrState: Error
+        for: 5m
+        annotations:
+          summary: "Tool {{ $labels.tool_name }} success rate is below 80% over 5 minutes"
+          description: >
+            Tool {{ $labels.tool_name }} is failing more than 20% of calls.
+            Check that the tool returns {"status": "no_results", "hint": "..."}
+            on failures — never raw exceptions (CLAUDE.md §Non-negotiable #9).
+            Check ToolNode(handle_tool_errors=True) is set explicitly.
+        labels:
+          severity: warning
+          team: agent-ops

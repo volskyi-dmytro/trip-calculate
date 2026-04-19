@@ -77,7 +77,7 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 app = FastAPI(
     title="TripCalculate LangGraph Agent",
-    version="0.2.0",  # M2
+    version="0.4.0",  # M4: full 6-tool set, outer graph (finalize + critic), middleware stack
     lifespan=lifespan,
 )
 
@@ -226,9 +226,18 @@ async def agent_stream(
         )
 
     # LangGraph config: thread_id ties the run to its checkpoint history.
+    # user_id is included in configurable so InjectPreferencesMiddleware can
+    # read it via get_config() — the middleware needs it scoped per user.
+    # CLAUDE.md §Non-negotiable: recursion_limit=40 enforced at the per-invocation config
+    # level (top-level key, sibling of "configurable") so LangGraph merges it correctly
+    # into the run config. The with_config() in graph.py is defense-in-depth only.
     config = {
-        "configurable": {"thread_id": thread_id},
-        # Tag with user_id for future Langfuse trace metadata (M5).
+        "recursion_limit": 40,
+        "configurable": {
+            "thread_id": thread_id,
+            "user_id": user_id,  # Read by InjectPreferencesMiddleware (M4+)
+        },
+        # Tag with user_id for Langfuse trace metadata (M5).
         "metadata": {"user_id": user_id},
     }
 

@@ -1,0 +1,19 @@
+# Grafana dashboard provisioning — filesystem provider.
+# Grafana loads all JSON files from the path below on startup and on reload.
+# Adding or editing a JSON file in monitoring/grafana/dashboards/ takes effect
+# after `docker compose restart grafana` (or the configured updateIntervalSeconds).
+
+apiVersion: 1
+
+providers:
+  - name: agent-dashboards
+    orgId: 1
+    folder: "Agent"
+    folderUid: agent-folder
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /etc/grafana/dashboards
+      foldersFromFilesStructure: false

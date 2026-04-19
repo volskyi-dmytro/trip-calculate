@@ -68,10 +68,13 @@ async def route_osrm(
             "hint": f"OSRM routing timed out after {_TIMEOUT_SECONDS}s. Try again or use fewer waypoints.",
         }
     except httpx.RequestError as exc:
-        logger.warning("OSRM network error: %s", exc)
+        # Log class name only — str(exc) may include request URL details.
+        # Applied uniformly across all tools per the M4 code-reviewer fix list.
+        logger.warning("OSRM network error: %s", type(exc).__name__)
+        logger.debug("OSRM network error detail: %s", exc)
         return {
             "status": "upstream_error",
-            "hint": f"Network error contacting OSRM: {exc}",
+            "hint": "Network error contacting OSRM. The service may be temporarily unavailable.",
         }
 
     if response.status_code != 200:

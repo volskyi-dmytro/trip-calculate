@@ -1,0 +1,91 @@
+# OpenTelemetry Collector configuration for TripCalculate observability stack.
+#
+# Fan-out strategy (CLAUDE.md §Observability):
+#   Traces  → Langfuse v3 via OTLP/HTTP (with Basic Auth using project keys)
+#   Metrics → Prometheus remote-write (local Prometheus in the observability profile)
+#
+# Receivers:  OTLP gRPC 4317 + OTLP HTTP 4318
+# Processors: memory_limiter → batch → resource
+# Exporters:  otlphttp/langfuse (traces), prometheusremotewrite/local (metrics),
+#             prometheus (metrics scrape endpoint on :8889 for local Prom to pull)
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    # Prevent OOM — evict spans if memory exceeds 400 MiB.
+    check_interval: 5s
+    limit_mib: 400
+    spike_limit_mib: 100
+
+  batch:
+    # Batch up to 8192 spans or 1s, whichever comes first, before exporting.
+    send_batch_size: 8192
+    timeout: 1s
+
+  resource:
+    # Inject service name from the OTEL_SERVICE_NAME env var set on the collector.
+    # Individual services (agent, Spring Boot) should set their own service.name;
+    # this is a fallback tag so the collector's own telemetry is identifiable.
+    attributes:
+      - action: upsert
+        key: deployment.environment
+        value: local
+
+exporters:
+  # ---------------------------------------------------------------------------
+  # Langfuse v3 OTLP trace ingestion.
+  # Langfuse v3 exposes /api/public/otel/v1/traces accepting OTLP/HTTP+JSON.
+  # Auth: Basic <base64(LANGFUSE_PUBLIC_KEY:LANGFUSE_SECRET_KEY)>.
+  # The collector reads the header value from the LANGFUSE_OTEL_AUTH env var
+  # (set in docker-compose.yml) so the actual keys never appear in this file.
+  # ---------------------------------------------------------------------------
+  otlphttp/langfuse:
+    endpoint: http://langfuse-web:3000/api/public/otel
+    headers:
+      Authorization: "${env:LANGFUSE_OTEL_AUTH}"
+    tls:
+      insecure: true
+
+  # ---------------------------------------------------------------------------
+  # Prometheus remote-write — pushes metrics to the local Prometheus container.
+  # Production would point this at a managed Prometheus (e.g. Grafana Cloud).
+  # ---------------------------------------------------------------------------
+  prometheusremotewrite/local:
+    endpoint: http://prometheus:9090/api/v1/write
+    tls:
+      insecure: true
+
+  # ---------------------------------------------------------------------------
+  # Prometheus scrape endpoint — exposes metrics on :8889 so the local
+  # Prometheus container can also pull (belt-and-suspenders for local dev).
+  # ---------------------------------------------------------------------------
+  prometheus:
+    endpoint: 0.0.0.0:8889
+    namespace: otelcol
+
+service:
+  extensions: [health_check]
+
+  pipelines:
+    # Traces go only to Langfuse.
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [otlphttp/langfuse]
+
+    # Metrics go to both the remote-write target and the pull-scrape endpoint.
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch, resource]
+      exporters: [prometheusremotewrite/local, prometheus]

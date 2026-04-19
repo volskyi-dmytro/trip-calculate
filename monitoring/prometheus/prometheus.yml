@@ -1,0 +1,36 @@
+# Prometheus configuration for TripCalculate local observability stack.
+#
+# Scrape targets:
+#   - prometheus itself (meta-monitoring)
+#   - otel-collector's prometheus exporter on :8889 (agent metrics pushed via OTLP)
+#
+# In production, replace this local Prometheus with a managed service
+# (Grafana Cloud, Victoria Metrics, etc.) and point the OTEL collector's
+# prometheusremotewrite/local exporter at the managed endpoint.
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    environment: local
+    project: tripcalculate
+
+# Remote-write receiver is enabled in docker-compose.yml via --web.enable-remote-write-receiver.
+# The OTEL Collector's prometheusremotewrite/local exporter pushes to /api/v1/write.
+
+scrape_configs:
+  # Prometheus self-monitoring.
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]
+
+  # OTEL Collector prometheus exporter — exposes metrics received via OTLP
+  # from the Python agent and Spring Boot (M5 will wire the SDK).
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  # OTEL Collector internal health metrics (optional, useful for debugging).
+  - job_name: otel-collector-internal
+    static_configs:
+      - targets: ["otel-collector:8888"]

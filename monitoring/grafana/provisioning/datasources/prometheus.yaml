@@ -1,0 +1,19 @@
+# Grafana datasource provisioning — Prometheus.
+# This file is loaded automatically by Grafana on startup.
+# Grafana will create or update the datasource; changes here take effect
+# on the next container restart (no manual UI steps needed).
+
+apiVersion: 1
+
+datasources:
+  - name: Prometheus
+    type: prometheus
+    uid: prometheus-local
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: false
+    jsonData:
+      httpMethod: POST
+      # Align scrape interval with prometheus.yml global.scrape_interval.
+      timeInterval: "15s"

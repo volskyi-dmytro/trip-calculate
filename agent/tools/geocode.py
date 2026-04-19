@@ -71,10 +71,13 @@ async def geocode(query: str, country: str | None = None) -> dict[str, Any]:
             "hint": f"Mapbox geocoding timed out after {_TIMEOUT_SECONDS}s. Try a simpler query.",
         }
     except httpx.RequestError as exc:
-        logger.warning("Geocode network error for query=%r: %s", query, exc)
+        # Log class name only — str(exc) may include the request URL with access_token in
+        # query params (Mapbox Geocoding v5 appends access_token to every request URL).
+        logger.warning("Geocode network error for query=%r: %s", query, type(exc).__name__)
+        logger.debug("Geocode network error detail for query=%r: %s", query, exc)
         return {
             "status": "upstream_error",
-            "hint": f"Network error contacting Mapbox: {exc}",
+            "hint": "Network error contacting Mapbox. The service may be temporarily unavailable.",
         }
 
     if response.status_code != 200:
