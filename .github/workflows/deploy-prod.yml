@@ -108,6 +108,15 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:prod-${{ github.sha }}
 
+      - name: Build and Push Agent Docker Image
+        run: |
+          echo "🤖 Building langgraph-agent Docker image..."
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/tripcalc-agent:latest \
+                       -t ${{ secrets.DOCKER_USERNAME }}/tripcalc-agent:prod-${{ github.sha }} ./agent
+
+          docker push ${{ secrets.DOCKER_USERNAME }}/tripcalc-agent:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/tripcalc-agent:prod-${{ github.sha }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -146,29 +155,45 @@ jobs:
           SUPABASE_URL: ${{ secrets.PROD_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.PROD_SUPABASE_SERVICE_ROLE_KEY }}
           INTERNAL_JWT_SECRET: ${{ secrets.PROD_INTERNAL_JWT_SECRET }}
-          # ----------------------------------------------------------------------
-          # langgraph-agent container env vars — plumbed but UNUSED in this
-          # workflow. The agent container itself is deferred to M6; see
-          # `docs/progress.md` §M5 Deferred. Once the M6 deploy step lands
-          # (mirror the trip-calculate-prod docker run pattern with image
-          # `tripcalc-agent:prod-${{ github.sha }}` on `trip-calculate-network`,
-          # internal-only — no `-p`), forward these vars into the container's
-          # `-e` flags. Adding them here now means the secrets list in the
-          # GitHub UI is the source of truth before M6 touches code.
-          # ----------------------------------------------------------------------
+          AGENT_SERVICE_URL: http://langgraph-agent:8000
+          # langgraph-agent container env vars
           ANTHROPIC_API_KEY:    ${{ secrets.ANTHROPIC_API_KEY }}
           GEMINI_API_KEY:       ${{ secrets.PROD_GEMINI_API_KEY }}
           OPENROUTER_API_KEY:   ${{ secrets.PROD_OPENROUTER_API_KEY }}
           OTM_KEY:              ${{ secrets.PROD_OTM_KEY }}
-          # Langfuse v3 — observability profile, also M6 deploy work.
           LANGFUSE_PUBLIC_KEY:  ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}
           LANGFUSE_SECRET_KEY:  ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}
           LANGFUSE_HOST:        ${{ secrets.PROD_LANGFUSE_HOST }}
-          # OTEL collector endpoint inside the docker network (default
-          # http://otel-collector:4317 once the observability profile is up).
           OTEL_EXPORTER_OTLP_ENDPOINT: ${{ secrets.PROD_OTEL_EXPORTER_OTLP_ENDPOINT }}
         run: |
-          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' N8N_WEBHOOK_URL='${N8N_WEBHOOK_URL}' N8N_EXTRACTOR_URL='${N8N_EXTRACTOR_URL}' SUPABASE_URL='${SUPABASE_URL}' SUPABASE_SERVICE_ROLE_KEY='${SUPABASE_SERVICE_ROLE_KEY}' INTERNAL_JWT_SECRET='${INTERNAL_JWT_SECRET}' bash -s" <<'REMOTE'
+          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST \
+            "DOCKER_USERNAME='${DOCKER_USERNAME}' \
+             DATABASE_URL='${DATABASE_URL}' \
+             DATABASE_USERNAME='${DATABASE_USERNAME}' \
+             DATABASE_PASSWORD='${DATABASE_PASSWORD}' \
+             GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' \
+             GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' \
+             OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' \
+             GMAIL_USERNAME='${GMAIL_USERNAME}' \
+             GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' \
+             ADMIN_EMAIL='${ADMIN_EMAIL}' \
+             MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' \
+             REDIS_PASSWORD='${REDIS_PASSWORD}' \
+             N8N_WEBHOOK_URL='${N8N_WEBHOOK_URL}' \
+             N8N_EXTRACTOR_URL='${N8N_EXTRACTOR_URL}' \
+             SUPABASE_URL='${SUPABASE_URL}' \
+             SUPABASE_SERVICE_ROLE_KEY='${SUPABASE_SERVICE_ROLE_KEY}' \
+             INTERNAL_JWT_SECRET='${INTERNAL_JWT_SECRET}' \
+             AGENT_SERVICE_URL='${AGENT_SERVICE_URL}' \
+             ANTHROPIC_API_KEY='${ANTHROPIC_API_KEY}' \
+             GEMINI_API_KEY='${GEMINI_API_KEY}' \
+             OPENROUTER_API_KEY='${OPENROUTER_API_KEY}' \
+             OTM_KEY='${OTM_KEY}' \
+             LANGFUSE_PUBLIC_KEY='${LANGFUSE_PUBLIC_KEY}' \
+             LANGFUSE_SECRET_KEY='${LANGFUSE_SECRET_KEY}' \
+             LANGFUSE_HOST='${LANGFUSE_HOST}' \
+             OTEL_EXPORTER_OTLP_ENDPOINT='${OTEL_EXPORTER_OTLP_ENDPOINT}' \
+             bash -s" <<'REMOTE'
             echo "🚀 Deploying to Production VPS..."
 
             # Create private Docker network if it doesn't exist
@@ -276,6 +301,7 @@ jobs:
               -e SUPABASE_URL="${SUPABASE_URL}" \
               -e SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY}" \
               -e INTERNAL_JWT_SECRET="${INTERNAL_JWT_SECRET}" \
+              -e AGENT_SERVICE_URL="${AGENT_SERVICE_URL}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
 
             echo "✅ Application container started"
@@ -350,24 +376,91 @@ jobs:
               docker logs trip-calculate-prod --tail 50 | grep -i "redis"
             fi
 
+            # ==================== LANGGRAPH AGENT DEPLOYMENT ====================
+            echo ""
+            echo "🤖 Deploying langgraph-agent..."
+
+            # Ensure the langgraph database exists on the shared Postgres
+            echo "🗄️ Ensuring langgraph database exists..."
+            docker exec trip-calculate-db psql -U tripplanner -c \
+              "SELECT 'CREATE DATABASE langgraph OWNER tripplanner' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'langgraph')\gexec" \
+              || echo "⚠️ Could not run langgraph DB check — may already exist"
+
+            docker pull "${DOCKER_USERNAME}/tripcalc-agent:latest"
+
+            docker stop langgraph-agent || true
+            docker rm   langgraph-agent || true
+
+            docker run -d \
+              --name langgraph-agent \
+              --restart unless-stopped \
+              --network trip-calculate-network \
+              -e PG_URL="postgresql://${DATABASE_USERNAME}:${DATABASE_PASSWORD}@trip-calculate-db:5432/langgraph" \
+              -e INTERNAL_JWT_SECRET="${INTERNAL_JWT_SECRET}" \
+              -e ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY}" \
+              -e GEMINI_API_KEY="${GEMINI_API_KEY}" \
+              -e OPENROUTER_API_KEY="${OPENROUTER_API_KEY}" \
+              -e MAPBOX_TOKEN="${MAPBOX_ACCESS_TOKEN}" \
+              -e OTM_KEY="${OTM_KEY}" \
+              -e REDIS_URL="redis://:${REDIS_PASSWORD}@trip-calculate-redis:6379/0" \
+              -e LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
+              -e LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}" \
+              -e LANGFUSE_HOST="${LANGFUSE_HOST}" \
+              -e OTEL_EXPORTER_OTLP_ENDPOINT="${OTEL_EXPORTER_OTLP_ENDPOINT}" \
+              "${DOCKER_USERNAME}/tripcalc-agent:latest"
+
+            echo "✅ langgraph-agent container started"
+
+            # Wait for the agent to be ready (startup is slower — downloads model metadata etc.)
+            echo "⏳ Waiting for langgraph-agent to be ready..."
+            AGENT_RETRIES=0
+            MAX_AGENT_RETRIES=20
+            until [ $AGENT_RETRIES -ge $MAX_AGENT_RETRIES ]; do
+              sleep 5
+              AGENT_RETRIES=$((AGENT_RETRIES + 1))
+              STATUS=$(docker exec langgraph-agent python -c \
+                "import urllib.request; urllib.request.urlopen('http://localhost:8000/healthz')" \
+                2>/dev/null && echo ok || echo fail)
+              if [ "$STATUS" = "ok" ]; then
+                echo "✅ langgraph-agent health check passed on attempt $AGENT_RETRIES"
+                break
+              fi
+              echo "⏳ Attempt $AGENT_RETRIES/$MAX_AGENT_RETRIES — not ready yet..."
+              if [ $AGENT_RETRIES -eq $MAX_AGENT_RETRIES ]; then
+                echo "❌ langgraph-agent failed to become healthy!"
+                docker logs langgraph-agent --tail 50
+                exit 1
+              fi
+            done
+
+            # Verify agent port is NOT exposed to host (security check)
+            if docker port langgraph-agent 2>/dev/null | grep -q "8000"; then
+              echo "❌ SECURITY: langgraph-agent port 8000 is exposed to host! Aborting."
+              exit 1
+            else
+              echo "✅ Agent security verified — port 8000 NOT exposed to host"
+            fi
+
             # ==================== DEPLOYMENT SUMMARY ====================
             echo ""
             echo "🎉 Deployment Summary:"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Application: ✅ Running on port 8080"
-            echo "Database:    ✅ Secured on private network (172.18.0.2)"
-            echo "Redis:       ✅ Secured on private network"
+            echo "Application:     ✅ Running on port 8080"
+            echo "LangGraph Agent: ✅ Running on internal network only"
+            echo "Database:        ✅ Secured on private network"
+            echo "Redis:           ✅ Secured on private network"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Security Checks:"
             echo "  DB Port:    $(docker port trip-calculate-db >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
             echo "  Redis Port: $(docker port trip-calculate-redis >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
+            echo "  Agent Port: $(docker port langgraph-agent 2>/dev/null | grep -q 8000 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
             echo "  Health:     $(curl -sf http://localhost:8080/actuator/health >/dev/null && echo '✅ Healthy' || echo '❌ Unhealthy')"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo ""
             echo "✅ Production deployment complete!"
             echo ""
             echo "📦 Final container status:"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep trip-calculate
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
           REMOTE
 
       - name: Cleanup SSH Key
