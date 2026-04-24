@@ -1,5 +1,5 @@
 # Use Eclipse Temurin JRE (more secure than full JDK)
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:25-jre-alpine
 
 # Create non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
