@@ -323,8 +323,14 @@ export function RoutePanel({
               ...routeSettings,
               currency: e.target.value as CurrencyCode
             })}
-            style={{ ...inputStyle, paddingRight: '2rem' }}
-            className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer [&>option]:bg-[#1a2133] [&>option]:text-white"
+            style={{
+              ...inputStyle,
+              paddingRight: '2rem',
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 0.5rem center',
+            }}
+            className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer"
           >
             {CURRENCIES.map((curr) => (
               <option key={curr.code} value={curr.code}>
