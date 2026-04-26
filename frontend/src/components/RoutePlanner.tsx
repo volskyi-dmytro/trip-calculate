@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
-import { TopChatBar } from './TopChatBar'
+// TopChatBar is replaced by inline AI input in the sidebar
 import { StatsPanel } from './StatsPanel'
 import { RoutePanel } from './RoutePanel'
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Navigation, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, ChevronDown, ChevronUp } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -38,6 +38,7 @@ export interface RouteSettings {
 
 export function RoutePlanner() {
   const { language } = useLanguage()
+  const languageRef = useRef(language)
   const t = getTranslation(language as Language)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -45,16 +46,23 @@ export function RoutePlanner() {
   // Load waypoints from localStorage on mount
   const [waypoints, setWaypoints] = useState<Waypoint[]>(() => {
     const saved = localStorage.getItem('tripCalculate_currentRoute')
-    return saved ? JSON.parse(saved) : []
+    if (!saved) return []
+    try { return JSON.parse(saved) } catch { return [] }
   })
   const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
-    return saved ? JSON.parse(saved) : {
+    if (!saved) return {
       fuelConsumption: 9.2,
       fuelCostPerLiter: 55,
       currency: 'UAH',
       passengerCount: 1
     }
+    try { return JSON.parse(saved) } catch { return {
+      fuelConsumption: 9.2,
+      fuelCostPerLiter: 55,
+      currency: 'UAH',
+      passengerCount: 1
+    } }
   })
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
@@ -95,7 +103,8 @@ export function RoutePlanner() {
   // Map visibility state (Issue #1 fix: Collapsible map)
   const [isMapVisible, setIsMapVisible] = useState<boolean>(() => {
     const saved = localStorage.getItem('tripCalculate_mapVisible')
-    return saved ? JSON.parse(saved) : false // Default to hidden
+    if (!saved) return false
+    try { return JSON.parse(saved) } catch { return false }
   })
 
   // Route calculation state
@@ -139,6 +148,11 @@ export function RoutePlanner() {
       setDestinationInput('')
     }
   }, [waypoints])
+
+  // Sync languageRef when language changes
+  useEffect(() => {
+    languageRef.current = language
+  }, [language])
 
   // Initialize welcome message
   useEffect(() => {
@@ -214,9 +228,9 @@ export function RoutePlanner() {
           console.warn('⚠️ [PLANNER] Geometry:', route.geometry);
           // Notify user that routing service failed
           toast.warning(
-            language === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
+            languageRef.current === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
             {
-              description: language === 'uk'
+              description: languageRef.current === 'uk'
                 ? 'Не вдалося розрахувати маршрут по дорогам. Показано прямі лінії.'
                 : 'Could not calculate road-based route. Showing straight lines.',
               duration: 5000
@@ -235,9 +249,9 @@ export function RoutePlanner() {
         setRouteDuration(0)
         setIsCalculatingRoute(false)
         toast.error(
-          language === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
+          languageRef.current === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
           {
-            description: language === 'uk'
+            description: languageRef.current === 'uk'
               ? 'Виникла помилка при розрахунку маршруту.'
               : 'An error occurred while calculating the route.',
             duration: 5000
@@ -247,8 +261,7 @@ export function RoutePlanner() {
     }
 
     updateRoute()
-  }, [waypoints]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: language is intentionally omitted from deps to prevent recalculation on language toggle
+  }, [waypoints])
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
@@ -924,10 +937,7 @@ export function RoutePlanner() {
     setShowWelcomeScreen(false);
   }, []);
 
-  // Handler for toggling map visibility (Issue #1 fix)
-  const toggleMapVisibility = useCallback(() => {
-    setIsMapVisible(prev => !prev);
-  }, []);
+  // Map visibility state is kept for potential future use / localStorage persistence
 
   // If in welcome screen mode, show centered chat interface
   if (showWelcomeScreen && !manualMode) {
@@ -947,342 +957,48 @@ export function RoutePlanner() {
     );
   }
 
-  // Dashboard view with map and panels
+  // Dashboard view — map-first Precision Navigation layout
   return (
-    <div className="flex flex-col min-h-screen">
-      {/* SECTION 1: Fixed Header - NO SCROLL */}
-      <div className="sticky top-0 z-50 bg-white dark:bg-slate-900">
-        {/* AI Assistant Input - FIXED at top */}
-        <TopChatBar
-          chatInput={chatInput}
-          onChatInputChange={setChatInput}
-          onSendMessage={handleSendChat}
-          isProcessing={isProcessingN8n}
-        />
+    <div className="flex flex-row h-full overflow-hidden">
+      {/* ── SIDEBAR (360px, scrollable) ── */}
+      <div
+        className="flex-shrink-0 flex flex-col h-full overflow-hidden"
+        style={{
+          width: '360px',
+          background: 'var(--nav-bg-sidebar)',
+          borderRight: '1px solid var(--nav-border)',
+        }}
+      >
+        {/* Scrollable content area */}
+        <div className="flex-1 overflow-y-auto">
+          <div className="p-4 space-y-5">
 
-        {/* Title + Buttons - FIXED at top, doesn't scroll */}
-        <header className="border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 px-4 py-3">
-          <div className="flex items-center justify-between flex-wrap gap-3">
-            {/* Title */}
-            <div className="flex items-center gap-2">
-              <Navigation className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
-              <h1 className="text-xl lg:text-2xl font-bold text-slate-800 dark:text-white">{t.title}</h1>
-              {routeName && <span className="text-sm ml-4 opacity-60">({routeName})</span>}
-              {isEditMode && (
-                <span className="text-xs px-2 py-1 rounded bg-blue-500/20 text-blue-600 dark:text-blue-400 flex items-center gap-1">
-                  <Edit className="h-3 w-3" />
-                  Editing
-                </span>
-              )}
-            </div>
-
-            {/* Button Group - ALL buttons must be visible */}
-            <div className="flex gap-2 flex-wrap">
-            {isEditMode && (
-              <Button variant="outline" size="sm" onClick={createNewRoute} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
-                <FilePlus className="h-4 w-4 mr-2" />
-                <span className="hidden sm:inline">New Route</span>
-                <span className="sm:hidden">New</span>
-              </Button>
-            )}
-            {/* Load Route Dialog */}
-            <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
-                  <FolderOpen className="h-4 w-4 mr-2" />
-                  <span className="hidden sm:inline">{t.buttons.loadRoute}</span>
-                  <span className="sm:hidden">Load</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{t.dialogs.load.title}</DialogTitle>
-                  <DialogDescription>{t.dialogs.load.description}</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-2 max-h-96 overflow-y-auto">
-                  {loadingRoutes ? (
-                    <div className="flex items-center justify-center py-8">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                    </div>
-                  ) : savedRoutes.length === 0 ? (
-                    <div className="text-center py-8">
-                      <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
-                      <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
-                    </div>
-                  ) : (
-                    savedRoutes.map(route => (
-                      <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <h3 className="font-semibold">{route.name}</h3>
-                            <p className="text-sm text-muted-foreground">
-                              {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
-                            </p>
-                            <p className="text-xs text-muted-foreground">
-                              {new Date(route.updatedAt!).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              onClick={() => loadRouteFromServer(route.id!)}
-                            >
-                              {t.buttons.load}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="destructive"
-                              onClick={() => deleteRouteFromServer(route.id!)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              </DialogContent>
-            </Dialog>
-
-            {/* Save Route Dialog */}
-            <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-              <DialogTrigger asChild>
-                <Button variant="outline" size="sm" disabled={waypoints.length === 0}>
-                  <Save className="h-4 w-4 mr-2" />
-                  {isEditMode ? 'Update Route' : t.buttons.saveRoute}
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>{isEditMode ? 'Update Route' : t.dialogs.save.title}</DialogTitle>
-                  <DialogDescription>
-                    {isEditMode ? 'Update the existing route or save as a new one' : t.dialogs.save.description}
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div>
-                    <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
-                    <Input
-                      id="route-name"
-                      placeholder={t.dialogs.save.placeholder}
-                      value={routeName}
-                      onChange={(e) => setRouteName(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && !savingRoute) {
-                          saveRouteToServer(false)
-                        }
-                      }}
-                    />
-                  </div>
-
-                  <div className="text-sm text-muted-foreground">
-                    <p>{isEditMode ? 'This will update:' : t.dialogs.save.willSave}</p>
-                    <ul className="list-disc list-inside mt-2 space-y-1">
-                      <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
-                      <li>{t.dialogs.save.fuelSettings}</li>
-                      <li>{t.dialogs.save.calculations}</li>
-                    </ul>
-                  </div>
-                </div>
-
-                <DialogFooter>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowSaveDialog(false)}
-                  >
-                    {t.buttons.cancel}
-                  </Button>
-                  {isEditMode && (
-                    <Button
-                      variant="outline"
-                      onClick={() => saveRouteToServer(true)}
-                      disabled={savingRoute}
-                    >
-                      {savingRoute ? (
-                        <>
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          Saving...
-                        </>
-                      ) : (
-                        <>
-                          <FilePlus className="h-4 w-4 mr-2" />
-                          Save as New
-                        </>
-                      )}
-                    </Button>
-                  )}
-                  <Button
-                    onClick={() => saveRouteToServer(false)}
-                    disabled={savingRoute}
-                  >
-                    {savingRoute ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        {t.buttons.saving}
-                      </>
-                    ) : (
-                      <>
-                        <Save className="h-4 w-4 mr-2" />
-                        {isEditMode ? 'Update' : t.buttons.save}
-                      </>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
-
-            <Button variant="outline" size="sm" onClick={exportRouteAsJSON} disabled={waypoints.length === 0} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
-              <Upload className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{t.buttons.exportJson}</span>
-              <span className="sm:hidden">Export</span>
-            </Button>
-            <Button variant="destructive" size="sm" onClick={clearRoute} disabled={waypoints.length === 0} className="whitespace-nowrap px-3 lg:px-4 text-sm lg:text-base">
-              <Trash2 className="h-4 w-4 mr-2" />
-              <span className="hidden sm:inline">{t.buttons.clear}</span>
-              <span className="sm:hidden">Clear</span>
-            </Button>
-          </div>
-        </div>
-      </header>
-
-        {/* Manual Address Input Dialog */}
-        <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t.dialogs.manual.title}</DialogTitle>
-            <DialogDescription>
-              {t.dialogs.manual.description}
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="manual-address">{t.dialogs.manual.addressLabel}</Label>
-              <Input
-                id="manual-address"
-                value={manualAddress}
-                onChange={(e) => setManualAddress(e.target.value)}
-                placeholder={t.dialogs.manual.placeholder}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isSearching) {
-                    handleManualAddressSubmit()
-                  }
-                }}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {t.dialogs.manual.hint}
-              </p>
-            </div>
-
-            <DialogFooter>
-              <Button
-                variant="outline"
-                onClick={() => {
-                  setShowManualInputDialog(false)
-                  setManualAddress('')
+            {/* ── Route name + edit mode indicator ── */}
+            {(routeName || isEditMode) && (
+              <div
+                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                style={{
+                  background: 'var(--nav-bg-input)',
+                  border: '1px solid var(--nav-border)',
+                  color: 'var(--nav-text-secondary)',
                 }}
               >
-                {t.buttons.cancel}
-              </Button>
-              <Button
-                onClick={handleManualAddressSubmit}
-                disabled={!manualAddress.trim() || isSearching}
-              >
-                {isSearching ? (
-                  <>
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    {t.buttons.searching}
-                  </>
-                ) : (
-                  <>
-                    <MapPin className="h-4 w-4 mr-2" />
-                    {t.dialogs.manual.addWaypoint}
-                  </>
+                {isEditMode && (
+                  <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
                 )}
-              </Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
-      </div>
-      {/* End Fixed Header Section */}
-
-      {/* SECTION 2: Main Content Area - SINGLE PAGE SCROLL */}
-      <div className="flex-1">
-        <div className="flex flex-col lg:flex-row">
-          {/* LEFT: Map Container with Collapsible Section */}
-          <div className="relative w-full lg:w-2/3 bg-gray-100 dark:bg-gray-800">
-            {/* Map Toggle Button - Always Visible */}
-            <div className="sticky top-0 z-10 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-slate-700 p-3">
-              <Button
-                onClick={toggleMapVisibility}
-                variant="outline"
-                className="w-full h-11 flex items-center justify-between gap-2 text-base font-medium hover:bg-accent transition-colors"
-              >
-                <div className="flex items-center gap-2">
-                  <MapPin className="h-5 w-5" />
-                  <span>{isMapVisible ? (language === 'uk' ? 'Сховати карту' : 'Hide Map') : (language === 'uk' ? 'Показати карту' : 'Show Map')}</span>
-                </div>
-                {isMapVisible ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-              </Button>
-            </div>
-
-            {/* Collapsible Map Container with Smooth Transition */}
-            <div
-              className="overflow-hidden transition-all duration-300 ease-in-out"
-              style={{
-                maxHeight: isMapVisible ? '600px' : '0px',
-                opacity: isMapVisible ? 1 : 0,
-              }}
-            >
-              <div className="h-[400px] lg:h-[600px] relative">
-                {/* Only render map when visible to improve performance */}
-                {isMapVisible && (
-                  <>
-                    <MapContainer
-                      waypoints={waypoints}
-                      routeGeometry={routeGeometry}
-                      onAddWaypoint={addWaypoint}
-                      onUpdateWaypoint={updateWaypoint}
-                      onDeleteWaypoint={removeWaypoint}
-                    />
-
-                    {/* Instructions overlay */}
-                    {waypoints.length === 0 && (
-                      <div className="absolute top-4 left-1/2 transform -translate-x-1/2 bg-white dark:bg-slate-800 px-4 py-2 rounded-lg shadow-lg border border-slate-200 dark:border-slate-700 z-[500]">
-                        <div className="flex flex-col gap-1 text-sm text-slate-600 dark:text-slate-300">
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            <span>{language === 'uk' ? 'Клікніть на карту, щоб додати точку' : 'Click map to add waypoint'}</span>
-                          </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 ml-6">
-                            {language === 'uk' ? 'ПКМ на маркері - видалити' : 'Right-click marker to delete'}
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
+                <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
               </div>
-            </div>
-          </div>
+            )}
 
-        {/* RIGHT: Details Panel - Scrolls naturally with page */}
-        <div className="w-full lg:w-1/3 bg-gray-50 dark:bg-gray-900 border-t lg:border-t-0 lg:border-l border-gray-200 dark:border-gray-700">
-          <div className="p-4 space-y-6">
-            {/* Route Inputs Section */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2 text-slate-800 dark:text-white">
-                <Navigation className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
-                {language === 'uk' ? 'Деталі маршруту' : 'Route Details'}
-              </h2>
-
-              {/* Start Location */}
-              <div>
-                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
-                  {language === 'uk' ? 'ПОЧАТОК' : 'START'}
-                </Label>
+            {/* ── START input ── */}
+            <div>
+              <Label
+                className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                style={{ color: 'var(--nav-text-secondary)' }}
+              >
+                {language === 'uk' ? 'Початок' : 'Start'}
+              </Label>
+              <div className="relative">
                 <Input
                   type="text"
                   placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
@@ -1294,21 +1010,55 @@ export function RoutePlanner() {
                     }
                   }}
                   disabled={isSearchingStart}
-                  className="w-full"
+                  className="w-full pr-8"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
                 />
                 {isSearchingStart && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
-                    {language === 'uk' ? 'Пошук...' : 'Searching...'}
-                  </p>
+                  <Loader2
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                    style={{ color: 'var(--nav-accent)' }}
+                  />
                 )}
               </div>
+            </div>
 
-              {/* Destination */}
-              <div>
-                <Label className="block text-xs font-semibold mb-1 text-slate-600 dark:text-slate-300 uppercase">
-                  {language === 'uk' ? 'ПРИЗНАЧЕННЯ' : 'DESTINATION'}
-                </Label>
+            {/* ── Swap button ── */}
+            {waypoints.length >= 2 && (
+              <div className="flex justify-center">
+                <button
+                  onClick={() => {
+                    const swapped = [...waypoints]
+                    const first = swapped[0]
+                    swapped[0] = swapped[swapped.length - 1]
+                    swapped[swapped.length - 1] = first
+                    reorderWaypoints(swapped)
+                  }}
+                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-secondary)',
+                  }}
+                  title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
+                >
+                  ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
+                </button>
+              </div>
+            )}
+
+            {/* ── DESTINATION input ── */}
+            <div>
+              <Label
+                className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                style={{ color: 'var(--nav-text-secondary)' }}
+              >
+                {language === 'uk' ? 'Призначення' : 'Destination'}
+              </Label>
+              <div className="relative">
                 <Input
                   type="text"
                   placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
@@ -1320,18 +1070,26 @@ export function RoutePlanner() {
                     }
                   }}
                   disabled={isSearchingDestination}
-                  className="w-full"
+                  className="w-full pr-8"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
                 />
                 {isSearchingDestination && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    <Loader2 className="h-3 w-3 inline animate-spin mr-1" />
-                    {language === 'uk' ? 'Пошук...' : 'Searching...'}
-                  </p>
+                  <Loader2
+                    className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                    style={{ color: 'var(--nav-accent)' }}
+                  />
                 )}
               </div>
             </div>
 
-            {/* Draggable Waypoint List */}
+            {/* ── Divider ── */}
+            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+            {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
             <RoutePanel
               waypoints={waypoints}
               routeSettings={routeSettings}
@@ -1343,17 +1101,319 @@ export function RoutePlanner() {
               isCalculating={isCalculatingRoute}
             />
 
-            {/* Stats Panel */}
+            {/* ── Divider ── */}
+            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+            {/* ── Route Stats ── */}
             <StatsPanel
               waypoints={waypoints}
               routeSettings={routeSettings}
               routeDistance={routeDistance}
               routeDuration={routeDuration}
             />
+
+            {/* ── Divider ── */}
+            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+            {/* ── Action Buttons ── */}
+            <div className="space-y-2">
+              {isEditMode && (
+                <button
+                  onClick={createNewRoute}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
+                >
+                  <FilePlus className="h-4 w-4" />
+                  {language === 'uk' ? 'Новий маршрут' : 'New Route'}
+                </button>
+              )}
+
+              {/* Load Route Dialog trigger */}
+              <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+                <DialogTrigger asChild>
+                  <button
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: 'var(--nav-text-primary)',
+                    }}
+                  >
+                    <FolderOpen className="h-4 w-4" />
+                    {t.buttons.loadRoute}
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{t.dialogs.load.title}</DialogTitle>
+                    <DialogDescription>{t.dialogs.load.description}</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {loadingRoutes ? (
+                      <div className="flex items-center justify-center py-8">
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    ) : savedRoutes.length === 0 ? (
+                      <div className="text-center py-8">
+                        <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
+                        <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
+                      </div>
+                    ) : (
+                      savedRoutes.map(route => (
+                        <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <h3 className="font-semibold">{route.name}</h3>
+                              <p className="text-sm text-muted-foreground">
+                                {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(route.updatedAt!).toLocaleDateString()}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
+                                {t.buttons.load}
+                              </Button>
+                              <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </div>
+                          </div>
+                        </Card>
+                      ))
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              {/* Save Route Dialog trigger */}
+              <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                <DialogTrigger asChild>
+                  <button
+                    disabled={waypoints.length === 0}
+                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
+                    style={{
+                      background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
+                    }}
+                  >
+                    <Save className="h-4 w-4" />
+                    {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
+                  </button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
+                    <DialogDescription>
+                      {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
+                      <Input
+                        id="route-name"
+                        placeholder={t.dialogs.save.placeholder}
+                        value={routeName}
+                        onChange={(e) => setRouteName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
+                        }}
+                      />
+                    </div>
+                    <div className="text-sm text-muted-foreground">
+                      <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
+                      <ul className="list-disc list-inside mt-2 space-y-1">
+                        <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
+                        <li>{t.dialogs.save.fuelSettings}</li>
+                        <li>{t.dialogs.save.calculations}</li>
+                      </ul>
+                    </div>
+                  </div>
+                  <DialogFooter>
+                    <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                      {t.buttons.cancel}
+                    </Button>
+                    {isEditMode && (
+                      <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                        {savingRoute ? (
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                        ) : (
+                          <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                        )}
+                      </Button>
+                    )}
+                    <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
+                      {savingRoute ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
+                      ) : (
+                        <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
+                      )}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+
+              <button
+                onClick={exportRouteAsJSON}
+                disabled={waypoints.length === 0}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                style={{
+                  background: 'var(--nav-bg-input)',
+                  border: '1px solid var(--nav-border)',
+                  color: 'var(--nav-text-primary)',
+                }}
+              >
+                <Upload className="h-4 w-4" />
+                {t.buttons.exportJson}
+              </button>
+
+              <button
+                onClick={clearRoute}
+                disabled={waypoints.length === 0}
+                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                style={{
+                  background: 'var(--nav-bg-input)',
+                  border: '1px solid var(--nav-border)',
+                  color: 'var(--nav-danger)',
+                }}
+              >
+                <Trash2 className="h-4 w-4" />
+                {t.buttons.clear}
+              </button>
+            </div>
+
+          </div>{/* end scrollable content */}
+        </div>
+
+        {/* ── AI Assistant input — pinned to sidebar bottom ── */}
+        <div
+          className="flex-shrink-0 p-3"
+          style={{
+            borderTop: '1px solid var(--nav-border)',
+            background: 'var(--nav-bg-sidebar)',
+          }}
+        >
+          {isProcessingN8n && (
+            <div
+              className="h-0.5 mb-2 rounded-full animate-pulse"
+              style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
+            />
+          )}
+          <div className="flex gap-2">
+            <Input
+              type="text"
+              placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
+              }}
+              disabled={isProcessingN8n}
+              className="flex-1 h-9 text-sm disabled:opacity-50"
+              style={{
+                background: 'var(--nav-bg-input)',
+                border: '1px solid var(--nav-border)',
+                color: 'var(--nav-text-primary)',
+              }}
+            />
+            <button
+              onClick={handleSendChat}
+              disabled={isProcessingN8n || !chatInput.trim()}
+              className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
+              style={{
+                background: 'var(--nav-accent)',
+                color: '#000',
+              }}
+            >
+              {isProcessingN8n ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Send className="h-4 w-4" />
+              )}
+            </button>
           </div>
         </div>
-        </div>
       </div>
+      {/* ── end SIDEBAR ── */}
+
+      {/* ── MAP (fills remaining width, full height) ── */}
+      <div className="flex-1 relative h-full overflow-hidden">
+        <MapContainer
+          waypoints={waypoints}
+          routeGeometry={routeGeometry}
+          onAddWaypoint={addWaypoint}
+          onUpdateWaypoint={updateWaypoint}
+          onDeleteWaypoint={removeWaypoint}
+        />
+
+        {/* Instructions overlay when no waypoints */}
+        {waypoints.length === 0 && (
+          <div
+            className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg z-10 pointer-events-none"
+            style={{
+              background: 'rgba(22, 27, 39, 0.92)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-secondary)',
+            }}
+          >
+            <div className="flex flex-col gap-1 text-sm">
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4" style={{ color: 'var(--nav-accent)' }} />
+                <span>{language === 'uk' ? 'Клікніть на карту, щоб додати точку' : 'Click map to add waypoint'}</span>
+              </div>
+              <div className="text-xs ml-6" style={{ color: 'var(--nav-text-secondary)' }}>
+                {language === 'uk' ? 'ПКМ на маркері — видалити' : 'Right-click marker to delete'}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Dialogs (rendered outside sidebar/map for correct z-index) ── */}
+
+      {/* Manual Address Input Dialog */}
+      <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.dialogs.manual.title}</DialogTitle>
+            <DialogDescription>{t.dialogs.manual.description}</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="manual-address">{t.dialogs.manual.addressLabel}</Label>
+              <Input
+                id="manual-address"
+                value={manualAddress}
+                onChange={(e) => setManualAddress(e.target.value)}
+                placeholder={t.dialogs.manual.placeholder}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isSearching) handleManualAddressSubmit()
+                }}
+              />
+              <p className="text-xs text-muted-foreground mt-1">{t.dialogs.manual.hint}</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setShowManualInputDialog(false); setManualAddress('') }}>
+                {t.buttons.cancel}
+              </Button>
+              <Button onClick={handleManualAddressSubmit} disabled={!manualAddress.trim() || isSearching}>
+                {isSearching ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.searching}</>
+                ) : (
+                  <><MapPin className="h-4 w-4 mr-2" />{t.dialogs.manual.addWaypoint}</>
+                )}
+              </Button>
+            </DialogFooter>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

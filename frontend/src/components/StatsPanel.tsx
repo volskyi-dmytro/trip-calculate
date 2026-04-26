@@ -1,6 +1,5 @@
 import { useMemo } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Fuel, Navigation, DollarSign, Route, Clock } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
@@ -84,141 +83,202 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
     }
   }, [waypoints, routeSettings, routeDistance, routeDuration])
 
+  // Precision Navigation palette helpers
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--nav-bg-sidebar)',
+    border: '1px solid var(--nav-border)',
+    borderRadius: '0.5rem',
+  }
+  const labelStyle: React.CSSProperties = {
+    color: 'var(--nav-text-secondary)',
+    fontSize: '0.7rem',
+  }
+  const monoValue: React.CSSProperties = {
+    fontFamily: "'JetBrains Mono', monospace",
+    fontWeight: 500,
+    color: 'var(--nav-text-primary)',
+    fontSize: '0.8rem',
+  }
+  const sectionTitle: React.CSSProperties = {
+    color: 'var(--nav-text-primary)',
+    fontWeight: 600,
+    fontSize: '0.8rem',
+    marginBottom: '0.5rem',
+  }
+
   return (
-    <div className="p-4 space-y-4">
-      {/* Summary Stats */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t.routeSummary.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <StatItem
-              icon={<Route className="h-5 w-5" />}
+    <div className="space-y-4">
+      {/* Summary Stats — horizontal metric cards */}
+      {waypoints.length >= 2 ? (
+        <div style={cardStyle} className="p-3 space-y-3">
+          <div style={sectionTitle}>{t.routeSummary.title}</div>
+          <div className="grid grid-cols-2 gap-2">
+            <MetricCard
+              icon={<Route className="h-3.5 w-3.5" />}
               label={t.routeSummary.totalDistance}
               value={`${stats.totalDistance.toFixed(2)} km`}
             />
-            <StatItem
-              icon={<Fuel className="h-5 w-5" />}
-              label={t.routeSummary.fuelNeeded}
-              value={`${stats.fuelNeeded.toFixed(2)} L`}
-            />
-            <StatItem
-              icon={<DollarSign className="h-5 w-5" />}
-              label={t.routeSummary.fuelCost}
-              value={`${stats.fuelCost.toFixed(2)} ${routeSettings.currency}`}
-            />
-            <StatItem
-              icon={<Clock className="h-5 w-5" />}
+            <MetricCard
+              icon={<Clock className="h-3.5 w-3.5" />}
               label={t.routeSummary.estTime}
               value={`${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}
             />
+            <MetricCard
+              icon={<Fuel className="h-3.5 w-3.5" />}
+              label={t.routeSummary.fuelNeeded}
+              value={`${stats.fuelNeeded.toFixed(2)} L`}
+            />
+            <MetricCard
+              icon={<DollarSign className="h-3.5 w-3.5" />}
+              label={t.routeSummary.fuelCost}
+              value={`${stats.fuelCost.toFixed(2)} ${routeSettings.currency}`}
+              accent
+            />
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Segment Details */}
-      {stats.segments.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t.routeSegments.title}</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {stats.segments.map((segment, index) => (
-                <div key={index} className="flex items-start gap-3 p-3 rounded-lg border bg-card">
-                  <div className="flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-xs font-bold mt-1">
-                    {index + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm font-medium truncate">{segment.from}</div>
-                    <Navigation className="h-3 w-3 text-muted-foreground my-1" />
-                    <div className="text-sm font-medium truncate">{segment.to}</div>
-                    <div className="text-xs text-muted-foreground mt-2">
-                      {segment.distance.toFixed(2)} km
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        </div>
+      ) : (
+        <div style={{ ...cardStyle, textAlign: 'center', padding: '1.5rem 1rem' }}>
+          <p style={{ color: 'var(--nav-text-secondary)', fontSize: '0.75rem' }}>
+            {t.routeSummary.addWaypoints}
+          </p>
+        </div>
       )}
 
       {/* Cost Breakdown */}
       {waypoints.length >= 2 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">{t.costBreakdown.title}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.costBreakdown.fuelConsumption}</span>
-              <span className="font-medium">{routeSettings.fuelConsumption} L/100km</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.costBreakdown.fuelPrice}</span>
-              <span className="font-medium">{routeSettings.fuelCostPerLiter} {routeSettings.currency}/L</span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.costBreakdown.distance}</span>
-              <span className="font-medium">{stats.totalDistance.toFixed(2)} km</span>
-            </div>
-            <div className="h-px bg-border my-2" />
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">{t.costBreakdown.fuelNeeded}</span>
-              <span className="font-medium">{stats.fuelNeeded.toFixed(2)} L</span>
-            </div>
-            <div className="flex justify-between font-bold text-base pt-2">
-              <span>{t.costBreakdown.totalCost}</span>
-              <span className="text-primary">{stats.fuelCost.toFixed(2)} {routeSettings.currency}</span>
-            </div>
+        <div style={cardStyle} className="p-3 space-y-2">
+          <div style={sectionTitle}>{t.costBreakdown.title}</div>
 
-            {/* Expense Splitting - Show when passengers > 1 */}
-            {routeSettings.passengerCount > 1 && (
-              <>
-                <div className="h-px bg-border my-3" />
-                <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {language === 'uk' ? 'Кількість пасажирів' : 'Number of passengers'}
-                    </span>
-                    <span className="font-medium">{routeSettings.passengerCount}</span>
-                  </div>
-                  <div className="flex justify-between font-bold text-lg pt-1">
-                    <span className="text-green-700 dark:text-green-400">
-                      {language === 'uk' ? 'Вартість на особу' : 'Cost per person'}
-                    </span>
-                    <span className="text-green-700 dark:text-green-400">
-                      {stats.costPerPerson.toFixed(2)} {routeSettings.currency}
-                    </span>
-                  </div>
+          <div className="flex justify-between items-center">
+            <span style={labelStyle}>{t.costBreakdown.fuelConsumption}</span>
+            <span style={monoValue}>{routeSettings.fuelConsumption} L/100km</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span style={labelStyle}>{t.costBreakdown.fuelPrice}</span>
+            <span style={monoValue}>{routeSettings.fuelCostPerLiter} {routeSettings.currency}/L</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span style={labelStyle}>{t.costBreakdown.distance}</span>
+            <span style={monoValue}>{stats.totalDistance.toFixed(2)} km</span>
+          </div>
+
+          <div style={{ height: '1px', background: 'var(--nav-border)', margin: '4px 0' }} />
+
+          <div className="flex justify-between items-center">
+            <span style={labelStyle}>{t.costBreakdown.fuelNeeded}</span>
+            <span style={monoValue}>{stats.fuelNeeded.toFixed(2)} L</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span style={{ ...labelStyle, fontWeight: 600, color: 'var(--nav-text-primary)' }}>
+              {t.costBreakdown.totalCost}
+            </span>
+            <span style={{ ...monoValue, color: 'var(--nav-accent)', fontSize: '0.9rem' }}>
+              {stats.fuelCost.toFixed(2)} {routeSettings.currency}
+            </span>
+          </div>
+
+          {/* Per-person split */}
+          {routeSettings.passengerCount > 1 && (
+            <>
+              <div style={{ height: '1px', background: 'var(--nav-border)', margin: '4px 0' }} />
+              <div
+                className="rounded-lg p-2 space-y-1"
+                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+              >
+                <div className="flex justify-between items-center">
+                  <span style={labelStyle}>
+                    {language === 'uk' ? 'Кількість пасажирів' : 'Number of passengers'}
+                  </span>
+                  <span style={monoValue}>{routeSettings.passengerCount}</span>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+                <div className="flex justify-between items-center">
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--nav-accent)' }}>
+                    {language === 'uk' ? 'Вартість на особу' : 'Cost per person'}
+                  </span>
+                  <span style={{ ...monoValue, color: 'var(--nav-accent)', fontSize: '0.9rem' }}>
+                    {stats.costPerPerson.toFixed(2)} {routeSettings.currency}
+                  </span>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
       )}
 
-      {waypoints.length === 0 && (
-        <Card>
-          <CardContent className="pt-6 pb-6 text-center text-muted-foreground">
-            <p className="text-sm">{t.routeSummary.addWaypoints}</p>
-          </CardContent>
-        </Card>
+      {/* Segment Details */}
+      {stats.segments.length > 0 && (
+        <div style={cardStyle} className="p-3 space-y-2">
+          <div style={sectionTitle}>{t.routeSegments.title}</div>
+          <div className="space-y-2">
+            {stats.segments.map((segment, index) => (
+              <div
+                key={index}
+                className="flex items-start gap-2 p-2 rounded-lg"
+                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+              >
+                <div
+                  className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold flex-shrink-0 mt-0.5"
+                  style={{ background: 'var(--nav-accent)', color: '#000' }}
+                >
+                  {index + 1}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-medium truncate" style={{ color: 'var(--nav-text-primary)' }}>
+                    {segment.from}
+                  </div>
+                  <Navigation className="h-2.5 w-2.5 my-0.5" style={{ color: 'var(--nav-text-secondary)' }} />
+                  <div className="text-xs font-medium truncate" style={{ color: 'var(--nav-text-primary)' }}>
+                    {segment.to}
+                  </div>
+                  <div
+                    className="text-xs mt-1"
+                    style={{ fontFamily: "'JetBrains Mono', monospace", color: 'var(--nav-text-secondary)', fontSize: '0.65rem' }}
+                  >
+                    {segment.distance.toFixed(2)} km
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
     </div>
   )
 }
 
-function StatItem({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function MetricCard({
+  icon,
+  label,
+  value,
+  accent = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  accent?: boolean
+}) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 text-muted-foreground">
+    <div
+      className="p-2 rounded-lg"
+      style={{
+        background: 'var(--nav-bg-input)',
+        border: '1px solid var(--nav-border)',
+      }}
+    >
+      <div className="flex items-center gap-1 mb-1" style={{ color: 'var(--nav-text-secondary)' }}>
         {icon}
-        <span className="text-sm">{label}</span>
+        <span style={{ fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</span>
       </div>
-      <span className="font-semibold">{value}</span>
+      <div
+        style={{
+          fontFamily: "'JetBrains Mono', monospace",
+          fontWeight: 500,
+          fontSize: '0.8rem',
+          color: accent ? 'var(--nav-accent)' : 'var(--nav-text-primary)',
+        }}
+      >
+        {value}
+      </div>
     </div>
   )
 }

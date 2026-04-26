@@ -1,10 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { MapPin, Trash2, GripVertical, Plus, Loader2 } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
@@ -56,7 +52,7 @@ export function RoutePanel({
   useEffect(() => {
     setFuelConsumptionInput(routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : '')
     setFuelCostInput(routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : '')
-  }, [])
+  }, [routeSettings.fuelConsumption, routeSettings.fuelCostPerLiter])
 
   // Handle fuel consumption input change
   const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -261,179 +257,216 @@ export function RoutePanel({
     onRemoveWaypoint(id)
   }
 
+  // Precision Navigation dark palette helpers
+  const inputStyle: React.CSSProperties = {
+    background: 'var(--nav-bg-input)',
+    border: '1px solid var(--nav-border)',
+    color: 'var(--nav-text-primary)',
+  }
+  const labelStyle: React.CSSProperties = {
+    color: 'var(--nav-text-secondary)',
+    fontSize: '0.7rem',
+    fontWeight: 600,
+    letterSpacing: '0.06em',
+    textTransform: 'uppercase',
+  }
+  const cardStyle: React.CSSProperties = {
+    background: 'var(--nav-bg-sidebar)',
+    border: '1px solid var(--nav-border)',
+    borderRadius: '0.5rem',
+  }
+
   return (
-    <div className="p-4 space-y-4">
+    <div className="space-y-4">
       {/* Route Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">{t.routeSettings.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fuel-consumption">{t.routeSettings.fuelConsumption}</Label>
-            <Input
-              id="fuel-consumption"
-              type="text"
-              inputMode="decimal"
-              placeholder="0.0"
-              value={fuelConsumptionInput}
-              onChange={handleFuelConsumptionChange}
-              onBlur={handleFuelConsumptionBlur}
-            />
-          </div>
+      <div style={cardStyle} className="p-3 space-y-3">
+        <div style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
+          {t.routeSettings.title}
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="fuel-cost">{t.routeSettings.fuelCost}</Label>
-            <Input
-              id="fuel-cost"
-              type="text"
-              inputMode="decimal"
-              placeholder="0.00"
-              value={fuelCostInput}
-              onChange={handleFuelCostChange}
-              onBlur={handleFuelCostBlur}
-            />
-          </div>
+        <div className="space-y-1">
+          <label style={labelStyle} htmlFor="fuel-consumption">{t.routeSettings.fuelConsumption}</label>
+          <Input
+            id="fuel-consumption"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.0"
+            value={fuelConsumptionInput}
+            onChange={handleFuelConsumptionChange}
+            onBlur={handleFuelConsumptionBlur}
+            style={inputStyle}
+            className="h-8 text-sm font-mono"
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="currency">{t.routeSettings.currency}</Label>
-            <select
-              id="currency"
-              value={routeSettings.currency}
-              onChange={(e) => onUpdateSettings({
-                ...routeSettings,
-                currency: e.target.value as CurrencyCode
-              })}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 appearance-none cursor-pointer [&>option]:bg-white [&>option]:text-gray-900 dark:[&>option]:bg-gray-800 dark:[&>option]:text-white"
-              style={{ paddingRight: '2rem' }}
-            >
-              {CURRENCIES.map((curr) => (
-                <option key={curr.code} value={curr.code}>
-                  {curr.symbol} {curr.code}
-                </option>
-              ))}
-            </select>
-          </div>
+        <div className="space-y-1">
+          <label style={labelStyle} htmlFor="fuel-cost">{t.routeSettings.fuelCost}</label>
+          <Input
+            id="fuel-cost"
+            type="text"
+            inputMode="decimal"
+            placeholder="0.00"
+            value={fuelCostInput}
+            onChange={handleFuelCostChange}
+            onBlur={handleFuelCostBlur}
+            style={inputStyle}
+            className="h-8 text-sm font-mono"
+          />
+        </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="passengers">{t.routeSettings.passengers}</Label>
-            <Input
-              id="passengers"
-              type="number"
-              min="1"
-              max="10"
-              value={routeSettings.passengerCount}
-              onChange={(e) => {
-                const value = parseInt(e.target.value, 10)
-                if (!isNaN(value) && value >= 1 && value <= 10) {
-                  onUpdateSettings({
-                    ...routeSettings,
-                    passengerCount: value
-                  })
-                }
-              }}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        <div className="space-y-1">
+          <label style={labelStyle} htmlFor="currency">{t.routeSettings.currency}</label>
+          <select
+            id="currency"
+            value={routeSettings.currency}
+            onChange={(e) => onUpdateSettings({
+              ...routeSettings,
+              currency: e.target.value as CurrencyCode
+            })}
+            style={{ ...inputStyle, paddingRight: '2rem' }}
+            className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer [&>option]:bg-[#1a2133] [&>option]:text-white"
+          >
+            {CURRENCIES.map((curr) => (
+              <option key={curr.code} value={curr.code}>
+                {curr.symbol} {curr.code}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="space-y-1">
+          <label style={labelStyle} htmlFor="passengers">{t.routeSettings.passengers}</label>
+          <Input
+            id="passengers"
+            type="number"
+            min="1"
+            max="10"
+            value={routeSettings.passengerCount}
+            onChange={(e) => {
+              const value = parseInt(e.target.value, 10)
+              if (!isNaN(value) && value >= 1 && value <= 10) {
+                onUpdateSettings({ ...routeSettings, passengerCount: value })
+              }
+            }}
+            style={inputStyle}
+            className="h-8 text-sm font-mono"
+          />
+        </div>
+      </div>
 
       {/* Waypoints List */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center justify-between">
-            <span>{t.waypoints.title} ({waypoints.length})</span>
-            {onAddManually && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={onAddManually}
-              >
-                <Plus className="h-4 w-4 mr-1" />
-                {t.buttons.addManually}
-              </Button>
-            )}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {waypoints.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <MapPin className="h-12 w-12 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">{t.waypoints.noWaypoints}</p>
-              <p className="text-xs mt-1">{t.waypoints.clickMap}</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {waypoints.map((waypoint, index) => {
-                const isDragging = draggedIndex === index
-                const isDropTarget = dragOverIndex === index && draggedIndex !== index
-
-                return (
-                  <div
-                    key={waypoint.id}
-                    draggable={!isCalculating}
-                    onDragStart={(e) => handleDragStart(e, index)}
-                    onDragEnd={handleDragEnd}
-                    onDragOver={(e) => handleDragOver(e, index)}
-                    onDragLeave={handleDragLeave}
-                    onDrop={(e) => handleDrop(e, index)}
-                    className={`
-                      waypoint-card-wrapper
-                      ${isDragging ? 'dragging' : ''}
-                      ${isDropTarget ? 'drop-target' : ''}
-                      ${isCalculating ? 'calculating' : ''}
-                    `}
-                  >
-                    <div className="waypoint-card flex items-center gap-2 p-3 rounded-lg border bg-card hover:bg-accent/50 transition-all duration-200">
-                      <div className="flex items-center gap-2 flex-1">
-                        <GripVertical
-                          className={`h-4 w-4 text-muted-foreground transition-colors ${
-                            isCalculating ? 'cursor-not-allowed opacity-50' : 'cursor-grab active:cursor-grabbing'
-                          }`}
-                        />
-                        <div className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-[#4ECDC4] to-[#556FE6] text-white text-xs font-bold shadow-sm">
-                          {index + 1}
-                        </div>
-                        <Input
-                          value={waypoint.name}
-                          onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
-                          className="h-8"
-                          disabled={isCalculating}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
-                        onClick={() => handleDeleteWaypoint(waypoint.id)}
-                        disabled={isCalculating || waypoints.length <= 2}
-                        title={
-                          waypoints.length <= 2
-                            ? (language === 'uk' ? 'Потрібно мінімум 2 точки' : 'Minimum 2 waypoints')
-                            : (language === 'uk' ? 'Видалити точку' : 'Delete waypoint')
-                        }
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                    <div className="text-xs text-muted-foreground px-3 py-1">
-                      {waypoint.lat.toFixed(5)}, {waypoint.lng.toFixed(5)}
-                    </div>
-                    {index < waypoints.length - 1 && (
-                      <Separator className="my-2" />
-                    )}
-                  </div>
-                )
-              })}
-              {isCalculating && (
-                <div className="flex items-center justify-center gap-2 py-3 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin text-[#4ECDC4]" />
-                  {language === 'uk' ? 'Розрахунок маршруту...' : 'Calculating route...'}
-                </div>
-              )}
-            </div>
+      <div style={cardStyle} className="p-3 space-y-3">
+        <div className="flex items-center justify-between">
+          <span style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
+            {t.waypoints.title} ({waypoints.length})
+          </span>
+          {onAddManually && (
+            <button
+              onClick={onAddManually}
+              className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors"
+              style={{
+                background: 'var(--nav-bg-input)',
+                border: '1px solid var(--nav-border)',
+                color: 'var(--nav-accent)',
+              }}
+            >
+              <Plus className="h-3 w-3" />
+              {t.buttons.addManually}
+            </button>
           )}
-        </CardContent>
-      </Card>
+        </div>
+
+        {waypoints.length === 0 ? (
+          <div className="text-center py-6" style={{ color: 'var(--nav-text-secondary)' }}>
+            <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
+            <p className="text-xs">{t.waypoints.noWaypoints}</p>
+            <p className="text-xs mt-1 opacity-70">{t.waypoints.clickMap}</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {waypoints.map((waypoint, index) => {
+              const isDragging = draggedIndex === index
+              const isDropTarget = dragOverIndex === index && draggedIndex !== index
+
+              return (
+                <div
+                  key={waypoint.id}
+                  draggable={!isCalculating}
+                  onDragStart={(e) => handleDragStart(e, index)}
+                  onDragEnd={handleDragEnd}
+                  onDragOver={(e) => handleDragOver(e, index)}
+                  onDragLeave={handleDragLeave}
+                  onDrop={(e) => handleDrop(e, index)}
+                  className={`
+                    waypoint-card-wrapper
+                    ${isDragging ? 'dragging' : ''}
+                    ${isDropTarget ? 'drop-target' : ''}
+                    ${isCalculating ? 'calculating' : ''}
+                  `}
+                >
+                  <div
+                    className="waypoint-card flex items-center gap-2 p-2 rounded-lg transition-all duration-200"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                    }}
+                  >
+                    <div className="flex items-center gap-2 flex-1">
+                      <GripVertical
+                        className={`h-4 w-4 transition-colors flex-shrink-0 ${
+                          isCalculating ? 'cursor-not-allowed opacity-30' : 'cursor-grab active:cursor-grabbing'
+                        }`}
+                        style={{ color: 'var(--nav-text-secondary)' }}
+                      />
+                      <div
+                        className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold flex-shrink-0"
+                        style={{ background: 'var(--nav-accent)', color: '#000' }}
+                      >
+                        {index + 1}
+                      </div>
+                      <Input
+                        value={waypoint.name}
+                        onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
+                        className="h-7 text-xs"
+                        style={inputStyle}
+                        disabled={isCalculating}
+                      />
+                    </div>
+                    <button
+                      className="h-7 w-7 flex items-center justify-center rounded flex-shrink-0 transition-colors disabled:opacity-30"
+                      onClick={() => handleDeleteWaypoint(waypoint.id)}
+                      disabled={isCalculating || waypoints.length <= 2}
+                      title={
+                        waypoints.length <= 2
+                          ? (language === 'uk' ? 'Потрібно мінімум 2 точки' : 'Minimum 2 waypoints')
+                          : (language === 'uk' ? 'Видалити точку' : 'Delete waypoint')
+                      }
+                      style={{ color: 'var(--nav-danger)' }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                  <div
+                    className="text-xs px-2 py-0.5 font-mono"
+                    style={{ color: 'var(--nav-text-secondary)', fontSize: '0.65rem' }}
+                  >
+                    {waypoint.lat.toFixed(5)}, {waypoint.lng.toFixed(5)}
+                  </div>
+                  {index < waypoints.length - 1 && (
+                    <div style={{ height: '1px', background: 'var(--nav-border)', margin: '4px 0' }} />
+                  )}
+                </div>
+              )
+            })}
+            {isCalculating && (
+              <div className="flex items-center justify-center gap-2 py-2 text-xs" style={{ color: 'var(--nav-text-secondary)' }}>
+                <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'var(--nav-accent)' }} />
+                {language === 'uk' ? 'Розрахунок маршруту...' : 'Calculating route...'}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
