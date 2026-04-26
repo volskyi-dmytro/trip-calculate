@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -107,7 +107,7 @@ export function RoutePlanner() {
 
   // Mobile bottom sheet state
   const [isMobileExpanded, setIsMobileExpanded] = useState(false)
-  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
 
   // Load user's routes on mount
   useEffect(() => {
@@ -184,9 +184,22 @@ export function RoutePlanner() {
 
   // Track mobile viewport
   useEffect(() => {
-    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    const handleResize = () => {
+      const mobile = window.innerWidth < 768
+      setIsMobile(mobile)
+      if (!mobile) {
+        setIsMobileExpanded(false)
+      }
+      // Close any open dialogs to prevent flash when viewport crosses breakpoint
+      setShowLoadDialog(false)
+      setShowSaveDialog(false)
+    }
     window.addEventListener('resize', handleResize)
-    return () => window.removeEventListener('resize', handleResize)
+    window.addEventListener('orientationchange', handleResize)
+    return () => {
+      window.removeEventListener('resize', handleResize)
+      window.removeEventListener('orientationchange', handleResize)
+    }
   }, [])
 
   // Calculate road-based route whenever waypoints change
@@ -1352,7 +1365,10 @@ export function RoutePlanner() {
       )}
 
       {/* ── MAP — always rendered, full width on mobile, flex-1 on desktop ── */}
-      <div className="flex-1 relative h-full overflow-hidden">
+      <div
+        className="flex-1 relative h-full overflow-hidden"
+        style={isMobile ? { paddingBottom: '140px' } : undefined}
+      >
         <MapContainer
           waypoints={waypoints}
           routeGeometry={routeGeometry}
@@ -1397,6 +1413,7 @@ export function RoutePlanner() {
         >
           {/* Drag handle */}
           <button
+            type="button"
             onClick={() => setIsMobileExpanded(prev => !prev)}
             className="flex-shrink-0 flex flex-col items-center justify-center py-2 w-full"
             style={{ color: 'var(--nav-text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
@@ -1460,7 +1477,7 @@ export function RoutePlanner() {
                 style={{ background: 'var(--nav-accent)', color: '#0f1117' }}
                 aria-label={language === 'uk' ? 'Пошук' : 'Search'}
               >
-                <MapPin className="h-4 w-4" />
+                <Search className="h-4 w-4" />
               </button>
             </div>
           )}
