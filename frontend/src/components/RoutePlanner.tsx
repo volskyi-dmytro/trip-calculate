@@ -43,12 +43,7 @@ export function RoutePlanner() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
 
-  // Load waypoints from localStorage on mount
-  const [waypoints, setWaypoints] = useState<Waypoint[]>(() => {
-    const saved = localStorage.getItem('tripCalculate_currentRoute')
-    if (!saved) return []
-    try { return JSON.parse(saved) } catch { return [] }
-  })
+  const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
     if (!saved) return {
