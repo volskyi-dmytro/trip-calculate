@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import { Input } from '@/components/ui/input'
-import { MapPin, Trash2, GripVertical, Plus, Loader2 } from 'lucide-react'
+import { MapPin, Trash2, GripVertical, Plus, Loader2, ChevronDown } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -316,28 +316,28 @@ export function RoutePanel({
 
         <div className="space-y-1">
           <label style={labelStyle} htmlFor="currency">{t.routeSettings.currency}</label>
-          <select
-            id="currency"
-            value={routeSettings.currency}
-            onChange={(e) => onUpdateSettings({
-              ...routeSettings,
-              currency: e.target.value as CurrencyCode
-            })}
-            style={{
-              ...inputStyle,
-              paddingRight: '2rem',
-              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238892a4' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E")`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'right 0.5rem center',
-            }}
-            className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer"
-          >
-            {CURRENCIES.map((curr) => (
-              <option key={curr.code} value={curr.code}>
-                {curr.symbol} {curr.code}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              id="currency"
+              value={routeSettings.currency}
+              onChange={(e) => onUpdateSettings({
+                ...routeSettings,
+                currency: e.target.value as CurrencyCode
+              })}
+              style={{ ...inputStyle, paddingRight: '2rem' }}
+              className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer"
+            >
+              {CURRENCIES.map((curr) => (
+                <option key={curr.code} value={curr.code}>
+                  {curr.symbol} {curr.code}
+                </option>
+              ))}
+            </select>
+            <ChevronDown
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3"
+              style={{ color: 'var(--nav-text-secondary)' }}
+            />
+          </div>
         </div>
 
         <div className="space-y-1">
