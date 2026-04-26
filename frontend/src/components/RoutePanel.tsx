@@ -14,7 +14,6 @@ const CURRENCIES = [
   { code: 'EUR', symbol: '€', name: 'Euro' }
 ] as const
 
-type CurrencyCode = 'UAH' | 'USD' | 'EUR'
 
 interface RoutePanelProps {
   waypoints: Waypoint[]
@@ -47,6 +46,9 @@ export function RoutePanel({
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null)
+
+  // Currency dropdown state
+  const [currencyOpen, setCurrencyOpen] = useState(false)
 
   // Initialize local state from routeSettings
   useEffect(() => {
@@ -315,28 +317,61 @@ export function RoutePanel({
         </div>
 
         <div className="space-y-1">
-          <label style={labelStyle} htmlFor="currency">{t.routeSettings.currency}</label>
-          <div className="relative">
-            <select
-              id="currency"
-              value={routeSettings.currency}
-              onChange={(e) => onUpdateSettings({
-                ...routeSettings,
-                currency: e.target.value as CurrencyCode
-              })}
+          <label style={labelStyle}>{t.routeSettings.currency}</label>
+          <div
+            className="relative"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setCurrencyOpen(false)
+              }
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setCurrencyOpen(o => !o)}
               style={{ ...inputStyle, paddingRight: '2rem' }}
-              className="flex h-8 w-full rounded-md px-3 py-1 text-sm appearance-none cursor-pointer"
+              className="flex h-8 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
+              aria-haspopup="listbox"
+              aria-expanded={currencyOpen}
             >
-              {CURRENCIES.map((curr) => (
-                <option key={curr.code} value={curr.code}>
-                  {curr.symbol} {curr.code}
-                </option>
-              ))}
-            </select>
+              {(() => {
+                const curr = CURRENCIES.find(c => c.code === routeSettings.currency) ?? CURRENCIES[0]
+                return `${curr.symbol} ${curr.code}`
+              })()}
+            </button>
             <ChevronDown
               className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3"
               style={{ color: 'var(--nav-text-secondary)' }}
             />
+            {currencyOpen && (
+              <div
+                className="absolute z-50 w-full rounded-md shadow-lg mt-1"
+                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+                role="listbox"
+              >
+                {CURRENCIES.map((curr) => (
+                  <button
+                    key={curr.code}
+                    type="button"
+                    role="option"
+                    aria-selected={routeSettings.currency === curr.code}
+                    onClick={() => {
+                      onUpdateSettings({ ...routeSettings, currency: curr.code })
+                      setCurrencyOpen(false)
+                    }}
+                    className="flex w-full px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
+                    style={{
+                      color: 'var(--nav-text-primary)',
+                      background: routeSettings.currency === curr.code
+                        ? 'var(--nav-bg-sidebar)'
+                        : 'transparent',
+                    }}
+                  >
+                    {curr.symbol} {curr.code}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
