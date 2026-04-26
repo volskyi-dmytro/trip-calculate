@@ -98,3 +98,6 @@ CLAUDE.md
 .env
 cookies.txt
 run-with-oauth.sh
+
+# Git worktrees
+.worktrees/
