@@ -105,6 +105,10 @@ export function RoutePlanner() {
   // Route calculation state
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
 
+  // Mobile bottom sheet state
+  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
+  const [isMobile, setIsMobile] = useState(() => window.innerWidth < 768)
+
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
@@ -177,6 +181,13 @@ export function RoutePlanner() {
       }
     }
   }, [searchParams])
+
+  // Track mobile viewport
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
@@ -954,183 +965,169 @@ export function RoutePlanner() {
 
   // Dashboard view — map-first Precision Navigation layout
   return (
-    <div className="flex flex-row h-full overflow-hidden">
-      {/* ── SIDEBAR (360px, scrollable) ── */}
-      <div
-        className="flex-shrink-0 flex flex-col h-full overflow-hidden"
-        style={{
-          width: '360px',
-          background: 'var(--nav-bg-sidebar)',
-          borderRight: '1px solid var(--nav-border)',
-        }}
-      >
-        {/* Scrollable content area */}
-        <div className="flex-1 overflow-y-auto">
-          <div className="p-4 space-y-5">
+    <div className="relative flex h-full overflow-hidden">
 
-            {/* ── Route name + edit mode indicator ── */}
-            {(routeName || isEditMode) && (
-              <div
-                className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                style={{
-                  background: 'var(--nav-bg-input)',
-                  border: '1px solid var(--nav-border)',
-                  color: 'var(--nav-text-secondary)',
-                }}
-              >
-                {isEditMode && (
-                  <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
-                )}
-                <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
-              </div>
-            )}
+      {/* ── DESKTOP SIDEBAR — hidden on mobile ── */}
+      {!isMobile && (
+        <div
+          className="flex-shrink-0 flex flex-col h-full overflow-hidden"
+          style={{
+            width: '360px',
+            background: 'var(--nav-bg-sidebar)',
+            borderRight: '1px solid var(--nav-border)',
+          }}
+        >
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto">
+            <div className="p-4 space-y-5">
 
-            {/* ── START input ── */}
-            <div>
-              <Label
-                className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                style={{ color: 'var(--nav-text-secondary)' }}
-              >
-                {language === 'uk' ? 'Початок' : 'Start'}
-              </Label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
-                  value={startLocationInput}
-                  onChange={(e) => setStartLocationInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isSearchingStart) {
-                      handleStartLocationSearch()
-                    }
-                  }}
-                  disabled={isSearchingStart}
-                  className="w-full pr-8"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-text-primary)',
-                  }}
-                />
-                {isSearchingStart && (
-                  <Loader2
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                    style={{ color: 'var(--nav-accent)' }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* ── Swap button ── */}
-            {waypoints.length >= 2 && (
-              <div className="flex justify-center">
-                <button
-                  onClick={() => {
-                    const swapped = [...waypoints]
-                    const first = swapped[0]
-                    swapped[0] = swapped[swapped.length - 1]
-                    swapped[swapped.length - 1] = first
-                    reorderWaypoints(swapped)
-                  }}
-                  className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+              {/* ── Route name + edit mode indicator ── */}
+              {(routeName || isEditMode) && (
+                <div
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
                   style={{
                     background: 'var(--nav-bg-input)',
                     border: '1px solid var(--nav-border)',
                     color: 'var(--nav-text-secondary)',
                   }}
-                  title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
                 >
-                  ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
-                </button>
-              </div>
-            )}
-
-            {/* ── DESTINATION input ── */}
-            <div>
-              <Label
-                className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                style={{ color: 'var(--nav-text-secondary)' }}
-              >
-                {language === 'uk' ? 'Призначення' : 'Destination'}
-              </Label>
-              <div className="relative">
-                <Input
-                  type="text"
-                  placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
-                  value={destinationInput}
-                  onChange={(e) => setDestinationInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !isSearchingDestination) {
-                      handleDestinationSearch()
-                    }
-                  }}
-                  disabled={isSearchingDestination}
-                  className="w-full pr-8"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-text-primary)',
-                  }}
-                />
-                {isSearchingDestination && (
-                  <Loader2
-                    className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                    style={{ color: 'var(--nav-accent)' }}
-                  />
-                )}
-              </div>
-            </div>
-
-            {/* ── Divider ── */}
-            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-            {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
-            <RoutePanel
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              onUpdateWaypointName={updateWaypointName}
-              onRemoveWaypoint={removeWaypoint}
-              onReorderWaypoints={reorderWaypoints}
-              onUpdateSettings={updateRouteSettings}
-              onAddManually={() => setShowManualInputDialog(true)}
-              isCalculating={isCalculatingRoute}
-            />
-
-            {/* ── Divider ── */}
-            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-            {/* ── Route Stats ── */}
-            <StatsPanel
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              routeDistance={routeDistance}
-              routeDuration={routeDuration}
-            />
-
-            {/* ── Divider ── */}
-            <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-            {/* ── Action Buttons ── */}
-            <div className="space-y-2">
-              {isEditMode && (
-                <button
-                  onClick={createNewRoute}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-text-primary)',
-                  }}
-                >
-                  <FilePlus className="h-4 w-4" />
-                  {language === 'uk' ? 'Новий маршрут' : 'New Route'}
-                </button>
+                  {isEditMode && (
+                    <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
+                  )}
+                  <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
+                </div>
               )}
 
-              {/* Load Route Dialog trigger */}
-              <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-                <DialogTrigger asChild>
+              {/* ── START input ── */}
+              <div>
+                <Label
+                  className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                  style={{ color: 'var(--nav-text-secondary)' }}
+                >
+                  {language === 'uk' ? 'Початок' : 'Start'}
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
+                    value={startLocationInput}
+                    onChange={(e) => setStartLocationInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isSearchingStart) {
+                        handleStartLocationSearch()
+                      }
+                    }}
+                    disabled={isSearchingStart}
+                    className="w-full pr-8"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: 'var(--nav-text-primary)',
+                    }}
+                  />
+                  {isSearchingStart && (
+                    <Loader2
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                      style={{ color: 'var(--nav-accent)' }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* ── Swap button ── */}
+              {waypoints.length >= 2 && (
+                <div className="flex justify-center">
                   <button
+                    onClick={() => {
+                      const swapped = [...waypoints]
+                      const first = swapped[0]
+                      swapped[0] = swapped[swapped.length - 1]
+                      swapped[swapped.length - 1] = first
+                      reorderWaypoints(swapped)
+                    }}
+                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: 'var(--nav-text-secondary)',
+                    }}
+                    title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
+                  >
+                    ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
+                  </button>
+                </div>
+              )}
+
+              {/* ── DESTINATION input ── */}
+              <div>
+                <Label
+                  className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                  style={{ color: 'var(--nav-text-secondary)' }}
+                >
+                  {language === 'uk' ? 'Призначення' : 'Destination'}
+                </Label>
+                <div className="relative">
+                  <Input
+                    type="text"
+                    placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
+                    value={destinationInput}
+                    onChange={(e) => setDestinationInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isSearchingDestination) {
+                        handleDestinationSearch()
+                      }
+                    }}
+                    disabled={isSearchingDestination}
+                    className="w-full pr-8"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: 'var(--nav-text-primary)',
+                    }}
+                  />
+                  {isSearchingDestination && (
+                    <Loader2
+                      className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                      style={{ color: 'var(--nav-accent)' }}
+                    />
+                  )}
+                </div>
+              </div>
+
+              {/* ── Divider ── */}
+              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+              {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
+              <RoutePanel
+                waypoints={waypoints}
+                routeSettings={routeSettings}
+                onUpdateWaypointName={updateWaypointName}
+                onRemoveWaypoint={removeWaypoint}
+                onReorderWaypoints={reorderWaypoints}
+                onUpdateSettings={updateRouteSettings}
+                onAddManually={() => setShowManualInputDialog(true)}
+                isCalculating={isCalculatingRoute}
+              />
+
+              {/* ── Divider ── */}
+              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+              {/* ── Route Stats ── */}
+              <StatsPanel
+                waypoints={waypoints}
+                routeSettings={routeSettings}
+                routeDistance={routeDistance}
+                routeDuration={routeDuration}
+              />
+
+              {/* ── Divider ── */}
+              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+              {/* ── Action Buttons ── */}
+              <div className="space-y-2">
+                {isEditMode && (
+                  <button
+                    onClick={createNewRoute}
                     className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
                     style={{
                       background: 'var(--nav-bg-input)',
@@ -1138,207 +1135,223 @@ export function RoutePlanner() {
                       color: 'var(--nav-text-primary)',
                     }}
                   >
-                    <FolderOpen className="h-4 w-4" />
-                    {t.buttons.loadRoute}
+                    <FilePlus className="h-4 w-4" />
+                    {language === 'uk' ? 'Новий маршрут' : 'New Route'}
                   </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{t.dialogs.load.title}</DialogTitle>
-                    <DialogDescription>{t.dialogs.load.description}</DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {loadingRoutes ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                      </div>
-                    ) : savedRoutes.length === 0 ? (
-                      <div className="text-center py-8">
-                        <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
-                        <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
-                      </div>
-                    ) : (
-                      savedRoutes.map(route => (
-                        <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1">
-                              <h3 className="font-semibold">{route.name}</h3>
-                              <p className="text-sm text-muted-foreground">
-                                {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
-                              </p>
-                              <p className="text-xs text-muted-foreground">
-                                {new Date(route.updatedAt!).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex gap-2">
-                              <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
-                                {t.buttons.load}
-                              </Button>
-                              <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
+                )}
 
-              {/* Save Route Dialog trigger */}
-              <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                <DialogTrigger asChild>
-                  <button
-                    disabled={waypoints.length === 0}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
-                    style={{
-                      background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
-                    }}
-                  >
-                    <Save className="h-4 w-4" />
-                    {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
-                  </button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
-                    <DialogDescription>
-                      {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
-                      <Input
-                        id="route-name"
-                        placeholder={t.dialogs.save.placeholder}
-                        value={routeName}
-                        onChange={(e) => setRouteName(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
-                        }}
-                      />
+                {/* Load Route Dialog trigger */}
+                <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+                  <DialogTrigger asChild>
+                    <button
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                      style={{
+                        background: 'var(--nav-bg-input)',
+                        border: '1px solid var(--nav-border)',
+                        color: 'var(--nav-text-primary)',
+                      }}
+                    >
+                      <FolderOpen className="h-4 w-4" />
+                      {t.buttons.loadRoute}
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{t.dialogs.load.title}</DialogTitle>
+                      <DialogDescription>{t.dialogs.load.description}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                      {loadingRoutes ? (
+                        <div className="flex items-center justify-center py-8">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                        </div>
+                      ) : savedRoutes.length === 0 ? (
+                        <div className="text-center py-8">
+                          <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
+                          <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
+                        </div>
+                      ) : (
+                        savedRoutes.map(route => (
+                          <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
+                            <div className="flex items-center justify-between">
+                              <div className="flex-1">
+                                <h3 className="font-semibold">{route.name}</h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                                </p>
+                                <p className="text-xs text-muted-foreground">
+                                  {new Date(route.updatedAt!).toLocaleDateString()}
+                                </p>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
+                                  {t.buttons.load}
+                                </Button>
+                                <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          </Card>
+                        ))
+                      )}
                     </div>
-                    <div className="text-sm text-muted-foreground">
-                      <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
-                      <ul className="list-disc list-inside mt-2 space-y-1">
-                        <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
-                        <li>{t.dialogs.save.fuelSettings}</li>
-                        <li>{t.dialogs.save.calculations}</li>
-                      </ul>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Save Route Dialog trigger */}
+                <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                  <DialogTrigger asChild>
+                    <button
+                      disabled={waypoints.length === 0}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
+                      style={{
+                        background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
+                        border: '1px solid var(--nav-border)',
+                        color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
+                      }}
+                    >
+                      <Save className="h-4 w-4" />
+                      {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
+                      <DialogDescription>
+                        {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
+                        <Input
+                          id="route-name"
+                          placeholder={t.dialogs.save.placeholder}
+                          value={routeName}
+                          onChange={(e) => setRouteName(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
+                          }}
+                        />
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
+                        <ul className="list-disc list-inside mt-2 space-y-1">
+                          <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
+                          <li>{t.dialogs.save.fuelSettings}</li>
+                          <li>{t.dialogs.save.calculations}</li>
+                        </ul>
+                      </div>
                     </div>
-                  </div>
-                  <DialogFooter>
-                    <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                      {t.buttons.cancel}
-                    </Button>
-                    {isEditMode && (
-                      <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                        {t.buttons.cancel}
+                      </Button>
+                      {isEditMode && (
+                        <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                          {savingRoute ? (
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                          ) : (
+                            <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                          )}
+                        </Button>
+                      )}
+                      <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
                         {savingRoute ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                         ) : (
-                          <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                          <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
                         )}
                       </Button>
-                    )}
-                    <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
-                      {savingRoute ? (
-                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
-                      ) : (
-                        <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
-                      )}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
-              <button
-                onClick={exportRouteAsJSON}
-                disabled={waypoints.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                <button
+                  onClick={exportRouteAsJSON}
+                  disabled={waypoints.length === 0}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
+                >
+                  <Upload className="h-4 w-4" />
+                  {t.buttons.exportJson}
+                </button>
+
+                <button
+                  onClick={clearRoute}
+                  disabled={waypoints.length === 0}
+                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-danger)',
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  {t.buttons.clear}
+                </button>
+              </div>
+
+            </div>{/* end scrollable content */}
+          </div>
+
+          {/* ── AI Assistant input — pinned to sidebar bottom ── */}
+          <div
+            className="flex-shrink-0 p-3"
+            style={{
+              borderTop: '1px solid var(--nav-border)',
+              background: 'var(--nav-bg-sidebar)',
+            }}
+          >
+            {isProcessingN8n && (
+              <div
+                className="h-0.5 mb-2 rounded-full animate-pulse"
+                style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
+              />
+            )}
+            <div className="flex gap-2">
+              <Input
+                type="text"
+                placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
+                }}
+                disabled={isProcessingN8n}
+                className="flex-1 h-9 text-sm disabled:opacity-50"
                 style={{
                   background: 'var(--nav-bg-input)',
                   border: '1px solid var(--nav-border)',
                   color: 'var(--nav-text-primary)',
                 }}
-              >
-                <Upload className="h-4 w-4" />
-                {t.buttons.exportJson}
-              </button>
-
+              />
               <button
-                onClick={clearRoute}
-                disabled={waypoints.length === 0}
-                className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                onClick={handleSendChat}
+                disabled={isProcessingN8n || !chatInput.trim()}
+                className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                 style={{
-                  background: 'var(--nav-bg-input)',
-                  border: '1px solid var(--nav-border)',
-                  color: 'var(--nav-danger)',
+                  background: 'var(--nav-accent)',
+                  color: '#000',
                 }}
               >
-                <Trash2 className="h-4 w-4" />
-                {t.buttons.clear}
+                {isProcessingN8n ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
               </button>
             </div>
-
-          </div>{/* end scrollable content */}
-        </div>
-
-        {/* ── AI Assistant input — pinned to sidebar bottom ── */}
-        <div
-          className="flex-shrink-0 p-3"
-          style={{
-            borderTop: '1px solid var(--nav-border)',
-            background: 'var(--nav-bg-sidebar)',
-          }}
-        >
-          {isProcessingN8n && (
-            <div
-              className="h-0.5 mb-2 rounded-full animate-pulse"
-              style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
-            />
-          )}
-          <div className="flex gap-2">
-            <Input
-              type="text"
-              placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
-              }}
-              disabled={isProcessingN8n}
-              className="flex-1 h-9 text-sm disabled:opacity-50"
-              style={{
-                background: 'var(--nav-bg-input)',
-                border: '1px solid var(--nav-border)',
-                color: 'var(--nav-text-primary)',
-              }}
-            />
-            <button
-              onClick={handleSendChat}
-              disabled={isProcessingN8n || !chatInput.trim()}
-              className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
-              style={{
-                background: 'var(--nav-accent)',
-                color: '#000',
-              }}
-            >
-              {isProcessingN8n ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Send className="h-4 w-4" />
-              )}
-            </button>
           </div>
         </div>
-      </div>
-      {/* ── end SIDEBAR ── */}
+      )}
 
-      {/* ── MAP (fills remaining width, full height) ── */}
+      {/* ── MAP — always rendered, full width on mobile, flex-1 on desktop ── */}
       <div className="flex-1 relative h-full overflow-hidden">
         <MapContainer
           waypoints={waypoints}
@@ -1371,7 +1384,466 @@ export function RoutePlanner() {
         )}
       </div>
 
-      {/* ── Dialogs (rendered outside sidebar/map for correct z-index) ── */}
+      {/* ── MOBILE BOTTOM SHEET — hidden on desktop ── */}
+      {isMobile && (
+        <div
+          className="absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out"
+          style={{
+            height: isMobileExpanded ? '65vh' : '140px',
+            background: 'var(--nav-bg-sidebar)',
+            borderTop: '2px solid var(--nav-border)',
+            zIndex: 40,
+          }}
+        >
+          {/* Drag handle */}
+          <button
+            onClick={() => setIsMobileExpanded(prev => !prev)}
+            className="flex-shrink-0 flex flex-col items-center justify-center py-2 w-full"
+            style={{ color: 'var(--nav-text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
+            aria-label={isMobileExpanded ? (language === 'uk' ? 'Згорнути' : 'Collapse panel') : (language === 'uk' ? 'Розгорнути' : 'Expand panel')}
+          >
+            <div
+              className="w-10 h-1 rounded-full mb-1"
+              style={{ background: 'var(--nav-border)' }}
+            />
+            <span className="text-xs font-medium">
+              {isMobileExpanded
+                ? (language === 'uk' ? '↓ Згорнути' : '↓ Collapse')
+                : (language === 'uk' ? '↑ Маршрут' : '↑ Route Details')}
+            </span>
+          </button>
+
+          {/* Collapsed state: start + destination quick-entry */}
+          {!isMobileExpanded && (
+            <div className="flex items-center gap-2 px-3 pb-2">
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder={language === 'uk' ? 'Початок...' : 'Start...'}
+                  value={startLocationInput}
+                  onChange={(e) => setStartLocationInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
+                  disabled={isSearchingStart}
+                  className="h-9 text-sm w-full"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
+                />
+                {isSearchingStart && (
+                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin" style={{ color: 'var(--nav-accent)' }} />
+                )}
+              </div>
+              <div className="relative flex-1">
+                <Input
+                  type="text"
+                  placeholder={language === 'uk' ? 'Кінець...' : 'Destination...'}
+                  value={destinationInput}
+                  onChange={(e) => setDestinationInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
+                  disabled={isSearchingDestination}
+                  className="h-9 text-sm w-full"
+                  style={{
+                    background: 'var(--nav-bg-input)',
+                    border: '1px solid var(--nav-border)',
+                    color: 'var(--nav-text-primary)',
+                  }}
+                />
+                {isSearchingDestination && (
+                  <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 animate-spin" style={{ color: 'var(--nav-accent)' }} />
+                )}
+              </div>
+              <button
+                onClick={() => { if (startLocationInput.trim()) handleStartLocationSearch(); if (destinationInput.trim()) handleDestinationSearch() }}
+                className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0"
+                style={{ background: 'var(--nav-accent)', color: '#0f1117' }}
+                aria-label={language === 'uk' ? 'Пошук' : 'Search'}
+              >
+                <MapPin className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Expanded state: scrollable full sidebar content */}
+          {isMobileExpanded && (
+            <>
+              <div className="flex-1 overflow-y-auto">
+                <div className="p-4 space-y-5">
+
+                  {/* ── Route name + edit mode indicator ── */}
+                  {(routeName || isEditMode) && (
+                    <div
+                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+                      style={{
+                        background: 'var(--nav-bg-input)',
+                        border: '1px solid var(--nav-border)',
+                        color: 'var(--nav-text-secondary)',
+                      }}
+                    >
+                      {isEditMode && (
+                        <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
+                      )}
+                      <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
+                    </div>
+                  )}
+
+                  {/* ── START input ── */}
+                  <div>
+                    <Label
+                      className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                      style={{ color: 'var(--nav-text-secondary)' }}
+                    >
+                      {language === 'uk' ? 'Початок' : 'Start'}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
+                        value={startLocationInput}
+                        onChange={(e) => setStartLocationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !isSearchingStart) {
+                            handleStartLocationSearch()
+                          }
+                        }}
+                        disabled={isSearchingStart}
+                        className="w-full pr-8"
+                        style={{
+                          background: 'var(--nav-bg-input)',
+                          border: '1px solid var(--nav-border)',
+                          color: 'var(--nav-text-primary)',
+                        }}
+                      />
+                      {isSearchingStart && (
+                        <Loader2
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                          style={{ color: 'var(--nav-accent)' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Swap button ── */}
+                  {waypoints.length >= 2 && (
+                    <div className="flex justify-center">
+                      <button
+                        onClick={() => {
+                          const swapped = [...waypoints]
+                          const first = swapped[0]
+                          swapped[0] = swapped[swapped.length - 1]
+                          swapped[swapped.length - 1] = first
+                          reorderWaypoints(swapped)
+                        }}
+                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+                        style={{
+                          background: 'var(--nav-bg-input)',
+                          border: '1px solid var(--nav-border)',
+                          color: 'var(--nav-text-secondary)',
+                        }}
+                        title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
+                      >
+                        ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── DESTINATION input ── */}
+                  <div>
+                    <Label
+                      className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+                      style={{ color: 'var(--nav-text-secondary)' }}
+                    >
+                      {language === 'uk' ? 'Призначення' : 'Destination'}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        type="text"
+                        placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
+                        value={destinationInput}
+                        onChange={(e) => setDestinationInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !isSearchingDestination) {
+                            handleDestinationSearch()
+                          }
+                        }}
+                        disabled={isSearchingDestination}
+                        className="w-full pr-8"
+                        style={{
+                          background: 'var(--nav-bg-input)',
+                          border: '1px solid var(--nav-border)',
+                          color: 'var(--nav-text-primary)',
+                        }}
+                      />
+                      {isSearchingDestination && (
+                        <Loader2
+                          className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+                          style={{ color: 'var(--nav-accent)' }}
+                        />
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Divider ── */}
+                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+                  {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
+                  <RoutePanel
+                    waypoints={waypoints}
+                    routeSettings={routeSettings}
+                    onUpdateWaypointName={updateWaypointName}
+                    onRemoveWaypoint={removeWaypoint}
+                    onReorderWaypoints={reorderWaypoints}
+                    onUpdateSettings={updateRouteSettings}
+                    onAddManually={() => setShowManualInputDialog(true)}
+                    isCalculating={isCalculatingRoute}
+                  />
+
+                  {/* ── Divider ── */}
+                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+                  {/* ── Route Stats ── */}
+                  <StatsPanel
+                    waypoints={waypoints}
+                    routeSettings={routeSettings}
+                    routeDistance={routeDistance}
+                    routeDuration={routeDuration}
+                  />
+
+                  {/* ── Divider ── */}
+                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+                  {/* ── Action Buttons ── */}
+                  <div className="space-y-2">
+                    {isEditMode && (
+                      <button
+                        onClick={createNewRoute}
+                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                        style={{
+                          background: 'var(--nav-bg-input)',
+                          border: '1px solid var(--nav-border)',
+                          color: 'var(--nav-text-primary)',
+                        }}
+                      >
+                        <FilePlus className="h-4 w-4" />
+                        {language === 'uk' ? 'Новий маршрут' : 'New Route'}
+                      </button>
+                    )}
+
+                    {/* Load Route Dialog trigger */}
+                    <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+                      <DialogTrigger asChild>
+                        <button
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+                          style={{
+                            background: 'var(--nav-bg-input)',
+                            border: '1px solid var(--nav-border)',
+                            color: 'var(--nav-text-primary)',
+                          }}
+                        >
+                          <FolderOpen className="h-4 w-4" />
+                          {t.buttons.loadRoute}
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{t.dialogs.load.title}</DialogTitle>
+                          <DialogDescription>{t.dialogs.load.description}</DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-2 max-h-96 overflow-y-auto">
+                          {loadingRoutes ? (
+                            <div className="flex items-center justify-center py-8">
+                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                            </div>
+                          ) : savedRoutes.length === 0 ? (
+                            <div className="text-center py-8">
+                              <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
+                              <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
+                            </div>
+                          ) : (
+                            savedRoutes.map(route => (
+                              <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex-1">
+                                    <h3 className="font-semibold">{route.name}</h3>
+                                    <p className="text-sm text-muted-foreground">
+                                      {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                                    </p>
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(route.updatedAt!).toLocaleDateString()}
+                                    </p>
+                                  </div>
+                                  <div className="flex gap-2">
+                                    <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
+                                      {t.buttons.load}
+                                    </Button>
+                                    <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </div>
+                              </Card>
+                            ))
+                          )}
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+
+                    {/* Save Route Dialog trigger */}
+                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+                      <DialogTrigger asChild>
+                        <button
+                          disabled={waypoints.length === 0}
+                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
+                          style={{
+                            background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
+                            border: '1px solid var(--nav-border)',
+                            color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
+                          }}
+                        >
+                          <Save className="h-4 w-4" />
+                          {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
+                        </button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
+                          <DialogDescription>
+                            {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <div>
+                            <Label htmlFor="route-name-mobile">{t.dialogs.save.routeName}</Label>
+                            <Input
+                              id="route-name-mobile"
+                              placeholder={t.dialogs.save.placeholder}
+                              value={routeName}
+                              onChange={(e) => setRouteName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
+                              }}
+                            />
+                          </div>
+                          <div className="text-sm text-muted-foreground">
+                            <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
+                            <ul className="list-disc list-inside mt-2 space-y-1">
+                              <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
+                              <li>{t.dialogs.save.fuelSettings}</li>
+                              <li>{t.dialogs.save.calculations}</li>
+                            </ul>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                            {t.buttons.cancel}
+                          </Button>
+                          {isEditMode && (
+                            <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                              {savingRoute ? (
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                              ) : (
+                                <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                              )}
+                            </Button>
+                          )}
+                          <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
+                            {savingRoute ? (
+                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
+                            ) : (
+                              <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+
+                    <button
+                      onClick={exportRouteAsJSON}
+                      disabled={waypoints.length === 0}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                      style={{
+                        background: 'var(--nav-bg-input)',
+                        border: '1px solid var(--nav-border)',
+                        color: 'var(--nav-text-primary)',
+                      }}
+                    >
+                      <Upload className="h-4 w-4" />
+                      {t.buttons.exportJson}
+                    </button>
+
+                    <button
+                      onClick={clearRoute}
+                      disabled={waypoints.length === 0}
+                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
+                      style={{
+                        background: 'var(--nav-bg-input)',
+                        border: '1px solid var(--nav-border)',
+                        color: 'var(--nav-danger)',
+                      }}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      {t.buttons.clear}
+                    </button>
+                  </div>
+
+                </div>{/* end scrollable content */}
+              </div>
+
+              {/* AI assistant input pinned to bottom */}
+              <div
+                className="flex-shrink-0 p-3"
+                style={{
+                  borderTop: '1px solid var(--nav-border)',
+                  background: 'var(--nav-bg-sidebar)',
+                }}
+              >
+                {isProcessingN8n && (
+                  <div
+                    className="h-0.5 mb-2 rounded-full animate-pulse"
+                    style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
+                  />
+                )}
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
+                    }}
+                    disabled={isProcessingN8n}
+                    className="flex-1 h-9 text-sm disabled:opacity-50"
+                    style={{
+                      background: 'var(--nav-bg-input)',
+                      border: '1px solid var(--nav-border)',
+                      color: 'var(--nav-text-primary)',
+                    }}
+                  />
+                  <button
+                    onClick={handleSendChat}
+                    disabled={isProcessingN8n || !chatInput.trim()}
+                    className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
+                    style={{
+                      background: 'var(--nav-accent)',
+                      color: '#000',
+                    }}
+                  >
+                    {isProcessingN8n ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* ── Dialogs — rendered at root level for correct z-index ── */}
 
       {/* Manual Address Input Dialog */}
       <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
