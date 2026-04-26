@@ -62,8 +62,21 @@
     --modal-border-color-dark: var(--border-color-dark);
 }
 
-/* Precision Navigation Theme — route planner dark-first palette */
+/* Precision Navigation Theme — light mode (default) */
 :root {
+    --nav-bg-primary: #f0f4f8;
+    --nav-bg-sidebar: #f4f6f9;
+    --nav-bg-input: #eef1f5;
+    --nav-accent: #00b896;
+    --nav-text-primary: #0f1117;
+    --nav-text-secondary: #4a5568;
+    --nav-border: #d1d9e0;
+    --nav-danger: #ef4444;
+}
+
+/* Precision Navigation Theme — dark mode overrides */
+body[data-theme="dark"],
+.dark {
     --nav-bg-primary: #0f1117;
     --nav-bg-sidebar: #161b27;
     --nav-bg-input: #1a2133;
