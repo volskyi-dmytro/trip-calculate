@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react'
+import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
@@ -38,6 +38,7 @@ export interface RouteSettings {
 
 export function RoutePlanner() {
   const { language } = useLanguage()
+  const languageRef = useRef(language)
   const t = getTranslation(language as Language)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
@@ -45,16 +46,23 @@ export function RoutePlanner() {
   // Load waypoints from localStorage on mount
   const [waypoints, setWaypoints] = useState<Waypoint[]>(() => {
     const saved = localStorage.getItem('tripCalculate_currentRoute')
-    return saved ? JSON.parse(saved) : []
+    if (!saved) return []
+    try { return JSON.parse(saved) } catch { return [] }
   })
   const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
-    return saved ? JSON.parse(saved) : {
+    if (!saved) return {
       fuelConsumption: 9.2,
       fuelCostPerLiter: 55,
       currency: 'UAH',
       passengerCount: 1
     }
+    try { return JSON.parse(saved) } catch { return {
+      fuelConsumption: 9.2,
+      fuelCostPerLiter: 55,
+      currency: 'UAH',
+      passengerCount: 1
+    } }
   })
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
@@ -95,7 +103,8 @@ export function RoutePlanner() {
   // Map visibility state (Issue #1 fix: Collapsible map)
   const [isMapVisible, setIsMapVisible] = useState<boolean>(() => {
     const saved = localStorage.getItem('tripCalculate_mapVisible')
-    return saved ? JSON.parse(saved) : false // Default to hidden
+    if (!saved) return false
+    try { return JSON.parse(saved) } catch { return false }
   })
 
   // Route calculation state
@@ -139,6 +148,11 @@ export function RoutePlanner() {
       setDestinationInput('')
     }
   }, [waypoints])
+
+  // Sync languageRef when language changes
+  useEffect(() => {
+    languageRef.current = language
+  }, [language])
 
   // Initialize welcome message
   useEffect(() => {
@@ -214,9 +228,9 @@ export function RoutePlanner() {
           console.warn('⚠️ [PLANNER] Geometry:', route.geometry);
           // Notify user that routing service failed
           toast.warning(
-            language === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
+            languageRef.current === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
             {
-              description: language === 'uk'
+              description: languageRef.current === 'uk'
                 ? 'Не вдалося розрахувати маршрут по дорогам. Показано прямі лінії.'
                 : 'Could not calculate road-based route. Showing straight lines.',
               duration: 5000
@@ -235,9 +249,9 @@ export function RoutePlanner() {
         setRouteDuration(0)
         setIsCalculatingRoute(false)
         toast.error(
-          language === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
+          languageRef.current === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
           {
-            description: language === 'uk'
+            description: languageRef.current === 'uk'
               ? 'Виникла помилка при розрахунку маршруту.'
               : 'An error occurred while calculating the route.',
             duration: 5000
@@ -247,8 +261,7 @@ export function RoutePlanner() {
     }
 
     updateRoute()
-  }, [waypoints]) // eslint-disable-line react-hooks/exhaustive-deps
-  // Note: language is intentionally omitted from deps to prevent recalculation on language toggle
+  }, [waypoints])
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)

@@ -52,7 +52,7 @@ export function RoutePanel({
   useEffect(() => {
     setFuelConsumptionInput(routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : '')
     setFuelCostInput(routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : '')
-  }, [])
+  }, [routeSettings.fuelConsumption, routeSettings.fuelCostPerLiter])
 
   // Handle fuel consumption input change
   const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
