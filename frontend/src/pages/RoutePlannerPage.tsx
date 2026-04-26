@@ -3,18 +3,21 @@ import { RoutePlanner } from '../components/RoutePlanner';
 import { Header } from '../components/common/Header';
 import { LandingView } from '../components/LandingView';
 import { useAuth } from '../contexts/AuthContext';
+import { useTheme } from '../contexts/ThemeContext';
+import { useLanguage } from '../contexts/LanguageContext';
+import { UserMenu } from '../components/auth/UserMenu';
 import { routeService } from '../services/routeService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Loader2, MapPin, Navigation } from 'lucide-react';
-import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation, type Language } from '../i18n/routePlanner';
 import { toast } from 'sonner';
 
 export function RoutePlannerPage() {
-  const { language } = useLanguage();
+  const { language, setLanguage } = useLanguage();
   const { user, loading: authLoading } = useAuth();
+  const { theme, toggleTheme } = useTheme();
   const t = getTranslation(language as Language);
   const [hasAccess, setHasAccess] = useState<boolean | null>(null);
   const [requesting, setRequesting] = useState(false);
@@ -194,11 +197,74 @@ export function RoutePlannerPage() {
     );
   }
 
-  // Has access - show route planner
+  // Has access - show route planner with compact nav bar (no decorative Header)
   return (
-    <>
-      <Header />
-      <RoutePlanner />
-    </>
+    <div
+      className="flex flex-col h-screen overflow-hidden"
+      style={{ background: 'var(--nav-bg-primary)' }}
+    >
+      {/* Compact 56px top bar — no seasonal image, navigation-product style */}
+      <div
+        className="flex-shrink-0 flex items-center justify-between px-4"
+        style={{
+          height: '56px',
+          background: 'var(--nav-bg-sidebar)',
+          borderBottom: '1px solid var(--nav-border)',
+          zIndex: 50,
+        }}
+      >
+        {/* Left: logo + wordmark */}
+        <div className="flex items-center gap-2">
+          <Navigation
+            className="h-5 w-5"
+            style={{ color: 'var(--nav-accent)' }}
+          />
+          <span
+            className="font-semibold text-sm tracking-wide"
+            style={{ color: 'var(--nav-text-primary)' }}
+          >
+            Trip Calculate
+          </span>
+        </div>
+
+        {/* Right: language, theme, user */}
+        <div className="flex items-center gap-3">
+          {/* Language toggle */}
+          <button
+            onClick={() => setLanguage(language === 'en' ? 'uk' : 'en')}
+            className="text-xs font-semibold px-2 py-1 rounded transition-colors"
+            style={{
+              color: 'var(--nav-text-secondary)',
+              border: '1px solid var(--nav-border)',
+              background: 'var(--nav-bg-input)',
+            }}
+          >
+            {language === 'en' ? 'UA' : 'EN'}
+          </button>
+
+          {/* Theme toggle */}
+          <button
+            onClick={toggleTheme}
+            className="text-xs px-2 py-1 rounded transition-colors"
+            style={{
+              color: 'var(--nav-text-secondary)',
+              border: '1px solid var(--nav-border)',
+              background: 'var(--nav-bg-input)',
+            }}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+          >
+            {theme === 'dark' ? '☀️' : '🌙'}
+          </button>
+
+          {/* User menu */}
+          {user && <UserMenu />}
+        </div>
+      </div>
+
+      {/* Route planner fills remaining height */}
+      <div className="flex-1 overflow-hidden">
+        <RoutePlanner />
+      </div>
+    </div>
   );
 }
