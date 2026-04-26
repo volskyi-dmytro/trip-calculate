@@ -16,7 +16,7 @@ The production GitHub Actions workflow at line 25 injects `VITE_GEMINI_API_KEY: 
 
 The staging workflow (line 24) injects `VITE_GEMINI_API_KEY: ${{ secrets.STAGING_GEMINI_API_KEY }}` identically.
 
-**Fix:** Remove `VITE_GEMINI_API_KEY` from both workflows entirely. Move the Gemini call server-side (a new Spring controller that proxies Gemini, similar to how n8n was already migrated to `/api/ai/insights`). Delete `geminiService.ts` from the frontend or convert it to call the backend proxy.
+**STATUS: FIXED** — Removed `VITE_GEMINI_API_KEY` from both deploy-prod.yml and deploy-staging.yml env blocks. Set `API_KEY = ''` in geminiService.ts (service is dead code, not called anywhere). Added security comment explaining the change.
 
 ---
 
@@ -27,7 +27,7 @@ Both workflows inject `VITE_N8N_WEBHOOK_URL: ${{ secrets.PROD_N8N_WEBHOOK_URL }}
 
 The env var is therefore a no-op at runtime, but it still gets embedded in the compiled bundle if Vite picks it up from the build environment. More critically: keeping this env var in the workflow is misleading and creates the risk that a future developer re-adds a direct reference assuming it is safe.
 
-**Fix:** Remove `VITE_N8N_WEBHOOK_URL` from both workflow `env:` blocks entirely. The backend secret `PROD_N8N_WEBHOOK_URL` (passed to the container as `N8N_WEBHOOK_URL`) is the correct and safe path — leave that alone.
+**STATUS: FIXED** — Removed `VITE_N8N_WEBHOOK_URL` from both deploy-prod.yml and deploy-staging.yml env blocks. Backend secret `PROD_N8N_WEBHOOK_URL` (passed as `N8N_WEBHOOK_URL` to container) remains unchanged and correct.
 
 ---
 
@@ -46,7 +46,7 @@ logging.level.com.tripplanner=DEBUG
 
 Because `application.properties` is the base config, these settings apply to every profile that does not override them — including production, unless the prod profile explicitly overrides them. `application-prod.properties` sets `logging.level.root=WARN` and `logging.level.com.tripplanner=INFO`, which overrides the last entry, but does **not** override the four Spring framework DEBUG lines. In production, this causes verbose framework log output that may leak internal request paths, query parameters, and resource-loading details.
 
-**Fix:** Delete all five lines. The comment acknowledges they were meant to be temporary.
+**STATUS: FIXED** — Deleted all five DEBUG logging lines and the temporary comment from application.properties.
 
 ---
 
@@ -66,7 +66,7 @@ The `prometheus` endpoint exposes internal metrics (JVM memory, thread pools, HT
 
 This creates a contradiction: the properties file enables `prometheus`, but the security filter denies all `actuator/**` except `health`. The endpoint is effectively inaccessible due to security rules, but the configuration contradiction is confusing and a future security config change could inadvertently expose it.
 
-**Fix:** Remove `prometheus` from `management.endpoints.web.exposure.include` in `application-prod.properties`, or add an explicit `authenticated`-only mapping for `/actuator/prometheus` in SecurityConfig if internal scraping is needed.
+**STATUS: FIXED** — Removed `prometheus` from `management.endpoints.web.exposure.include` in `application-prod.properties`. Now only `health` is exposed.
 
 ---
 

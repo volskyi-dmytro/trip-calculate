@@ -2,7 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import type { InsightResponse } from '../types';
 
 // Get API key from environment variables
-const API_KEY = import.meta.env.VITE_GEMINI_API_KEY || '';
+// SECURITY: Never use VITE_ prefix for sensitive keys (embedded in bundle).
+// This service is dead code (getTripInsights not called anywhere).
+// API key must come from backend proxy if service is re-enabled.
+const API_KEY = '';
 
 /**
  * Gets AI-powered trip insights including fun facts and suggested stops along the route
