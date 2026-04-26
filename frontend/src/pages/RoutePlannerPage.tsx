@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { RoutePlanner } from '../components/RoutePlanner';
 import { Header } from '../components/common/Header';
 import { LandingView } from '../components/LandingView';
@@ -210,8 +211,12 @@ export function RoutePlannerPage() {
           zIndex: 50,
         }}
       >
-        {/* Left: logo + wordmark */}
-        <div className="flex items-center gap-2">
+        {/* Left: logo + wordmark — links back to homepage */}
+        <Link
+          to="/"
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
+          style={{ textDecoration: 'none' }}
+        >
           <Navigation
             className="h-5 w-5"
             style={{ color: 'var(--nav-accent)' }}
@@ -222,7 +227,7 @@ export function RoutePlannerPage() {
           >
             Trip Calculate
           </span>
-        </div>
+        </Link>
 
         {/* Right: language, theme, user */}
         <div className="flex items-center gap-3">
