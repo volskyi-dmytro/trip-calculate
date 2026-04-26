@@ -214,12 +214,13 @@ export function RoutePlannerPage() {
         {/* Left: logo + wordmark — links back to homepage */}
         <Link
           to="/"
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity"
-          style={{ textDecoration: 'none' }}
+          className="flex items-center gap-2 hover:opacity-80 transition-opacity no-underline"
+          style={{ color: 'inherit' }}
         >
           <Navigation
             className="h-5 w-5"
             style={{ color: 'var(--nav-accent)' }}
+            aria-hidden="true"
           />
           <span
             className="font-semibold text-sm tracking-wide"
