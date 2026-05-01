@@ -80,13 +80,71 @@ public class SecurityConfig {
         CsrfTokenRequestAttributeHandler requestHandler = new CsrfTokenRequestAttributeHandler();
         requestHandler.setCsrfRequestAttributeName("_csrf");
 
+        // Configure CSRF cookie repository with SameSite=Strict.
+        // SameSite=Strict is safe here despite Google OAuth redirecting back from a different domain:
+        // the OAuth callback (/login/oauth2/code/google) is a GET request, and Spring Security
+        // never validates the XSRF-TOKEN for GET requests. All state-changing requests (POST/PUT/DELETE)
+        // are made by same-origin JavaScript, so the cookie is always sent.
+        // Spring Security 6.3 uses setCookieCustomizer() rather than setCookieSameSite() for this.
+        CookieCsrfTokenRepository csrfTokenRepository = CookieCsrfTokenRepository.withHttpOnlyFalse();
+        csrfTokenRepository.setCookieCustomizer(cookieBuilder -> cookieBuilder.sameSite("Strict"));
+
+        // Content Security Policy: restrict where resources can be loaded from.
+        // Managed exclusively by Spring Security — not set in Nginx Proxy Manager to avoid duplication.
+        // Each directive is annotated below with why the exception exists.
+        String csp = String.join("; ",
+            // Only allow resources from our own origin by default
+            "default-src 'self'",
+
+            // Scripts: 'unsafe-inline' is required because Vite bundles React with inline module
+            // bootstrap code, and Mapbox GL JS injects inline worker scripts at runtime.
+            // Cloudflare Insights is included because Cloudflare injects it at the CDN/proxy
+            // layer (not from this app's HTML) — allowing it here prevents CSP violations.
+            "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
+
+            // Styles: 'unsafe-inline' required by Mapbox GL (applies styles to DOM elements at runtime)
+            // and React inline style props. Google Fonts CSS loaded via <link> in index.html.
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+
+            // Images: data: for SVG/icon data URIs; blob: for canvas exports;
+            // *.mapbox.com for map sprites, glyphs, and tile previews
+            "img-src 'self' data: blob: https://*.mapbox.com",
+
+            // Fonts: Google Fonts serves actual font files from fonts.gstatic.com
+            "font-src 'self' https://fonts.gstatic.com",
+
+            // Connections (XHR/fetch/WebSocket):
+            // - api.mapbox.com: Mapbox styles, sprites, glyphs, geocoding
+            // - events.mapbox.com: Mapbox usage telemetry
+            // - *.tiles.mapbox.com: Mapbox vector/raster tile CDN
+            // - nominatim.openstreetmap.org: geocodingService.ts calls this directly from the browser
+            // - static.cloudflareinsights.com: Cloudflare Insights beacon reporting endpoint
+            "connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://nominatim.openstreetmap.org https://static.cloudflareinsights.com",
+
+            // Workers: Mapbox GL spawns Web Workers via blob: URLs for tile decoding
+            "worker-src blob:",
+
+            // child-src is the legacy fallback for worker-src in older browsers
+            "child-src blob:",
+
+            // No external frames allowed (defense-in-depth alongside X-Frame-Options: DENY)
+            "frame-src 'none'",
+
+            // Only allow form submissions to same origin (OAuth login goes to /oauth2/authorization/google
+            // which is a server-side redirect, not a form post to Google)
+            "form-action 'self'",
+
+            // Restrict base tag to prevent base URI hijacking attacks
+            "base-uri 'self'"
+        );
+
         http
                 // Enable CSRF protection (OAuth2 requires it)
                 .csrf(csrf -> csrf
                         // Disable CSRF only for public API endpoints and AI endpoints
                         .ignoringRequestMatchers("/calculate", "/api/routing/**", "/api/ai/**")
-                        // Use cookie-based CSRF tokens for JavaScript access
-                        .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                        // Use cookie-based CSRF tokens with SameSite=Strict (see comment above)
+                        .csrfTokenRepository(csrfTokenRepository)
                         // Set token handler to ensure tokens are loaded
                         .csrfTokenRequestHandler(requestHandler)
                 )
@@ -99,6 +157,7 @@ public class SecurityConfig {
                                 .includeSubDomains(true))
                         .referrerPolicy(referrer -> referrer
                                 .policy(ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                        .contentSecurityPolicy(cspConfig -> cspConfig.policyDirectives(csp))
                 )
 
                 // Add custom filter to restore authorities from database when session is restored

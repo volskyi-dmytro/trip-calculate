@@ -5,6 +5,91 @@ Scope: frontend/src/, .env*, .gitignore, application*.properties, .github/workfl
 
 ---
 
+# Follow-up Audit — Browser Security Test Findings
+Date: 2026-05-01
+Auditor: Claude Sonnet 4.6 (automated browser test via Chrome DevTools MCP)
+Scope: HTTP response headers, CSP, CSRF cookie attributes, SRI, git history for token leaks
+
+## Summary
+
+A follow-up security audit was conducted using automated browser inspection. Four issues were identified after the Mapbox token restriction was already fixed. Status below.
+
+---
+
+## B-1: XSRF-TOKEN Cookie SameSite Upgrade [FIXED]
+
+**Finding:** The `XSRF-TOKEN` cookie had `SameSite=Lax`. Upgrading to `SameSite=Strict` provides stronger CSRF protection by preventing the cookie from being sent on any cross-site request, including top-level GET navigations.
+
+**Analysis of OAuth impact:** `SameSite=Strict` is safe here. The Google OAuth callback (`/login/oauth2/code/google`) is a GET request; Spring Security never validates the XSRF-TOKEN on GET requests. All state-changing requests (POST/PUT/DELETE) are made by same-origin JavaScript, so the cookie is always sent. The server sets a fresh XSRF-TOKEN cookie in the OAuth callback response, so the frontend has the token before any subsequent POST.
+
+**Fix applied:** `SecurityConfig.java` — used Spring Security 6.3's `setCookieCustomizer()` API to set `sameSite("Strict")` on the CSRF cookie repository:
+```java
+csrfTokenRepository.setCookieCustomizer(cookieBuilder -> cookieBuilder.sameSite("Strict"));
+```
+
+---
+
+## B-2: Content Security Policy Header [FIXED]
+
+**Finding:** No `Content-Security-Policy` header was being sent.
+
+**External domains identified in frontend source:**
+- `https://api.mapbox.com` — Mapbox styles, sprites, glyphs (MapContainer.tsx via mapbox-gl SDK)
+- `https://events.mapbox.com` — Mapbox usage telemetry
+- `https://*.tiles.mapbox.com` — Mapbox vector/raster tile CDN
+- `https://nominatim.openstreetmap.org` — geocodingService.ts calls this directly from the browser (reverse + forward geocoding)
+- `https://fonts.googleapis.com` — Google Fonts CSS loaded in index.html
+- `https://fonts.gstatic.com` — Google Fonts actual font files
+- `https://static.cloudflareinsights.com` — Cloudflare Insights beacon (injected at CDN level, see B-3)
+
+**Note:** Google avatar images are proxied via `/api/avatar/proxy` (backend), so `lh3.googleusercontent.com` is NOT needed in CSP. Social links (GitHub, LinkedIn) are plain `<a href>` tags — no CSP directive needed. The `geminiService.ts` Gemini API calls are dead code (API_KEY is empty, function not called).
+
+**Fix applied:** `SecurityConfig.java` — added `contentSecurityPolicy()` to the Spring Security headers configuration with inline comments per directive. Not set in Nginx Proxy Manager to avoid duplication. The CSP covers:
+- `default-src 'self'`
+- `script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com` (`'unsafe-inline'` required by Mapbox GL web workers and Vite module bootstrap)
+- `style-src 'self' 'unsafe-inline' https://fonts.googleapis.com`
+- `img-src 'self' data: blob: https://*.mapbox.com`
+- `font-src 'self' https://fonts.gstatic.com`
+- `connect-src 'self' https://api.mapbox.com https://events.mapbox.com https://*.tiles.mapbox.com https://nominatim.openstreetmap.org https://static.cloudflareinsights.com`
+- `worker-src blob:` (Mapbox GL web workers)
+- `child-src blob:` (legacy fallback for worker-src)
+- `frame-src 'none'` (defense-in-depth alongside X-Frame-Options: DENY)
+- `form-action 'self'`
+- `base-uri 'self'`
+
+---
+
+## B-3: Subresource Integrity for Cloudflare Insights [NOT APPLICABLE]
+
+**Finding:** The Cloudflare Insights beacon script was identified without an `integrity` attribute.
+
+**Investigation result:** The Cloudflare Insights script tag is NOT present in this application's source files (`frontend/index.html`, `src/main/resources/static/index.html`, `src/main/resources/templates/`). It is injected at the Cloudflare CDN/proxy layer, outside the application's control.
+
+**Why SRI cannot be added:** The `<script>` tag is inserted by Cloudflare's infrastructure, not by this application. There is no tag in the app's HTML to add `integrity=` to. Additionally, Cloudflare intentionally does not publish stable SRI hashes for the Web Analytics script — the script is rotated periodically, and any hardcoded hash would break analytics on the next rotation.
+
+**Acceptable risk:** The Cloudflare Insights script's `script-src` permission is included in the CSP (B-2), which limits its execution to the known Cloudflare domain. The app's own HTML does not contain the tag so there is nothing further to harden at the application layer.
+
+---
+
+## B-4: Git History — Mapbox Token Leak Check [CLEAN]
+
+**Command run:** `git log --all -p | grep -c 'pk.eyJ'`
+**Result:** 1 match
+
+**Finding:** The single match is in a documentation file (`MAPBOX_SETUP.md`) and contains only an illustrative placeholder: `pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJjbGV4YW1wbGUifQ.example_token_string`. This is not a real Mapbox token — it is a fictional example following the token format pattern.
+
+**Conclusion:** Git history is clean. No real Mapbox token has ever been committed. No token rotation is required.
+
+---
+
+## Follow-up: No Action Required
+- Nginx Proxy Manager: CSP is managed by Spring Security only. No NPM config changes needed.
+- Mapbox token: Already restricted to the production domain in the Mapbox dashboard (previous audit fix).
+
+---
+
+# Original Audit — 2026-04-26
+
 ## CRITICAL — Must fix before client demo
 
 ### C-1: Gemini API key baked into JS bundle via VITE_GEMINI_API_KEY
