@@ -658,6 +658,59 @@ export function RoutePlanner() {
     }
   }, [destinationInput, waypoints, t, language])
 
+  // Geocode both start and destination atomically, then trigger auto-calculation via waypoints update
+  const handleCalculateRoute = useCallback(async () => {
+    if (!startLocationInput.trim() || !destinationInput.trim()) return
+
+    setIsSearchingStart(true)
+    setIsSearchingDestination(true)
+
+    try {
+      const [startResult, destResult] = await Promise.all([
+        geocodingService.forwardGeocode(startLocationInput),
+        geocodingService.forwardGeocode(destinationInput)
+      ])
+
+      if (!startResult) {
+        toast.error(t.toasts.locationNotFound)
+        return
+      }
+      if (!destResult) {
+        toast.error(t.toasts.locationNotFound)
+        return
+      }
+
+      const [startName, destName] = await Promise.all([
+        geocodingService.reverseGeocode(startResult.lat, startResult.lng),
+        geocodingService.reverseGeocode(destResult.lat, destResult.lng)
+      ])
+
+      const startWaypoint: Waypoint = {
+        id: Date.now().toString() + '-start',
+        lat: startResult.lat,
+        lng: startResult.lng,
+        name: startName
+      }
+      const destWaypoint: Waypoint = {
+        id: Date.now().toString() + '-dest',
+        lat: destResult.lat,
+        lng: destResult.lng,
+        name: destName
+      }
+
+      const middleWaypoints = waypoints.length > 2 ? waypoints.slice(1, -1) : []
+      setWaypoints([startWaypoint, ...middleWaypoints, destWaypoint])
+      setStartLocationInput(startName)
+      setDestinationInput(destName)
+    } catch (error) {
+      console.error('Calculate route error:', error)
+      toast.error(t.toasts.locationFailed)
+    } finally {
+      setIsSearchingStart(false)
+      setIsSearchingDestination(false)
+    }
+  }, [startLocationInput, destinationInput, waypoints, t])
+
   // AI Chat Handler
   const handleSendChat = useCallback(async () => {
     if (!chatInput.trim()) return;
@@ -1106,6 +1159,34 @@ export function RoutePlanner() {
                   )}
                 </div>
               </div>
+
+              {/* ── Calculate Route button ── */}
+              {(() => {
+                const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
+                const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
+                const isDisabled = !hasInputs || isBusy
+                return (
+                  <button
+                    onClick={handleCalculateRoute}
+                    disabled={isDisabled}
+                    title={!hasInputs ? t.buttons.enterLocations : undefined}
+                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                    style={{
+                      background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
+                      border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
+                      color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
+                      opacity: isDisabled ? 0.6 : 1,
+                      cursor: isDisabled ? 'not-allowed' : 'pointer',
+                    }}
+                  >
+                    {isBusy
+                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                      : <MapPin className="h-4 w-4" />
+                    }
+                    {isBusy ? t.buttons.calculatingRoute : t.buttons.calculateRoute}
+                  </button>
+                )
+              })()}
 
               {/* ── Divider ── */}
               <div style={{ height: '1px', background: 'var(--nav-border)' }} />
@@ -1600,6 +1681,34 @@ export function RoutePlanner() {
                       )}
                     </div>
                   </div>
+
+                  {/* ── Calculate Route button ── */}
+                  {(() => {
+                    const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
+                    const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
+                    const isDisabled = !hasInputs || isBusy
+                    return (
+                      <button
+                        onClick={handleCalculateRoute}
+                        disabled={isDisabled}
+                        title={!hasInputs ? t.buttons.enterLocations : undefined}
+                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+                        style={{
+                          background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
+                          border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
+                          color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
+                          opacity: isDisabled ? 0.6 : 1,
+                          cursor: isDisabled ? 'not-allowed' : 'pointer',
+                        }}
+                      >
+                        {isBusy
+                          ? <Loader2 className="h-4 w-4 animate-spin" />
+                          : <MapPin className="h-4 w-4" />
+                        }
+                        {isBusy ? t.buttons.calculatingRoute : t.buttons.calculateRoute}
+                      </button>
+                    )
+                  })()}
 
                   {/* ── Divider ── */}
                   <div style={{ height: '1px', background: 'var(--nav-border)' }} />

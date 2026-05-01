@@ -42,6 +42,9 @@ export const routePlannerTranslations = {
       settings: 'Settings',
       map: 'Map',
       summary: 'Summary',
+      calculateRoute: 'Calculate Route',
+      calculatingRoute: 'Calculating...',
+      enterLocations: 'Enter origin and destination first',
     },
     routeSettings: {
       title: 'Route Settings',
@@ -167,6 +170,9 @@ export const routePlannerTranslations = {
       settings: 'Налаштування',
       map: 'Карта',
       summary: 'Підсумок',
+      calculateRoute: 'Порахувати маршрут',
+      calculatingRoute: 'Розрахунок...',
+      enterLocations: 'Спочатку введіть початок і призначення',
     },
     routeSettings: {
       title: 'Налаштування маршруту',
