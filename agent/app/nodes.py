@@ -1,6 +1,6 @@
 import asyncio
 import os
-from langchain_openai import ChatOpenAI
+from langfuse.openai import AsyncOpenAI
 from .schema import (
     GraphState, ParsedRoute, GeocodedLocation,
     ParseRouteResponse, RouteOut, WaypointOut, RouteSettings, RouteStats,
@@ -23,16 +23,24 @@ RULES:
 8. location_type: first location = "origin", last = "destination", middle = "waypoint"
 9. "picking my friend" / "з другом" → set passengers to 2"""
 
+# Module-level singleton — patched by unit tests via @patch("app.nodes._openai_client")
+_openai_client = AsyncOpenAI()
+
 
 async def parse_locations(state: GraphState) -> GraphState:
-    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.2)
-    structured_llm = llm.with_structured_output(ParsedRoute)
-
     try:
-        result = await structured_llm.ainvoke([
-            {"role": "system", "content": _SYSTEM_PROMPT},
-            {"role": "user", "content": state["message"]},
-        ])
+        response = await _openai_client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            temperature=0.2,
+            messages=[
+                {"role": "system", "content": _SYSTEM_PROMPT},
+                {"role": "user", "content": state["message"]},
+            ],
+            response_format=ParsedRoute,
+        )
+        result = response.choices[0].message.parsed
+        if result is None:
+            raise ValueError("Structured output parsing returned None")
         return {**state, "parsed": result}
     except Exception as exc:
         return {**state, "error": f"Failed to parse route request: {exc}"}

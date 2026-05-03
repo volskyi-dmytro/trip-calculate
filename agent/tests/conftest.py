@@ -1,4 +1,9 @@
+import os
 import pytest
+
+# Unit tests never hit the real OpenAI API (all calls are mocked), but
+# AsyncOpenAI() validates the key is non-empty at instantiation time.
+os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy")
 
 
 @pytest.fixture

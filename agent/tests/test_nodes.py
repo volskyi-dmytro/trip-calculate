@@ -36,9 +36,9 @@ def _geocoded(name: str, loc_type: str, source: str, lat=50.0, lon=30.0) -> Geoc
 
 # ── parse_locations ───────────────────────────────────────────────────────
 
-@patch("app.nodes.ChatOpenAI")
+@patch("app.nodes._openai_client")
 @pytest.mark.asyncio
-async def test_parse_locations_happy_path(mock_llm_class):
+async def test_parse_locations_happy_path(mock_client):
     parsed = ParsedRoute(
         locations=[
             ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
@@ -46,11 +46,13 @@ async def test_parse_locations_happy_path(mock_llm_class):
         ],
         settings=TripSettings(),
     )
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke = AsyncMock(return_value=parsed)
-    mock_llm = MagicMock()
-    mock_llm.with_structured_output.return_value = mock_chain
-    mock_llm_class.return_value = mock_llm
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
 
     result = await parse_locations(_state())
 
@@ -59,14 +61,10 @@ async def test_parse_locations_happy_path(mock_llm_class):
     assert len(result["parsed"].locations) == 2
 
 
-@patch("app.nodes.ChatOpenAI")
+@patch("app.nodes._openai_client")
 @pytest.mark.asyncio
-async def test_parse_locations_sets_error_on_exception(mock_llm_class):
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke = AsyncMock(side_effect=Exception("OpenAI down"))
-    mock_llm = MagicMock()
-    mock_llm.with_structured_output.return_value = mock_chain
-    mock_llm_class.return_value = mock_llm
+async def test_parse_locations_sets_error_on_exception(mock_client):
+    mock_client.beta.chat.completions.parse = AsyncMock(side_effect=Exception("OpenAI down"))
 
     result = await parse_locations(_state())
 
