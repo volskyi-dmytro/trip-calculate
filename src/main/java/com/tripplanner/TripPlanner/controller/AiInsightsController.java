@@ -154,7 +154,7 @@ public class AiInsightsController {
     private String generateCacheKey(String prompt, String language) {
         try {
             String normalized = prompt.toLowerCase().trim().replaceAll("\\s+", " ");
-            byte[] hash = MessageDigest.getInstance("MD5").digest((normalized + "|" + language).getBytes());
+            byte[] hash = MessageDigest.getInstance("MD5").digest((normalized + "|" + language).getBytes(java.nio.charset.StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : hash) sb.append(String.format("%02x", b));
             return sb.toString();
