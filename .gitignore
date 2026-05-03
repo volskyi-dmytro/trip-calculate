@@ -101,3 +101,10 @@ run-with-oauth.sh
 
 # Git worktrees
 .worktrees/
+
+# Python virtual environments and build artifacts
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.egg-info/
