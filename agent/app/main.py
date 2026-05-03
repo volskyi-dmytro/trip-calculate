@@ -36,31 +36,32 @@ async def parse_route(request: ParseRouteRequest):
     # _AgnosticContextManager is a sync context manager (uses OTEL spans under the hood),
     # but it is safe to use inside an async function — spans are attached to the current
     # OTEL context which propagates across awaits within the same task.
-    with _langfuse.start_as_current_observation(
-        name="parse_route",
-        as_type="agent",
-        input={"message": request.message, "language": request.language},
-    ):
-        # Attach trace-level metadata (user, session, tags) to all child spans
-        with propagate_attributes(
-            user_id=request.user_id,
-            session_id=session_id,
-            tags=[request.language],
-            trace_name="parse_route",
+    try:
+        with _langfuse.start_as_current_observation(
+            name="parse_route",
+            as_type="agent",
+            input={"message": request.message, "language": request.language},
         ):
-            initial_state = {
-                "message": request.message,
-                "language": request.language,
-                "user_id": request.user_id,
-                "parsed": None,
-                "geocoded": [],
-                "response": None,
-                "error": None,
-            }
+            with propagate_attributes(
+                user_id=request.user_id,
+                session_id=session_id,
+                tags=[request.language],
+                trace_name="parse_route",
+            ):
+                initial_state = {
+                    "message": request.message,
+                    "language": request.language,
+                    "user_id": request.user_id,
+                    "parsed": None,
+                    "geocoded": [],
+                    "response": None,
+                    "error": None,
+                }
 
-            result = await route_graph.ainvoke(initial_state)
-
-    # Flush ensures spans are exported before the HTTP response is returned
-    _langfuse.flush()
+                result = await route_graph.ainvoke(initial_state)
+    finally:
+        # Flush ensures spans are exported before the HTTP response is returned,
+        # even if ainvoke raises an unhandled exception.
+        _langfuse.flush()
 
     return result["response"]
