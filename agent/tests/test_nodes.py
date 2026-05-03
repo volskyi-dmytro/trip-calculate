@@ -83,7 +83,7 @@ async def test_geocode_locations_passes_through_on_error():
     assert result["geocoded"] == []
 
 
-@patch("app.nodes.geocode_location")
+@patch("app.nodes.geocode_location", new_callable=AsyncMock)
 @pytest.mark.asyncio
 async def test_geocode_locations_fans_out_to_all_locations(mock_geocode):
     kyiv = _geocoded("Kyiv", "origin", "nominatim")
