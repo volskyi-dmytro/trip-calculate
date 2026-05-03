@@ -4,14 +4,14 @@ A modern full-stack web application for trip expense calculation and route plann
 
 **Live Demo:** [trip-calculate.online](https://trip-calculate.online)
 
-## Recent Updates (v2.1)
+## Recent Updates (v2.2)
 
-- 🤖 **AI-Powered Trip Planning** - Intelligent route recommendations via n8n workflow integration
+- 🤖 **LangGraph AI Agent** - Replaced n8n workflow with a Python FastAPI + LangGraph service for production-grade AI route parsing
+- 🔍 **Langfuse Observability** - Full LLM tracing with token counts, cost tracking, and session metadata per request
 - 🗺️ **3D Map Visualization** - Mapbox GL with terrain and satellite views
 - 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL for faster results
 - 🎨 **Neo-Travel Design** - Modern terminal-inspired interface with seasonal backgrounds
 - 📊 **Admin Dashboard** - AI usage statistics and system monitoring
-- 🚀 **Performance** - Optimized rate limits and improved parameter extraction (2s timeout)
 - 🌍 **Unicode Support** - Full Cyrillic and international character support in routes
 
 ## Features
@@ -22,7 +22,8 @@ A modern full-stack web application for trip expense calculation and route plann
 - 🔐 **Secure Authentication** - Google OAuth 2.0 with session persistence
 
 ### AI-Powered Route Planner (Beta)
-- 🤖 **AI Trip Insights** - Intelligent recommendations via n8n workflow integration
+- 🤖 **Natural Language Parsing** - Type a route in plain text ("Kyiv to Lviv via Zhytomyr") and the LangGraph agent extracts, normalizes, and geocodes all locations
+- 🔍 **Full LLM Observability** - Every AI request traced in Langfuse with token counts, cost, and session metadata
 - 🗺️ **3D Map Visualization** - Mapbox-powered 3D terrain and satellite views
 - 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL
 - 🛣️ **Road-Based Routing** - Multi-provider routing (Mapbox + OSRM fallback)
@@ -62,9 +63,16 @@ A modern full-stack web application for trip expense calculation and route plann
 - **Spring Session JDBC** - Session persistence
 - **Redis** - Semantic caching with 24h TTL
 - **PostgreSQL** - Primary database (MySQL/H2 supported)
-- **n8n Integration** - AI-powered trip insights via webhooks
 - **Spring Actuator + Prometheus** - Monitoring & metrics
 - **Lombok** - Code generation
+
+### AI Agent Service
+- **Python 3.12** + **FastAPI** - HTTP API for the agent
+- **LangGraph** - Stateful graph: parse → geocode → format
+- **OpenAI gpt-4o-mini** - Structured location extraction
+- **Nominatim** - Open-source geocoding with retry/backoff
+- **Langfuse** - LLM tracing and cost observability
+- **httpx** - Async HTTP for Nominatim calls
 
 ## Architecture
 
@@ -90,6 +98,7 @@ During development, Vite runs on port 3000 and proxies backend requests to Sprin
 - **Java 17** or higher
 - **Maven 3.6+**
 - **Node.js 20+** with npm
+- **Python 3.12+** with pip (for the AI agent service)
 - **PostgreSQL 15** (or MySQL/H2 for local dev)
 - **Docker** (optional, for containerized deployment)
 
@@ -110,6 +119,15 @@ npm run dev
 ```
 
 Access at: **http://localhost:3000**
+
+**Terminal 3 - Start AI Agent (optional):**
+```bash
+cd agent
+pip install -e ".[dev]"
+OPENAI_API_KEY=sk-your_key uvicorn app.main:app --port 8001 --reload
+```
+
+The agent runs on port 8001. Spring Boot's `AGENT_URL` defaults to `http://localhost:8001` in development.
 
 ### Option 2: Production Build
 
@@ -147,9 +165,14 @@ GOOGLE_CLIENT_SECRET=your_google_client_secret
 # OAuth Redirect (production only, leave blank for dev)
 OAUTH_REDIRECT_URI=https://trip-calculate.online/login/oauth2/code/google
 
-# AI Integration (Optional - for Route Planner AI features)
-N8N_WEBHOOK_URL=your_n8n_webhook_url
-N8N_EXTRACTOR_URL=your_n8n_parameter_extractor_url
+# AI Agent (Optional - for Route Planner natural language parsing)
+AGENT_URL=http://localhost:8001
+OPENAI_API_KEY=sk-your_openai_api_key
+
+# Langfuse (Optional - for LLM tracing and cost tracking)
+LANGFUSE_PUBLIC_KEY=pk-lf-your_public_key
+LANGFUSE_SECRET_KEY=sk-lf-your_secret_key
+LANGFUSE_HOST=https://cloud.langfuse.com
 
 # Redis (Optional - for AI response caching)
 REDIS_HOST=localhost
@@ -218,8 +241,8 @@ docker run -d -p 8080:8080 \
 Pushing to `master` branch triggers automatic deployment via GitHub Actions:
 1. Builds React frontend
 2. Builds Spring Boot backend with embedded frontend
-3. Creates Docker image
-4. Deploys to production server
+3. Builds Python agent Docker image
+4. Deploys both containers to production server
 
 ## Project Structure
 
@@ -245,6 +268,17 @@ tripcalculate/
 │   ├── public/                   # Static assets (images)
 │   └── package.json
 │
+├── agent/                         # Python FastAPI + LangGraph AI service
+│   ├── app/
+│   │   ├── main.py               # FastAPI app, Langfuse tracing wrapper
+│   │   ├── graph.py              # LangGraph StateGraph definition
+│   │   ├── nodes.py              # parse_locations, geocode_locations, format_*
+│   │   ├── geocoding.py          # Nominatim client with retry/backoff
+│   │   └── schema.py             # Pydantic models (GraphState, ParseRouteResponse)
+│   ├── tests/                    # pytest unit + API contract tests
+│   ├── Dockerfile                # python:3.12-slim, non-root user
+│   └── pyproject.toml            # Python dependencies
+│
 ├── src/main/
 │   ├── java/com/tripplanner/
 │   │   ├── config/               # Security, HTTPS, CORS
@@ -263,9 +297,9 @@ tripcalculate/
 │   └── LOCAL-TESTING.md
 │
 ├── .github/workflows/            # CI/CD pipeline
-│   └── deploy.yml
+│   └── deploy-prod.yml
 │
-├── Dockerfile                    # Multi-stage Docker build
+├── Dockerfile                    # Multi-stage Docker build (Spring Boot)
 ├── pom.xml                       # Maven dependencies
 ├── CLAUDE.md                     # AI coding assistant instructions
 └── README.md
@@ -285,12 +319,21 @@ tripcalculate/
 
 ## Monitoring & Observability
 
-Spring Boot Actuator endpoints exposed for monitoring:
-- `/actuator/health` - Application health status
+### Spring Boot Actuator
+- `/actuator/health` - Application health status (includes agent liveness check)
 - `/actuator/prometheus` - Metrics in Prometheus format
 - `/actuator/info` - Application information
 
 **Grafana Integration:** Metrics can be scraped by Prometheus and visualized in Grafana dashboards.
+
+### Langfuse (LLM Observability)
+Every call to the AI agent creates a Langfuse trace containing:
+- Full input message and parsed output
+- Token usage and cost per gpt-4o-mini generation
+- Geocoding results per location
+- Session ID and user ID for filtering
+
+Configure via `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, and `LANGFUSE_HOST` environment variables. When keys are absent the agent starts normally and tracing is silently skipped.
 
 ## Testing
 
@@ -309,6 +352,18 @@ npm run lint
 
 # Type checking (via build)
 npm run build
+```
+
+### Agent Tests
+```bash
+cd agent
+pip install -e ".[dev]"
+
+# Unit tests (no API key needed — all LLM calls are mocked)
+pytest tests/ -m "not integration" -v
+
+# Integration tests (requires OPENAI_API_KEY)
+OPENAI_API_KEY=sk-your_key pytest tests/ -m integration -v
 ```
 
 ### Manual Testing
@@ -360,8 +415,8 @@ java -jar target/TripPlanner-v2.jar
 - `POST /api/routes/request-access` - Request access via email
 
 ### AI Integration (Beta)
-- `POST /api/ai/trip-insights` - Get AI-powered trip recommendations
-- `POST /api/routing/calculate` - Multi-provider routing with fallback
+- `POST /api/ai/insights` - Parse a natural language route via the LangGraph agent
+- `POST /api/routing/calculate` - Multi-provider routing with fallback (Mapbox → OSRM)
 
 ### Monitoring
 - `GET /actuator/health` - Health check
@@ -432,13 +487,13 @@ import 'leaflet/dist/leaflet.css';
 - **Repository Pattern:** JPA repositories abstract database operations
 
 ### CI/CD Pipeline
-GitHub Actions workflow (`.github/workflows/deploy.yml`) automatically:
+GitHub Actions workflow (`.github/workflows/deploy-prod.yml`) automatically:
 1. Builds React frontend on push to `master`
 2. Copies assets to Spring Boot static resources
 3. Verifies build artifacts (prevents empty JAR deployment)
 4. Builds Spring Boot JAR with Maven
-5. Creates and pushes Docker image
-6. Deploys to production server
+5. Builds Docker images for both Spring Boot and the Python agent service
+6. Deploys both containers to production server
 
 **Critical Safety:** Pipeline verifies React assets are embedded before deployment.
 
