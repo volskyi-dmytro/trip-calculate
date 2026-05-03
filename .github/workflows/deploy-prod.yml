@@ -250,7 +250,7 @@ jobs:
             echo "⏳ Waiting for agent health..."
             for i in $(seq 1 10); do
               sleep 3
-              if docker exec trip-calculate-agent curl -sf http://localhost:8001/health >/dev/null 2>&1; then
+              if docker exec trip-calculate-agent python -c "import urllib.request; urllib.request.urlopen('http://localhost:8001/health')" >/dev/null 2>&1; then
                 echo "✅ Agent health check passed"
                 break
               fi
