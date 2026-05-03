@@ -106,6 +106,15 @@ jobs:
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:latest
           docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate:prod-${{ github.sha }}
 
+      - name: Build and Push Agent Image
+        run: |
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate-agent:latest \
+                       -t ${{ secrets.DOCKER_USERNAME }}/trip-calculate-agent:prod-${{ github.sha }} \
+                       ./agent
+
+          docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate-agent:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/trip-calculate-agent:prod-${{ github.sha }}
+
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -139,10 +148,13 @@ jobs:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
           MAPBOX_ACCESS_TOKEN: ${{ secrets.MAPBOX_ACCESS_TOKEN }}
           REDIS_PASSWORD: ${{ secrets.PROD_REDIS_PASSWORD }}
-          N8N_WEBHOOK_URL: ${{ secrets.PROD_N8N_WEBHOOK_URL }}
-          N8N_EXTRACTOR_URL: ${{ secrets.N8N_EXTRACTOR_URL }}
+          OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.PROD_LANGFUSE_HOST }}
+          AGENT_URL: "http://trip-calculate-agent:8001"
         run: |
-          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' N8N_WEBHOOK_URL='${N8N_WEBHOOK_URL}' N8N_EXTRACTOR_URL='${N8N_EXTRACTOR_URL}' bash -s" <<'REMOTE'
+          ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' GITHUB_SHA='${GITHUB_SHA}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' OPENAI_API_KEY='${OPENAI_API_KEY}' LANGFUSE_PUBLIC_KEY='${LANGFUSE_PUBLIC_KEY}' LANGFUSE_SECRET_KEY='${LANGFUSE_SECRET_KEY}' LANGFUSE_HOST='${LANGFUSE_HOST}' AGENT_URL='${AGENT_URL}' bash -s" <<'REMOTE'
             echo "🚀 Deploying to Production VPS..."
 
             # Create private Docker network if it doesn't exist
@@ -214,6 +226,41 @@ jobs:
               echo "✅ Redis security verified - port 6379 NOT exposed"
             fi
 
+            # ==================== AGENT DEPLOYMENT ====================
+            echo ""
+            echo "🤖 Deploying agent service..."
+
+            docker pull "${DOCKER_USERNAME}/trip-calculate-agent:prod-${GITHUB_SHA}"
+
+            docker stop trip-calculate-agent 2>/dev/null || true
+            docker rm   trip-calculate-agent 2>/dev/null || true
+
+            docker run -d \
+              --name trip-calculate-agent \
+              --restart unless-stopped \
+              --network trip-calculate-network \
+              -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+              -e LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
+              -e LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}" \
+              -e LANGFUSE_HOST="${LANGFUSE_HOST}" \
+              "${DOCKER_USERNAME}/trip-calculate-agent:prod-${GITHUB_SHA}"
+
+            echo "✅ Agent container started"
+
+            echo "⏳ Waiting for agent health..."
+            for i in $(seq 1 10); do
+              sleep 3
+              if docker exec trip-calculate-agent curl -sf http://localhost:8001/health >/dev/null 2>&1; then
+                echo "✅ Agent health check passed"
+                break
+              fi
+              if [ $i -eq 10 ]; then
+                echo "❌ Agent health check failed"
+                docker logs trip-calculate-agent --tail 30
+                exit 1
+              fi
+            done
+
             # ==================== APPLICATION DEPLOYMENT ====================
             echo ""
             echo "📦 Deploying application..."
@@ -245,8 +292,7 @@ jobs:
               -e REDIS_PORT=6379 \
               -e REDIS_PASSWORD="${REDIS_PASSWORD}" \
               -e AI_CACHE_TTL_HOURS=24 \
-              -e N8N_WEBHOOK_URL="${N8N_WEBHOOK_URL}" \
-              -e N8N_EXTRACTOR_URL="${N8N_EXTRACTOR_URL}" \
+              -e AGENT_URL="${AGENT_URL}" \
               "${DOCKER_USERNAME}/trip-calculate:latest"
 
             echo "✅ Application container started"
@@ -326,6 +372,7 @@ jobs:
             echo "🎉 Deployment Summary:"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
             echo "Application: ✅ Running on port 8080"
+            echo "Agent:       ✅ Running on internal port 8001"
             echo "Database:    ✅ Secured on private network (172.18.0.2)"
             echo "Redis:       ✅ Secured on private network"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
