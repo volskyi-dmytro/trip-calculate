@@ -48,24 +48,19 @@ async def test_returns_failed_when_no_results_and_no_ai_coords():
 
 @respx.mock
 @pytest.mark.asyncio
-async def test_retries_on_429_and_returns_failed_after_exhaustion():
+async def test_retries_on_429_and_returns_failed_after_exhaustion(monkeypatch):
     respx.get("https://nominatim.openstreetmap.org/search").mock(
         return_value=httpx.Response(429)
     )
-    # Patch sleep so retries don't actually wait
     import app.geocoding as geocoding_module
-    import asyncio
-    original_sleep = asyncio.sleep
 
     async def fast_sleep(_):
         pass
 
-    geocoding_module._sleep = fast_sleep
+    monkeypatch.setattr(geocoding_module, "_sleep", fast_sleep)
 
     result = await geocode_location(_loc("Kyiv Ukraine"))
     assert result.source == "failed"
-
-    geocoding_module._sleep = original_sleep
 
 
 @respx.mock
