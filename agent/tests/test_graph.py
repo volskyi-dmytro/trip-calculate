@@ -22,10 +22,34 @@ def _nominatim_resp(name: str, lat: str, lon: str):
     ]
 
 
+def _mock_parse_response(parsed):
+    """Build the object shape returned by AsyncOpenAI beta.chat.completions.parse."""
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    return mock_response
+
+
+def _initial_state(message: str) -> dict:
+    return {
+        "message": message,
+        "language": "en",
+        "user_id": "test@example.com",
+        "parsed": None,
+        "geocoded": [],
+        "response": None,
+        "error": None,
+        "retry_count": 0,
+    }
+
+
 @respx.mock
-@patch("app.nodes.ChatOpenAI")
+@patch("app.nodes._openai_client")
 @pytest.mark.asyncio
-async def test_graph_happy_path_two_cities(mock_llm_class):
+async def test_graph_happy_path_two_cities(mock_client):
     """Full graph run: origin + destination → success response."""
     parsed = ParsedRoute(
         locations=[
@@ -34,36 +58,20 @@ async def test_graph_happy_path_two_cities(mock_llm_class):
         ],
         settings=TripSettings(passengers=1, currency="UAH"),
     )
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke = AsyncMock(return_value=parsed)
-    mock_llm = MagicMock()
-    mock_llm.with_structured_output.return_value = mock_chain
-    mock_llm_class.return_value = mock_llm
-
-    call_count = 0
-    responses = [
-        _nominatim_resp("Kyiv", "50.4501", "30.5234"),
-        _nominatim_resp("Lviv", "49.8397", "24.0297"),
-    ]
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
 
     def handler(request):
-        nonlocal call_count
-        resp = responses[call_count % 2]
-        call_count += 1
-        return httpx.Response(200, json=resp)
+        q = request.url.params.get("q", "")
+        if "Kyiv" in q:
+            return httpx.Response(200, json=_nominatim_resp("Kyiv", "50.4501", "30.5234"))
+        return httpx.Response(200, json=_nominatim_resp("Lviv", "49.8397", "24.0297"))
 
     respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
 
     graph = build_graph()
-    result = await graph.ainvoke({
-        "message": "Kyiv to Lviv",
-        "language": "en",
-        "user_id": "test@example.com",
-        "parsed": None,
-        "geocoded": [],
-        "response": None,
-        "error": None,
-    })
+    result = await graph.ainvoke(_initial_state("Kyiv to Lviv"))
 
     assert result["response"].success is True
     assert len(result["response"].route.waypoints) == 2
@@ -72,36 +80,66 @@ async def test_graph_happy_path_two_cities(mock_llm_class):
 
 
 @respx.mock
-@patch("app.nodes.ChatOpenAI")
+@patch("app.nodes._openai_client")
 @pytest.mark.asyncio
-async def test_graph_routes_to_error_on_parse_failure(mock_llm_class):
+async def test_graph_routes_to_error_on_parse_failure(mock_client):
     """If OpenAI fails, graph should return success=False."""
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke = AsyncMock(side_effect=Exception("API timeout"))
-    mock_llm = MagicMock()
-    mock_llm.with_structured_output.return_value = mock_chain
-    mock_llm_class.return_value = mock_llm
+    mock_client.beta.chat.completions.parse = AsyncMock(side_effect=Exception("API timeout"))
 
     graph = build_graph()
-    result = await graph.ainvoke({
-        "message": "Trip to somewhere",
-        "language": "en",
-        "user_id": "test@example.com",
-        "parsed": None,
-        "geocoded": [],
-        "response": None,
-        "error": None,
-    })
+    result = await graph.ainvoke(_initial_state("Trip to somewhere"))
 
     assert result["response"].success is False
     assert "Failed to parse" in result["response"].error
 
 
 @respx.mock
-@patch("app.nodes.ChatOpenAI")
+@patch("app.nodes._openai_client")
 @pytest.mark.asyncio
-async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_llm_class):
-    """If only 1 out of 2 locations geocodes, return error."""
+async def test_graph_retry_loop_recovers_failed_location(mock_client):
+    """Agentic self-correction: a location that fails geocoding is re-normalized
+    by the LLM and geocoded successfully on the retry pass."""
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+            ParsedLocation(name="Lwiw", location_type="destination"),
+        ],
+        settings=TripSettings(),
+    )
+    renormalized = ParsedRoute(
+        locations=[ParsedLocation(name="Lviv Ukraine", location_type="destination")],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        side_effect=[_mock_parse_response(parsed), _mock_parse_response(renormalized)]
+    )
+
+    def handler(request):
+        q = request.url.params.get("q", "")
+        if "Kyiv" in q:
+            return httpx.Response(200, json=_nominatim_resp("Kyiv", "50.4501", "30.5234"))
+        if "Lviv" in q:
+            return httpx.Response(200, json=_nominatim_resp("Lviv", "49.8397", "24.0297"))
+        return httpx.Response(200, json=[])  # "Lwiw" not found
+
+    respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
+
+    graph = build_graph()
+    result = await graph.ainvoke(_initial_state("Kyiv to Lwiw"))
+
+    assert result["response"].success is True
+    assert result["retry_count"] == 1
+    assert result["response"].stats.recovered == 1
+    assert result["response"].route.waypoints[1].name == "Lviv"
+    # Two LLM calls: initial parse + retry re-normalization
+    assert mock_client.beta.chat.completions.parse.call_count == 2
+
+
+@respx.mock
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_client):
+    """If only 1 of 2 locations geocodes even after the retry pass, return error."""
     parsed = ParsedRoute(
         locations=[
             ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
@@ -109,11 +147,13 @@ async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_llm_cl
         ],
         settings=TripSettings(),
     )
-    mock_chain = AsyncMock()
-    mock_chain.ainvoke = AsyncMock(return_value=parsed)
-    mock_llm = MagicMock()
-    mock_llm.with_structured_output.return_value = mock_chain
-    mock_llm_class.return_value = mock_llm
+    retry_parsed = ParsedRoute(
+        locations=[ParsedLocation(name="Xyzzy Nowhere Land", location_type="destination")],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        side_effect=[_mock_parse_response(parsed), _mock_parse_response(retry_parsed)]
+    )
 
     def handler(request):
         q = request.url.params.get("q", "")
@@ -124,15 +164,8 @@ async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_llm_cl
     respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
 
     graph = build_graph()
-    result = await graph.ainvoke({
-        "message": "Kyiv to Xyzzy",
-        "language": "en",
-        "user_id": "test@example.com",
-        "parsed": None,
-        "geocoded": [],
-        "response": None,
-        "error": None,
-    })
+    result = await graph.ainvoke(_initial_state("Kyiv to Xyzzy"))
 
     assert result["response"].success is False
+    assert result["retry_count"] == 1
     assert "1" in result["response"].error

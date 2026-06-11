@@ -13,13 +13,13 @@ export interface Location {
   display_name: string;
 }
 
-// N8n Response Types
-export interface N8nTripData {
+// Structured trip data extracted by the LangGraph agent (via /api/ai/insights)
+export interface AgentTripData {
   // Text fallbacks
   originName?: string;
   destinationName?: string;
 
-  // Pre-geocoded locations from n8n
+  // Pre-geocoded locations from the agent
   originLocation?: Location;
   destinationLocation?: Location;
 
@@ -30,10 +30,7 @@ export interface N8nTripData {
   consumption?: number;
   price?: number;
   currency?: string;
-}
 
-// Gemini Insights Response
-export interface InsightResponse {
-  content: string;
-  suggestedStops: string[];
+  // Locations the agent could not geocode (even after its retry pass)
+  skippedLocations?: { name: string; reason?: string }[];
 }

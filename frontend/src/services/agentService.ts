@@ -1,6 +1,6 @@
-import type { N8nTripData } from '../types';
+import type { AgentTripData } from '../types';
 
-// Backend proxy endpoint (replaces direct n8n webhook URL)
+// Spring Boot proxy endpoint in front of the Python LangGraph agent
 const AI_INSIGHTS_ENDPOINT = '/api/ai/insights';
 
 // Client-side cache for recent requests (sessionStorage)
@@ -11,18 +11,18 @@ const CACHE_KEY_PREFIX = 'ai_cache_';
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL_MS = 2000; // 2 seconds
 
-// Types defining the expected structure from the n8n "Format Final Response" node
-interface N8nWaypoint {
+// Types mirroring the agent's ParseRouteResponse schema (agent/app/schema.py)
+interface AgentWaypoint {
   positionOrder: number;
   name: string;
   latitude: number;
   longitude: number;
 }
 
-interface N8nResponse {
+interface AgentRouteResponse {
   success: boolean;
   route: {
-    waypoints: N8nWaypoint[];
+    waypoints: AgentWaypoint[];
     settings: {
       fuelConsumption?: number;
       fuelCostPerLiter?: number;
@@ -31,6 +31,8 @@ interface N8nResponse {
     };
   };
   message?: string;
+  error?: string;
+  skippedLocations?: { name: string; reason?: string }[];
 }
 
 /**
@@ -40,7 +42,7 @@ interface N8nResponse {
  * @param language Language code (default: 'en')
  * @returns Structured trip data or null if the request fails
  */
-export const planTripWithN8n = async (query: string, language: string = 'en'): Promise<N8nTripData | null> => {
+export const parseRouteWithAgent = async (query: string, language: string = 'en'): Promise<AgentTripData | null> => {
   // Debounce: Prevent too-frequent requests
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
@@ -100,23 +102,22 @@ export const planTripWithN8n = async (query: string, language: string = 'en'): P
     const rawData = await response.json();
     console.log("Raw AI Response:", rawData);
 
-    // Check for cache headers
-    const cacheStatus = response.headers.get('X-Cache');
+    // Check backend cache header (set by AiInsightsController)
+    const cacheStatus = response.headers.get('X-Cache-Status');
     if (cacheStatus) {
       console.log(`Backend cache: ${cacheStatus}`);
     }
 
-    // Normalize data if it comes as an array (common in n8n execution data) or single object
-    const data: N8nResponse = Array.isArray(rawData) ? rawData[0] : rawData;
+    const data: AgentRouteResponse = Array.isArray(rawData) ? rawData[0] : rawData;
 
-    if (!data.route || !data.route.waypoints) {
-      console.warn("N8n response missing route data", data);
+    if (!data.success || !data.route || !data.route.waypoints) {
+      console.warn("Agent response missing route data", data.error ?? data);
       return null;
     }
 
     const waypoints = data.route.waypoints.sort((a, b) => a.positionOrder - b.positionOrder);
 
-    const result: N8nTripData = {};
+    const result: AgentTripData = {};
 
     // Map Settings
     if (data.route.settings) {
@@ -124,6 +125,11 @@ export const planTripWithN8n = async (query: string, language: string = 'en'): P
       if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
       if (data.route.settings.currency) result.currency = data.route.settings.currency;
       if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
+    }
+
+    // Surface locations the agent had to skip so the UI can tell the user
+    if (data.skippedLocations && data.skippedLocations.length > 0) {
+      result.skippedLocations = data.skippedLocations;
     }
 
     // Map Locations (Origin = First, Destination = Last)
@@ -205,7 +211,7 @@ function generateCacheKey(query: string, language: string): string {
 /**
  * Get cached response from sessionStorage
  */
-function getCachedResponse(cacheKey: string): N8nTripData | null {
+function getCachedResponse(cacheKey: string): AgentTripData | null {
   try {
     const cached = sessionStorage.getItem(cacheKey);
     if (!cached) return null;
@@ -229,7 +235,7 @@ function getCachedResponse(cacheKey: string): N8nTripData | null {
 /**
  * Cache response in sessionStorage
  */
-function cacheResponse(cacheKey: string, data: N8nTripData): void {
+function cacheResponse(cacheKey: string, data: AgentTripData): void {
   try {
     const cacheEntry = {
       data,

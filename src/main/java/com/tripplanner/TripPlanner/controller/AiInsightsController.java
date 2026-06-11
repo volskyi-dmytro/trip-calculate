@@ -1,5 +1,7 @@
 package com.tripplanner.TripPlanner.controller;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tripplanner.TripPlanner.dto.AgentResponse;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
 import jakarta.annotation.PostConstruct;
@@ -33,10 +35,13 @@ public class AiInsightsController {
     private final RestTemplate restTemplate;
     private final AiCacheService cacheService;
     private final AiUsageService usageService;
+    private final ObjectMapper objectMapper;
 
-    public AiInsightsController(AiCacheService cacheService, AiUsageService usageService) {
+    public AiInsightsController(AiCacheService cacheService, AiUsageService usageService,
+                                ObjectMapper objectMapper) {
         this.cacheService = cacheService;
         this.usageService = usageService;
+        this.objectMapper = objectMapper;
 
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);
@@ -111,10 +116,20 @@ public class AiInsightsController {
 
             if (response.getStatusCode().is2xxSuccessful()) {
                 String responseBody = response.getBody();
-                cacheService.put(cacheKey, responseBody);
-
                 long duration = System.currentTimeMillis() - startTime;
-                usageService.logResponse(logId, "success", null, duration);
+
+                // Only cache responses the agent itself marks as valid — caching a
+                // success=false body would replay a transient geocoding failure
+                // to every user asking the same question for the cache TTL.
+                AgentResponse agentResponse = parseAgentResponse(responseBody);
+                if (agentResponse != null && agentResponse.isValid()) {
+                    cacheService.put(cacheKey, responseBody);
+                    usageService.logResponse(logId, "success", null, duration);
+                } else {
+                    String agentError = agentResponse != null ? agentResponse.getError() : "unparseable response";
+                    usageService.logResponse(logId, "agent_error", agentError, duration);
+                    logger.info("Agent returned non-cacheable response: {}", agentError);
+                }
                 logger.info("Agent call succeeded in {}ms", duration);
 
                 HttpHeaders responseHeaders = new HttpHeaders();
@@ -135,6 +150,18 @@ public class AiInsightsController {
             usageService.logResponse(logId, "error", e.getMessage(), duration);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(Map.of("error", "Failed to generate route", "message", e.getMessage()));
+        }
+    }
+
+    private AgentResponse parseAgentResponse(String body) {
+        if (body == null || body.isEmpty()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(body, AgentResponse.class);
+        } catch (Exception e) {
+            logger.warn("Could not parse agent response: {}", e.getClass().getSimpleName());
+            return null;
         }
     }
 
