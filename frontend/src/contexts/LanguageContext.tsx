@@ -14,9 +14,11 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 const translations: Record<Language, Record<string, string>> = {
   en: {
     // Header
-    'header.title': 'Split expenses simply!',
+    'header.title': 'Know your trip costs before you leave',
+    'header.tagline': 'Plan routes on a live map, estimate fuel costs from real road distances, and split the total between passengers.',
+    'header.signInHint': 'Sign in with Google to create and save trips. The quick calculator works without an account.',
     'header.createTrip': 'Create a trip',
-    'header.calculate': 'Calculate now',
+    'header.calculate': 'Quick calculation',
     'header.login': 'Sign in with Google',
     'header.logout': 'Logout',
     'header.loginRequired': 'Login required',
@@ -30,23 +32,23 @@ const translations: Record<Language, Record<string, string>> = {
     'userMenu.myRoutes': 'My Routes',
 
     // Intro
-    'intro.title': 'AI-Powered Trip Manager',
-    'intro.description': 'Smart trip planning with AI-powered insights and 3D visualization. Calculate costs instantly, optimize routes intelligently, and split expenses effortlessly!',
-    'intro.userFriendly.title': 'User-Friendly',
-    'intro.userFriendly.text': 'Modern terminal-inspired interface with intuitive controls. Navigate seamlessly between trip planning and expense management.',
-    'intro.routePlanner.title': 'AI Route Planner',
-    'intro.routePlanner.text': 'AI-powered route optimization with 3D map visualization and intelligent trip recommendations.',
-    'intro.quickLookup.title': 'Quick Calculator',
-    'intro.quickLookup.text': 'Instant fuel cost calculation with smart caching for faster results.',
+    'intro.title': 'Everything a road trip needs',
+    'intro.description': 'Trip Calculate covers the practical side of travelling by car: how far it is, what the fuel will cost, and who owes what at the end.',
+    'intro.userFriendly.title': 'Clear cost breakdown',
+    'intro.userFriendly.text': 'Enter consumption, distance, and fuel price — get the total cost and the per-passenger share in seconds.',
+    'intro.routePlanner.title': 'Route planning',
+    'intro.routePlanner.text': 'Build multi-stop routes on an interactive map with real road distances and driving times, then save them to your account.',
+    'intro.quickLookup.title': 'Quick calculator',
+    'intro.quickLookup.text': 'No account needed for a fast estimate. Repeated calculations are cached, so checking variants stays instant.',
 
     // FAQ
     'faq.title': 'Frequently Asked Questions',
-    'faq.howWorks.question': 'How does the AI-powered Route Planner work?',
-    'faq.howWorks.answer': 'Our AI analyzes your route and provides intelligent recommendations for optimization, cost savings, and trip planning. The system uses semantic caching for faster responses and supports 3D map visualization for better route understanding.',
+    'faq.howWorks.question': 'How does the route planner work?',
+    'faq.howWorks.answer': 'You place stops on an interactive map and the planner calculates the route over real roads, including distance and driving time. Cost estimates and route suggestions update as you edit the trip.',
     'faq.free.question': 'Is Trip Calculate free to use?',
-    'faq.free.answer': 'Yes! The basic expense calculator is completely free. The AI-powered Route Planner with 3D visualization is a premium feature currently in beta - request access to try it out!',
+    'faq.free.answer': 'The expense calculator is free and works without an account. The route planner is currently in beta — you can request access from the planner page.',
     'faq.abroad.question': 'Can I use Trip Calculate abroad?',
-    'faq.abroad.answer': 'Absolutely! Trip Calculate works globally with support for multiple currencies and international routes. Plan trips anywhere in the world with real-time road-based routing.',
+    'faq.abroad.answer': 'Yes. Routing works worldwide, so you can plan international trips with road-based distances in any country.',
 
     // Calculator
     'calculator.title': 'Calculate Trip Expenses',
@@ -251,7 +253,9 @@ const translations: Record<Language, Record<string, string>> = {
   },
   uk: {
     // Header
-    'header.title': 'Просто поділіть витрати!',
+    'header.title': 'Дізнайтеся вартість поїздки заздалегідь',
+    'header.tagline': 'Плануйте маршрути на мапі, розраховуйте витрати на паливо за реальними відстанями та діліть суму між пасажирами.',
+    'header.signInHint': 'Увійдіть через Google, щоб створювати та зберігати поїздки. Швидкий калькулятор працює без акаунта.',
     'header.createTrip': 'Створити поїздку',
     'header.calculate': 'Швидкий розрахунок',
     'header.login': 'Увійти через Google',
@@ -267,23 +271,23 @@ const translations: Record<Language, Record<string, string>> = {
     'userMenu.myRoutes': 'Мої Маршрути',
 
     // Intro
-    'intro.title': 'Менеджер поїздок з AI',
-    'intro.description': 'Розумне планування поїздок з AI-аналізом та 3D візуалізацією. Миттєвий розрахунок витрат, інтелектуальна оптимізація маршрутів та легкий поділ витрат!',
-    'intro.userFriendly.title': 'Зручний у використанні',
-    'intro.userFriendly.text': 'Сучасний інтерфейс у стилі терміналу з інтуїтивним керуванням. Легко переходьте між плануванням поїздок та управлінням витратами.',
-    'intro.routePlanner.title': 'AI Планувальник',
-    'intro.routePlanner.text': 'Оптимізація маршрутів на базі AI з 3D картою та інтелектуальними рекомендаціями.',
+    'intro.title': 'Усе потрібне для подорожі автомобілем',
+    'intro.description': 'Trip Calculate бере на себе практичний бік подорожі: яка відстань, скільки коштуватиме паливо і хто скільки винен наприкінці.',
+    'intro.userFriendly.title': 'Зрозумілий розрахунок витрат',
+    'intro.userFriendly.text': 'Вкажіть витрату палива, відстань і ціну за літр — отримайте загальну вартість і частку кожного пасажира за секунди.',
+    'intro.routePlanner.title': 'Планування маршрутів',
+    'intro.routePlanner.text': 'Створюйте маршрути з кількома зупинками на інтерактивній мапі з реальними відстанями та часом у дорозі, а потім зберігайте їх в акаунті.',
     'intro.quickLookup.title': 'Швидкий калькулятор',
-    'intro.quickLookup.text': 'Миттєвий розрахунок вартості палива з розумним кешуванням для швидших результатів.',
+    'intro.quickLookup.text': 'Для швидкої оцінки акаунт не потрібен. Повторні розрахунки кешуються, тож перевірка варіантів займає мить.',
 
     // FAQ
     'faq.title': 'Часто задавані питання',
-    'faq.howWorks.question': 'Як працює планувальник маршрутів з AI?',
-    'faq.howWorks.answer': 'Наш AI аналізує ваш маршрут та надає інтелектуальні рекомендації щодо оптимізації, економії витрат та планування поїздки. Система використовує семантичне кешування для швидших відповідей та підтримує 3D візуалізацію карти для кращого розуміння маршруту.',
+    'faq.howWorks.question': 'Як працює планувальник маршрутів?',
+    'faq.howWorks.answer': 'Ви додаєте зупинки на інтерактивній мапі, а планувальник прокладає маршрут реальними дорогами з відстанню та часом у дорозі. Оцінка витрат і підказки оновлюються під час редагування поїздки.',
     'faq.free.question': 'Чи є Trip Calculate безкоштовним?',
-    'faq.free.answer': 'Так! Базовий калькулятор витрат повністю безкоштовний. Планувальник маршрутів з AI та 3D візуалізацією - це преміум функція, яка зараз у бета-тестуванні. Запросіть доступ, щоб спробувати!',
+    'faq.free.answer': 'Калькулятор витрат безкоштовний і працює без акаунта. Планувальник маршрутів зараз у бета-версії — доступ можна запросити на сторінці планувальника.',
     'faq.abroad.question': 'Чи можу я використовувати Trip Calculate за кордоном?',
-    'faq.abroad.answer': 'Звичайно! Trip Calculate працює по всьому світу з підтримкою кількох валют та міжнародних маршрутів. Плануйте поїздки будь-де у світі з маршрутизацією по реальних дорогах.',
+    'faq.abroad.answer': 'Так. Маршрутизація працює в усьому світі, тож можна планувати міжнародні поїздки з реальними дорожніми відстанями в будь-якій країні.',
 
     // Calculator
     'calculator.title': 'Розрахувати витрати на поїздку',

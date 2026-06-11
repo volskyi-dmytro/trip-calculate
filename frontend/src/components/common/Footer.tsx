@@ -1,18 +1,21 @@
-import { useLanguage } from '../../contexts/LanguageContext';
-
 export function Footer() {
-  const { t } = useLanguage();
-
   return (
     <footer>
-      <div className="container">
-        <p>© 2026 Dmytro Volskyi</p>
-        <div className="social-links">
-          <p>{t('footer.connectWith')}</p>
-          <a href="https://www.linkedin.com/in/volskyi-dmytro" target="_blank" rel="noopener noreferrer" title="LinkedIn">
+      <div className="container footer-inner">
+        <p style={{ margin: 0 }}>© 2026 Trip Calculate · Dmytro Volskyi</p>
+        <div className="footer-links">
+          <a
+            href="https://www.linkedin.com/in/volskyi-dmytro"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             LinkedIn
           </a>
-          <a href="https://www.github.com/volskyi-dmytro" target="_blank" rel="noopener noreferrer" title="GitHub">
+          <a
+            href="https://www.github.com/volskyi-dmytro"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             GitHub
           </a>
         </div>
