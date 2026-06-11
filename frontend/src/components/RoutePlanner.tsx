@@ -15,8 +15,7 @@ import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
-import { planTripWithN8n } from '../services/n8nService'
-// import { getTripInsights } from '../services/geminiService'
+import { parseRouteWithAgent } from '../services/agentService'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { ChatMessage } from '../types'
@@ -86,8 +85,7 @@ export function RoutePlanner() {
   // AI Chat State
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
-  const [isProcessingN8n, setIsProcessingN8n] = useState(false)
-  // const [isGettingInsights, setIsGettingInsights] = useState(false)
+  const [isProcessingAi, setIsProcessingAi] = useState(false)
   const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
   const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
 
@@ -724,7 +722,7 @@ export function RoutePlanner() {
 
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
-    setIsProcessingN8n(true);
+    setIsProcessingAi(true);
 
     // Transition to dashboard after first user message
     if (showWelcomeScreen) {
@@ -733,48 +731,48 @@ export function RoutePlanner() {
     }
 
     try {
-      const n8nData = await planTripWithN8n(userMsg.content, language);
+      const agentData = await parseRouteWithAgent(userMsg.content, language);
 
-      if (n8nData) {
+      if (agentData) {
         const updates: string[] = [];
 
         // Update fuel consumption
-        if (n8nData.consumption) {
-          setRouteSettings(prev => ({ ...prev, fuelConsumption: n8nData.consumption! }));
-          updates.push(`${t.routeSettings.fuelConsumption}: ${n8nData.consumption}`);
+        if (agentData.consumption) {
+          setRouteSettings(prev => ({ ...prev, fuelConsumption: agentData.consumption! }));
+          updates.push(`${t.routeSettings.fuelConsumption}: ${agentData.consumption}`);
         }
 
         // Update fuel cost
-        if (n8nData.price) {
-          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: n8nData.price! }));
-          updates.push(`${t.routeSettings.fuelCost}: ${n8nData.price}`);
+        if (agentData.price) {
+          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price! }));
+          updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
 
         // Update currency
-        if (n8nData.currency) {
-          setRouteSettings(prev => ({ ...prev, currency: n8nData.currency! }));
+        if (agentData.currency) {
+          setRouteSettings(prev => ({ ...prev, currency: agentData.currency! }));
         }
 
         // Update passenger count
-        if (n8nData.passengers) {
-          setRouteSettings(prev => ({ ...prev, passengerCount: n8nData.passengers! }));
-          updates.push(`${language === 'uk' ? 'Пасажири' : 'Passengers'}: ${n8nData.passengers}`);
+        if (agentData.passengers) {
+          setRouteSettings(prev => ({ ...prev, passengerCount: agentData.passengers! }));
+          updates.push(`${language === 'uk' ? 'Пасажири' : 'Passengers'}: ${agentData.passengers}`);
         }
 
-        // Add waypoints from n8n data
+        // Add waypoints from agent data
         const newWaypoints: Waypoint[] = [];
 
         // Origin
-        if (n8nData.originLocation) {
+        if (agentData.originLocation) {
           newWaypoints.push({
             id: Date.now().toString() + '-origin',
-            lat: n8nData.originLocation.lat,
-            lng: n8nData.originLocation.lon,
-            name: n8nData.originLocation.display_name
+            lat: agentData.originLocation.lat,
+            lng: agentData.originLocation.lon,
+            name: agentData.originLocation.display_name
           });
-          updates.push(`Start: ${n8nData.originLocation.display_name.split(',')[0]}`);
-        } else if (n8nData.originName) {
-          const locs = await geocodingService.forwardGeocode(n8nData.originName);
+          updates.push(`Start: ${agentData.originLocation.display_name.split(',')[0]}`);
+        } else if (agentData.originName) {
+          const locs = await geocodingService.forwardGeocode(agentData.originName);
           if (locs) {
             const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
             newWaypoints.push({
@@ -788,8 +786,8 @@ export function RoutePlanner() {
         }
 
         // Intermediate waypoints
-        if (n8nData.waypoints && n8nData.waypoints.length > 0) {
-          for (const wp of n8nData.waypoints) {
+        if (agentData.waypoints && agentData.waypoints.length > 0) {
+          for (const wp of agentData.waypoints) {
             newWaypoints.push({
               id: Date.now().toString() + '-wp-' + Math.random(),
               lat: wp.lat,
@@ -797,20 +795,20 @@ export function RoutePlanner() {
               name: wp.display_name
             });
           }
-          updates.push(`+${n8nData.waypoints.length} stop(s)`);
+          updates.push(`+${agentData.waypoints.length} stop(s)`);
         }
 
         // Destination
-        if (n8nData.destinationLocation) {
+        if (agentData.destinationLocation) {
           newWaypoints.push({
             id: Date.now().toString() + '-dest',
-            lat: n8nData.destinationLocation.lat,
-            lng: n8nData.destinationLocation.lon,
-            name: n8nData.destinationLocation.display_name
+            lat: agentData.destinationLocation.lat,
+            lng: agentData.destinationLocation.lon,
+            name: agentData.destinationLocation.display_name
           });
-          updates.push(`Destination: ${n8nData.destinationLocation.display_name.split(',')[0]}`);
-        } else if (n8nData.destinationName) {
-          const locs = await geocodingService.forwardGeocode(n8nData.destinationName);
+          updates.push(`Destination: ${agentData.destinationLocation.display_name.split(',')[0]}`);
+        } else if (agentData.destinationName) {
+          const locs = await geocodingService.forwardGeocode(agentData.destinationName);
           if (locs) {
             const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
             newWaypoints.push({
@@ -827,11 +825,19 @@ export function RoutePlanner() {
           setWaypoints(newWaypoints);
         }
 
+        // Tell the user about locations the agent could not geocode
+        const skippedNames = agentData.skippedLocations?.map(s => s.name) ?? [];
+        const skippedNote = skippedNames.length > 0
+          ? (language === 'uk'
+              ? ` Не вдалося знайти: ${skippedNames.join(', ')}.`
+              : ` Could not find: ${skippedNames.join(', ')}.`)
+          : '';
+
         const responseMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: updates.length > 0
-            ? `✓ Updated: ${updates.join(', ')}.`
+            ? `✓ Updated: ${updates.join(', ')}.${skippedNote}`
             : 'No changes made. Please provide more details.',
           timestamp: Date.now()
         };
@@ -890,49 +896,9 @@ export function RoutePlanner() {
         }
       );
     } finally {
-      setIsProcessingN8n(false);
+      setIsProcessingAi(false);
     }
   }, [chatInput, t, showWelcomeScreen, language]);
-
-  // AI Insights Handler (commented out for now)
-  // const handleGetAiInsights = useCallback(async () => {
-  //   if (waypoints.length < 2) {
-  //     setChatMessages(prev => [...prev, {
-  //       id: Date.now().toString(),
-  //       role: 'assistant',
-  //       content: 'Please add at least 2 waypoints (start and destination) to get insights.',
-  //       timestamp: Date.now()
-  //     }]);
-  //     return;
-  //   }
-
-  //   setIsGettingInsights(true);
-  //   setChatMessages(prev => [...prev, {
-  //     id: Date.now().toString(),
-  //     role: 'assistant',
-  //     content: 'Searching for interesting stops along your route...',
-  //     timestamp: Date.now()
-  //   }]);
-
-  //   const origin = waypoints[0].name.split(',')[0];
-  //   const destination = waypoints[waypoints.length - 1].name.split(',')[0];
-  //   const distance = routeGeometry.length > 0 ? calculateTotalDistance() : 0;
-
-  //   const insights = await getTripInsights(origin, destination, distance / 1000, language);
-
-  //   setChatMessages(prev => [...prev, {
-  //     id: (Date.now() + 1).toString(),
-  //     role: 'assistant',
-  //     content: insights.content,
-  //     timestamp: Date.now()
-  //   }]);
-
-  //   if (insights.suggestedStops.length > 0) {
-  //     setPendingSuggestions(insights.suggestedStops);
-  //   }
-
-  //   setIsGettingInsights(false);
-  // }, [waypoints, routeGeometry, language]);
 
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
@@ -1019,7 +985,7 @@ export function RoutePlanner() {
         chatInput={chatInput}
         onChatInputChange={setChatInput}
         onSendMessage={handleSendChat}
-        isProcessing={isProcessingN8n}
+        isProcessing={isProcessingAi}
         onManualClick={handleManualClick}
         pendingSuggestions={pendingSuggestions}
         onApplySuggestions={handleApplySuggestions}
@@ -1402,7 +1368,7 @@ export function RoutePlanner() {
               background: 'var(--nav-bg-sidebar)',
             }}
           >
-            {isProcessingN8n && (
+            {isProcessingAi && (
               <div
                 className="h-0.5 mb-2 rounded-full animate-pulse"
                 style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
@@ -1415,9 +1381,9 @@ export function RoutePlanner() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
+                  if (e.key === 'Enter' && !isProcessingAi && chatInput.trim()) handleSendChat()
                 }}
-                disabled={isProcessingN8n}
+                disabled={isProcessingAi}
                 className="flex-1 h-9 text-sm disabled:opacity-50"
                 style={{
                   background: 'var(--nav-bg-input)',
@@ -1427,14 +1393,14 @@ export function RoutePlanner() {
               />
               <button
                 onClick={handleSendChat}
-                disabled={isProcessingN8n || !chatInput.trim()}
+                disabled={isProcessingAi || !chatInput.trim()}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                 style={{
                   background: 'var(--nav-accent)',
                   color: '#000',
                 }}
               >
-                {isProcessingN8n ? (
+                {isProcessingAi ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : (
                   <Send className="h-4 w-4" />
@@ -1924,7 +1890,7 @@ export function RoutePlanner() {
                   background: 'var(--nav-bg-sidebar)',
                 }}
               >
-                {isProcessingN8n && (
+                {isProcessingAi && (
                   <div
                     className="h-0.5 mb-2 rounded-full animate-pulse"
                     style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
@@ -1937,9 +1903,9 @@ export function RoutePlanner() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isProcessingN8n && chatInput.trim()) handleSendChat()
+                      if (e.key === 'Enter' && !isProcessingAi && chatInput.trim()) handleSendChat()
                     }}
-                    disabled={isProcessingN8n}
+                    disabled={isProcessingAi}
                     className="flex-1 h-9 text-sm disabled:opacity-50"
                     style={{
                       background: 'var(--nav-bg-input)',
@@ -1949,14 +1915,14 @@ export function RoutePlanner() {
                   />
                   <button
                     onClick={handleSendChat}
-                    disabled={isProcessingN8n || !chatInput.trim()}
+                    disabled={isProcessingAi || !chatInput.trim()}
                     className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                     style={{
                       background: 'var(--nav-accent)',
                       color: '#000',
                     }}
                   >
-                    {isProcessingN8n ? (
+                    {isProcessingAi ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
                       <Send className="h-4 w-4" />
