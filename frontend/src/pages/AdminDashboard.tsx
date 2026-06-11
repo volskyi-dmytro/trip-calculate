@@ -21,12 +21,12 @@ export function AdminDashboard() {
   return (
     <>
       <Header />
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-blue-50 dark:from-gray-900 dark:to-purple-900/20">
+      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
-            <div className="p-2 bg-purple-500 rounded-lg">
+            <div className="p-2 bg-primary rounded-lg">
               <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
             </div>
             <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white">
@@ -50,7 +50,7 @@ export function AdminDashboard() {
                     py-3 sm:py-4 px-2 sm:px-1 border-b-2 font-medium text-sm sm:text-base transition-colors text-left
                     ${
                       activeTab === tab.id
-                        ? 'border-purple-500 text-purple-600 dark:text-purple-400'
+                        ? 'border-primary text-primary'
                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
                     }
                   `}

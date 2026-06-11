@@ -39,7 +39,7 @@ export function TopChatBar({
         <div className="relative">
           {/* Progress indicator when processing */}
           {isProcessing && (
-            <div className="absolute -top-1 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-500 to-indigo-400 animate-pulse rounded-full" />
+            <div className="absolute -top-1 left-0 right-0 h-0.5 bg-primary animate-pulse rounded-full" />
           )}
 
           <div className="flex gap-2">
@@ -55,7 +55,7 @@ export function TopChatBar({
             <Button
               onClick={onSendMessage}
               disabled={isProcessing || !chatInput.trim()}
-              className="px-4 bg-indigo-600 hover:bg-indigo-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
+              className="px-4 bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"
             >
               {isProcessing ? (
                 <>

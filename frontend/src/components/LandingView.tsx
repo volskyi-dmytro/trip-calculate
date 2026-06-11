@@ -14,13 +14,13 @@ export function LandingView() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50 dark:from-slate-900 dark:to-slate-800">
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       <div className="container mx-auto px-4 py-12 max-w-6xl">
         {/* Hero Section */}
         <div className="text-center mb-12">
           <h1 className="text-5xl md:text-6xl font-bold text-slate-900 dark:text-white mb-4">
             {t.heading1}{' '}
-            <span className="text-green-500">{t.heading2}</span>
+            <span className="text-primary">{t.heading2}</span>
           </h1>
           <p className="text-lg md:text-xl text-slate-600 dark:text-slate-300 max-w-3xl mx-auto leading-relaxed">
             {t.subtitle}

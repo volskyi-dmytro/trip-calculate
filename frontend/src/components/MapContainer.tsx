@@ -143,7 +143,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
             'line-cap': 'round'
           },
           paint: {
-            'line-color': '#3b82f6', // Tailwind blue-500
+            'line-color': '#0e7a63', // product accent
             'line-width': 4,
             'line-opacity': 0.8
           }

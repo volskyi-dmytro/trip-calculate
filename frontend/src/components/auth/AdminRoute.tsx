@@ -27,7 +27,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
 
   if (!user.isAdmin) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800 p-4">
+      <div className="flex items-center justify-center min-h-screen p-4" style={{ background: 'var(--bg)' }}>
         <Card className="max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">

@@ -51,8 +51,8 @@ export function SystemOverview() {
       label: t('admin.overview.totalUsers'),
       value: stats.totalUsers,
       icon: Users,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/20',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: t('admin.overview.activeUsers'),
@@ -65,15 +65,15 @@ export function SystemOverview() {
       label: t('admin.overview.totalRoutes'),
       value: stats.totalRoutes,
       icon: Navigation,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900/20',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: t('admin.overview.totalWaypoints'),
       value: stats.totalWaypoints,
       icon: MapPin,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-100 dark:bg-orange-900/20',
+      color: 'text-primary',
+      bgColor: 'bg-primary/10',
     },
     {
       label: t('admin.overview.pendingRequests'),
@@ -130,7 +130,7 @@ export function SystemOverview() {
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast24h}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -138,7 +138,7 @@ export function SystemOverview() {
               </p>
             </div>
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast7d}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -167,16 +167,16 @@ export function SystemOverview() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="text-center p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
-              <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+            <div className="text-center p-4 bg-primary/5 rounded-lg">
+              <p className="text-2xl font-bold text-primary">
                 {stats.aiRequestsLast24h}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
                 Requests (24h)
               </p>
             </div>
-            <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+            <div className="text-center p-4 bg-primary/5 rounded-lg">
+              <p className="text-2xl font-bold text-primary">
                 {stats.aiRequestsLastMonth}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
@@ -203,9 +203,9 @@ export function SystemOverview() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
             <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <Users className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
+                <Users className="h-5 w-5 text-primary" />
               </div>
-              <p className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
+              <p className="text-2xl font-bold text-primary">
                 {stats.aiUniqueUsersLast24h}
               </p>
               <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">

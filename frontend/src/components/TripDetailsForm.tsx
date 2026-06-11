@@ -106,7 +106,7 @@ export function TripDetailsForm({
   return (
     <div className="w-80 border-r border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-900 overflow-y-auto p-4">
       <h3 className="font-bold mb-4 flex items-center gap-2 text-slate-800 dark:text-white">
-        <MapPin className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
+        <MapPin className="w-5 h-5 text-primary" />
         {t.title}
       </h3>
 

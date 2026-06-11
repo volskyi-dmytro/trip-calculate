@@ -40,7 +40,7 @@ export function QuickCalculator() {
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h3>
-          <span className="text-xs px-2 py-1 rounded bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 font-semibold">
+          <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
             {t.guestMode}
           </span>
         </div>
@@ -149,7 +149,7 @@ export function QuickCalculator() {
             <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
               {t.perPassenger}:
             </span>
-            <span className="text-lg font-semibold text-indigo-600 dark:text-indigo-400">
+            <span className="text-lg font-semibold text-primary">
               {costPerPassenger.toFixed(2)} {currency}
             </span>
           </div>

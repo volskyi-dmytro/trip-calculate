@@ -8,7 +8,7 @@ interface AlertProps {
 
 export function Alert({ children, className = '', variant = 'default' }: AlertProps) {
   const variantStyles = {
-    default: 'bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-700 text-blue-900 dark:text-blue-100',
+    default: 'bg-primary/5 border-primary/20 text-gray-800 dark:text-gray-200',
     destructive: 'bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-700 text-red-900 dark:text-red-100'
   };
 
