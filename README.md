@@ -68,7 +68,7 @@ A modern full-stack web application for trip expense calculation and route plann
 
 ### AI Agent Service
 - **Python 3.12** + **FastAPI** - HTTP API for the agent
-- **LangGraph** - Stateful graph: parse → geocode → format
+- **LangGraph** - Agentic graph: parse → geocode → (LLM retry loop for failed locations) → format
 - **OpenAI gpt-4o-mini** - Structured location extraction
 - **Nominatim** - Open-source geocoding with retry/backoff
 - **Langfuse** - LLM tracing and cost observability
@@ -272,7 +272,7 @@ tripcalculate/
 │   ├── app/
 │   │   ├── main.py               # FastAPI app, Langfuse tracing wrapper
 │   │   ├── graph.py              # LangGraph StateGraph definition
-│   │   ├── nodes.py              # parse_locations, geocode_locations, format_*
+│   │   ├── nodes.py              # parse_locations, geocode_locations, retry_failed_locations, format_*
 │   │   ├── geocoding.py          # Nominatim client with retry/backoff
 │   │   └── schema.py             # Pydantic models (GraphState, ParseRouteResponse)
 │   ├── tests/                    # pytest unit + API contract tests

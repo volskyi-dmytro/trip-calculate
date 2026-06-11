@@ -4,7 +4,10 @@ from app.schema import (
     GraphState, ParsedRoute, ParsedLocation, TripSettings,
     GeocodedLocation,
 )
-from app.nodes import parse_locations, geocode_locations, format_response, format_error, check_viable
+from app.nodes import (
+    parse_locations, geocode_locations, retry_failed_locations,
+    format_response, format_error, route_after_geocode,
+)
 
 
 def _state(**kwargs) -> GraphState:
@@ -16,6 +19,7 @@ def _state(**kwargs) -> GraphState:
         "geocoded": [],
         "response": None,
         "error": None,
+        "retry_count": 0,
     }
     base.update(kwargs)
     return base
@@ -101,26 +105,121 @@ async def test_geocode_locations_fans_out_to_all_locations(mock_geocode):
     assert mock_geocode.call_count == 2
 
 
-# ── check_viable ──────────────────────────────────────────────────────────
+# ── route_after_geocode ───────────────────────────────────────────────────
 
-def test_check_viable_routes_to_format_response():
+def test_router_routes_to_format_response():
     geocoded = [
         _geocoded("Kyiv", "origin", "nominatim"),
         _geocoded("Lviv", "destination", "nominatim", lat=49.84, lon=24.03),
     ]
-    assert check_viable(_state(geocoded=geocoded)) == "format_response"
+    assert route_after_geocode(_state(geocoded=geocoded)) == "format_response"
 
 
-def test_check_viable_routes_to_format_error_insufficient():
+def test_router_routes_to_retry_when_budget_remains():
     geocoded = [
         _geocoded("Kyiv", "origin", "nominatim"),
         _geocoded("Unknown", "destination", "failed"),
     ]
-    assert check_viable(_state(geocoded=geocoded)) == "format_error"
+    assert route_after_geocode(_state(geocoded=geocoded)) == "retry_failed"
 
 
-def test_check_viable_routes_to_format_error_on_state_error():
-    assert check_viable(_state(error="parse failed")) == "format_error"
+def test_router_routes_to_format_error_when_retries_exhausted():
+    geocoded = [
+        _geocoded("Kyiv", "origin", "nominatim"),
+        _geocoded("Unknown", "destination", "failed"),
+    ]
+    assert route_after_geocode(_state(geocoded=geocoded, retry_count=1)) == "format_error"
+
+
+def test_router_routes_to_format_response_with_skips_when_retries_exhausted():
+    geocoded = [
+        _geocoded("Kyiv", "origin", "nominatim"),
+        _geocoded("Unknown", "waypoint", "failed"),
+        _geocoded("Lviv", "destination", "nominatim", lat=49.84, lon=24.03),
+    ]
+    assert route_after_geocode(_state(geocoded=geocoded, retry_count=1)) == "format_response"
+
+
+def test_router_routes_to_format_error_on_state_error():
+    assert route_after_geocode(_state(error="parse failed")) == "format_error"
+
+
+# ── retry_failed_locations ────────────────────────────────────────────────
+
+def _mock_parse_response(parsed):
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    return mock_response
+
+
+@patch("app.nodes.geocode_location", new_callable=AsyncMock)
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_retry_recovers_failed_location(mock_client, mock_geocode):
+    geocoded = [
+        _geocoded("Kyiv", "origin", "nominatim"),
+        _geocoded("Льввв", "destination", "failed"),
+    ]
+    renormalized = ParsedRoute(
+        locations=[ParsedLocation(name="Lviv Ukraine", location_type="destination")],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(renormalized)
+    )
+    mock_geocode.return_value = _geocoded("Lviv Ukraine", "destination", "nominatim", lat=49.84, lon=24.03)
+
+    result = await retry_failed_locations(_state(geocoded=geocoded))
+
+    assert result["retry_count"] == 1
+    assert result["geocoded"][1].source == "nominatim"
+    assert result["geocoded"][1].recovered is True
+    assert result["geocoded"][1].location_type == "destination"
+    # Only the failed location is re-geocoded
+    assert mock_geocode.call_count == 1
+
+
+@patch("app.nodes.geocode_location", new_callable=AsyncMock)
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_retry_keeps_original_failure_when_retry_also_fails(mock_client, mock_geocode):
+    geocoded = [
+        _geocoded("Kyiv", "origin", "nominatim"),
+        _geocoded("Xyzzy", "destination", "failed"),
+    ]
+    renormalized = ParsedRoute(
+        locations=[ParsedLocation(name="Xyzzy Nowhere", location_type="destination")],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(renormalized)
+    )
+    mock_geocode.return_value = _geocoded("Xyzzy Nowhere", "destination", "failed")
+
+    result = await retry_failed_locations(_state(geocoded=geocoded))
+
+    assert result["retry_count"] == 1
+    assert result["geocoded"][1].source == "failed"
+    assert result["geocoded"][1].name == "Xyzzy"  # original slot kept
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_retry_is_best_effort_on_llm_failure(mock_client):
+    geocoded = [
+        _geocoded("Kyiv", "origin", "nominatim"),
+        _geocoded("Xyzzy", "destination", "failed"),
+    ]
+    mock_client.beta.chat.completions.parse = AsyncMock(side_effect=Exception("OpenAI down"))
+
+    result = await retry_failed_locations(_state(geocoded=geocoded))
+
+    assert result["retry_count"] == 1
+    assert result["geocoded"][1].source == "failed"
 
 
 # ── format_response ───────────────────────────────────────────────────────

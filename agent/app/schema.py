@@ -32,6 +32,7 @@ class GeocodedLocation(BaseModel):
     source: str  # "nominatim" | "ai_provided" | "failed"
     error: bool = False
     message: Optional[str] = None
+    recovered: bool = False  # geocoded successfully only after an LLM retry pass
 
 
 # ── HTTP contract models (FastAPI I/O) ─────────────────────────────────────
@@ -67,6 +68,7 @@ class RouteStats(BaseModel):
     skipped: int
     aiProvided: int
     nominatimProvided: int
+    recovered: int = 0  # locations rescued by the retry loop
 
 
 class ParseRouteResponse(BaseModel):
@@ -88,3 +90,4 @@ class GraphState(TypedDict):
     geocoded: list[GeocodedLocation]
     response: Optional[ParseRouteResponse]
     error: Optional[str]
+    retry_count: int

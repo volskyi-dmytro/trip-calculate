@@ -56,6 +56,7 @@ async def parse_route(request: ParseRouteRequest):
                     "geocoded": [],
                     "response": None,
                     "error": None,
+                    "retry_count": 0,
                 }
 
                 result = await route_graph.ainvoke(initial_state)

@@ -23,6 +23,22 @@ RULES:
 8. location_type: first location = "origin", last = "destination", middle = "waypoint"
 9. "picking my friend" / "з другом" → set passengers to 2"""
 
+_RETRY_SYSTEM_PROMPT = """Some locations failed to geocode. Rewrite ONLY these failed locations
+with alternative normalizations that are more likely to be found by OpenStreetMap Nominatim.
+
+OUTPUT: a JSON object matching the ParsedRoute schema — locations array (same order and
+location_type as given) and settings (may be empty). No markdown, JSON only.
+
+STRATEGIES (try a different one than before):
+1. Use a different transliteration variant ("Kiev" vs "Kyiv")
+2. Replace a POI you cannot pinpoint with its host city ("Café X Lviv" → "Lviv Ukraine")
+3. Add or change the country suffix
+4. Strip street numbers and qualifiers
+5. If you are CONFIDENT of exact coordinates, provide lat/lon as a fallback"""
+
+# Bounded self-correction: one LLM re-normalization pass for failed geocodes
+MAX_GEOCODE_RETRIES = 1
+
 # Module-level singleton — patched by unit tests via @patch("app.nodes._openai_client")
 _openai_client = AsyncOpenAI()
 
@@ -56,12 +72,68 @@ async def geocode_locations(state: GraphState) -> GraphState:
     return {**state, "geocoded": results}
 
 
-def check_viable(state: GraphState) -> str:
-    """Conditional edge router: returns the name of the next node."""
+def route_after_geocode(state: GraphState) -> str:
+    """Conditional edge router: returns the name of the next node.
+
+    Routes to the retry node while failed locations remain and the retry
+    budget is not exhausted; otherwise decides success vs error.
+    """
     if state.get("error"):
         return "format_error"
-    successful = [loc for loc in state.get("geocoded", []) if loc.source != "failed"]
-    return "format_response" if len(successful) >= 2 else "format_error"
+    geocoded = state.get("geocoded", [])
+    failed = [loc for loc in geocoded if loc.source == "failed"]
+    if failed and state.get("retry_count", 0) < MAX_GEOCODE_RETRIES:
+        return "retry_failed"
+    return "format_response" if len(geocoded) - len(failed) >= 2 else "format_error"
+
+
+async def retry_failed_locations(state: GraphState) -> GraphState:
+    """Self-correction pass: ask the LLM to re-normalize the locations that
+    failed to geocode, then geocode only those again and merge the results.
+    Always increments retry_count so the graph loop is bounded."""
+    geocoded = state.get("geocoded", [])
+    failed_idx = [i for i, loc in enumerate(geocoded) if loc.source == "failed"]
+    next_count = state.get("retry_count", 0) + 1
+    if not failed_idx:
+        return {**state, "retry_count": next_count}
+
+    failed_names = [geocoded[i].name for i in failed_idx]
+    try:
+        response = await _openai_client.beta.chat.completions.parse(
+            model="gpt-4o-mini",
+            temperature=0.4,
+            messages=[
+                {"role": "system", "content": _RETRY_SYSTEM_PROMPT},
+                {
+                    "role": "user",
+                    "content": (
+                        f"Original request: {state['message']}\n"
+                        f"Failed locations (in order): {', '.join(failed_names)}"
+                    ),
+                },
+            ],
+            response_format=ParsedRoute,
+        )
+        result = response.choices[0].message.parsed
+        if result is None or not result.locations:
+            raise ValueError("Retry parsing returned no locations")
+    except Exception:
+        # Retry is best-effort: keep the original failures and let the router decide
+        return {**state, "retry_count": next_count}
+
+    user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
+    retry_locs = result.locations[: len(failed_idx)]
+    tasks = [geocode_location(loc, user_agent) for loc in retry_locs]
+    retried: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
+
+    merged = list(geocoded)
+    for idx, new_loc in zip(failed_idx, retried):
+        if new_loc.source != "failed":
+            # Keep the original slot's location_type; the LLM may have mangled it
+            merged[idx] = new_loc.model_copy(
+                update={"location_type": geocoded[idx].location_type, "recovered": True}
+            )
+    return {**state, "geocoded": merged, "retry_count": next_count}
 
 
 def format_response(state: GraphState) -> GraphState:
@@ -87,10 +159,13 @@ def format_response(state: GraphState) -> GraphState:
     settings = state["parsed"].settings
     ai_count = sum(1 for l in successful if l.source == "ai_provided")
     nominatim_count = sum(1 for l in successful if l.source == "nominatim")
+    recovered_count = sum(1 for l in successful if l.recovered)
 
     msg = f"Route created with {len(waypoints_out)} waypoint(s)"
     if ai_count > 0:
         msg += f" ({ai_count} from AI, {nominatim_count} from geocoding)"
+    if recovered_count > 0:
+        msg += f". Recovered {recovered_count} location(s) after retry"
     if failed:
         msg += f". Skipped {len(failed)} unverified location(s)"
 
@@ -112,6 +187,7 @@ def format_response(state: GraphState) -> GraphState:
             skipped=len(failed),
             aiProvided=ai_count,
             nominatimProvided=nominatim_count,
+            recovered=recovered_count,
         ),
         skippedLocations=[{"name": l.name, "reason": l.message} for l in failed] or None,
     )
