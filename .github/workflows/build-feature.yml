@@ -8,6 +8,12 @@ on:
   pull_request:
     branches: [ develop, master ]
 
+# Default GITHUB_TOKEN is read-only; the PR-comment step needs write access
+permissions:
+  contents: read
+  issues: write
+  pull-requests: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -67,9 +73,10 @@ jobs:
           docker build -t trip-calculate:feature-${{ github.sha }} .
           echo "✅ Docker build successful!"
 
-      # Add PR comment with build status
+      # Add PR comment with build status (cosmetic — never fail the build over it)
       - name: Comment on PR
         if: github.event_name == 'pull_request'
+        continue-on-error: true
         uses: actions/github-script@v7
         with:
           script: |
