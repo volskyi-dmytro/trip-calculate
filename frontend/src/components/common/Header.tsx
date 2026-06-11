@@ -5,7 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useSeason } from '../../hooks/useSeason';
 import { LoginButton } from '../auth/LoginButton';
 import { UserMenu } from '../auth/UserMenu';
-import { Home } from 'lucide-react';
+import { Route, Sun, Moon } from 'lucide-react';
 
 interface HeaderProps {
   onCalculateClick?: () => void;
@@ -19,7 +19,6 @@ export function Header({ onCalculateClick }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
   const season = useSeason();
 
-  // Check if we're on the homepage
   const isHomePage = location.pathname === '/';
 
   const handleCreateTripClick = () => {
@@ -28,102 +27,76 @@ export function Header({ onCalculateClick }: HeaderProps) {
     }
   };
 
-  const headerStyle = {
-    backgroundImage: `url(/images/${season}.webp)`,
-  };
-
   return (
-    <header className="header" style={headerStyle}>
-      <div className="container">
-        <div className="language-switch">
-          <input
-            type="checkbox"
-            id="language-toggle"
-            checked={language === 'uk'}
-            onChange={() => setLanguage(language === 'en' ? 'uk' : 'en')}
-          />
-          <label htmlFor="language-toggle">
-            <span className="slider"></span>
-          </label>
-        </div>
-        <div className="mode-switch">
-          <input
-            type="checkbox"
-            id="darkmode-toggle"
-            checked={theme === 'dark'}
-            onChange={toggleTheme}
-          />
-          <label htmlFor="darkmode-toggle">
-            <span className="slider"></span>
-          </label>
-        </div>
+    <header
+      className={`hero${isHomePage ? '' : ' hero--compact'}`}
+      style={{ backgroundImage: `url(/images/${season}.webp)` }}
+    >
+      <div className="hero-scrim" aria-hidden="true" />
+      <div className="container hero-inner">
+        <div className="topbar">
+          <button
+            type="button"
+            className="brand"
+            onClick={() => navigate('/')}
+            title={t('header.nav.home')}
+          >
+            <Route size={20} strokeWidth={2.25} aria-hidden="true" />
+            <span>Trip Calculate</span>
+          </button>
 
-        <div className="auth-section">
-          {loading ? (
-            <div className="text-gray-600 dark:text-gray-400">Loading...</div>
-          ) : user ? (
-            <UserMenu />
-          ) : (
-            <div id="login-section">
-              <LoginButton />
+          <div className="topbar-controls">
+            <div className="seg" role="group" aria-label="Language">
+              <button
+                type="button"
+                className={language === 'en' ? 'seg-on' : ''}
+                onClick={() => setLanguage('en')}
+                aria-pressed={language === 'en'}
+              >
+                EN
+              </button>
+              <button
+                type="button"
+                className={language === 'uk' ? 'seg-on' : ''}
+                onClick={() => setLanguage('uk')}
+                aria-pressed={language === 'uk'}
+              >
+                UA
+              </button>
             </div>
-          )}
+
+            <button
+              type="button"
+              className="icon-btn"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            </button>
+
+            {!loading && (user ? <UserMenu /> : <LoginButton />)}
+          </div>
         </div>
 
-        <h1
-          onClick={() => navigate('/')}
-          style={{ cursor: 'pointer' }}
-          title={t('header.nav.home')}
-        >
-          {t('header.title')}
-        </h1>
-
-        {/* Return to Homepage Button - Only show when not on homepage */}
-        {!isHomePage && (
-          <div style={{ gridArea: 'nav' }} className="w-full flex justify-center">
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center justify-center gap-2 px-6 py-3 rounded-full font-semibold text-white shadow-lg hover:shadow-xl transition-all transform hover:scale-105"
-              style={{
-                background: 'linear-gradient(135deg, #4CAF50 0%, #45a049 100%)',
-                maxWidth: '300px',
-              }}
-            >
-              <Home size={20} />
-              <span>{t('header.returnHome')}</span>
-            </button>
-          </div>
-        )}
-
-        {/* Primary Action Buttons - Only show on homepage */}
         {isHomePage && (
-          <div className="buttons flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center items-stretch sm:items-center w-full px-4 sm:px-0">
-            <button
-              id="create-trip-btn"
-              className={`btn w-full sm:w-auto ${!user ? 'inactive' : ''}`}
-              onClick={handleCreateTripClick}
-              title={!user ? t('header.loginRequired') : ''}
-              disabled={!user}
-              style={{
-                fontSize: '1.1em',
-                padding: '12px 30px',
-                fontWeight: '600',
-                background: user ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : undefined,
-              }}
-            >
-              {t('header.createTrip')}
-            </button>
-            <button
-              className="btn w-full sm:w-auto"
-              onClick={onCalculateClick}
-              style={{
-                fontSize: '1.1em',
-                padding: '12px 30px',
-                fontWeight: '600',
-              }}
-            >
-              {t('header.calculate')}
-            </button>
+          <div className="hero-content">
+            <h1>{t('header.title')}</h1>
+            <p className="hero-sub">{t('header.tagline')}</p>
+            <div className="hero-actions">
+              <button
+                id="create-trip-btn"
+                className={`btn${!user ? ' inactive' : ''}`}
+                onClick={handleCreateTripClick}
+                disabled={!user}
+                title={!user ? t('header.loginRequired') : undefined}
+              >
+                {t('header.createTrip')}
+              </button>
+              <button className="btn btn-secondary" onClick={onCalculateClick}>
+                {t('header.calculate')}
+              </button>
+            </div>
+            {!user && !loading && <p className="hero-hint">{t('header.signInHint')}</p>}
           </div>
         )}
       </div>

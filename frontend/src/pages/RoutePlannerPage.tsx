@@ -11,7 +11,7 @@ import { routeService } from '../services/routeService';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Loader2, MapPin, Navigation } from 'lucide-react';
+import { Loader2, MapPin, Navigation, Sun, Moon } from 'lucide-react';
 import { getTranslation, type Language } from '../i18n/routePlanner';
 import { toast } from 'sonner';
 
@@ -248,15 +248,16 @@ export function RoutePlannerPage() {
           {/* Theme toggle */}
           <button
             onClick={toggleTheme}
-            className="text-xs px-2 py-1 rounded transition-colors"
+            className="flex items-center justify-center w-8 h-8 rounded transition-colors"
             style={{
               color: 'var(--nav-text-secondary)',
               border: '1px solid var(--nav-border)',
               background: 'var(--nav-bg-input)',
             }}
             title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
-            {theme === 'dark' ? '☀️' : '🌙'}
+            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
 
           {/* User menu */}

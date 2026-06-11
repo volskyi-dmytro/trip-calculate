@@ -15,9 +15,9 @@ export function Button({
   const baseStyles = 'inline-flex items-center justify-center rounded-md font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 disabled:pointer-events-none disabled:opacity-50';
 
   const variantStyles = {
-    default: 'bg-blue-600 text-white hover:bg-blue-700',
-    outline: 'border border-gray-300 bg-transparent hover:bg-gray-100',
-    ghost: 'hover:bg-gray-100 hover:text-gray-900',
+    default: 'bg-primary text-white hover:bg-primary/90',
+    outline: 'border border-gray-300 dark:border-gray-600 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700',
+    ghost: 'hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100',
     destructive: 'bg-red-600 text-white hover:bg-red-700'
   };
 

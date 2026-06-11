@@ -4,17 +4,17 @@
 .route-planner-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100dvh;
   width: 100vw;
   overflow: hidden;
-  background-color: #ffffff;
+  background-color: var(--surface);
 }
 
 /* Header section */
 .route-planner-header {
   flex-shrink: 0;
-  border-bottom: 1px solid #e5e7eb;
-  background-color: #ffffff;
+  border-bottom: 1px solid var(--border);
+  background-color: var(--surface);
   padding: 1rem;
   position: relative;
   z-index: 30;
@@ -81,9 +81,9 @@
   width: 384px;
   min-width: 384px;
   flex-shrink: 0;
-  border-right: 1px solid #e5e7eb;
+  border-right: 1px solid var(--border);
   overflow-y: auto;
-  background-color: #f9fafb;
+  background-color: var(--bg);
   padding: 1rem;
 }
 
@@ -92,7 +92,7 @@
   flex: 1;
   position: relative;
   overflow: hidden;
-  background-color: #e5e7eb;
+  background-color: var(--surface-2);
 }
 
 #map {
@@ -111,9 +111,9 @@
   width: 320px;
   min-width: 320px;
   flex-shrink: 0;
-  border-left: 1px solid #e5e7eb;
+  border-left: 1px solid var(--border);
   overflow-y: auto;
-  background-color: #f9fafb;
+  background-color: var(--bg);
   padding: 1rem;
 }
 
@@ -198,8 +198,8 @@
   /* Show mobile tabs */
   .mobile-tabs {
     display: flex;
-    border-bottom: 2px solid #e5e7eb;
-    background-color: #ffffff;
+    border-bottom: 1px solid var(--border);
+    background-color: var(--surface);
     position: sticky;
     top: 0;
     z-index: 20;
@@ -224,14 +224,14 @@
   }
 
   .mobile-tab:hover {
-    background-color: #f9fafb;
+    background-color: var(--bg);
     color: #374151;
   }
 
   .mobile-tab.active {
-    color: #3b82f6;
-    border-bottom-color: #3b82f6;
-    background-color: #eff6ff;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background-color: var(--accent-soft);
   }
 
   /* Mobile layout - stack panels vertically and hide inactive ones */
@@ -246,7 +246,7 @@
     display: none;
     width: 100%;
     min-width: 100%;
-    height: calc(100vh - 140px); /* Full height minus header and tabs */
+    height: calc(100dvh - 140px); /* Full height minus header and tabs */
     max-height: none;
     border: none;
   }
@@ -261,7 +261,7 @@
 
   /* Ensure map fills the space when active */
   .map-wrapper.mobile-active {
-    min-height: calc(100vh - 140px);
+    min-height: calc(100dvh - 140px);
   }
 
   /* Make panels scrollable */
@@ -273,26 +273,26 @@
 
 /* Dark mode styles */
 body[data-theme="dark"] .route-planner-container {
-  background-color: #1a1a1a;
-  color: #ffffff;
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 body[data-theme="dark"] .route-planner-header {
-  background-color: #2a2a2a;
-  border-bottom-color: #374151;
+  background-color: var(--surface);
+  border-bottom-color: var(--border);
 }
 
 body[data-theme="dark"] .route-panel,
 body[data-theme="dark"] .stats-panel {
-  background-color: #1f1f1f;
+  background-color: var(--bg);
 }
 
 body[data-theme="dark"] .route-panel {
-  border-right-color: #374151;
+  border-right-color: var(--border);
 }
 
 body[data-theme="dark"] .stats-panel {
-  border-left-color: #374151;
+  border-left-color: var(--border);
 }
 
 body[data-theme="dark"] .leaflet-control-zoom a {
@@ -323,8 +323,8 @@ body[data-theme="dark"] .map-instructions-overlay {
 /* Dark mode mobile tabs */
 @media (max-width: 768px) {
   body[data-theme="dark"] .mobile-tabs {
-    background-color: #2a2a2a;
-    border-bottom-color: #374151;
+    background-color: var(--surface);
+    border-bottom-color: var(--border);
   }
 
   body[data-theme="dark"] .mobile-tab {
@@ -337,9 +337,9 @@ body[data-theme="dark"] .map-instructions-overlay {
   }
 
   body[data-theme="dark"] .mobile-tab.active {
-    color: #60a5fa;
-    border-bottom-color: #60a5fa;
-    background-color: #1e3a5f;
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background-color: var(--accent-soft);
   }
 
   body[data-theme="dark"] .route-panel,
@@ -361,8 +361,8 @@ body[data-theme="dark"] .map-instructions-overlay {
 /* Enhanced hover state for draggable cards */
 .waypoint-card-wrapper:not(.calculating):hover .waypoint-card {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.15);
-  border-color: rgba(78, 205, 196, 0.3);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
 }
 
 /* Dragging state - subtle opacity and lift effect */
@@ -372,9 +372,9 @@ body[data-theme="dark"] .map-instructions-overlay {
 }
 
 .waypoint-card-wrapper.dragging .waypoint-card {
-  box-shadow: 0 8px 24px rgba(78, 205, 196, 0.25);
-  border-color: #4ECDC4;
-  background: linear-gradient(135deg, rgba(78, 205, 196, 0.1), rgba(85, 111, 230, 0.1));
+  box-shadow: var(--shadow-md);
+  border-color: var(--accent);
+  background: var(--accent-soft);
 }
 
 /* Drop target indicator - Neo-Travel ocean gradient accent */
@@ -390,10 +390,8 @@ body[data-theme="dark"] .map-instructions-overlay {
   left: 0;
   right: 0;
   height: 4px;
-  background: linear-gradient(120deg, #4ECDC4 0%, #556FE6 100%);
+  background: var(--accent);
   border-radius: 2px;
-  box-shadow: 0 0 12px rgba(78, 205, 196, 0.6);
-  animation: shimmer 1.5s ease-in-out infinite;
 }
 
 @keyframes pulseDropZone {
@@ -435,7 +433,7 @@ body[data-theme="dark"] .map-instructions-overlay {
 
 .waypoint-card-wrapper:hover .w-6.h-6.rounded-full {
   transform: scale(1.1);
-  box-shadow: 0 4px 8px rgba(78, 205, 196, 0.3);
+  box-shadow: var(--shadow-sm);
 }
 
 /* Delete button enhanced hover */
@@ -446,7 +444,7 @@ body[data-theme="dark"] .map-instructions-overlay {
 
 /* Grip icon animation */
 .waypoint-card .cursor-grab:hover {
-  color: #4ECDC4;
+  color: var(--accent);
   transform: scale(1.1);
 }
 
@@ -456,18 +454,13 @@ body[data-theme="dark"] .map-instructions-overlay {
 
 /* Dark mode adjustments */
 body[data-theme="dark"] .waypoint-card-wrapper:not(.calculating):hover .waypoint-card {
-  box-shadow: 0 4px 12px rgba(78, 205, 196, 0.2);
-  border-color: rgba(78, 205, 196, 0.4);
+  box-shadow: var(--shadow-md);
+  border-color: var(--border-strong);
 }
 
 body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
-  background: linear-gradient(135deg, rgba(78, 205, 196, 0.15), rgba(85, 111, 230, 0.15));
-  border-color: #4ECDC4;
-}
-
-/* Loading spinner with ocean gradient color */
-.animate-spin.text-\[\#4ECDC4\] {
-  animation: spin 1s linear infinite;
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 @keyframes spin {
@@ -499,7 +492,7 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
 @media (hover: none) and (pointer: coarse) {
   .waypoint-card-wrapper:not(.calculating):active .waypoint-card {
     transform: scale(0.98);
-    box-shadow: 0 2px 8px rgba(78, 205, 196, 0.2);
+    box-shadow: var(--shadow-sm);
   }
 
   .waypoint-card .cursor-grab {

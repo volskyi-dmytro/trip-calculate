@@ -72,8 +72,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       label: t('dashboard.quickActions.createRoute'),
       description: t('dashboard.quickActions.createRouteDesc'),
       onClick: () => navigate('/route-planner'),
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-50 dark:bg-blue-900/20',
+      destructive: false,
       show: profile.routePlannerAccess,
     },
     {
@@ -81,8 +80,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       label: t('dashboard.quickActions.calculateTrip'),
       description: t('dashboard.quickActions.calculateTripDesc'),
       onClick: () => navigate('/'),
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-50 dark:bg-green-900/20',
+      destructive: false,
       show: true,
     },
     {
@@ -90,8 +88,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       label: t('dashboard.quickActions.requestAccess'),
       description: t('dashboard.quickActions.requestAccessDesc'),
       onClick: handleRequestAccess,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-50 dark:bg-purple-900/20',
+      destructive: false,
       show: !profile.routePlannerAccess,
       loading: requesting,
     },
@@ -100,8 +97,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       label: t('dashboard.quickActions.downloadData'),
       description: t('dashboard.quickActions.downloadDataDesc'),
       onClick: handleDownloadData,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-50 dark:bg-orange-900/20',
+      destructive: false,
       show: true,
     },
     {
@@ -109,8 +105,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       label: t('dashboard.quickActions.deleteAccount'),
       description: t('dashboard.quickActions.deleteAccountDesc'),
       onClick: () => setDeleteDialogOpen(true),
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-50 dark:bg-red-900/20',
+      destructive: true,
       show: true,
     },
   ];
@@ -127,22 +122,31 @@ export function QuickActions({ profile }: QuickActionsProps) {
           <div className="space-y-2">
             {visibleActions.map((action, index) => {
               const Icon = action.icon;
+              const iconColor = action.destructive
+                ? 'text-red-600 dark:text-red-400'
+                : 'text-primary';
               return (
                 <button
                   key={index}
                   onClick={action.onClick}
                   disabled={action.loading}
-                  className={`w-full flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 hover:shadow-md transition-all ${action.bgColor}`}
+                  className="w-full flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors"
                 >
                   <div className="flex-shrink-0">
                     {action.loading ? (
-                      <Loader2 className={`h-5 w-5 ${action.color} animate-spin`} />
+                      <Loader2 className={`h-5 w-5 ${iconColor} animate-spin`} />
                     ) : (
-                      <Icon className={`h-5 w-5 ${action.color}`} />
+                      <Icon className={`h-5 w-5 ${iconColor}`} />
                     )}
                   </div>
                   <div className="ml-3 text-left flex-1">
-                    <p className={`text-sm font-medium ${action.color}`}>
+                    <p
+                      className={`text-sm font-medium ${
+                        action.destructive
+                          ? 'text-red-600 dark:text-red-400'
+                          : 'text-gray-900 dark:text-white'
+                      }`}
+                    >
                       {action.label}
                     </p>
                     <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">

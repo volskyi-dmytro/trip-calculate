@@ -89,7 +89,7 @@ export function UserDetailsModal({
                   <span
                     className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       user.role === 'ADMIN'
-                        ? 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400'
+                        ? 'bg-primary/10 text-primary'
                         : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
                     }`}
                   >
@@ -169,16 +169,16 @@ export function UserDetailsModal({
               {t('admin.userDetails.usageStats')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div className="p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-center">
-                <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">
+              <div className="p-3 rounded-lg bg-primary/5 text-center">
+                <p className="text-2xl font-bold text-primary">
                   {user.routeCount}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {t('admin.userDetails.totalRoutes')}
                 </p>
               </div>
-              <div className="p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20 text-center">
-                <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">
+              <div className="p-3 rounded-lg bg-primary/5 text-center">
+                <p className="text-2xl font-bold text-primary">
                   {user.id}
                 </p>
                 <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">

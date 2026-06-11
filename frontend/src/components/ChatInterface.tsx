@@ -33,15 +33,15 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
   const { language } = useLanguage();
 
   return (
-    <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mt-2 mb-2 animate-in fade-in slide-in-from-bottom-2">
-      <p className="text-xs font-bold text-blue-800 dark:text-blue-300 mb-2 uppercase flex items-center gap-1">
+    <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2 mb-2 animate-in fade-in slide-in-from-bottom-2">
+      <p className="text-xs font-bold text-primary mb-2 uppercase flex items-center gap-1">
         <Sparkles className="w-3 h-3" /> {language === 'uk' ? 'Рекомендовані зупинки' : 'Suggested Stops'}
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
         {stops.map((stop, idx) => (
           <span
             key={idx}
-            className="text-xs bg-white dark:bg-blue-900/50 px-2 py-1 rounded text-blue-700 dark:text-blue-200 border border-blue-100 dark:border-blue-800"
+            className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
           >
             {stop}
           </span>
@@ -52,7 +52,7 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
           size="sm"
           onClick={onApply}
           disabled={isApplying}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+          className="flex-1 bg-primary hover:bg-primary/90 text-white text-xs"
         >
           {isApplying ? (
             <Loader2 className="w-3 h-3 animate-spin mr-1" />
@@ -65,7 +65,7 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
           size="sm"
           variant="outline"
           onClick={onDismiss}
-          className="text-blue-600 dark:text-blue-400 text-xs"
+          className="text-primary text-xs"
         >
           {language === 'uk' ? 'Закрити' : 'Dismiss'}
         </Button>
@@ -115,13 +115,13 @@ export function ChatInterface({
 
   return (
     <div
-      className={`bg-gradient-to-b from-blue-50 to-white dark:from-blue-900/20 dark:to-slate-800 p-4 rounded-2xl shadow-lg border border-blue-100 dark:border-blue-900/50 flex flex-col ${
+      className={`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col ${
         isCentered ? 'w-full max-w-2xl' : ''
       } ${className}`}
     >
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+          <Bot className="w-5 h-5 text-primary" />
           <h3 className="font-bold text-slate-800 dark:text-white">{t.aiAssistant}</h3>
         </div>
         {showInsightsButton && onGetInsights && (
@@ -152,7 +152,7 @@ export function ChatInterface({
             <span
               className={`inline-block px-3 py-2 rounded-lg max-w-[90%] whitespace-pre-wrap ${
                 msg.role === 'user'
-                  ? 'bg-blue-600 text-white rounded-br-none'
+                  ? 'bg-primary text-white rounded-br-none'
                   : 'bg-slate-200 dark:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-bl-none'
               }`}
             >

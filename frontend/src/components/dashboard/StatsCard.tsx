@@ -15,29 +15,21 @@ export function StatsCard({ stats }: StatsCardProps) {
       label: t('dashboard.stats.totalRoutes'),
       value: stats.totalRoutes,
       icon: Navigation,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/20',
     },
     {
       label: t('dashboard.stats.totalDistance'),
       value: `${stats.totalDistance.toFixed(1)} km`,
       icon: MapPin,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-100 dark:bg-green-900/20',
     },
     {
       label: t('dashboard.stats.totalFuelCost'),
       value: `${stats.mostUsedCurrency || '$'}${stats.totalFuelCost.toFixed(2)}`,
       icon: DollarSign,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900/20',
     },
     {
       label: t('dashboard.stats.accountAge'),
       value: `${stats.accountAgeDays} ${t('dashboard.stats.days')}`,
       icon: Calendar,
-      color: 'text-orange-600 dark:text-orange-400',
-      bgColor: 'bg-orange-100 dark:bg-orange-900/20',
     },
   ];
 
@@ -53,16 +45,19 @@ export function StatsCard({ stats }: StatsCardProps) {
             return (
               <div
                 key={index}
-                className="flex items-center p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow"
+                className="flex items-center p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
               >
-                <div className={`p-3 rounded-full ${item.bgColor} mr-4`}>
-                  <Icon className={`h-6 w-6 ${item.color}`} />
+                <div
+                  className="p-2.5 rounded-lg mr-4"
+                  style={{ background: 'var(--accent-soft)' }}
+                >
+                  <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {item.label}
                   </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
                     {item.value}
                   </p>
                 </div>

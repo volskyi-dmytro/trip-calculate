@@ -111,19 +111,27 @@ export function CalculatorForm() {
         />
       </div>
 
-      <button type="submit" className="btn">
-        {t('calculator.calculate')}
-      </button>
-      <button type="button" className="btn" onClick={handleReset}>
-        {t('calculator.reset')}
-      </button>
+      <div className="form-actions">
+        <button type="submit" className="btn">
+          {t('calculator.calculate')}
+        </button>
+        <button type="button" className="btn btn-secondary" onClick={handleReset}>
+          {t('calculator.reset')}
+        </button>
+      </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <div className="error" role="alert">{error}</div>}
       {result && (
-        <div id="result" className="result">
-          <p>{t('calculator.totalFuelCost')}: {result.totalFuelCost.toFixed(2)}</p>
-          <p>{t('calculator.costPerPassenger')}: {result.costPerPassenger.toFixed(2)}</p>
-        </div>
+        <dl id="result" className="result">
+          <div className="result-row">
+            <dt>{t('calculator.totalFuelCost')}</dt>
+            <dd>{result.totalFuelCost.toFixed(2)}</dd>
+          </div>
+          <div className="result-row">
+            <dt>{t('calculator.costPerPassenger')}</dt>
+            <dd>{result.costPerPassenger.toFixed(2)}</dd>
+          </div>
+        </dl>
       )}
     </form>
   );

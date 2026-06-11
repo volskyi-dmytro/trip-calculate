@@ -58,7 +58,7 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
                 className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg"
               />
               {profile.role === 'ADMIN' && (
-                <div className="absolute -bottom-1 -right-1 bg-purple-500 rounded-full p-1.5">
+                <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5">
                   <Shield className="h-4 w-4 text-white" />
                 </div>
               )}

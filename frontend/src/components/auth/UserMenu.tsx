@@ -64,16 +64,16 @@ export function UserMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1.5 sm:py-2 rounded-full bg-white/95 dark:bg-gray-800/95 shadow-md hover:shadow-lg transition-all border border-gray-300 dark:border-gray-600"
+        className="flex items-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3 rounded-lg bg-white/95 dark:bg-gray-800/95 shadow-sm hover:shadow transition-shadow border border-gray-300 dark:border-gray-600"
       >
         {user.picture ? (
           <img
             src={user.picture}
             alt={user.name}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border-2 border-blue-500 flex-shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600 flex-shrink-0"
           />
         ) : (
-          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
             <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
           </div>
         )}
