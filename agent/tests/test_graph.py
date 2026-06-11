@@ -138,6 +138,74 @@ async def test_graph_retry_loop_recovers_failed_location(mock_client):
 @respx.mock
 @patch("app.nodes._openai_client")
 @pytest.mark.asyncio
+async def test_graph_village_resolved_by_original_name_not_hallucinated_coords(mock_client):
+    """Incident regression (2026-06-11): round trip Нововолинськ – Соловичі.
+    The LLM transliterated the village to 'Solovichi Ukraine' (no OSM match)
+    AND hallucinated nearby coordinates for it. The graph must resolve the
+    village via its original native-script name and ignore the guessed
+    coordinates — they placed the waypoint ~55 km off and broke the trip
+    cost calculation."""
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(
+                name="Novovolynsk Ukraine", location_type="origin",
+                original_name="Нововолинськ", lat=50.5881, lon=24.1664,
+            ),
+            ParsedLocation(
+                name="Solovichi Ukraine", location_type="waypoint",
+                original_name="Соловичі", lat=50.6, lon=24.2,  # hallucinated
+            ),
+            ParsedLocation(
+                name="Novovolynsk Ukraine", location_type="destination",
+                original_name="Нововолинськ", lat=50.5881, lon=24.1664,
+            ),
+        ],
+        settings=TripSettings(passengers=3, fuelCostPerLiter=81.99, currency="UAH"),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    village = [{
+        "place_id": 2,
+        "lat": "51.0651400",
+        "lon": "24.4741100",
+        "display_name": "Соловичі, Волинська область, Україна",
+        "name": "Соловичі",
+        "type": "village",
+        "class": "place",
+        "importance": 0.3,
+        "address": {"village": "Соловичі", "country": "Україна"},
+    }]
+
+    def handler(request):
+        q = request.url.params.get("q", "")
+        if "Novovolynsk" in q:
+            return httpx.Response(200, json=_nominatim_resp("Нововолинськ", "50.7224829", "24.1648399"))
+        if q == "Соловичі":
+            return httpx.Response(200, json=village)
+        return httpx.Response(200, json=[])  # transliterated village name misses
+
+    respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
+
+    graph = build_graph()
+    result = await graph.ainvoke(_initial_state("Нововолинськ - Соловичі, туди і назад. Поїздка на трьох, вартість палива 81.99"))
+
+    assert result["response"].success is True
+    waypoints = result["response"].route.waypoints
+    assert len(waypoints) == 3
+    # The village must carry real Nominatim coordinates, not the LLM's guess
+    assert waypoints[1].latitude == 51.06514
+    assert waypoints[1].longitude == 24.47411
+    # No retry pass needed: the original-name fallback resolves it first pass
+    assert result["retry_count"] == 0
+    assert result["response"].route.settings.passengers == 3
+    assert result["response"].route.settings.fuelCostPerLiter == 81.99
+
+
+@respx.mock
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
 async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_client):
     """If only 1 of 2 locations geocodes even after the retry pass, return error."""
     parsed = ParsedRoute(

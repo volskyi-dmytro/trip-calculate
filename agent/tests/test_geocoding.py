@@ -5,8 +5,10 @@ from app.geocoding import geocode_location
 from app.schema import ParsedLocation
 
 
-def _loc(name: str, location_type: str = "origin", lat=None, lon=None) -> ParsedLocation:
-    return ParsedLocation(name=name, location_type=location_type, lat=lat, lon=lon)
+def _loc(name: str, location_type: str = "origin", lat=None, lon=None, original_name=None) -> ParsedLocation:
+    return ParsedLocation(
+        name=name, location_type=location_type, lat=lat, lon=lon, original_name=original_name
+    )
 
 
 @respx.mock
@@ -73,3 +75,53 @@ async def test_rejects_suspicious_ai_coords():
     loc = _loc("Unknown Place", lat=0.5, lon=1.2)
     result = await geocode_location(loc)
     assert result.source == "failed"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_original_name_fallback_beats_ai_coords():
+    """Incident regression (2026-06-11): 'Соловичі' was transliterated to
+    'Solovichi Ukraine' (no Nominatim match) and the LLM's hallucinated
+    coordinates were used, placing the village ~55 km off. The original
+    native-script name must be tried and must win over AI coordinates."""
+    village = [{
+        "place_id": 2,
+        "lat": "51.0651400",
+        "lon": "24.4741100",
+        "display_name": "Соловичі, Турійська селищна громада, Волинська область, Україна",
+        "name": "Соловичі",
+        "type": "village",
+        "class": "place",
+        "importance": 0.3,
+        "address": {"village": "Соловичі", "country": "Україна"},
+    }]
+
+    def handler(request):
+        q = request.url.params.get("q", "")
+        if q == "Соловичі":
+            return httpx.Response(200, json=village)
+        return httpx.Response(200, json=[])
+
+    respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
+
+    loc = _loc("Solovichi Ukraine", "waypoint", lat=50.6, lon=24.2, original_name="Соловичі")
+    result = await geocode_location(loc)
+
+    assert result.source == "nominatim"
+    assert result.latitude == 51.06514
+    assert result.longitude == 24.47411
+    assert result.clean_name == "Соловичі"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_ai_coords_ignored_when_disallowed():
+    """With allow_ai_coords=False a Nominatim miss is a failure, never a
+    silent fall-through to LLM-guessed coordinates."""
+    respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=[])
+    )
+    loc = _loc("High Castle Lviv Ukraine", lat=49.852, lon=24.027)
+    result = await geocode_location(loc, allow_ai_coords=False)
+    assert result.source == "failed"
+    assert result.error is True

@@ -18,8 +18,11 @@ RULES:
 3. Remove filler words ("той", generic "ресторан"), keep proper names ("McDonald's")
 4. "біля/near X" → output X itself, not the modifier
 5. Format: [Proper Name] [City] [Country]
-6. If you are CONFIDENT you know exact coordinates (famous landmark, capital city), provide lat/lon
-7. If uncertain, leave lat/lon as null
+6. For EVERY location, set original_name to its exact spelling as written in the user's
+   message (keep the original language and script, e.g. "Соловичі")
+7. Provide lat/lon ONLY for world-famous landmarks and major cities you are CERTAIN about.
+   For villages, small towns, and any place you are not certain of, ALWAYS leave lat/lon null —
+   a wrong guess silently corrupts the route
 8. location_type: first location = "origin", last = "destination", middle = "waypoint"
 9. "picking my friend" / "з другом" → set passengers to 2"""
 
@@ -34,7 +37,10 @@ STRATEGIES (try a different one than before):
 2. Replace a POI you cannot pinpoint with its host city ("Café X Lviv" → "Lviv Ukraine")
 3. Add or change the country suffix
 4. Strip street numbers and qualifiers
-5. If you are CONFIDENT of exact coordinates, provide lat/lon as a fallback"""
+5. Set original_name to the location's exact spelling from the original request
+   (native script, e.g. "Соловичі") — OSM often matches native names directly
+6. Provide lat/lon ONLY if you are CERTAIN (world-famous landmark or major city);
+   never guess coordinates for villages or obscure places"""
 
 # Bounded self-correction: one LLM re-normalization pass for failed geocodes
 MAX_GEOCODE_RETRIES = 1
@@ -67,7 +73,12 @@ async def geocode_locations(state: GraphState) -> GraphState:
         return state
 
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
-    tasks = [geocode_location(loc, user_agent) for loc in state["parsed"].locations]
+    # First pass never trusts LLM coordinates: a hallucinated lat/lon would
+    # mask the geocoding failure and bypass the retry loop entirely
+    tasks = [
+        geocode_location(loc, user_agent, allow_ai_coords=False)
+        for loc in state["parsed"].locations
+    ]
     results: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
     return {**state, "geocoded": results}
 
@@ -123,7 +134,12 @@ async def retry_failed_locations(state: GraphState) -> GraphState:
 
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
     retry_locs = result.locations[: len(failed_idx)]
-    tasks = [geocode_location(loc, user_agent) for loc in retry_locs]
+    # Only the retry pass may fall back to LLM-provided coordinates —
+    # by now Nominatim has rejected both normalized and original names twice
+    tasks = [
+        geocode_location(loc, user_agent, allow_ai_coords=True)
+        for loc in retry_locs
+    ]
     retried: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
 
     merged = list(geocoded)

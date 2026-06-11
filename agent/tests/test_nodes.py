@@ -103,6 +103,9 @@ async def test_geocode_locations_fans_out_to_all_locations(mock_geocode):
 
     assert len(result["geocoded"]) == 2
     assert mock_geocode.call_count == 2
+    # First pass must never trust LLM-provided coordinates
+    for call in mock_geocode.call_args_list:
+        assert call.kwargs["allow_ai_coords"] is False
 
 
 # ── route_after_geocode ───────────────────────────────────────────────────
@@ -179,8 +182,10 @@ async def test_retry_recovers_failed_location(mock_client, mock_geocode):
     assert result["geocoded"][1].source == "nominatim"
     assert result["geocoded"][1].recovered is True
     assert result["geocoded"][1].location_type == "destination"
-    # Only the failed location is re-geocoded
+    # Only the failed location is re-geocoded, and only the retry pass
+    # may fall back to LLM-provided coordinates
     assert mock_geocode.call_count == 1
+    assert mock_geocode.call_args.kwargs["allow_ai_coords"] is True
 
 
 @patch("app.nodes.geocode_location", new_callable=AsyncMock)

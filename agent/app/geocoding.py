@@ -1,5 +1,5 @@
 import asyncio
-from typing import Callable, Awaitable
+from typing import Callable, Awaitable, Optional
 import httpx
 from .schema import ParsedLocation, GeocodedLocation
 
@@ -13,75 +13,48 @@ _sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
 async def geocode_location(
     location: ParsedLocation,
     user_agent: str = "tripcalculate-agent/1.0",
+    allow_ai_coords: bool = True,
 ) -> GeocodedLocation:
     """
     Geocode one location. Strategy:
-    1. Try Nominatim (up to 3 retries with backoff on 418/429).
-    2. Fall back to AI-provided coordinates if nominatim returns nothing.
-    3. Return source="failed" if both fail.
+    1. Try Nominatim with the normalized name (up to 3 retries with backoff on 418/429).
+    2. Try Nominatim with the original user-language name — OSM knows small
+       villages by their native spelling, where transliterations often miss.
+    3. Fall back to AI-provided coordinates only when allow_ai_coords is True.
+       The LLM can hallucinate plausible-looking coordinates for obscure
+       places, so callers should keep this as a genuine last resort.
+    4. Return source="failed" if everything fails.
     """
-    is_poi = _is_specific_place(location.name)
-    params: dict = {
-        "q": location.name,
-        "format": "json",
-        "limit": 10,
-        "addressdetails": 1,
-    }
-    if not is_poi:
-        params["featuretype"] = "city"
+    queries = [location.name]
+    original = (location.original_name or "").strip()
+    if original and original != location.name:
+        queries.append(original)
 
-    max_retries = len(_BACKOFF)
     async with httpx.AsyncClient() as client:
-        for attempt in range(max_retries + 1):
-            try:
-                resp = await client.get(
-                    NOMINATIM_URL,
-                    params=params,
-                    headers={"User-Agent": user_agent},
-                    timeout=10.0,
+        for query in queries:
+            best = await _query_nominatim(client, query, user_agent)
+            if best:
+                addr = best.get("address", {})
+                clean = (
+                    best.get("name")
+                    or addr.get("city")
+                    or addr.get("town")
+                    or addr.get("village")
+                    or best["display_name"].split(",")[0].strip()
                 )
-                if resp.status_code in (418, 429):
-                    if attempt < max_retries:
-                        await _sleep(_BACKOFF[attempt])
-                        continue
-                    break
+                return GeocodedLocation(
+                    name=location.name,
+                    clean_name=clean,
+                    location_type=location.location_type,
+                    latitude=float(best["lat"]),
+                    longitude=float(best["lon"]),
+                    source="nominatim",
+                )
 
-                resp.raise_for_status()
-                results = resp.json()
-                valid = [r for r in results if is_poi or _is_valid_settlement(r)]
-
-                if valid:
-                    best = valid[0]
-                    addr = best.get("address", {})
-                    clean = (
-                        best.get("name")
-                        or addr.get("city")
-                        or addr.get("town")
-                        or addr.get("village")
-                        or best["display_name"].split(",")[0].strip()
-                    )
-                    return GeocodedLocation(
-                        name=location.name,
-                        clean_name=clean,
-                        location_type=location.location_type,
-                        latitude=float(best["lat"]),
-                        longitude=float(best["lon"]),
-                        source="nominatim",
-                    )
-                # Empty valid results — fall through to AI coords
-                break
-
-            except httpx.HTTPStatusError:
-                if attempt < max_retries:
-                    await _sleep(_BACKOFF[attempt])
-                    continue
-                break
-            except Exception:
-                break
-
-    # AI coordinates fallback
+    # AI coordinates fallback — last resort only
     if (
-        location.lat is not None
+        allow_ai_coords
+        and location.lat is not None
         and location.lon is not None
         and abs(location.lat) >= 10
         and abs(location.lat) <= 85
@@ -105,6 +78,54 @@ async def geocode_location(
         error=True,
         message=f"Could not find location: {location.name}",
     )
+
+
+async def _query_nominatim(
+    client: httpx.AsyncClient,
+    query: str,
+    user_agent: str,
+) -> Optional[dict]:
+    """Run one Nominatim search (with 418/429 backoff retries) and return the
+    best valid result, or None when nothing acceptable is found."""
+    is_poi = _is_specific_place(query)
+    params: dict = {
+        "q": query,
+        "format": "json",
+        "limit": 10,
+        "addressdetails": 1,
+    }
+    if not is_poi:
+        params["featuretype"] = "city"
+
+    max_retries = len(_BACKOFF)
+    for attempt in range(max_retries + 1):
+        try:
+            resp = await client.get(
+                NOMINATIM_URL,
+                params=params,
+                headers={"User-Agent": user_agent},
+                timeout=10.0,
+            )
+            if resp.status_code in (418, 429):
+                if attempt < max_retries:
+                    await _sleep(_BACKOFF[attempt])
+                    continue
+                return None
+
+            resp.raise_for_status()
+            results = resp.json()
+            valid = [r for r in results if is_poi or _is_valid_settlement(r)]
+            return valid[0] if valid else None
+
+        except httpx.HTTPStatusError:
+            if attempt < max_retries:
+                await _sleep(_BACKOFF[attempt])
+                continue
+            return None
+        except Exception:
+            return None
+
+    return None
 
 
 def _is_valid_settlement(result: dict) -> bool:

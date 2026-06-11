@@ -7,6 +7,9 @@ from pydantic import BaseModel
 class ParsedLocation(BaseModel):
     name: str
     location_type: str  # "origin" | "waypoint" | "destination"
+    # Exact spelling from the user's message (original language/script) —
+    # OSM often matches native names where transliterations miss
+    original_name: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
 
