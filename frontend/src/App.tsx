@@ -18,10 +18,12 @@ function App() {
 
   // The seasonal photo is the ambient layer every glass surface refracts;
   // exposing it as a CSS var lets body::before render it app-wide.
+  // The -ambient variant is a ~400-byte pre-blurred asset, so no runtime
+  // CSS blur is needed (cheaper than filter: blur() on a fixed layer).
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--season-image',
-      `url(/images/${season}.webp)`
+      `url(/images/${season}-ambient.webp)`
     );
   }, [season]);
 

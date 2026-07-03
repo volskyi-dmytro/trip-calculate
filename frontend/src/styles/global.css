@@ -42,8 +42,11 @@
     --glass-inset: rgba(255, 255, 255, 0.50);
     --glass-border: rgba(255, 255, 255, 0.70);
     --glass-highlight: rgba(255, 255, 255, 0.90);
-    --glass-blur: 16px;
-    --glass-blur-strong: 28px;
+    /* Light-on-light flattens: a dark hairline outside the white rim
+       keeps panel edges defined in light mode. */
+    --glass-edge: rgba(20, 30, 40, 0.08);
+    --glass-blur: 12px;
+    --glass-blur-strong: 20px;
     --glass-shadow: 0 8px 32px rgba(20, 30, 40, 0.10);
 
     /* Seasonal ambient backdrop (set from App.tsx via useSeason) */
@@ -102,6 +105,7 @@ body[data-theme="dark"],
     --glass-inset: rgba(255, 255, 255, 0.05);
     --glass-border: rgba(255, 255, 255, 0.10);
     --glass-highlight: rgba(255, 255, 255, 0.12);
+    --glass-edge: rgba(0, 0, 0, 0.30);
     --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
 
     --season-veil: rgba(15, 20, 25, 0.82);
@@ -142,14 +146,17 @@ body, html {
 body::before {
     content: '';
     position: fixed;
-    inset: -8%;
+    inset: 0;
     z-index: -1;
+    /* --season-image points at a pre-blurred, pre-saturated micro asset
+       (~96px wide); stretching it via cover yields the blur for free —
+       no runtime filter, per glassmorphism performance guidance. */
     background-image:
         linear-gradient(var(--season-veil), var(--season-veil)),
         var(--season-image);
     background-size: cover;
     background-position: center;
-    filter: blur(48px) saturate(1.15);
+    transform: translateZ(0);
     pointer-events: none;
 }
 
@@ -161,7 +168,9 @@ body::before {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
 }
 
 .glass-modal {
@@ -169,7 +178,9 @@ body::before {
     -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--shadow-lg);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--shadow-lg);
+    transform: translateZ(0);
 }
 
 .glass-sidebar {
@@ -177,6 +188,7 @@ body::before {
     -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     border-right: 1px solid var(--glass-border);
+    transform: translateZ(0);
 }
 
 .glass-topbar {
@@ -184,6 +196,7 @@ body::before {
     -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     border-bottom: 1px solid var(--glass-border);
+    transform: translateZ(0);
 }
 
 .glass-sheet {
@@ -191,6 +204,16 @@ body::before {
     -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
     border-top: 1px solid var(--glass-border);
+    transform: translateZ(0);
+}
+
+/* Blur is the expensive part of the material: use a lighter radius on
+   small (typically mobile) viewports. */
+@media (max-width: 768px) {
+    :root, .dark {
+        --glass-blur: 8px;
+        --glass-blur-strong: 14px;
+    }
 }
 
 /* Inner tiles inside glass panels: a subtle etched layer, no extra blur
@@ -210,6 +233,7 @@ body::before {
         --glass-inset: var(--surface-2);
         --glass-border: var(--border);
         --glass-highlight: transparent;
+        --glass-edge: transparent;
     }
 }
 
@@ -221,6 +245,7 @@ body::before {
         --glass-inset: var(--surface-2);
         --glass-border: var(--border);
         --glass-highlight: transparent;
+        --glass-edge: transparent;
     }
 
     body::before {
@@ -639,7 +664,9 @@ a:hover {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
     border-radius: var(--radius-md);
     padding: 20px;
 }
@@ -685,7 +712,9 @@ a:hover {
     -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
     border: 1px solid var(--glass-border);
-    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--glass-shadow);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
     border-radius: var(--radius-md);
 }
 
@@ -779,7 +808,9 @@ footer {
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-    box-shadow: inset 0 1px 0 var(--glass-highlight), var(--shadow-lg);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--shadow-lg);
+    transform: translateZ(0);
     animation: sheetUp 0.22s cubic-bezier(0.3, 0.9, 0.4, 1);
 }
 

@@ -1439,7 +1439,7 @@ export function RoutePlanner() {
       {/* ── MOBILE BOTTOM SHEET — hidden on desktop ── */}
       {isMobile && (
         <div
-          className="glass-sheet absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out"
+          className="glass-sheet absolute bottom-0 left-0 right-0 flex flex-col transition-[height] duration-300 ease-in-out"
           style={{
             height: isMobileExpanded ? '65vh' : '140px',
             zIndex: 40,
