@@ -6,6 +6,7 @@ import com.tripplanner.TripPlanner.service.AccessRequestService;
 import com.tripplanner.TripPlanner.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.web.bind.annotation.*;
@@ -31,26 +32,26 @@ public class AccessRequestController {
     }
 
     @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<AccessRequest>> getPendingRequests() {
-        // TODO: Add admin authorization check
         return ResponseEntity.ok(accessRequestService.getPendingRequests());
     }
 
     @PostMapping("/{id}/approve")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> approveRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User principal) {
-        // TODO: Add admin authorization check
         String approvedBy = principal.getAttribute("name");
         accessRequestService.approveRequest(id, approvedBy);
         return ResponseEntity.ok().build();
     }
 
     @PostMapping("/{id}/reject")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> rejectRequest(
             @PathVariable Long id,
             @AuthenticationPrincipal OAuth2User principal) {
-        // TODO: Add admin authorization check
         String rejectedBy = principal.getAttribute("name");
         accessRequestService.rejectRequest(id, rejectedBy);
         return ResponseEntity.ok().build();
