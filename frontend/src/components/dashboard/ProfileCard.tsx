@@ -6,6 +6,7 @@ import { Button } from '../ui/button';
 import type { UserProfile } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { EditProfileModal } from './EditProfileModal';
+import { avatarProxyUrl } from '../../utils/avatar';
 
 interface ProfileCardProps {
   profile: UserProfile;
@@ -15,6 +16,7 @@ interface ProfileCardProps {
 export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
   const { t } = useLanguage();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
 
   const getAccessStatusBadge = () => {
     if (profile.routePlannerAccess) {
@@ -52,11 +54,18 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
           <div className="flex flex-col items-center space-y-4">
             {/* Avatar */}
             <div className="relative">
-              <img
-                src={profile.pictureUrl}
-                alt={profile.name}
-                className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg"
-              />
+              {profile.pictureUrl && !avatarFailed ? (
+                <img
+                  src={avatarProxyUrl(profile.pictureUrl)!}
+                  alt={profile.name}
+                  onError={() => setAvatarFailed(true)}
+                  className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg object-cover"
+                />
+              ) : (
+                <div className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg bg-primary flex items-center justify-center">
+                  <User className="h-10 w-10 text-white" />
+                </div>
+              )}
               {profile.role === 'ADMIN' && (
                 <div className="absolute -bottom-1 -right-1 bg-primary rounded-full p-1.5">
                   <Shield className="h-4 w-4 text-white" />

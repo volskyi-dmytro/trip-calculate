@@ -1,5 +1,7 @@
+import { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
+import { useSeason } from './hooks/useSeason';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -12,6 +14,19 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import './styles/global.css';
 
 function App() {
+  const season = useSeason();
+
+  // The seasonal photo is the ambient layer every glass surface refracts;
+  // exposing it as a CSS var lets body::before render it app-wide.
+  // The -ambient variant is a ~400-byte pre-blurred asset, so no runtime
+  // CSS blur is needed (cheaper than filter: blur() on a fixed layer).
+  useEffect(() => {
+    document.documentElement.style.setProperty(
+      '--season-image',
+      `url(/images/${season}-ambient.webp)`
+    );
+  }, [season]);
+
   return (
     <BrowserRouter>
       <ThemeProvider>

@@ -36,7 +36,7 @@ export function QuickCalculator() {
   };
 
   return (
-    <Card className="p-6 bg-white dark:bg-slate-800 border-2">
+    <Card className="p-6">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h3 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h3>

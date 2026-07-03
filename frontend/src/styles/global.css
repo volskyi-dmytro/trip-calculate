@@ -34,6 +34,25 @@
     --danger: #b93a3f;
     --danger-soft: rgba(185, 58, 63, 0.10);
 
+    /* Glass material — frosted porcelain, legibility first.
+       Alpha stays high so text never fights the seasonal backdrop. */
+    --glass-bg: rgba(255, 255, 255, 0.62);
+    --glass-bg-strong: rgba(255, 255, 255, 0.80);
+    --glass-input: rgba(255, 255, 255, 0.55);
+    --glass-inset: rgba(255, 255, 255, 0.50);
+    --glass-border: rgba(255, 255, 255, 0.70);
+    --glass-highlight: rgba(255, 255, 255, 0.90);
+    /* Light-on-light flattens: a dark hairline outside the white rim
+       keeps panel edges defined in light mode. */
+    --glass-edge: rgba(20, 30, 40, 0.08);
+    --glass-blur: 12px;
+    --glass-blur-strong: 20px;
+    --glass-shadow: 0 8px 32px rgba(20, 30, 40, 0.10);
+
+    /* Seasonal ambient backdrop (set from App.tsx via useSeason) */
+    --season-image: none;
+    --season-veil: rgba(242, 244, 246, 0.78);
+
     --shadow-sm: 0 1px 2px rgba(20, 30, 40, 0.06);
     --shadow-md: 0 4px 14px rgba(20, 30, 40, 0.08);
     --shadow-lg: 0 12px 32px rgba(20, 30, 40, 0.14);
@@ -53,8 +72,8 @@
 
     /* Route planner ("Precision Navigation") contract */
     --nav-bg-primary: var(--bg);
-    --nav-bg-sidebar: var(--surface);
-    --nav-bg-input: var(--surface-2);
+    --nav-bg-sidebar: var(--glass-bg-strong);
+    --nav-bg-input: var(--glass-input);
     --nav-accent: var(--accent);
     --nav-text-primary: var(--text);
     --nav-text-secondary: var(--text-2);
@@ -80,6 +99,17 @@ body[data-theme="dark"],
     --danger: #e05c5c;
     --danger-soft: rgba(224, 92, 92, 0.12);
 
+    --glass-bg: rgba(22, 29, 36, 0.60);
+    --glass-bg-strong: rgba(17, 23, 30, 0.78);
+    --glass-input: rgba(13, 18, 24, 0.55);
+    --glass-inset: rgba(255, 255, 255, 0.05);
+    --glass-border: rgba(255, 255, 255, 0.10);
+    --glass-highlight: rgba(255, 255, 255, 0.12);
+    --glass-edge: rgba(0, 0, 0, 0.30);
+    --glass-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+
+    --season-veil: rgba(15, 20, 25, 0.82);
+
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
     --shadow-md: 0 4px 14px rgba(0, 0, 0, 0.35);
     --shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
@@ -90,18 +120,137 @@ body[data-theme="dark"],
    ============================================ */
 html {
     scroll-behavior: smooth;
+    /* Canvas color lives on html so body::before (the seasonal ambient
+       layer, z-index -1) can paint above it but below all content. */
+    background-color: var(--bg);
 }
 
 body, html {
     font-family: 'Manrope', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: var(--bg);
     color: var(--text);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
     overflow-x: hidden;
     transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+/* ============================================
+   Seasonal ambient backdrop — the current
+   season's photo, blurred into a color field
+   that every glass surface refracts. Veiled
+   per-theme so text contrast never depends
+   on the photo's content.
+   ============================================ */
+body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    /* --season-image points at a pre-blurred, pre-saturated micro asset
+       (~96px wide); stretching it via cover yields the blur for free —
+       no runtime filter, per glassmorphism performance guidance. */
+    background-image:
+        linear-gradient(var(--season-veil), var(--season-veil)),
+        var(--season-image);
+    background-size: cover;
+    background-position: center;
+    transform: translateZ(0);
+    pointer-events: none;
+}
+
+/* ============================================
+   Glass material system
+   ============================================ */
+.glass-panel {
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
+}
+
+.glass-modal {
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--shadow-lg);
+    transform: translateZ(0);
+}
+
+.glass-sidebar {
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    border-right: 1px solid var(--glass-border);
+    transform: translateZ(0);
+}
+
+.glass-topbar {
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    border-bottom: 1px solid var(--glass-border);
+    transform: translateZ(0);
+}
+
+.glass-sheet {
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    border-top: 1px solid var(--glass-border);
+    transform: translateZ(0);
+}
+
+/* Blur is the expensive part of the material: use a lighter radius on
+   small (typically mobile) viewports. */
+@media (max-width: 768px) {
+    :root, .dark {
+        --glass-blur: 8px;
+        --glass-blur-strong: 14px;
+    }
+}
+
+/* Inner tiles inside glass panels: a subtle etched layer, no extra blur
+   (blur-on-blur is muddy and expensive). */
+.glass-inset {
+    background: var(--glass-inset);
+}
+
+/* No blur support / reduced transparency: collapse the material to the
+   solid surface system. backdrop-filter simply no-ops; only the alpha
+   backgrounds need replacing. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    :root, .dark {
+        --glass-bg: var(--surface);
+        --glass-bg-strong: var(--surface);
+        --glass-input: var(--surface-2);
+        --glass-inset: var(--surface-2);
+        --glass-border: var(--border);
+        --glass-highlight: transparent;
+        --glass-edge: transparent;
+    }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+    :root, .dark {
+        --glass-bg: var(--surface);
+        --glass-bg-strong: var(--surface);
+        --glass-input: var(--surface-2);
+        --glass-inset: var(--surface-2);
+        --glass-border: var(--border);
+        --glass-highlight: transparent;
+        --glass-edge: transparent;
+    }
+
+    body::before {
+        display: none;
+    }
 }
 
 h1, h2, h3, h4 {
@@ -211,14 +360,16 @@ a:hover {
 }
 
 .btn-secondary {
-    background: var(--surface);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(10px) saturate(1.4);
+    backdrop-filter: blur(10px) saturate(1.4);
     color: var(--text);
-    border-color: var(--border-strong);
+    border-color: var(--glass-border);
 }
 
 .btn-secondary:hover {
-    background: var(--surface-2);
-    border-color: var(--text-3);
+    background: var(--glass-bg-strong);
+    border-color: var(--border-strong);
 }
 
 .btn-logout {
@@ -360,10 +511,12 @@ a:hover {
     gap: 8px;
 }
 
-/* Controls that sit on the photo get a dark translucent base */
+/* Controls that sit on the photo get a dark frosted base */
 .topbar .icon-btn,
 .topbar .seg {
     background: rgba(14, 20, 26, 0.38);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    backdrop-filter: blur(12px) saturate(1.3);
     border-color: rgba(255, 255, 255, 0.28);
     color: #ffffff;
 }
@@ -507,8 +660,13 @@ a:hover {
 }
 
 .feature {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
     border-radius: var(--radius-md);
     padding: 20px;
 }
@@ -550,8 +708,13 @@ a:hover {
 }
 
 .faq-list {
-    background: var(--surface);
-    border: 1px solid var(--border);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    transform: translateZ(0);
     border-radius: var(--radius-md);
 }
 
@@ -583,8 +746,10 @@ a:hover {
 footer {
     margin-top: 56px;
     padding: 24px 0 32px;
-    background: var(--surface);
-    border-top: 1px solid var(--border);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border-top: 1px solid var(--glass-border);
     color: var(--text-2);
     font-size: 0.875rem;
 }
@@ -637,10 +802,15 @@ footer {
     width: 100%;
     max-height: 88dvh;
     overflow-y: auto;
-    background: var(--surface);
+    background: var(--glass-bg-strong);
+    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg) var(--radius-lg) 0 0;
     padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-    box-shadow: var(--shadow-lg);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--shadow-lg);
+    transform: translateZ(0);
     animation: sheetUp 0.22s cubic-bezier(0.3, 0.9, 0.4, 1);
 }
 
@@ -716,7 +886,7 @@ footer {
     font-family: inherit;
     font-size: 1rem; /* ≥16px prevents iOS zoom-on-focus */
     color: var(--text);
-    background: var(--bg);
+    background: var(--glass-input);
     border: 1px solid var(--border-strong);
     border-radius: 10px;
     transition: border-color 0.15s ease, box-shadow 0.15s ease;

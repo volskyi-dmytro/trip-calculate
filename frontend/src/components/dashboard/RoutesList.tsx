@@ -106,7 +106,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="px-3 py-1.5 text-sm border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
               >
                 <option value="newest">{t('dashboard.routes.sortNewest')}</option>
                 <option value="oldest">{t('dashboard.routes.sortOldest')}</option>
@@ -120,7 +120,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
             {sortedRoutes.map((route) => (
               <div
                 key={route.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:shadow-md transition-shadow"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset hover:shadow-md transition-shadow"
               >
                 <div className="flex-1">
                   <h4 className="font-semibold text-gray-900 dark:text-white mb-1">

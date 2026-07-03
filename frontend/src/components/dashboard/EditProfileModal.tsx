@@ -125,7 +125,7 @@ export function EditProfileModal({
                 onChange={(e) =>
                   setFormData({ ...formData, preferredLanguage: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
               >
                 <option value="en">{t('dashboard.editProfile.languageEnglish')}</option>
                 <option value="uk">{t('dashboard.editProfile.languageUkrainian')}</option>

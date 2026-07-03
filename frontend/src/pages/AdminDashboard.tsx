@@ -21,7 +21,7 @@ export function AdminDashboard() {
   return (
     <>
       <Header />
-      <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+      <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-6 sm:mb-8">

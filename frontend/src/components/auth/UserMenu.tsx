@@ -3,9 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ChevronDown, User, LayoutDashboard, Shield, LogOut } from 'lucide-react';
+import { avatarProxyUrl } from '../../utils/avatar';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -64,12 +66,13 @@ export function UserMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3 rounded-lg bg-white/95 dark:bg-gray-800/95 shadow-sm hover:shadow transition-shadow border border-gray-300 dark:border-gray-600"
+        className="flex items-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3 rounded-lg glass-panel hover:shadow transition-shadow"
       >
-        {user.picture ? (
+        {user.picture && !avatarFailed ? (
           <img
-            src={user.picture}
+            src={avatarProxyUrl(user.picture)!}
             alt={user.name}
+            onError={() => setAvatarFailed(true)}
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600 flex-shrink-0"
           />
         ) : (
@@ -88,7 +91,7 @@ export function UserMenu() {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-gray-800 rounded-lg shadow-xl border border-gray-200 dark:border-gray-700 py-2 z-50">
+        <div className="absolute right-0 mt-2 w-56 glass-modal rounded-lg py-2 z-50">
           {/* User Info Header */}
           <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
             <p className="text-sm font-medium text-gray-900 dark:text-white truncate">

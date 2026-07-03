@@ -45,7 +45,7 @@ export function StatsCard({ stats }: StatsCardProps) {
             return (
               <div
                 key={index}
-                className="flex items-center p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                className="flex items-center p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
               >
                 <div
                   className="p-2.5 rounded-lg mr-4"

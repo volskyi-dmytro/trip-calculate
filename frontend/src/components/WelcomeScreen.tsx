@@ -50,8 +50,11 @@ export function WelcomeScreen({
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg)' }}>
-      <div className="w-full max-w-2xl">
+    // h-full + internal scroll: the planner page wraps this in an
+    // overflow-hidden viewport-height container, so a min-h-screen block
+    // gets its bottom (incl. the manual-config link) clipped with no scroll.
+    <div className="h-full overflow-y-auto flex px-4">
+      <div className="w-full max-w-2xl m-auto py-12">
         {/* Robot Icon */}
         <div className="flex justify-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
           <div
