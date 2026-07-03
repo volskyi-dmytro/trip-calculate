@@ -141,7 +141,7 @@ export function UserDetailsModal({
               {t('admin.userDetails.featureAccess')}
             </h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800">
+              <div className="flex items-center justify-between p-3 rounded-lg glass-inset">
                 <div className="flex items-center">
                   <Navigation className="h-4 w-4 mr-3 text-gray-400" />
                   <span className="text-sm text-gray-900 dark:text-white">

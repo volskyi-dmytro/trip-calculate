@@ -41,7 +41,7 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
         {stops.map((stop, idx) => (
           <span
             key={idx}
-            className="text-xs bg-white dark:bg-gray-800 px-2 py-1 rounded text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+            className="text-xs glass-inset px-2 py-1 rounded text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
           >
             {stop}
           </span>
@@ -115,7 +115,7 @@ export function ChatInterface({
 
   return (
     <div
-      className={`bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 flex flex-col ${
+      className={`glass-panel p-4 rounded-xl flex flex-col ${
         isCentered ? 'w-full max-w-2xl' : ''
       } ${className}`}
     >

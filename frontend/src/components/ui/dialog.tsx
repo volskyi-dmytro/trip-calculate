@@ -63,7 +63,7 @@ export function Dialog({
       {open && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
-            className="fixed inset-0 bg-black/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
             onClick={() => onOpenChange(false)}
           />
           <div className="relative z-[100]">
@@ -83,7 +83,7 @@ export function DialogContent({
   className?: string;
 }) {
   return (
-    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 max-w-lg w-full ${className}`}>
+    <div className={`glass-modal rounded-lg p-6 max-w-lg w-full ${className}`}>
       {children}
     </div>
   );

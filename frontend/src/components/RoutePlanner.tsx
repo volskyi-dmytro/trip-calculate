@@ -1002,12 +1002,8 @@ export function RoutePlanner() {
       {/* ── DESKTOP SIDEBAR — hidden on mobile ── */}
       {!isMobile && (
         <div
-          className="flex-shrink-0 flex flex-col h-full overflow-hidden"
-          style={{
-            width: '360px',
-            background: 'var(--nav-bg-sidebar)',
-            borderRight: '1px solid var(--nav-border)',
-          }}
+          className="glass-sidebar flex-shrink-0 flex flex-col h-full overflow-hidden"
+          style={{ width: '360px' }}
         >
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto">
@@ -1363,10 +1359,7 @@ export function RoutePlanner() {
           {/* ── AI Assistant input — pinned to sidebar bottom ── */}
           <div
             className="flex-shrink-0 p-3"
-            style={{
-              borderTop: '1px solid var(--nav-border)',
-              background: 'var(--nav-bg-sidebar)',
-            }}
+            style={{ borderTop: '1px solid var(--nav-border)' }}
           >
             {isProcessingAi && (
               <div
@@ -1427,12 +1420,8 @@ export function RoutePlanner() {
         {/* Instructions overlay when no waypoints */}
         {waypoints.length === 0 && (
           <div
-            className="absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg shadow-lg z-10 pointer-events-none"
-            style={{
-              background: 'rgba(22, 27, 39, 0.92)',
-              border: '1px solid var(--nav-border)',
-              color: 'var(--nav-text-secondary)',
-            }}
+            className="glass-modal absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg z-10 pointer-events-none"
+            style={{ color: 'var(--nav-text-secondary)' }}
           >
             <div className="flex flex-col gap-1 text-sm">
               <div className="flex items-center gap-2">
@@ -1450,11 +1439,9 @@ export function RoutePlanner() {
       {/* ── MOBILE BOTTOM SHEET — hidden on desktop ── */}
       {isMobile && (
         <div
-          className="absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out"
+          className="glass-sheet absolute bottom-0 left-0 right-0 flex flex-col transition-all duration-300 ease-in-out"
           style={{
             height: isMobileExpanded ? '65vh' : '140px',
-            background: 'var(--nav-bg-sidebar)',
-            borderTop: '2px solid var(--nav-border)',
             zIndex: 40,
           }}
         >
@@ -1885,10 +1872,7 @@ export function RoutePlanner() {
               {/* AI assistant input pinned to bottom */}
               <div
                 className="flex-shrink-0 p-3"
-                style={{
-                  borderTop: '1px solid var(--nav-border)',
-                  background: 'var(--nav-bg-sidebar)',
-                }}
+                style={{ borderTop: '1px solid var(--nav-border)' }}
               >
                 {isProcessingAi && (
                   <div

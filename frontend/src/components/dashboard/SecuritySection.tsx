@@ -23,7 +23,7 @@ export function SecuritySection() {
       <CardContent>
         <div className="space-y-4">
           {/* Authentication Provider */}
-          <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between p-3 rounded-lg glass-inset border border-gray-200 dark:border-gray-700">
             <div className="flex items-center">
               <div className="flex-shrink-0 mr-3">
                 <img

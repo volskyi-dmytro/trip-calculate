@@ -123,7 +123,7 @@ export function AccessRequestsTable() {
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+              className="px-3 py-1.5 text-sm border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
             >
               <option value="all">{t('admin.requests.filter.all')}</option>
               <option value="pending">{t('admin.requests.filter.pending')}</option>
@@ -250,7 +250,7 @@ export function AccessRequestsTable() {
               {filteredRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                  className="p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>

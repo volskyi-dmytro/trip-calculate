@@ -256,7 +256,7 @@ export function UsersTable() {
                           <MoreVertical className="h-4 w-4" />
                         </button>
                         {actionMenuOpen === user.id && (
-                          <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg z-10">
+                          <div className="absolute right-0 mt-2 w-48 glass-modal rounded-lg z-10">
                             <button
                               onClick={() => openDetails(user)}
                               className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
@@ -329,7 +329,7 @@ export function UsersTable() {
             {filteredUsers.map((user) => (
               <div
                 key={user.id}
-                className="p-4 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
+                className="p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>

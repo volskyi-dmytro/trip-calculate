@@ -197,17 +197,12 @@ export function RoutePlannerPage() {
 
   // Has access - show route planner with compact nav bar (no decorative Header)
   return (
-    <div
-      className="flex flex-col h-screen overflow-hidden"
-      style={{ background: 'var(--nav-bg-primary)' }}
-    >
-      {/* Compact 56px top bar — no seasonal image, navigation-product style */}
+    <div className="flex flex-col h-screen overflow-hidden">
+      {/* Compact 56px top bar — frosted glass over the seasonal ambient */}
       <div
-        className="flex-shrink-0 flex items-center justify-between px-4"
+        className="glass-topbar flex-shrink-0 flex items-center justify-between px-4"
         style={{
           height: '56px',
-          background: 'var(--nav-bg-sidebar)',
-          borderBottom: '1px solid var(--nav-border)',
           zIndex: 50,
         }}
       >

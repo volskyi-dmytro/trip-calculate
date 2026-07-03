@@ -130,7 +130,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
                   key={index}
                   onClick={action.onClick}
                   disabled={action.loading}
-                  className="w-full flex items-center p-3 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700/60 transition-colors"
+                  className="w-full flex items-center p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset hover:bg-white/70 dark:hover:bg-white/10 transition-colors"
                 >
                   <div className="flex-shrink-0">
                     {action.loading ? (

@@ -129,7 +129,7 @@ export function SystemOverview() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast24h}
               </p>
@@ -137,7 +137,7 @@ export function SystemOverview() {
                 {t('admin.overview.last24h')}
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast7d}
               </p>
@@ -145,7 +145,7 @@ export function SystemOverview() {
                 {t('admin.overview.last7d')}
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <p className="text-2xl font-bold text-green-600 dark:text-green-400">
                 {stats.newUsersLast30d}
               </p>
@@ -201,7 +201,7 @@ export function SystemOverview() {
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <Users className="h-5 w-5 text-primary" />
               </div>
@@ -212,7 +212,7 @@ export function SystemOverview() {
                 Unique Users (24h)
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
               </div>
@@ -223,7 +223,7 @@ export function SystemOverview() {
                 Cached Responses
               </p>
             </div>
-            <div className="text-center p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+            <div className="text-center p-4 glass-inset rounded-lg">
               <div className="flex items-center justify-center mb-2">
                 <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
               </div>
