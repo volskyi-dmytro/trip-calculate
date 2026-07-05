@@ -77,10 +77,13 @@ class WaypointOut(BaseModel):
 
 
 class RouteSettings(BaseModel):
-    passengers: int = 1
-    fuelConsumption: float = 6.0
-    fuelCostPerLiter: float = 50.0
-    currency: str = "UAH"
+    # None means "the user did not mention it" — the frontend keeps the
+    # user's current value. Filling defaults here silently reset the
+    # user's passenger count and fuel settings on every AI request.
+    passengers: Optional[int] = None
+    fuelConsumption: Optional[float] = None
+    fuelCostPerLiter: Optional[float] = None
+    currency: Optional[str] = None
 
 
 class RouteOut(BaseModel):

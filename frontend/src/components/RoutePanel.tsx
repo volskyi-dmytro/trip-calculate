@@ -42,6 +42,7 @@ export function RoutePanel({
   // Local state for text inputs (to allow empty strings and decimals)
   const [fuelConsumptionInput, setFuelConsumptionInput] = useState<string>('')
   const [fuelCostInput, setFuelCostInput] = useState<string>('')
+  const [passengersInput, setPassengersInput] = useState<string>('')
 
   // Drag and drop state
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null)
@@ -55,6 +56,39 @@ export function RoutePanel({
     setFuelConsumptionInput(routeSettings.fuelConsumption > 0 ? routeSettings.fuelConsumption.toString() : '')
     setFuelCostInput(routeSettings.fuelCostPerLiter > 0 ? routeSettings.fuelCostPerLiter.toString() : '')
   }, [routeSettings.fuelConsumption, routeSettings.fuelCostPerLiter])
+
+  useEffect(() => {
+    setPassengersInput(routeSettings.passengerCount > 0 ? routeSettings.passengerCount.toString() : '')
+  }, [routeSettings.passengerCount])
+
+  // Passengers uses the same local-string pattern as the fuel fields: a
+  // controlled number input that rejects intermediate states (empty after
+  // backspace, out-of-range while typing) snaps back and feels dead
+  const handlePassengersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    if (value === '') {
+      setPassengersInput('')
+      return
+    }
+    if (/^\d{1,2}$/.test(value)) {
+      setPassengersInput(value)
+      const numValue = parseInt(value, 10)
+      if (numValue >= 1 && numValue <= 10) {
+        onUpdateSettings({ ...routeSettings, passengerCount: numValue })
+      }
+    }
+  }
+
+  const handlePassengersBlur = () => {
+    const numValue = parseInt(passengersInput, 10)
+    if (isNaN(numValue) || numValue < 1) {
+      setPassengersInput(routeSettings.passengerCount.toString())
+      return
+    }
+    const clamped = Math.min(numValue, 10)
+    setPassengersInput(clamped.toString())
+    onUpdateSettings({ ...routeSettings, passengerCount: clamped })
+  }
 
   // Handle fuel consumption input change
   const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -379,16 +413,12 @@ export function RoutePanel({
           <label style={labelStyle} htmlFor="passengers">{t.routeSettings.passengers}</label>
           <Input
             id="passengers"
-            type="number"
-            min="1"
-            max="10"
-            value={routeSettings.passengerCount}
-            onChange={(e) => {
-              const value = parseInt(e.target.value, 10)
-              if (!isNaN(value) && value >= 1 && value <= 10) {
-                onUpdateSettings({ ...routeSettings, passengerCount: value })
-              }
-            }}
+            type="text"
+            inputMode="numeric"
+            placeholder="1"
+            value={passengersInput}
+            onChange={handlePassengersChange}
+            onBlur={handlePassengersBlur}
             style={inputStyle}
             className="h-8 text-sm font-mono"
           />

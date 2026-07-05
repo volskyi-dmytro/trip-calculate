@@ -318,13 +318,16 @@ def test_format_response_includes_skipped_locations():
     assert result["response"].skippedLocations[0]["name"] == "BadPlace"
 
 
-def test_format_response_uses_defaults_for_missing_settings():
+def test_format_response_leaves_unmentioned_settings_null():
+    """Settings the user did not mention must stay None: filling defaults
+    made every AI request silently reset the user's passenger count and
+    fuel settings on the frontend."""
     parsed = ParsedRoute(
         locations=[
             ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
             ParsedLocation(name="Lviv Ukraine", location_type="destination"),
         ],
-        settings=TripSettings(),  # all None
+        settings=TripSettings(passengers=3),  # only passengers mentioned
     )
     geocoded = [
         _geocoded("Kyiv Ukraine", "origin", "nominatim", lat=50.45, lon=30.52),
@@ -333,10 +336,10 @@ def test_format_response_uses_defaults_for_missing_settings():
     result = format_response(_state(parsed=parsed, geocoded=geocoded))
 
     s = result["response"].route.settings
-    assert s.passengers == 1
-    assert s.fuelConsumption == 6.0
-    assert s.fuelCostPerLiter == 50.0
-    assert s.currency == "UAH"
+    assert s.passengers == 3
+    assert s.fuelConsumption is None
+    assert s.fuelCostPerLiter is None
+    assert s.currency is None
 
 
 # ── format_error ──────────────────────────────────────────────────────────

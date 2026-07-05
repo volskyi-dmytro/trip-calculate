@@ -310,10 +310,10 @@ def format_response(state: GraphState) -> GraphState:
         route=RouteOut(
             waypoints=waypoints_out,
             settings=RouteSettings(
-                passengers=settings.passengers or 1,
-                fuelConsumption=settings.fuelConsumption or 6.0,
-                fuelCostPerLiter=settings.fuelCostPerLiter or 50.0,
-                currency=settings.currency or "UAH",
+                passengers=settings.passengers,
+                fuelConsumption=settings.fuelConsumption,
+                fuelCostPerLiter=settings.fuelCostPerLiter,
+                currency=settings.currency,
             ),
         ),
         message=msg,
