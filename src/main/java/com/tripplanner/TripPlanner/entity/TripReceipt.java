@@ -36,13 +36,13 @@ public class TripReceipt {
     @Column(name = "destination_label", length = 120)
     private String destinationLabel;
 
-    @Column(name = "distance_km", nullable = false)
+    @Column(name = "distance_km", nullable = false, precision = 12, scale = 2)
     private BigDecimal distanceKm;
 
-    @Column(name = "fuel_consumption", nullable = false)
+    @Column(name = "fuel_consumption", nullable = false, precision = 12, scale = 2)
     private BigDecimal fuelConsumption;
 
-    @Column(name = "fuel_price", nullable = false)
+    @Column(name = "fuel_price", nullable = false, precision = 12, scale = 2)
     private BigDecimal fuelPrice;
 
     @Column(nullable = false, length = 3)
@@ -52,10 +52,10 @@ public class TripReceipt {
     @Column(nullable = false)
     private Integer people;
 
-    @Column(name = "total_cost", nullable = false)
+    @Column(name = "total_cost", nullable = false, precision = 12, scale = 2)
     private BigDecimal totalCost;
 
-    @Column(name = "cost_per_person", nullable = false)
+    @Column(name = "cost_per_person", nullable = false, precision = 12, scale = 2)
     private BigDecimal costPerPerson;
 
     @Column(nullable = false, length = 5)
