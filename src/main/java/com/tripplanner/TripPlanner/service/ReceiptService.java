@@ -91,8 +91,12 @@ public class ReceiptService {
             throw new ResponseStatusException(HttpStatus.GONE, "Receipt expired");
         }
         repository.incrementViewCount(slug);
-        receipt.setViewCount(receipt.getViewCount() + 1); // echo the increment in the response
-        return ReceiptDTO.from(receipt);
+        // Echo the increment on the DTO, not the managed entity: mutating the
+        // entity makes Hibernate's dirty-check flush a full-row UPDATE with stale
+        // values, silently overwriting concurrent atomic counter increments.
+        ReceiptDTO dto = ReceiptDTO.from(receipt);
+        dto.setViewCount(receipt.getViewCount() + 1);
+        return dto;
     }
 
     @Transactional

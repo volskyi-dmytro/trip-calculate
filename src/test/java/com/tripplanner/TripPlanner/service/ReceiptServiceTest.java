@@ -145,6 +145,19 @@ class ReceiptServiceTest {
     }
 
     @Test
+    void getBySlugDoesNotMutateManagedEntity() {
+        TripReceipt receipt = freshStoredReceipt();
+        when(repository.findBySlug("live0000")).thenReturn(Optional.of(receipt));
+
+        ReceiptDTO dto = service.getBySlug("live0000");
+
+        // DTO echoes the increment; the JPA-managed entity stays untouched so
+        // Hibernate's dirty-check flush cannot overwrite concurrent increments
+        assertEquals(1L, dto.getViewCount());
+        assertEquals(0L, receipt.getViewCount());
+    }
+
+    @Test
     void deleteRejectsNonOwner() {
         TripReceipt receipt = freshStoredReceipt();
         receipt.setUserId(1L);
