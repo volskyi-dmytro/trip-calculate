@@ -502,3 +502,58 @@ async def test_geocode_locations_regeocode_on_coordinate_mismatch():
     assert mock_geo.await_count == 1  # only the mismatched location
     assert result["geocoded"][0].source == "nominatim"
     assert result["geocoded"][1].source == "current_route"
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_settings_only_modification_keeps_current_route(mock_client):
+    """'Change fuel price to 60' against an existing route: the model
+    reliably extracts the setting but often returns no locations — the node
+    must rebuild the unchanged map route instead of rejecting the request."""
+    from app.schema import CurrentWaypoint
+
+    parsed = ParsedRoute(
+        is_route_request=False,  # model frequently misclassifies these
+        locations=[],
+        settings=TripSettings(fuelCostPerLiter=60.0),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    current = [
+        CurrentWaypoint(name="Lviv", latitude=49.84, longitude=24.03),
+        CurrentWaypoint(name="Ternopil", latitude=49.66, longitude=25.61),
+        CurrentWaypoint(name="Kyiv", latitude=50.45, longitude=30.52),
+    ]
+    result = await parse_locations(
+        _state(message="зміни ціну палива на 60 грн", language="uk", current_route=current)
+    )
+
+    assert result["error"] is None
+    locs = result["parsed"].locations
+    assert [l.name for l in locs] == ["Lviv", "Ternopil", "Kyiv"]
+    assert [l.location_type for l in locs] == ["origin", "waypoint", "destination"]
+    assert all(l.from_current_route for l in locs)
+    assert result["parsed"].settings.fuelCostPerLiter == 60.0
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_off_topic_with_current_route_still_rejected(mock_client):
+    """A current route must not weaken the guard: no locations AND no
+    settings means the message is genuinely off-topic."""
+    from app.schema import CurrentWaypoint
+
+    parsed = ParsedRoute(is_route_request=False, locations=[], settings=TripSettings())
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    current = [CurrentWaypoint(name="Lviv", latitude=49.84, longitude=24.03)]
+    result = await parse_locations(
+        _state(message="tell me a joke", current_route=current)
+    )
+
+    assert result["error"] is not None
+    assert result["parsed"] is None

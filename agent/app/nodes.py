@@ -50,7 +50,9 @@ The user's message modifies this route. Output the COMPLETE updated route:
 - Recompute location_type for the final order: first = "origin",
   last = "destination", middle = "waypoint".
 - A settings-only change (fuel price, passengers, …) keeps all current
-  locations unchanged."""
+  locations unchanged.
+- Leave every settings field null unless the user's message explicitly
+  changes it."""
 
 _RETRY_SYSTEM_PROMPT = """Some locations failed to geocode. Rewrite ONLY these failed locations
 with alternative normalizations that are more likely to be found by OpenStreetMap Nominatim.
@@ -87,6 +89,31 @@ _NOT_A_ROUTE_ERRORS = {
 def _not_a_route_error(language: str) -> str:
     return _NOT_A_ROUTE_ERRORS.get(language, _NOT_A_ROUTE_ERRORS["en"])
 
+
+def _settings_present(settings) -> bool:
+    return any(
+        v is not None
+        for v in (settings.passengers, settings.fuelConsumption,
+                  settings.fuelCostPerLiter, settings.currency)
+    )
+
+
+def _locations_from_current_route(current_route) -> list:
+    """Rebuild the unchanged map route as parsed locations (trusted coords)."""
+    from .schema import ParsedLocation
+
+    last = len(current_route) - 1
+    return [
+        ParsedLocation(
+            name=wp.name,
+            location_type="origin" if i == 0 else "destination" if i == last else "waypoint",
+            lat=wp.latitude,
+            lon=wp.longitude,
+            from_current_route=True,
+        )
+        for i, wp in enumerate(current_route)
+    ]
+
 # Module-level singleton — patched by unit tests via @patch("app.nodes._openai_client")
 _openai_client = AsyncOpenAI()
 
@@ -119,6 +146,16 @@ async def parse_locations(state: GraphState) -> GraphState:
         # locations list both mean there is no route to build — fail fast
         # with a friendly message instead of a geocode-count error
         if result.is_route_request is False or not result.locations:
+            # Settings-only modification ("change fuel price to 60"): the
+            # model reliably extracts the settings but often returns no
+            # locations despite the prompt — rebuild the unchanged map
+            # route deterministically instead of trusting the LLM to copy it
+            if current_route and _settings_present(result.settings):
+                result = result.model_copy(update={
+                    "is_route_request": True,
+                    "locations": _locations_from_current_route(current_route),
+                })
+                return {**state, "parsed": result}
             return {**state, "error": _not_a_route_error(state.get("language", "en"))}
         return {**state, "parsed": result}
     except Exception as exc:
