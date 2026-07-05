@@ -1174,6 +1174,7 @@ export function RoutePlanner() {
                 routeSettings={routeSettings}
                 routeDistance={routeDistance}
                 routeDuration={routeDuration}
+                routeGeometry={routeGeometry}
               />
 
               {/* ── Divider ── */}
@@ -1687,6 +1688,7 @@ export function RoutePlanner() {
                     routeSettings={routeSettings}
                     routeDistance={routeDistance}
                     routeDuration={routeDuration}
+                    routeGeometry={routeGeometry}
                   />
 
                   {/* ── Divider ── */}

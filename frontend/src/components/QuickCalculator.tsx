@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { ShareReceiptButton } from './receipt/ShareReceiptButton';
 
 export function QuickCalculator() {
   const { language } = useLanguage();
@@ -153,6 +154,19 @@ export function QuickCalculator() {
               {costPerPassenger.toFixed(2)} {currency}
             </span>
           </div>
+
+          <ShareReceiptButton
+            className="w-full mt-2"
+            disabled={distance <= 0 || totalCost <= 0}
+            payload={{
+              distanceKm: distance,
+              fuelConsumption,
+              fuelPrice,
+              currency,
+              people: passengers,
+              locale: language,
+            }}
+          />
         </div>
       </div>
     </Card>
