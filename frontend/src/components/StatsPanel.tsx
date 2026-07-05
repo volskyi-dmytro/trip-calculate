@@ -4,12 +4,15 @@ import { Fuel, Navigation, DollarSign, Route, Clock } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
+import { ShareReceiptButton } from './receipt/ShareReceiptButton'
+import { downsampleGeometry } from '../services/receiptService'
 
 interface StatsPanelProps {
   waypoints: Waypoint[]
   routeSettings: RouteSettings
   routeDistance: number // in km from OSRM routing service
   routeDuration: number // in minutes from OSRM routing service
+  routeGeometry?: Array<[number, number]>
 }
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -25,7 +28,7 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c
 }
 
-export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDuration }: StatsPanelProps) {
+export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDuration, routeGeometry }: StatsPanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
 
@@ -203,6 +206,23 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
             </>
           )}
         </div>
+      )}
+
+      {/* Share receipt */}
+      {waypoints.length >= 2 && stats.totalDistance > 0 && (
+        <ShareReceiptButton
+          payload={{
+            originLabel: waypoints[0].name,
+            destinationLabel: waypoints[waypoints.length - 1].name,
+            distanceKm: stats.totalDistance,
+            fuelConsumption: routeSettings.fuelConsumption,
+            fuelPrice: routeSettings.fuelCostPerLiter,
+            currency: routeSettings.currency,
+            people: routeSettings.passengerCount || 1,
+            locale: language,
+            routeGeometry: routeGeometry ? downsampleGeometry(routeGeometry) : undefined,
+          }}
+        />
       )}
 
       {/* Segment Details */}
