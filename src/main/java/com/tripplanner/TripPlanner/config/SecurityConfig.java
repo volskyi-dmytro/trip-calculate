@@ -234,6 +234,11 @@ public class SecurityConfig {
                         // Public API endpoints for auth status check, CSRF token, avatar proxy, and routing
                         .requestMatchers("/api/user/me", "/api/user/status", "/api/user/csrf", "/api/avatar/proxy", "/api/routing/**").permitAll()
 
+                        // Receipt share links: creation/viewing is anonymous by design (viral loop);
+                        // ownership checks for list/delete happen in ReceiptController.
+                        // /r/** serves the OG-injected HTML for crawlers and browsers.
+                        .requestMatchers("/api/receipts/**", "/r/**").permitAll()
+
                         // Admin API endpoints (role-based access via @PreAuthorize)
                         .requestMatchers("/api/admin/**").authenticated()
 
