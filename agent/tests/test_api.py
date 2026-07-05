@@ -108,3 +108,45 @@ def test_parse_route_uses_defaults_for_optional_fields(mock_graph):
     response = client.post("/parse-route", json={"message": "Kyiv to Lviv"})
 
     assert response.status_code == 200
+
+
+@patch("app.main.route_graph")
+def test_parse_route_accepts_current_route(mock_graph):
+    """Modification requests carry the route already on the map; the
+    endpoint must accept it and pass it into the graph state."""
+    mock_graph.ainvoke = AsyncMock(return_value={"response": _success_response()})
+
+    from app.main import app
+    client = TestClient(app)
+    response = client.post("/parse-route", json={
+        "message": "add a stop in Ternopil",
+        "language": "en",
+        "current_route": [
+            {"name": "Lviv", "latitude": 49.84, "longitude": 24.03},
+            {"name": "Kyiv", "latitude": 50.45, "longitude": 30.52},
+        ],
+    })
+
+    assert response.status_code == 200
+    state = mock_graph.ainvoke.await_args.args[0]
+    assert [wp.name for wp in state["current_route"]] == ["Lviv", "Kyiv"]
+
+
+@patch("app.main.route_graph")
+def test_parse_route_rejects_oversized_current_route(mock_graph):
+    """Waypoint cap (25) bounds context-block token cost, mirroring the
+    500-char message cap."""
+    mock_graph.ainvoke = AsyncMock(return_value={"response": _success_response()})
+
+    from app.main import app
+    client = TestClient(app)
+    response = client.post("/parse-route", json={
+        "message": "add a stop",
+        "current_route": [
+            {"name": f"wp{i}", "latitude": 50.0, "longitude": 30.0}
+            for i in range(26)
+        ],
+    })
+
+    assert response.status_code == 422
+    mock_graph.ainvoke.assert_not_awaited()

@@ -12,6 +12,10 @@ class ParsedLocation(BaseModel):
     original_name: Optional[str] = None
     lat: Optional[float] = None
     lon: Optional[float] = None
+    # True when the LLM copied this location from the CURRENT ROUTE context
+    # block. Those coordinates came from the user's map (already geocoded),
+    # so geocoding trusts them instead of re-querying Nominatim.
+    from_current_route: Optional[bool] = None
 
 
 class TripSettings(BaseModel):
@@ -45,12 +49,24 @@ class GeocodedLocation(BaseModel):
 
 # ── HTTP contract models (FastAPI I/O) ─────────────────────────────────────
 
+class CurrentWaypoint(BaseModel):
+    """A waypoint already on the user's map, sent as context so the agent
+    can apply modification requests ("add a stop in X") to the existing
+    route instead of failing for lack of a full trip description."""
+    name: str = Field(min_length=1, max_length=200)
+    latitude: float = Field(ge=-90, le=90)
+    longitude: float = Field(ge=-180, le=180)
+
+
 class ParseRouteRequest(BaseModel):
     # Length cap bounds per-request token cost; the Spring proxy enforces
     # the same limit, this one protects direct callers of the agent
     message: str = Field(min_length=1, max_length=500)
     language: str = "en"
     user_id: str = "anonymous"
+    # Waypoint cap bounds the context-block token cost the same way the
+    # message cap bounds the message
+    current_route: Optional[list[CurrentWaypoint]] = Field(default=None, max_length=25)
 
 
 class WaypointOut(BaseModel):
@@ -96,6 +112,7 @@ class GraphState(TypedDict):
     message: str
     language: str
     user_id: str
+    current_route: Optional[list[CurrentWaypoint]]
     parsed: Optional[ParsedRoute]
     geocoded: list[GeocodedLocation]
     response: Optional[ParseRouteResponse]
