@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -67,6 +68,22 @@ public class GlobalExceptionHandler {
 
         logger.warn("Application error from IP {}: {}", clientIp, e.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid request");
+    }
+
+    /**
+     * ResponseStatusException carries an intentional HTTP status (400/404/410 from
+     * ReceiptService and future callers). Without this specific handler the
+     * Exception.class catch-all below would swallow it and answer 500, since
+     * ExceptionHandlerExceptionResolver runs before ResponseStatusExceptionResolver.
+     */
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<String> handleResponseStatus(ResponseStatusException e) {
+        String reason = e.getReason();
+        String body = (reason != null && !reason.isBlank()) ? reason : "Request could not be processed";
+
+        logger.debug("ResponseStatusException {} from IP {}: {}", e.getStatusCode(), getClientIp(), reason);
+
+        return ResponseEntity.status(e.getStatusCode()).body(body);
     }
 
     @ExceptionHandler(Exception.class)
