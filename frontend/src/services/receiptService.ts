@@ -19,7 +19,12 @@ export const downsampleGeometry = (
   const sampled = coords.filter((_, i) => i % step === 0);
   const last = coords[coords.length - 1];
   if (sampled[sampled.length - 1] !== last) {
-    sampled.push(last);
+    // Replace rather than append when at cap — the contract is <=maxPoints
+    if (sampled.length >= maxPoints) {
+      sampled[sampled.length - 1] = last;
+    } else {
+      sampled.push(last);
+    }
   }
   return JSON.stringify(
     sampled.map(([lat, lng]) => [
