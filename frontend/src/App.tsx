@@ -7,6 +7,7 @@ import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { HomePage } from './pages/HomePage';
 import { RoutePlannerPage } from './pages/RoutePlannerPage';
+import { ReceiptPage } from './pages/ReceiptPage';
 import { UserDashboard } from './pages/UserDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminRoute } from './components/auth/AdminRoute';
@@ -34,6 +35,7 @@ function App() {
           <AuthProvider>
             <Routes>
               <Route path="/" element={<HomePage />} />
+              <Route path="/r/:slug" element={<ReceiptPage />} />
               <Route
                 path="/route-planner"
                 element={
