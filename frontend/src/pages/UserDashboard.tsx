@@ -7,6 +7,7 @@ import { Header } from '../components/common/Header';
 import { ProfileCard } from '../components/dashboard/ProfileCard';
 import { StatsCard } from '../components/dashboard/StatsCard';
 import { RoutesList } from '../components/dashboard/RoutesList';
+import { ReceiptsList } from '../components/dashboard/ReceiptsList';
 import { QuickActions } from '../components/dashboard/QuickActions';
 import { SecuritySection } from '../components/dashboard/SecuritySection';
 
@@ -87,6 +88,7 @@ export function UserDashboard() {
               routes={dashboardData.recentRoutes}
               onRouteDeleted={fetchDashboard}
             />
+            <ReceiptsList />
             <SecuritySection />
           </div>
         </div>
