@@ -35,14 +35,33 @@ interface AgentRouteResponse {
   skippedLocations?: { name: string; reason?: string }[];
 }
 
+/** A waypoint already on the user's map, sent so the agent can apply
+ * modification requests ("add a stop in X") to the existing route. */
+export interface CurrentRouteWaypoint {
+  name: string;
+  latitude: number;
+  longitude: number;
+}
+
+export interface AgentParseResult {
+  data: AgentTripData | null;
+  /** Agent-provided reason when data is null (already localized by the agent). */
+  error?: string;
+}
+
 /**
  * Sends a natural language query to the backend AI proxy and returns structured trip data.
  * Includes client-side caching and debouncing for better UX.
  * @param query The user's natural language input (e.g. "Trip to Paris")
  * @param language Language code (default: 'en')
- * @returns Structured trip data or null if the request fails
+ * @param currentRoute Waypoints already on the map — included so the agent can merge modifications
+ * @returns Structured trip data, or null data with the agent's error message
  */
-export const parseRouteWithAgent = async (query: string, language: string = 'en'): Promise<AgentTripData | null> => {
+export const parseRouteWithAgent = async (
+  query: string,
+  language: string = 'en',
+  currentRoute: CurrentRouteWaypoint[] = [],
+): Promise<AgentParseResult> => {
   // Debounce: Prevent too-frequent requests
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
@@ -53,12 +72,16 @@ export const parseRouteWithAgent = async (query: string, language: string = 'en'
   }
   lastRequestTime = Date.now();
 
-  // Check client-side cache first
+  // Check client-side cache first — only for from-scratch requests; a
+  // modification answer is specific to the route it was asked against
+  const cacheable = currentRoute.length === 0;
   const cacheKey = generateCacheKey(query, language);
-  const cachedData = getCachedResponse(cacheKey);
-  if (cachedData) {
-    console.log('Using cached AI response (client-side)');
-    return cachedData;
+  if (cacheable) {
+    const cachedData = getCachedResponse(cacheKey);
+    if (cachedData) {
+      console.log('Using cached AI response (client-side)');
+      return { data: cachedData };
+    }
   }
 
   try {
@@ -76,7 +99,11 @@ export const parseRouteWithAgent = async (query: string, language: string = 'en'
     const response = await fetch(AI_INSIGHTS_ENDPOINT, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ message: query, language }),
+      body: JSON.stringify({
+        message: query,
+        language,
+        ...(currentRoute.length > 0 ? { currentRoute } : {}),
+      }),
       credentials: 'include', // Include cookies for authentication
     });
 
@@ -112,7 +139,9 @@ export const parseRouteWithAgent = async (query: string, language: string = 'en'
 
     if (!data.success || !data.route || !data.route.waypoints) {
       console.warn("Agent response missing route data", data.error ?? data);
-      return null;
+      // Surface the agent's reason (e.g. the off-topic guard message)
+      // instead of collapsing every failure into one generic toast
+      return { data: null, error: typeof data.error === 'string' ? data.error : undefined };
     }
 
     const waypoints = data.route.waypoints.sort((a, b) => a.positionOrder - b.positionOrder);
@@ -166,9 +195,11 @@ export const parseRouteWithAgent = async (query: string, language: string = 'en'
     }
 
     // Cache the successful result (client-side)
-    cacheResponse(cacheKey, result);
+    if (cacheable) {
+      cacheResponse(cacheKey, result);
+    }
 
-    return result;
+    return { data: result };
 
   } catch (error) {
     console.error('Failed to plan trip with AI:', error);
@@ -176,7 +207,7 @@ export const parseRouteWithAgent = async (query: string, language: string = 'en'
     if (error instanceof Error && error.message.includes('Rate limit exceeded')) {
       throw error;
     }
-    return null;
+    return { data: null };
   }
 };
 

@@ -10,7 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -731,7 +731,16 @@ export function RoutePlanner() {
     }
 
     try {
-      const agentData = await parseRouteWithAgent(userMsg.content, language);
+      // Send the route already on the map so the agent can apply
+      // modifications ("add a stop in X") instead of only building
+      // routes from scratch
+      const currentRoute = waypoints.map(wp => ({
+        name: wp.name,
+        latitude: wp.lat,
+        longitude: wp.lng,
+      }));
+      const agentResult = await parseRouteWithAgent(userMsg.content, language, currentRoute);
+      const agentData = agentResult.data;
 
       if (agentData) {
         const updates: string[] = [];
@@ -856,23 +865,22 @@ export function RoutePlanner() {
           );
         }
       } else {
+        // Prefer the agent's own reason (already localized) over the
+        // generic fallback so users learn WHY the request failed
+        const reason = agentResult.error || t.chat.aiFailedDescription;
+
         setChatMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: 'Sorry, I could not process your request. Please try again.',
+          content: reason,
           timestamp: Date.now()
         }]);
 
         // Error toast - no data returned
-        toast.error(
-          language === 'uk' ? 'Не вдалося обробити запит' : 'Failed to process request',
-          {
-            description: language === 'uk'
-              ? 'AI не зміг обробити ваш запит. Спробуйте ще раз з більш детальним описом.'
-              : 'AI could not process your request. Please try again with more details.',
-            duration: 5000
-          }
-        );
+        toast.error(t.chat.aiFailedTitle, {
+          description: reason,
+          duration: 5000
+        });
       }
     } catch (e) {
       console.error(e);
@@ -898,7 +906,7 @@ export function RoutePlanner() {
     } finally {
       setIsProcessingAi(false);
     }
-  }, [chatInput, t, showWelcomeScreen, language]);
+  }, [chatInput, t, showWelcomeScreen, language, waypoints]);
 
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
@@ -1371,7 +1379,7 @@ export function RoutePlanner() {
             <div className="flex gap-2">
               <Input
                 type="text"
-                placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
+                placeholder={t.chat.askPlaceholder}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -1446,22 +1454,27 @@ export function RoutePlanner() {
             zIndex: 40,
           }}
         >
-          {/* Drag handle */}
+          {/* Sheet trigger: high-contrast pill so it reads as a button over
+              the map, with a nudging chevron announcing the swipe-up */}
           <button
             type="button"
             onClick={() => setIsMobileExpanded(prev => !prev)}
-            className="flex-shrink-0 flex flex-col items-center justify-center py-2 w-full"
-            style={{ color: 'var(--nav-text-secondary)', background: 'transparent', border: 'none', cursor: 'pointer' }}
-            aria-label={isMobileExpanded ? (language === 'uk' ? 'Згорнути' : 'Collapse panel') : (language === 'uk' ? 'Розгорнути' : 'Expand panel')}
+            className="flex-shrink-0 flex flex-col items-center justify-center pt-1.5 pb-2 w-full"
+            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
+            aria-expanded={isMobileExpanded}
+            aria-label={isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
           >
             <div
-              className="w-10 h-1 rounded-full mb-1"
+              className="w-10 h-1 rounded-full mb-1.5"
               style={{ background: 'var(--nav-border)' }}
             />
-            <span className="text-xs font-medium">
-              {isMobileExpanded
-                ? (language === 'uk' ? '↓ Згорнути' : '↓ Collapse')
-                : (language === 'uk' ? '↑ Маршрут' : '↑ Route Details')}
+            <span className="sheet-trigger-pill flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg">
+              {isMobileExpanded ? (
+                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+              ) : (
+                <ChevronUp className="h-4 w-4 sheet-chevron" aria-hidden="true" />
+              )}
+              {isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
             </span>
           </button>
 
@@ -1885,7 +1898,7 @@ export function RoutePlanner() {
                 <div className="flex gap-2">
                   <Input
                     type="text"
-                    placeholder={language === 'uk' ? 'Попросіть AI змінити маршрут...' : 'Ask AI to change route...'}
+                    placeholder={t.chat.askPlaceholder}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => {
