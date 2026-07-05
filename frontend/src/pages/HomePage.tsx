@@ -3,6 +3,7 @@ import { Calculator, Map, Users } from 'lucide-react';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
+import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
 
 export function HomePage() {
@@ -32,6 +33,12 @@ export function HomePage() {
       <Header onCalculateClick={() => setIsCalculatorOpen(true)} />
 
       <main className="container">
+        <section className="section">
+          <div style={{ maxWidth: '26rem', margin: '0 auto' }}>
+            <QuickCalculator example />
+          </div>
+        </section>
+
         <section className="section">
           <h2>{t('intro.title')}</h2>
           <p className="section-lead">{t('intro.description')}</p>

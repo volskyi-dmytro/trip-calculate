@@ -7,13 +7,26 @@ import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareReceiptButton } from './receipt/ShareReceiptButton';
 
-export function QuickCalculator() {
+interface QuickCalculatorProps {
+  /** Prefill with a locale-appropriate worked example (public landing). */
+  example?: boolean;
+}
+
+// Static precomputed examples — zero API calls on the landing page (spec decision)
+const EXAMPLES = {
+  uk: { from: 'Київ', to: 'Львів', distance: 540, consumption: 7.5, price: 58, people: 4, currency: 'UAH' },
+  en: { from: 'Berlin', to: 'Munich', distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
+} as const;
+
+export function QuickCalculator({ example = false }: QuickCalculatorProps) {
   const { language } = useLanguage();
-  const [distance, setDistance] = useState<number>(0);
-  const [passengers, setPassengers] = useState<number>(1);
-  const [fuelConsumption, setFuelConsumption] = useState<number>(8.5);
-  const [fuelPrice, setFuelPrice] = useState<number>(55);
-  const [currency, setCurrency] = useState<string>('UAH');
+  const initial = example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
+  const [exampleActive, setExampleActive] = useState(example);
+  const [distance, setDistance] = useState<number>(initial?.distance ?? 0);
+  const [passengers, setPassengers] = useState<number>(initial?.people ?? 1);
+  const [fuelConsumption, setFuelConsumption] = useState<number>(initial?.consumption ?? 8.5);
+  const [fuelPrice, setFuelPrice] = useState<number>(initial?.price ?? 55);
+  const [currency, setCurrency] = useState<string>(initial?.currency ?? 'UAH');
   const [totalCost, setTotalCost] = useState<number>(0);
   const [costPerPassenger, setCostPerPassenger] = useState<number>(0);
 
@@ -25,6 +38,23 @@ export function QuickCalculator() {
     setCostPerPassenger(perPerson);
   }, [distance, passengers, fuelConsumption, fuelPrice]);
 
+  // While the example is untouched, switching language swaps to that locale's example
+  useEffect(() => {
+    if (!exampleActive) return;
+    const ex = EXAMPLES[language === 'uk' ? 'uk' : 'en'];
+    setDistance(ex.distance);
+    setPassengers(ex.people);
+    setFuelConsumption(ex.consumption);
+    setFuelPrice(ex.price);
+    setCurrency(ex.currency);
+  }, [language, exampleActive]);
+
+  /** First user edit converts the example into the user's own trip. */
+  const edited = <T,>(setter: (v: T) => void) => (v: T) => {
+    setExampleActive(false);
+    setter(v);
+  };
+
   const t = {
     title: language === 'uk' ? 'Швидкий Розрахунок' : 'Quick Estimate',
     guestMode: language === 'uk' ? 'ГОСТЬОВИЙ РЕЖИМ' : 'GUEST MODE',
@@ -34,6 +64,13 @@ export function QuickCalculator() {
     fuelPrice: language === 'uk' ? 'Ціна палива' : 'Fuel Price',
     totalCost: language === 'uk' ? 'Загальна вартість' : 'Total Cost',
     perPassenger: language === 'uk' ? 'На пасажира' : 'Per Passenger',
+    exampleBadge:
+      language === 'uk'
+        ? 'Приклад — змініть будь-яке поле, щоб зробити його своїм'
+        : 'Example — edit any field to make it yours',
+    exampleRoute: exampleActive
+      ? `${EXAMPLES[language === 'uk' ? 'uk' : 'en'].from} → ${EXAMPLES[language === 'uk' ? 'uk' : 'en'].to}`
+      : '',
   };
 
   return (
@@ -45,6 +82,11 @@ export function QuickCalculator() {
             {t.guestMode}
           </span>
         </div>
+        {exampleActive && (
+          <div className="mt-2 text-xs px-2 py-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">
+            {t.exampleRoute} · {t.exampleBadge}
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
@@ -57,7 +99,7 @@ export function QuickCalculator() {
             type="number"
             min="0"
             value={distance}
-            onChange={(e) => setDistance(Number(e.target.value))}
+            onChange={(e) => edited(setDistance)(Number(e.target.value))}
             className="mt-1"
             placeholder="0"
           />
@@ -72,7 +114,7 @@ export function QuickCalculator() {
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setPassengers(Math.max(1, passengers - 1))}
+              onClick={() => edited(setPassengers)(Math.max(1, passengers - 1))}
               className="h-9 w-9"
             >
               <Minus className="h-4 w-4" />
@@ -81,13 +123,13 @@ export function QuickCalculator() {
               type="number"
               min="1"
               value={passengers}
-              onChange={(e) => setPassengers(Math.max(1, Number(e.target.value)))}
+              onChange={(e) => edited(setPassengers)(Math.max(1, Number(e.target.value)))}
               className="text-center"
             />
             <Button
               variant="outline"
               size="icon"
-              onClick={() => setPassengers(passengers + 1)}
+              onClick={() => edited(setPassengers)(passengers + 1)}
               className="h-9 w-9"
             >
               <Plus className="h-4 w-4" />
@@ -105,7 +147,7 @@ export function QuickCalculator() {
             min="0"
             step="0.1"
             value={fuelConsumption}
-            onChange={(e) => setFuelConsumption(Number(e.target.value))}
+            onChange={(e) => edited(setFuelConsumption)(Number(e.target.value))}
             className="mt-1"
           />
         </div>
@@ -120,12 +162,12 @@ export function QuickCalculator() {
               type="number"
               min="0"
               value={fuelPrice}
-              onChange={(e) => setFuelPrice(Number(e.target.value))}
+              onChange={(e) => edited(setFuelPrice)(Number(e.target.value))}
               className="flex-1"
             />
             <select
               value={currency}
-              onChange={(e) => setCurrency(e.target.value)}
+              onChange={(e) => edited(setCurrency)(e.target.value)}
               className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <option value="UAH">UAH</option>
