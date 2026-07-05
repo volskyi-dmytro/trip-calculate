@@ -352,3 +352,153 @@ def test_format_error_generates_message_from_geocoded_count():
     result = format_error(_state(geocoded=geocoded))
     assert result["response"].success is False
     assert "1" in result["response"].error
+
+
+# ── current-route modification context ────────────────────────────────────
+
+def _mock_parse_response(parsed):
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    return mock_response
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_sends_current_route_context(mock_client):
+    """When the caller provides the route already on the map, the LLM call
+    must include it as a context block so 'add a stop in X' can be merged
+    into the existing route instead of failing as a 1-location request."""
+    from app.schema import CurrentWaypoint
+
+    parsed = ParsedRoute(
+        is_route_request=True,
+        locations=[
+            ParsedLocation(name="Lviv", location_type="origin",
+                           lat=49.84, lon=24.03, from_current_route=True),
+            ParsedLocation(name="Ternopil Ukraine", location_type="waypoint"),
+            ParsedLocation(name="Kyiv", location_type="destination",
+                           lat=50.45, lon=30.52, from_current_route=True),
+        ],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    current = [
+        CurrentWaypoint(name="Lviv", latitude=49.84, longitude=24.03),
+        CurrentWaypoint(name="Kyiv", latitude=50.45, longitude=30.52),
+    ]
+    result = await parse_locations(
+        _state(message="Додай проміжну точку - Тернопіль", current_route=current)
+    )
+
+    assert result["error"] is None
+    assert result["parsed"] is parsed
+    sent_messages = mock_client.beta.chat.completions.parse.call_args.kwargs["messages"]
+    context_blocks = [m for m in sent_messages if "already on the user's map" in m["content"]]
+    assert len(context_blocks) == 1
+    assert "Lviv (49.84, 24.03)" in context_blocks[0]["content"]
+    assert "Kyiv (50.45, 30.52)" in context_blocks[0]["content"]
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_omits_context_without_current_route(mock_client):
+    """No current route → prompt stays exactly as before (system + user)."""
+    parsed = ParsedRoute(
+        is_route_request=True,
+        locations=[
+            ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+            ParsedLocation(name="Lviv Ukraine", location_type="destination"),
+        ],
+        settings=TripSettings(),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    result = await parse_locations(_state(message="Kyiv to Lviv"))
+
+    assert result["error"] is None
+    sent_messages = mock_client.beta.chat.completions.parse.call_args.kwargs["messages"]
+    assert len(sent_messages) == 2
+    assert all("already on the user's map" not in m["content"] for m in sent_messages)
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_not_a_route_error_is_localized(mock_client):
+    """The guard message is user-facing; a uk request must get the uk text."""
+    parsed = ParsedRoute(is_route_request=False, locations=[], settings=TripSettings())
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        return_value=_mock_parse_response(parsed)
+    )
+
+    result = await parse_locations(_state(message="розкажи анекдот", language="uk"))
+
+    assert result["error"] is not None
+    assert "маршрути" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_geocode_locations_trusts_kept_current_waypoints():
+    """Locations copied from the current route (matching coordinates) must
+    skip Nominatim entirely — their coordinates came from the user's map."""
+    from app.schema import CurrentWaypoint
+
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Lviv", location_type="origin",
+                           lat=49.84, lon=24.03, from_current_route=True),
+            ParsedLocation(name="Kyiv", location_type="destination",
+                           lat=50.45, lon=30.52, from_current_route=True),
+        ],
+        settings=TripSettings(),
+    )
+    current = [
+        CurrentWaypoint(name="Lviv", latitude=49.84, longitude=24.03),
+        CurrentWaypoint(name="Kyiv", latitude=50.45, longitude=30.52),
+    ]
+    state = _state(parsed=parsed, current_route=current)
+
+    with patch("app.nodes.geocode_location", new=AsyncMock(side_effect=AssertionError(
+            "kept current-route waypoints must not be re-geocoded"))):
+        result = await geocode_locations(state)
+
+    assert [l.source for l in result["geocoded"]] == ["current_route", "current_route"]
+    assert result["geocoded"][0].latitude == 49.84
+    # Kept waypoints count as successful, so a modification of a 2-stop
+    # route passes the ≥2 valid locations rule
+    assert route_after_geocode(result) == "format_response"
+
+
+@pytest.mark.asyncio
+async def test_geocode_locations_regeocode_on_coordinate_mismatch():
+    """from_current_route=true with coordinates NOT matching any sent
+    waypoint means the LLM invented them — fall back to real geocoding."""
+    from app.schema import CurrentWaypoint
+
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Odesa", location_type="origin",
+                           lat=11.11, lon=22.22, from_current_route=True),
+            ParsedLocation(name="Kyiv", location_type="destination",
+                           lat=50.45, lon=30.52, from_current_route=True),
+        ],
+        settings=TripSettings(),
+    )
+    current = [CurrentWaypoint(name="Kyiv", latitude=50.45, longitude=30.52)]
+    state = _state(parsed=parsed, current_route=current)
+
+    geocoded = _geocoded("Odesa", "origin", "nominatim", lat=46.48, lon=30.73)
+    with patch("app.nodes.geocode_location", new=AsyncMock(return_value=geocoded)) as mock_geo:
+        result = await geocode_locations(state)
+
+    assert mock_geo.await_count == 1  # only the mismatched location
+    assert result["geocoded"][0].source == "nominatim"
+    assert result["geocoded"][1].source == "current_route"

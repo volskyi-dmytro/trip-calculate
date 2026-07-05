@@ -52,6 +52,7 @@ async def parse_route(request: ParseRouteRequest):
                     "message": request.message,
                     "language": request.language,
                     "user_id": request.user_id,
+                    "current_route": request.current_route,
                     "parsed": None,
                     "geocoded": [],
                     "response": None,

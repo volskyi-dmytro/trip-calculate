@@ -130,6 +130,15 @@ export const routePlannerTranslations = {
       manualAddFailed: 'Failed to add waypoint',
       minWaypoints: 'Please add at least 2 waypoints',
     },
+    chat: {
+      aiFailedTitle: 'Failed to process request',
+      aiFailedDescription: 'AI could not process your request. Please try again with more details.',
+      askPlaceholder: 'Ask AI to change route...',
+    },
+    bottomSheet: {
+      expand: 'Route Details',
+      collapse: 'Collapse',
+    },
   },
   uk: {
     title: 'Планувальник маршруту',
@@ -257,6 +266,15 @@ export const routePlannerTranslations = {
       manualAddSuccess: 'Додано:',
       manualAddFailed: 'Не вдалося додати точку',
       minWaypoints: 'Будь ласка, додайте принаймні 2 точки',
+    },
+    chat: {
+      aiFailedTitle: 'Не вдалося обробити запит',
+      aiFailedDescription: 'AI не зміг обробити ваш запит. Спробуйте ще раз з більш детальним описом.',
+      askPlaceholder: 'Попросіть AI змінити маршрут...',
+    },
+    bottomSheet: {
+      expand: 'Маршрут',
+      collapse: 'Згорнути',
     },
   },
 };

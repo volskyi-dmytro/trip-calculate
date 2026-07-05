@@ -207,6 +207,35 @@ body::before {
     transform: translateZ(0);
 }
 
+/* Bottom-sheet trigger chevron: a gentle upward nudge signalling the sheet
+   expands up. The global prefers-reduced-motion rule disables it. */
+@keyframes sheet-chevron-nudge {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-3px);
+    }
+}
+
+.sheet-chevron {
+    animation: sheet-chevron-nudge 1.6s ease-in-out infinite;
+}
+
+/* Accent pill for the sheet trigger. Text color follows the accent's
+   lightness per theme: white on the deep teal (light), ink on the bright
+   mint (dark) — same pairing as .btn vs the planner's accent icon buttons. */
+.sheet-trigger-pill {
+    background: var(--nav-accent);
+    color: #ffffff;
+    border: 1px solid var(--glass-border);
+}
+
+.dark .sheet-trigger-pill {
+    color: #0f1117;
+}
+
 /* Blur is the expensive part of the material: use a lighter radius on
    small (typically mobile) viewports. */
 @media (max-width: 768px) {
@@ -440,6 +469,11 @@ a:hover {
 .hero {
     position: relative;
     isolation: isolate;
+    /* Without a z-index the isolated hero sits at stacking level 0, so any
+       later glass panel (transform creates a stacking context) paints over
+       the user dropdown that overflows the hero's bottom edge. 30 keeps the
+       header above page content but below .modal-overlay (100). */
+    z-index: 30;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;

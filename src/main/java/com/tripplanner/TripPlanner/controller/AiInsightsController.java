@@ -18,6 +18,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.security.MessageDigest;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -27,8 +28,9 @@ public class AiInsightsController {
     private static final Logger logger = LoggerFactory.getLogger(AiInsightsController.class);
 
     // Bounds per-request token cost; the agent's ParseRouteRequest schema
-    // enforces the same limit for callers that bypass this proxy
+    // enforces the same limits for callers that bypass this proxy
     private static final int MAX_MESSAGE_LENGTH = 500;
+    private static final int MAX_CURRENT_ROUTE_WAYPOINTS = 25;
 
     @Value("${agent.url:}")
     private String agentUrl;
@@ -67,12 +69,13 @@ public class AiInsightsController {
 
     @PostMapping("/insights")
     public ResponseEntity<?> generateInsights(
-            @RequestBody Map<String, String> request,
+            @RequestBody Map<String, Object> request,
             HttpServletRequest httpRequest) {
 
         long startTime = System.currentTimeMillis();
-        String prompt = request.get("message");
-        String language = request.getOrDefault("language", "en");
+        String prompt = request.get("message") instanceof String s ? s : null;
+        String language = request.get("language") instanceof String l ? l : "en";
+        List<?> currentRoute = request.get("currentRoute") instanceof List<?> route ? route : List.of();
 
         if (prompt == null || prompt.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
@@ -83,6 +86,11 @@ public class AiInsightsController {
                     "error", "Message too long (max " + MAX_MESSAGE_LENGTH + " characters)"));
         }
 
+        if (currentRoute.size() > MAX_CURRENT_ROUTE_WAYPOINTS) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Current route too large (max " + MAX_CURRENT_ROUTE_WAYPOINTS + " waypoints)"));
+        }
+
         if (agentUrl == null || agentUrl.isEmpty()) {
             return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
                     .body(Map.of("error", "AI route planning is not configured"));
@@ -91,9 +99,12 @@ public class AiInsightsController {
         String userEmail = extractUserEmail();
         String clientIp = getClientIp(httpRequest);
 
-        // Cache check
+        // Cache check — skipped for modification requests: their answer
+        // depends on the caller's current route, so replaying it to another
+        // user (or the same user with a different route) would be wrong
+        boolean cacheable = currentRoute.isEmpty();
         String cacheKey = generateCacheKey(prompt, language);
-        String cached = cacheService.get(cacheKey);
+        String cached = cacheable ? cacheService.get(cacheKey) : null;
         if (cached != null) {
             logger.info("Cache HIT for prompt length={}", prompt.length());
             Long logId = usageService.logRequest(null, userEmail, clientIp, prompt, language);
@@ -116,6 +127,10 @@ public class AiInsightsController {
             body.put("message", prompt);
             body.put("language", language);
             body.put("user_id", userEmail != null ? userEmail : "anonymous");
+            if (!currentRoute.isEmpty()) {
+                // Shape validation is the agent's job (CurrentWaypoint schema)
+                body.put("current_route", currentRoute);
+            }
 
             ResponseEntity<String> response = restTemplate.postForEntity(
                     agentUrl + "/parse-route",
@@ -132,7 +147,9 @@ public class AiInsightsController {
                 // to every user asking the same question for the cache TTL.
                 AgentResponse agentResponse = parseAgentResponse(responseBody);
                 if (agentResponse != null && agentResponse.isValid()) {
-                    cacheService.put(cacheKey, responseBody);
+                    if (cacheable) {
+                        cacheService.put(cacheKey, responseBody);
+                    }
                     usageService.logResponse(logId, "success", null, duration);
                 } else {
                     String agentError = agentResponse != null ? agentResponse.getError() : "unparseable response";
