@@ -1,5 +1,5 @@
 from typing import TypedDict, Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 # ── Internal graph models ──────────────────────────────────────────────────
@@ -22,6 +22,11 @@ class TripSettings(BaseModel):
 
 
 class ParsedRoute(BaseModel):
+    # In-band off-topic classifier: the same structured-output call that
+    # extracts locations decides whether the message is a route request at
+    # all, so the guard costs zero extra LLM calls. None (model omitted it)
+    # fails open — the empty-locations check still backstops.
+    is_route_request: Optional[bool] = None
     locations: list[ParsedLocation]
     settings: TripSettings
 
@@ -41,7 +46,9 @@ class GeocodedLocation(BaseModel):
 # ── HTTP contract models (FastAPI I/O) ─────────────────────────────────────
 
 class ParseRouteRequest(BaseModel):
-    message: str
+    # Length cap bounds per-request token cost; the Spring proxy enforces
+    # the same limit, this one protects direct callers of the agent
+    message: str = Field(min_length=1, max_length=500)
     language: str = "en"
     user_id: str = "anonymous"
 

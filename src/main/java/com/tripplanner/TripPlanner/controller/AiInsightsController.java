@@ -26,6 +26,10 @@ public class AiInsightsController {
 
     private static final Logger logger = LoggerFactory.getLogger(AiInsightsController.class);
 
+    // Bounds per-request token cost; the agent's ParseRouteRequest schema
+    // enforces the same limit for callers that bypass this proxy
+    private static final int MAX_MESSAGE_LENGTH = 500;
+
     @Value("${agent.url:}")
     private String agentUrl;
 
@@ -72,6 +76,11 @@ public class AiInsightsController {
 
         if (prompt == null || prompt.trim().isEmpty()) {
             return ResponseEntity.badRequest().body(Map.of("error", "Prompt is required"));
+        }
+
+        if (prompt.length() > MAX_MESSAGE_LENGTH) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "error", "Message too long (max " + MAX_MESSAGE_LENGTH + " characters)"));
         }
 
         if (agentUrl == null || agentUrl.isEmpty()) {

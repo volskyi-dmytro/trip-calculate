@@ -76,6 +76,51 @@ async def test_parse_locations_sets_error_on_exception(mock_client):
     assert result["parsed"] is None
 
 
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_rejects_non_route_request(mock_client):
+    """Off-topic guard: the LLM classifies the message in-band via
+    is_route_request; the node must short-circuit with a friendly error
+    instead of passing garbage downstream."""
+    parsed = ParsedRoute(is_route_request=False, locations=[], settings=TripSettings())
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+
+    result = await parse_locations(_state(message="What is the capital of France?"))
+
+    assert result["error"] is not None
+    assert "route" in result["error"].lower()
+    assert result["parsed"] is None
+    # The error must route straight to format_error, skipping geocoding
+    assert route_after_geocode(result) == "format_error"
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_rejects_empty_locations(mock_client):
+    """Even if the LLM claims is_route_request=true, an empty locations
+    list means there is nothing to geocode — fail fast with the same
+    friendly error rather than a confusing geocode-count message."""
+    parsed = ParsedRoute(is_route_request=True, locations=[], settings=TripSettings())
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+
+    result = await parse_locations(_state(message="hello there"))
+
+    assert result["error"] is not None
+    assert "route" in result["error"].lower()
+
+
 # ── geocode_locations ─────────────────────────────────────────────────────
 
 @pytest.mark.asyncio
