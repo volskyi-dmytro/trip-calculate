@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -50,6 +50,22 @@ function RouteSketch({ geometry }: { geometry: Array<[number, number]> }) {
   );
 }
 
+/** Geometry is decorative — malformed data must never crash the page. */
+function parseGeometry(raw: string | null): Array<[number, number]> | null {
+  if (!raw) return null;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return null;
+    const points = parsed.filter(
+      (p): p is [number, number] =>
+        Array.isArray(p) && Number.isFinite(p[0]) && Number.isFinite(p[1]),
+    );
+    return points.length >= 2 ? points : null;
+  } catch {
+    return null;
+  }
+}
+
 export function ReceiptPage() {
   const { slug } = useParams<{ slug: string }>();
   const navigate = useNavigate();
@@ -70,8 +86,16 @@ export function ReceiptPage() {
       });
   }, [slug]);
 
-  // Receipt renders in its stored locale by default; a user-chosen language wins
-  const lang = receipt && !localStorage.getItem('language') ? receipt.locale : language;
+  // Captured during first render — before LanguageProvider's persistence
+  // effect writes the key — so it reflects whether the visitor had a real
+  // saved preference when they landed on this link.
+  const [hadSavedLanguage] = useState(() => localStorage.getItem('language') !== null);
+  const initialLanguage = useRef(language);
+  const userSwitchedLanguage = language !== initialLanguage.current;
+
+  // Receipt renders in its stored locale for first-time visitors;
+  // a saved preference or an explicit toggle wins.
+  const lang = receipt && !hadSavedLanguage && !userSwitchedLanguage ? receipt.locale : language;
 
   const t = {
     receipt: lang === 'uk' ? 'Квитанція за поїздку' : 'Trip receipt',
@@ -121,9 +145,7 @@ export function ReceiptPage() {
   }
 
   const r = receipt!;
-  const geometry: Array<[number, number]> | null = r.routeGeometry
-    ? JSON.parse(r.routeGeometry)
-    : null;
+  const geometry = parseGeometry(r.routeGeometry);
   const money = (v: number) => `${v.toFixed(2)} ${r.currency}`;
 
   return (
