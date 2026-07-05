@@ -22,6 +22,8 @@ export function ReceiptsList() {
     views: language === 'uk' ? 'переглядів' : 'views',
     copied: language === 'uk' ? 'Посилання скопійовано' : 'Link copied',
     deleted: language === 'uk' ? 'Квитанцію видалено' : 'Receipt deleted',
+    copyLabel: language === 'uk' ? 'Копіювати посилання' : 'Copy link',
+    deleteLabel: language === 'uk' ? 'Видалити квитанцію' : 'Delete receipt',
     deleteFailed: language === 'uk' ? 'Не вдалося видалити' : 'Delete failed',
     confirmDelete:
       language === 'uk'
@@ -94,7 +96,7 @@ export function ReceiptsList() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => handleCopy(r.slug)}
-                  aria-label={t.copied}
+                  aria-label={t.copyLabel}
                 >
                   <Copy className="h-3.5 w-3.5" />
                 </Button>
@@ -104,7 +106,7 @@ export function ReceiptsList() {
                   className="h-8 w-8"
                   onClick={() => handleDelete(r.slug)}
                   disabled={deleting === r.slug}
-                  aria-label={t.deleted}
+                  aria-label={t.deleteLabel}
                 >
                   {deleting === r.slug ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
