@@ -65,6 +65,8 @@ export function RoutePlanner() {
     catch { return DEFAULT_ROUTE_SETTINGS }
   })
   const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
+  // Latest-wins sequence guard for the debounced fuel suggestion fetch below
+  const fuelFetchSeq = useRef(0)
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
   const [savingRoute, setSavingRoute] = useState(false)
@@ -291,9 +293,16 @@ export function RoutePlanner() {
   // context changes; auto-applies only while the price field is untouched
   useEffect(() => {
     if (waypoints.length < 2) { setFuelSuggestion(null); return }
+    // Latest-wins guard: getFuelSuggestion awaits sequential Nominatim
+    // reverse lookups and can take seconds, so a newer effect run may start
+    // a second fetch before an older one resolves. Without this, the older
+    // (stale) response could land last and overwrite state for a route
+    // shape that no longer exists.
+    const seq = ++fuelFetchSeq.current
     const handle = setTimeout(async () => {
       const suggestion = await getFuelSuggestion(
         waypoints, routeSettings.fuelType, routeSettings.currency)
+      if (seq !== fuelFetchSeq.current) return // superseded by a newer route shape
       setFuelSuggestion(suggestion)
       if (suggestion) {
         setRouteSettings(prev => applyLiveFuelPrice(prev, suggestion) ?? prev)
@@ -484,7 +493,11 @@ export function RoutePlanner() {
         fuelConsumption: route.fuelConsumption,
         fuelCostPerLiter: route.fuelCostPerLiter,
         currency: route.currency,
-        passengerCount: route.passengerCount || 1
+        passengerCount: route.passengerCount || 1,
+        // A persisted price is a user-chosen price: mark it touched so the
+        // live fuel suggestion effect (see applyLiveFuelPrice guard) never
+        // silently overwrites it once the new waypoints trigger a refetch.
+        fuelPriceTouched: true
       })
       setRouteName(route.name)
       setShowLoadDialog(false)
