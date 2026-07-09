@@ -793,9 +793,10 @@ export function RoutePlanner() {
           updates.push(`${t.routeSettings.fuelConsumption}: ${agentData.consumption}`);
         }
 
-        // Update fuel cost
+        // Update fuel cost — a chat-dictated price is user-chosen, so mark it
+        // touched: the applyLiveFuelPrice guard must never overwrite it
         if (agentData.price) {
-          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price! }));
+          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: true }));
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
 
