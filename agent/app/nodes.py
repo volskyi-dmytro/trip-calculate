@@ -2,10 +2,11 @@ import asyncio
 import os
 from langfuse.openai import AsyncOpenAI
 from .schema import (
-    GraphState, ParsedRoute, GeocodedLocation,
+    GraphState, ParsedRoute, GeocodedLocation, SettingsContext,
     ParseRouteResponse, RouteOut, WaypointOut, RouteSettings, RouteStats,
 )
-from .geocoding import geocode_location
+from .geocoding import geocode_location, reverse_country
+from .tools.fuel import compute_fuel_data
 
 _SYSTEM_PROMPT = """You normalize location names for geocoding AND provide coordinates when possible.
 
@@ -272,15 +273,44 @@ async def retry_failed_locations(state: GraphState) -> GraphState:
     return {**state, "geocoded": merged, "retry_count": next_count}
 
 
+def _ordered_successful(geocoded) -> list:
+    """Origin → waypoints → destination ordering shared by the composer and
+    the fuel agent, so fuel weighting sees exactly the returned route."""
+    successful = [loc for loc in geocoded if loc.source != "failed"]
+    origin = next((l for l in successful if l.location_type == "origin"), None)
+    waypoints = [l for l in successful if l.location_type == "waypoint"]
+    destination = next((l for l in successful if l.location_type == "destination"), None)
+    return [l for l in [origin, *waypoints, destination] if l is not None]
+
+
+async def fuel_enrichment(state: GraphState) -> GraphState:
+    """Fuel-price agent: deterministic, zero LLM tokens. Advisory only —
+    any failure yields fuel_data=None and routing proceeds untouched."""
+    if state.get("error"):
+        return state
+    try:
+        ctx = state.get("settings_context") or SettingsContext()
+        user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
+        points = []
+        for loc in _ordered_successful(state.get("geocoded", [])):
+            country = loc.country_code
+            if country is None and loc.source == "current_route":
+                # Kept map waypoints skipped forward geocoding, so their
+                # country is unknown — one cached reverse lookup fills it
+                country = await reverse_country(loc.latitude, loc.longitude, user_agent)
+            points.append((loc.latitude, loc.longitude, country))
+        fuel = await compute_fuel_data(points, ctx.fuel_type, ctx.currency)
+        return {**state, "fuel_data": fuel}
+    except Exception:
+        return {**state, "fuel_data": None}
+
+
 def format_response(state: GraphState) -> GraphState:
     geocoded = state["geocoded"]
     successful = [loc for loc in geocoded if loc.source != "failed"]
     failed = [loc for loc in geocoded if loc.source == "failed"]
 
-    origin = next((l for l in successful if l.location_type == "origin"), None)
-    waypoints = [l for l in successful if l.location_type == "waypoint"]
-    destination = next((l for l in successful if l.location_type == "destination"), None)
-    ordered = [l for l in [origin, *waypoints, destination] if l is not None]
+    ordered = _ordered_successful(geocoded)
 
     waypoints_out = [
         WaypointOut(
@@ -288,6 +318,7 @@ def format_response(state: GraphState) -> GraphState:
             name=loc.clean_name,
             latitude=loc.latitude,
             longitude=loc.longitude,
+            countryCode=loc.country_code,
         )
         for i, loc in enumerate(ordered)
     ]
@@ -326,6 +357,7 @@ def format_response(state: GraphState) -> GraphState:
             recovered=recovered_count,
         ),
         skippedLocations=[{"name": l.name, "reason": l.message} for l in failed] or None,
+        fuel_data=state.get("fuel_data"),
     )
     return {**state, "response": response}
 

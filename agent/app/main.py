@@ -89,6 +89,9 @@ async def parse_route(request: ParseRouteRequest):
                     "response": None,
                     "error": None,
                     "retry_count": 0,
+                    "settings_context": request.settings_context,
+                    "fuel_data": None,
+                    "intent": None,
                 }
 
                 result = await route_graph.ainvoke(initial_state)
