@@ -28,6 +28,12 @@ OIL_BULLETIN_URL = (
 )
 # Prices in the raw file are per 1000 litres
 PRICE_DIVISOR = 1000.0
+# Sanity bounds (EUR/L) for detected fuel prices. Defense against column-mapping
+# drift: if a header rewording points at tax amounts or fuel-oil prices by accident,
+# raw values might be implausibly large, corrupting every user's cost estimate.
+# LPG typically ~0.5–0.7, petrol up to ~2.5; the band leaves headroom both ways.
+MIN_PRICE_PER_LITRE = 0.2
+MAX_PRICE_PER_LITRE = 5.0
 # header-substring (lowercase) → our fuel_type. "gas oil automobile" (not
 # just "gas oil") is required to avoid matching the heating-oil column
 # ("Gas oil de chauffage Heating gas oil").
@@ -74,11 +80,13 @@ def parse_oil_bulletin(content: bytes) -> list[FuelPriceRow]:
             for idx, fuel in fuel_cols.items():
                 value = row[idx] if idx < len(row) else None
                 if isinstance(value, (int, float)) and value > 0:
-                    best[(country, fuel)] = FuelPriceRow(
-                        country_code=country, fuel_type=fuel,
-                        price=round(float(value) / PRICE_DIVISOR, 5),
-                        currency="EUR", source="eu_oil_bulletin", fetched_at=now,
-                    )
+                    per_litre = float(value) / PRICE_DIVISOR
+                    if MIN_PRICE_PER_LITRE < per_litre < MAX_PRICE_PER_LITRE:
+                        best[(country, fuel)] = FuelPriceRow(
+                            country_code=country, fuel_type=fuel,
+                            price=round(per_litre, 5),
+                            currency="EUR", source="eu_oil_bulletin", fetched_at=now,
+                        )
     return list(best.values())
 
 

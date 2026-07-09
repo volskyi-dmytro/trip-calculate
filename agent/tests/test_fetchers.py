@@ -75,6 +75,44 @@ def test_parse_oil_bulletin_empty_workbook_returns_nothing():
     assert parse_oil_bulletin(buf.getvalue()) == []
 
 
+def test_parse_oil_bulletin_skips_implausible_prices():
+    """Sanity band prevents column-mapping drift from corrupting cost estimates.
+    E.g., if a header rewording maps to a tax-amount column instead of price,
+    the raw values might be ~1420550 (1000L basis), yielding implausible
+    1420.55 EUR/L — well outside the 0.2-5.0 EUR/L band."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Sheet1"
+    ws.append([
+        "in EUR", "Euro-super 95  (I)",
+        "Gas oil automobile Automotive gas oil Dieselkraftstoff (I)",
+        " Gas oil de chauffage Heating gas oil Heizöl (II)",
+        "GPL pour moteur LPG motor fuel",
+    ])
+    ws.append([datetime(2026, 7, 6), "1000 l", "1000 l", "1000 l", "1000 l"])  # units row
+    ws.append(["Austria", 1751.00, 1450.10, 999.99, 680.00])  # normal prices
+    ws.append(["Belgium", 1420550.0, 1450.10, 999.99, 680.00])  # implausible petrol (1420.55 EUR/L)
+    buf = io.BytesIO()
+    wb.save(buf)
+
+    rows = parse_oil_bulletin(buf.getvalue())
+    by_key = {(r.country_code, r.fuel_type): r for r in rows}
+
+    # Austria's normal prices should be present
+    assert ("AT", "petrol") in by_key
+    assert by_key[("AT", "petrol")].price == pytest.approx(1.75100)
+    assert ("AT", "diesel") in by_key
+    assert ("AT", "lpg") in by_key
+
+    # Belgium's implausible petrol should be filtered out
+    assert ("BE", "petrol") not in by_key
+    # Belgium's normal diesel and LPG should still be present
+    assert ("BE", "diesel") in by_key
+    assert by_key[("BE", "diesel")].price == pytest.approx(1.45010)
+    assert ("BE", "lpg") in by_key
+    assert by_key[("BE", "lpg")].price == pytest.approx(0.68)
+
+
 # ── minfin ──────────────────────────────────────────────────────────────────
 
 # Mirrors the REAL live table (verified 2026-07): full Russian-language
