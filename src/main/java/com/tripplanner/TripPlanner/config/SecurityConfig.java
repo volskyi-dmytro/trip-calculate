@@ -234,6 +234,10 @@ public class SecurityConfig {
                         // Public API endpoints for auth status check, CSRF token, avatar proxy, and routing
                         .requestMatchers("/api/user/me", "/api/user/status", "/api/user/csrf", "/api/avatar/proxy", "/api/routing/**").permitAll()
 
+                        // Read-only country-average fuel prices for the manual route flow;
+                        // must work for logged-out users (no AI/auth dependency)
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/fuel-prices").permitAll()
+
                         // Receipt share links: creation/viewing is anonymous by design (viral loop);
                         // ownership checks for list/delete happen in ReceiptController.
                         // /r/** serves the OG-injected HTML for crawlers and browsers.
