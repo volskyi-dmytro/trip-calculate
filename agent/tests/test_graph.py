@@ -3,7 +3,7 @@ import respx
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.graph import build_graph
-from app.schema import ParsedRoute, ParsedLocation, TripSettings
+from app.schema import ParsedRoute, ParsedLocation, TripSettings, SupervisorDecision
 
 
 def _nominatim_resp(name: str, lat: str, lon: str):
@@ -33,6 +33,13 @@ def _mock_parse_response(parsed):
     return mock_response
 
 
+def supervisor_llm_response(intent="create"):
+    """The graph now enters at the supervisor node, which makes its own
+    _openai_client.parse call before parse_locations ever runs. Full-graph
+    tests that mock the shared client must answer this call first."""
+    return _mock_parse_response(SupervisorDecision(intent=intent, settings=TripSettings()))
+
+
 def _initial_state(message: str) -> dict:
     return {
         "message": message,
@@ -59,7 +66,7 @@ async def test_graph_happy_path_two_cities(mock_client):
         settings=TripSettings(passengers=1, currency="UAH"),
     )
     mock_client.beta.chat.completions.parse = AsyncMock(
-        return_value=_mock_parse_response(parsed)
+        side_effect=[supervisor_llm_response(), _mock_parse_response(parsed)]
     )
 
     def handler(request):
@@ -111,7 +118,11 @@ async def test_graph_retry_loop_recovers_failed_location(mock_client):
         settings=TripSettings(),
     )
     mock_client.beta.chat.completions.parse = AsyncMock(
-        side_effect=[_mock_parse_response(parsed), _mock_parse_response(renormalized)]
+        side_effect=[
+            supervisor_llm_response(),
+            _mock_parse_response(parsed),
+            _mock_parse_response(renormalized),
+        ]
     )
 
     def handler(request):
@@ -131,8 +142,8 @@ async def test_graph_retry_loop_recovers_failed_location(mock_client):
     assert result["retry_count"] == 1
     assert result["response"].stats.recovered == 1
     assert result["response"].route.waypoints[1].name == "Lviv"
-    # Two LLM calls: initial parse + retry re-normalization
-    assert mock_client.beta.chat.completions.parse.call_count == 2
+    # Three LLM calls: supervisor classification + initial parse + retry re-normalization
+    assert mock_client.beta.chat.completions.parse.call_count == 3
 
 
 @respx.mock
@@ -163,7 +174,7 @@ async def test_graph_village_resolved_by_original_name_not_hallucinated_coords(m
         settings=TripSettings(passengers=3, fuelCostPerLiter=81.99, currency="UAH"),
     )
     mock_client.beta.chat.completions.parse = AsyncMock(
-        return_value=_mock_parse_response(parsed)
+        side_effect=[supervisor_llm_response(), _mock_parse_response(parsed)]
     )
 
     village = [{
@@ -220,7 +231,11 @@ async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_client
         settings=TripSettings(),
     )
     mock_client.beta.chat.completions.parse = AsyncMock(
-        side_effect=[_mock_parse_response(parsed), _mock_parse_response(retry_parsed)]
+        side_effect=[
+            supervisor_llm_response(),
+            _mock_parse_response(parsed),
+            _mock_parse_response(retry_parsed),
+        ]
     )
 
     def handler(request):

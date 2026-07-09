@@ -36,6 +36,13 @@ class ParsedRoute(BaseModel):
     settings: TripSettings
 
 
+class SupervisorDecision(BaseModel):
+    """Structured output of the supervisor node: which specialist path the
+    request takes. settings is only trusted for settings_only intents."""
+    intent: Literal["create", "modify", "settings_only", "off_topic"]
+    settings: TripSettings
+
+
 class GeocodedLocation(BaseModel):
     name: str
     clean_name: str

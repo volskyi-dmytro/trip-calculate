@@ -1,12 +1,14 @@
 from langgraph.graph import StateGraph, END
 from .schema import GraphState
 from .nodes import (
+    supervise,
     parse_locations,
     geocode_locations,
     retry_failed_locations,
     fuel_enrichment,
     format_response,
     format_error,
+    route_after_supervisor,
     route_after_geocode,
 )
 
@@ -14,6 +16,7 @@ from .nodes import (
 def build_graph():
     graph = StateGraph(GraphState)
 
+    graph.add_node("supervise", supervise)
     graph.add_node("parse_locations", parse_locations)
     graph.add_node("geocode_locations", geocode_locations)
     graph.add_node("retry_failed_locations", retry_failed_locations)
@@ -21,7 +24,14 @@ def build_graph():
     graph.add_node("format_response", format_response)
     graph.add_node("format_error", format_error)
 
-    graph.set_entry_point("parse_locations")
+    graph.set_entry_point("supervise")
+    graph.add_conditional_edges(
+        "supervise",
+        route_after_supervisor,
+        {"format_error": "format_error",
+         "geocode_locations": "geocode_locations",
+         "parse_locations": "parse_locations"},
+    )
 
     graph.add_conditional_edges(
         "parse_locations",
