@@ -1,4 +1,5 @@
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Literal
+from datetime import datetime
 from pydantic import BaseModel, Field
 
 
@@ -45,6 +46,7 @@ class GeocodedLocation(BaseModel):
     error: bool = False
     message: Optional[str] = None
     recovered: bool = False  # geocoded successfully only after an LLM retry pass
+    country_code: Optional[str] = None
 
 
 # ── HTTP contract models (FastAPI I/O) ─────────────────────────────────────
@@ -58,6 +60,14 @@ class CurrentWaypoint(BaseModel):
     longitude: float = Field(ge=-180, le=180)
 
 
+class SettingsContext(BaseModel):
+    """The user's active fuel type and display currency — needed so the fuel
+    agent prices the right fuel in the right currency. Defaults keep old
+    clients (and the Spring proxy before its update) working."""
+    fuel_type: Literal["petrol", "diesel", "lpg"] = "petrol"
+    currency: Literal["UAH", "USD", "EUR"] = "UAH"
+
+
 class ParseRouteRequest(BaseModel):
     # Length cap bounds per-request token cost; the Spring proxy enforces
     # the same limit, this one protects direct callers of the agent
@@ -67,6 +77,7 @@ class ParseRouteRequest(BaseModel):
     # Waypoint cap bounds the context-block token cost the same way the
     # message cap bounds the message
     current_route: Optional[list[CurrentWaypoint]] = Field(default=None, max_length=25)
+    settings_context: Optional[SettingsContext] = None
 
 
 class WaypointOut(BaseModel):
@@ -74,6 +85,7 @@ class WaypointOut(BaseModel):
     name: str
     latitude: float
     longitude: float
+    countryCode: Optional[str] = None
 
 
 class RouteSettings(BaseModel):
@@ -100,6 +112,24 @@ class RouteStats(BaseModel):
     recovered: int = 0  # locations rescued by the retry loop
 
 
+class CountryFuelPrice(BaseModel):
+    code: str
+    price: float
+    weight: float
+
+
+class FuelData(BaseModel):
+    """Advisory country-average fuel price for the route. Omitted (None)
+    whenever it cannot be computed — never an error the user sees."""
+    price_per_liter: float
+    currency: str
+    fuel_type: str
+    countries: list[CountryFuelPrice]
+    source: str
+    fetched_at: datetime
+    stale: bool = False
+
+
 class ParseRouteResponse(BaseModel):
     success: bool
     route: Optional[RouteOut] = None
@@ -107,6 +137,7 @@ class ParseRouteResponse(BaseModel):
     stats: Optional[RouteStats] = None
     error: Optional[str] = None
     skippedLocations: Optional[list[dict]] = None
+    fuel_data: Optional[FuelData] = None
 
 
 # ── LangGraph state ────────────────────────────────────────────────────────
@@ -121,3 +152,6 @@ class GraphState(TypedDict):
     response: Optional[ParseRouteResponse]
     error: Optional[str]
     retry_count: int
+    settings_context: Optional[SettingsContext]
+    fuel_data: Optional[FuelData]
+    intent: Optional[str]

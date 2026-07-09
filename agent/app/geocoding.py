@@ -4,7 +4,12 @@ import httpx
 from .schema import ParsedLocation, GeocodedLocation
 
 NOMINATIM_URL = "https://nominatim.openstreetmap.org/search"
+REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
 _BACKOFF = [2.0, 4.0, 8.0]
+# Country cache for kept current-route waypoints: keyed by coords rounded to
+# 2 decimals (~1 km) — plenty for country attribution, tiny memory footprint
+_country_cache: dict[tuple[float, float], Optional[str]] = {}
+_COUNTRY_CACHE_MAX = 5000
 
 # Indirection so tests can patch sleep without patching asyncio.sleep globally
 _sleep: Callable[[float], Awaitable[None]] = asyncio.sleep
@@ -42,6 +47,7 @@ async def geocode_location(
                     or addr.get("village")
                     or best["display_name"].split(",")[0].strip()
                 )
+                country = str(addr.get("country_code") or "").strip().upper() or None
                 return GeocodedLocation(
                     name=location.name,
                     clean_name=clean,
@@ -49,6 +55,7 @@ async def geocode_location(
                     latitude=float(best["lat"]),
                     longitude=float(best["lon"]),
                     source="nominatim",
+                    country_code=country,
                 )
 
     # AI coordinates fallback — last resort only
@@ -161,3 +168,31 @@ def _is_specific_place(name: str) -> bool:
         or any(mod in lower for mod in modifiers)
         or any(aw in lower for aw in address_words)
     )
+
+
+async def reverse_country(lat: float, lon: float, user_agent: str) -> Optional[str]:
+    """Resolve the country of a coordinate (zoom=3 reverse lookup). Used only
+    for waypoints that skipped forward geocoding (kept current-route points),
+    so call volume is low and the cache absorbs repeats."""
+    key = (round(lat, 2), round(lon, 2))
+    if key in _country_cache:
+        return _country_cache[key]
+    country: Optional[str] = None
+    try:
+        async with httpx.AsyncClient() as client:
+            resp = await client.get(
+                REVERSE_URL,
+                params={"format": "json", "lat": lat, "lon": lon,
+                        "zoom": 3, "addressdetails": 1},
+                headers={"User-Agent": user_agent},
+                timeout=10.0,
+            )
+            resp.raise_for_status()
+            cc = (resp.json().get("address") or {}).get("country_code")
+            country = str(cc).strip().upper() if cc else None
+    except Exception:
+        country = None
+    if len(_country_cache) >= _COUNTRY_CACHE_MAX:
+        _country_cache.clear()
+    _country_cache[key] = country
+    return country
