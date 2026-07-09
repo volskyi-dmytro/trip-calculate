@@ -29,7 +29,7 @@ async def lifespan(app: FastAPI):
         scheduler.start()
         # Startup refresh runs in the background so boot isn't blocked on
         # slow external sources; seed rows cover the gap.
-        asyncio.create_task(refresh_all())
+        app.state.startup_refresh_task = asyncio.create_task(refresh_all())  # Retain for GC protection
         logger.info("fuel price cache enabled (daily refresh 04:10 UTC)")
     else:
         logger.warning("DATABASE_URL not configured — fuel prices disabled")
