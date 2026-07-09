@@ -33,4 +33,15 @@ export interface AgentTripData {
 
   // Locations the agent could not geocode (even after its retry pass)
   skippedLocations?: { name: string; reason?: string }[];
+
+  // Live fuel-price advisory from the agent's fuel tool. Shape mirrors
+  // services/fuelPriceService.ts's FuelSuggestion — redeclared inline here
+  // (rather than imported) to avoid a types -> services -> components -> types cycle.
+  fuelData?: {
+    price: number;
+    currency: string;
+    stale: boolean;
+    fetchedAt: string;
+    source: string;
+  };
 }

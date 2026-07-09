@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
+import type { FuelSuggestion } from '../services/fuelPriceService'
 import { Input } from '@/components/ui/input'
 import { MapPin, Trash2, GripVertical, Plus, Loader2, ChevronDown } from 'lucide-react'
 import type { Language } from '../types'
@@ -14,6 +15,13 @@ const CURRENCIES = [
   { code: 'EUR', symbol: '€', name: 'Euro' }
 ] as const
 
+// Fuel type options — labels come from t.fuel.<labelKey>
+const FUEL_TYPES: { value: 'petrol' | 'diesel' | 'lpg'; labelKey: 'petrol' | 'diesel' | 'lpg' }[] = [
+  { value: 'petrol', labelKey: 'petrol' },
+  { value: 'diesel', labelKey: 'diesel' },
+  { value: 'lpg', labelKey: 'lpg' },
+]
+
 
 interface RoutePanelProps {
   waypoints: Waypoint[]
@@ -24,6 +32,8 @@ interface RoutePanelProps {
   onUpdateSettings: (settings: RouteSettings) => void
   onAddManually?: () => void
   isCalculating?: boolean
+  fuelSuggestion: FuelSuggestion | null
+  onApplyFuelSuggestion: () => void
 }
 
 export function RoutePanel({
@@ -35,6 +45,8 @@ export function RoutePanel({
   onUpdateSettings,
   onAddManually,
   isCalculating = false,
+  fuelSuggestion,
+  onApplyFuelSuggestion,
 }: RoutePanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -50,6 +62,9 @@ export function RoutePanel({
 
   // Currency dropdown state
   const [currencyOpen, setCurrencyOpen] = useState(false)
+
+  // Fuel type dropdown state
+  const [fuelTypeOpen, setFuelTypeOpen] = useState(false)
 
   // Initialize local state from routeSettings
   useEffect(() => {
@@ -152,7 +167,10 @@ export function RoutePanel({
     }
   }
 
-  // Handle fuel cost input change
+  // Handle fuel cost input change.
+  // Every branch that writes fuelCostPerLiter also sets fuelPriceTouched:
+  // true — once the user has edited the field, live/AI suggestions must
+  // never silently overwrite it again (see applyLiveFuelPrice guard).
   const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let value = e.target.value
 
@@ -161,7 +179,8 @@ export function RoutePanel({
       setFuelCostInput('')
       onUpdateSettings({
         ...routeSettings,
-        fuelCostPerLiter: 0
+        fuelCostPerLiter: 0,
+        fuelPriceTouched: true
       })
       return
     }
@@ -178,7 +197,8 @@ export function RoutePanel({
       if (!isNaN(numValue) && numValue >= 0) {
         onUpdateSettings({
           ...routeSettings,
-          fuelCostPerLiter: numValue
+          fuelCostPerLiter: numValue,
+          fuelPriceTouched: true
         })
       }
     }
@@ -190,7 +210,8 @@ export function RoutePanel({
       setFuelCostInput('')
       onUpdateSettings({
         ...routeSettings,
-        fuelCostPerLiter: 0
+        fuelCostPerLiter: 0,
+        fuelPriceTouched: true
       })
       return
     }
@@ -202,14 +223,16 @@ export function RoutePanel({
       setFuelCostInput('')
       onUpdateSettings({
         ...routeSettings,
-        fuelCostPerLiter: 0
+        fuelCostPerLiter: 0,
+        fuelPriceTouched: true
       })
     } else {
       // Clean up the display
       setFuelCostInput(numValue.toString())
       onUpdateSettings({
         ...routeSettings,
-        fuelCostPerLiter: numValue
+        fuelCostPerLiter: numValue,
+        fuelPriceTouched: true
       })
     }
   }
@@ -348,6 +371,75 @@ export function RoutePanel({
             style={inputStyle}
             className="h-8 text-sm font-mono"
           />
+          {fuelSuggestion && (
+            routeSettings.fuelPriceTouched ? (
+              <button type="button" className="fuel-chip fuel-chip-action"
+                      onClick={onApplyFuelSuggestion}>
+                ⛽ {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/L
+              </button>
+            ) : (
+              <span className="fuel-chip">
+                ⛽ {t.fuel.liveApplied} · {fuelSuggestion.source}
+                {fuelSuggestion.stale && ` · ${t.fuel.pricesFrom} ${fuelSuggestion.fetchedAt.slice(0, 10)}`}
+              </span>
+            )
+          )}
+        </div>
+
+        <div className="space-y-1">
+          <label style={labelStyle}>{t.fuel.typeLabel}</label>
+          <div
+            className="relative"
+            onBlur={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                setFuelTypeOpen(false)
+              }
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => setFuelTypeOpen(o => !o)}
+              style={{ ...inputStyle, paddingRight: '2rem' }}
+              className="flex h-8 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
+              aria-haspopup="listbox"
+              aria-expanded={fuelTypeOpen}
+            >
+              {t.fuel[FUEL_TYPES.find(f => f.value === routeSettings.fuelType)?.labelKey ?? 'petrol']}
+            </button>
+            <ChevronDown
+              className="pointer-events-none absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3"
+              style={{ color: 'var(--nav-text-secondary)' }}
+            />
+            {fuelTypeOpen && (
+              <div
+                className="absolute z-50 w-full rounded-md shadow-lg mt-1"
+                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+                role="listbox"
+              >
+                {FUEL_TYPES.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    role="option"
+                    aria-selected={routeSettings.fuelType === option.value}
+                    onClick={() => {
+                      onUpdateSettings({ ...routeSettings, fuelType: option.value })
+                      setFuelTypeOpen(false)
+                    }}
+                    className="flex w-full px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
+                    style={{
+                      color: 'var(--nav-text-primary)',
+                      background: routeSettings.fuelType === option.value
+                        ? 'var(--nav-bg-sidebar)'
+                        : 'transparent',
+                    }}
+                  >
+                    {t.fuel[option.labelKey]}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="space-y-1">

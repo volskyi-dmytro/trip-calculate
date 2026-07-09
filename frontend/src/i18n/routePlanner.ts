@@ -53,6 +53,15 @@ export const routePlannerTranslations = {
       currency: 'Currency',
       passengers: 'Passengers',
     },
+    fuel: {
+      typeLabel: 'Fuel type',
+      petrol: 'Petrol',
+      diesel: 'Diesel',
+      lpg: 'LPG',
+      liveApplied: 'Live average price applied',
+      applyLive: 'Use live price',
+      pricesFrom: 'prices from',
+    },
     waypoints: {
       title: 'Waypoints',
       noWaypoints: 'No waypoints yet',
@@ -189,6 +198,15 @@ export const routePlannerTranslations = {
       fuelCost: 'Вартість палива (за літр)',
       currency: 'Валюта',
       passengers: 'Пасажири',
+    },
+    fuel: {
+      typeLabel: 'Тип пального',
+      petrol: 'Бензин',
+      diesel: 'Дизель',
+      lpg: 'Автогаз',
+      liveApplied: 'Застосовано актуальну середню ціну',
+      applyLive: 'Використати актуальну ціну',
+      pricesFrom: 'ціни станом на',
     },
     waypoints: {
       title: 'Точки маршруту',
