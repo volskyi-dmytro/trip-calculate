@@ -240,6 +240,9 @@ jobs:
               --restart unless-stopped \
               --network trip-calculate-network \
               -e OPENAI_API_KEY="${OPENAI_API_KEY}" \
+              -e DATABASE_URL="${DATABASE_URL}" \
+              -e DATABASE_USERNAME="${DATABASE_USERNAME}" \
+              -e DATABASE_PASSWORD="${DATABASE_PASSWORD}" \
               -e LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
               -e LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}" \
               -e LANGFUSE_HOST="${LANGFUSE_HOST}" \
