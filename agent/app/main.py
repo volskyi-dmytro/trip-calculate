@@ -1,14 +1,45 @@
+import asyncio
+import logging
 import os
 import time
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from langfuse import Langfuse, propagate_attributes
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
+from . import db
+from .fetchers.refresh import refresh_all
 from .schema import ParseRouteRequest, ParseRouteResponse
 from .graph import build_graph
 
 load_dotenv()
 
-app = FastAPI(title="TripCalculate Agent")
+logger = logging.getLogger(__name__)
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Fuel data is optional infrastructure: without a DB the agent still
+    # plans routes, it just returns no fuel_data.
+    scheduler = None
+    if await db.open_pool():
+        scheduler = AsyncIOScheduler(timezone="UTC")
+        scheduler.add_job(refresh_all, "cron", hour=4, minute=10)
+        scheduler.start()
+        # Startup refresh runs in the background so boot isn't blocked on
+        # slow external sources; seed rows cover the gap.
+        asyncio.create_task(refresh_all())
+        logger.info("fuel price cache enabled (daily refresh 04:10 UTC)")
+    else:
+        logger.warning("DATABASE_URL not configured — fuel prices disabled")
+    yield
+    if scheduler is not None:
+        scheduler.shutdown(wait=False)
+    await db.close_pool()
+
+
+app = FastAPI(title="TripCalculate Agent", lifespan=lifespan)
 
 # Module-level graph instance — patched by API tests via @patch("app.main.route_graph")
 route_graph = build_graph()
