@@ -637,10 +637,6 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
   }
 }
 
-/* Dark mode override */
-body[data-theme="dark"] .agent-progress {
-  background: var(--glass-inset);
-}
 
 /* ── Trip Result Card ──────────────────────────────────────────────────
    Summary card with stops, distance, duration, fuel cost breakdown. Waze
@@ -733,9 +729,7 @@ body[data-theme="dark"] .agent-progress {
 }
 
 .trip-result-waze-link:hover {
-  background: var(--accent-soft);
   border-color: var(--nav-accent);
-  color: var(--nav-accent);
 }
 
 .trip-result-waze-link:focus-visible {
@@ -781,15 +775,3 @@ body[data-theme="dark"] .agent-progress {
   transform: scale(0.98);
 }
 
-/* Dark mode adjustments */
-body[data-theme="dark"] .trip-result-action {
-  background: var(--glass-bg);
-  border-color: var(--glass-border);
-  color: var(--text);
-}
-
-body[data-theme="dark"] .trip-result-action:hover {
-  background: var(--accent-soft);
-  border-color: var(--nav-accent);
-  color: var(--nav-accent);
-}

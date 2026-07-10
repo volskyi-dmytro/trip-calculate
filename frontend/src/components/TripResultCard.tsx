@@ -30,7 +30,7 @@ export function TripResultCard({
     <div className="trip-result-card glass-panel">
       <div className="trip-result-title">✨ {t.resultCard.title}</div>
 
-      <div className="trip-result-stops">
+      <div className="trip-result-stops" aria-label={t.resultCard.stops}>
         {waypoints.map((wp, i) => (
           <span key={wp.id} className="trip-result-stop">
             {i > 0 && <span aria-hidden="true"> → </span>}
