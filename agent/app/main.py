@@ -5,6 +5,7 @@ import time
 from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
+from fastapi.responses import StreamingResponse
 from langfuse import Langfuse, propagate_attributes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
@@ -12,6 +13,7 @@ from . import db
 from .fetchers.refresh import refresh_all
 from .schema import ParseRouteRequest, ParseRouteResponse
 from .graph import build_graph
+from .streaming import stream_route
 
 load_dotenv()
 
@@ -53,6 +55,24 @@ _langfuse = Langfuse(
 )
 
 
+def _initial_state(request: ParseRouteRequest) -> dict:
+    """Extract initial state from request, used by both sync and streaming endpoints."""
+    return {
+        "message": request.message,
+        "language": request.language,
+        "user_id": request.user_id,
+        "current_route": request.current_route,
+        "parsed": None,
+        "geocoded": [],
+        "response": None,
+        "error": None,
+        "retry_count": 0,
+        "settings_context": request.settings_context,
+        "fuel_data": None,
+        "intent": None,
+    }
+
+
 @app.get("/health")
 def health():
     return {"status": "ok"}
@@ -79,25 +99,41 @@ async def parse_route(request: ParseRouteRequest):
                 tags=[request.language],
                 trace_name="parse_route",
             ):
-                initial_state = {
-                    "message": request.message,
-                    "language": request.language,
-                    "user_id": request.user_id,
-                    "current_route": request.current_route,
-                    "parsed": None,
-                    "geocoded": [],
-                    "response": None,
-                    "error": None,
-                    "retry_count": 0,
-                    "settings_context": request.settings_context,
-                    "fuel_data": None,
-                    "intent": None,
-                }
-
-                result = await route_graph.ainvoke(initial_state)
+                result = await route_graph.ainvoke(_initial_state(request))
     finally:
         # Flush ensures spans are exported before the HTTP response is returned,
         # even if ainvoke raises an unhandled exception.
         _langfuse.flush()
 
     return result["response"]
+
+
+@app.post("/parse-route/stream")
+async def parse_route_stream(request: ParseRouteRequest):
+    session_id = f"{request.user_id}-{int(time.time())}"
+
+    async def generator():
+        # Same Langfuse span pattern as the sync endpoint; flush in finally
+        # so spans export even if the client disconnects mid-stream.
+        try:
+            with _langfuse.start_as_current_observation(
+                name="parse_route_stream",
+                as_type="agent",
+                input={"message": request.message, "language": request.language},
+            ):
+                with propagate_attributes(
+                    user_id=request.user_id,
+                    session_id=session_id,
+                    tags=[request.language],
+                    trace_name="parse_route_stream",
+                ):
+                    async for frame in stream_route(route_graph, _initial_state(request)):
+                        yield frame
+        finally:
+            _langfuse.flush()
+
+    return StreamingResponse(
+        generator(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
