@@ -20,7 +20,7 @@ interface AgentWaypoint {
   countryCode?: string;
 }
 
-interface AgentRouteResponse {
+export interface AgentRouteResponse {
   success: boolean;
   route: {
     waypoints: AgentWaypoint[];
@@ -57,6 +57,86 @@ export interface AgentParseResult {
   /** Agent-provided reason when data is null (already localized by the agent). */
   error?: string;
 }
+
+/**
+ * Pure function to map agent response to structured trip data.
+ * Handles success/failure cases, location sorting, settings mapping, and fuel data conversion.
+ * @param data The raw agent response
+ * @returns Structured trip data with error field if mapping fails
+ */
+export const mapAgentRouteResponse = (data: AgentRouteResponse): AgentParseResult => {
+  if (!data.success || !data.route || !data.route.waypoints) {
+    console.warn("Agent response missing route data", data.error ?? data);
+    // Surface the agent's reason (e.g. the off-topic guard message)
+    // instead of collapsing every failure into one generic toast
+    return { data: null, error: typeof data.error === 'string' ? data.error : undefined };
+  }
+
+  const waypoints = data.route.waypoints.sort((a, b) => a.positionOrder - b.positionOrder);
+
+  const result: AgentTripData = {};
+
+  // Map Settings
+  if (data.route.settings) {
+    if (data.route.settings.fuelConsumption) result.consumption = data.route.settings.fuelConsumption;
+    if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
+    if (data.route.settings.currency) result.currency = data.route.settings.currency;
+    if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
+  }
+
+  // Map the agent's live fuel-price advisory (weighted average across the
+  // route's countries). Consumers apply it through applyLiveFuelPrice so a
+  // manually touched price is never overwritten.
+  if (data.fuel_data && data.fuel_data.price_per_liter > 0) {
+    result.fuelData = {
+      price: data.fuel_data.price_per_liter,
+      currency: data.fuel_data.currency,
+      stale: data.fuel_data.stale,
+      fetchedAt: data.fuel_data.fetched_at,
+      source: data.fuel_data.source,
+    };
+  }
+
+  // Surface locations the agent had to skip so the UI can tell the user
+  if (data.skippedLocations && data.skippedLocations.length > 0) {
+    result.skippedLocations = data.skippedLocations;
+  }
+
+  // Map Locations (Origin = First, Destination = Last)
+  if (waypoints.length > 0) {
+    const start = waypoints[0];
+    const end = waypoints[waypoints.length - 1];
+
+    // Origin
+    result.originName = start.name;
+    result.originLocation = {
+      display_name: start.name,
+      lat: start.latitude,
+      lon: start.longitude
+    };
+
+    // Destination (only if different from start or multiple points exist)
+    if (waypoints.length > 1) {
+      result.destinationName = end.name;
+      result.destinationLocation = {
+        display_name: end.name,
+        lat: end.latitude,
+        lon: end.longitude
+      };
+    }
+
+    // Intermediate Waypoints (Indices 1 to Length-2)
+    if (waypoints.length > 2) {
+      result.waypoints = waypoints.slice(1, waypoints.length - 1).map(wp => ({
+        display_name: wp.name,
+        lat: wp.latitude,
+        lon: wp.longitude
+      }));
+    }
+  }
+
+  return { data: result };
+};
 
 /**
  * Sends a natural language query to the backend AI proxy and returns structured trip data.
@@ -149,82 +229,15 @@ export const parseRouteWithAgent = async (
 
     const data: AgentRouteResponse = Array.isArray(rawData) ? rawData[0] : rawData;
 
-    if (!data.success || !data.route || !data.route.waypoints) {
-      console.warn("Agent response missing route data", data.error ?? data);
-      // Surface the agent's reason (e.g. the off-topic guard message)
-      // instead of collapsing every failure into one generic toast
-      return { data: null, error: typeof data.error === 'string' ? data.error : undefined };
+    // Map the agent response using the pure mapper
+    const mapped = mapAgentRouteResponse(data);
+
+    // Cache the successful result (client-side) if it succeeded and is cacheable
+    if (cacheable && mapped.data) {
+      cacheResponse(cacheKey, mapped.data);
     }
 
-    const waypoints = data.route.waypoints.sort((a, b) => a.positionOrder - b.positionOrder);
-
-    const result: AgentTripData = {};
-
-    // Map Settings
-    if (data.route.settings) {
-      if (data.route.settings.fuelConsumption) result.consumption = data.route.settings.fuelConsumption;
-      if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
-      if (data.route.settings.currency) result.currency = data.route.settings.currency;
-      if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
-    }
-
-    // Map the agent's live fuel-price advisory (weighted average across the
-    // route's countries). Consumers apply it through applyLiveFuelPrice so a
-    // manually touched price is never overwritten.
-    if (data.fuel_data && data.fuel_data.price_per_liter > 0) {
-      result.fuelData = {
-        price: data.fuel_data.price_per_liter,
-        currency: data.fuel_data.currency,
-        stale: data.fuel_data.stale,
-        fetchedAt: data.fuel_data.fetched_at,
-        source: data.fuel_data.source,
-      };
-    }
-
-    // Surface locations the agent had to skip so the UI can tell the user
-    if (data.skippedLocations && data.skippedLocations.length > 0) {
-      result.skippedLocations = data.skippedLocations;
-    }
-
-    // Map Locations (Origin = First, Destination = Last)
-    if (waypoints.length > 0) {
-      const start = waypoints[0];
-      const end = waypoints[waypoints.length - 1];
-
-      // Origin
-      result.originName = start.name;
-      result.originLocation = {
-        display_name: start.name,
-        lat: start.latitude,
-        lon: start.longitude
-      };
-
-      // Destination (only if different from start or multiple points exist)
-      if (waypoints.length > 1) {
-        result.destinationName = end.name;
-        result.destinationLocation = {
-          display_name: end.name,
-          lat: end.latitude,
-          lon: end.longitude
-        };
-      }
-
-      // Intermediate Waypoints (Indices 1 to Length-2)
-      if (waypoints.length > 2) {
-        result.waypoints = waypoints.slice(1, waypoints.length - 1).map(wp => ({
-          display_name: wp.name,
-          lat: wp.latitude,
-          lon: wp.longitude
-        }));
-      }
-    }
-
-    // Cache the successful result (client-side)
-    if (cacheable) {
-      cacheResponse(cacheKey, result);
-    }
-
-    return { data: result };
+    return mapped;
 
   } catch (error) {
     console.error('Failed to plan trip with AI:', error);
@@ -239,7 +252,7 @@ export const parseRouteWithAgent = async (
 /**
  * Get CSRF token from cookie for Spring Security
  */
-function getCsrfToken(): string | null {
+export function getCsrfToken(): string | null {
   const name = 'XSRF-TOKEN=';
   const decodedCookie = decodeURIComponent(document.cookie);
   const cookies = decodedCookie.split(';');
