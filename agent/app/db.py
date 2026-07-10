@@ -5,6 +5,7 @@ DATABASE_URL is a JDBC URL; credentials live in DATABASE_USERNAME /
 DATABASE_PASSWORD. Everything degrades gracefully when the DB is not
 configured — the agent must keep planning routes without fuel data.
 """
+import logging
 import os
 import re
 from datetime import datetime
@@ -14,6 +15,8 @@ from urllib.parse import quote
 from psycopg.rows import class_row
 from psycopg_pool import AsyncConnectionPool
 from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
 
 
 class FuelPriceRow(BaseModel):
@@ -57,8 +60,9 @@ async def open_pool() -> bool:
         _pool = AsyncConnectionPool(dsn, min_size=1, max_size=4, open=False)
         await _pool.open(wait=True, timeout=10)
         return True
-    except Exception:
+    except Exception as exc:
         _pool = None
+        logger.warning("fuel DB pool failed to open: %s", exc)
         return False
 
 

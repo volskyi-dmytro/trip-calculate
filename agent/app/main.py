@@ -32,7 +32,7 @@ async def lifespan(app: FastAPI):
         app.state.startup_refresh_task = asyncio.create_task(refresh_all())  # Retain for GC protection
         logger.info("fuel price cache enabled (daily refresh 04:10 UTC)")
     else:
-        logger.warning("DATABASE_URL not configured — fuel prices disabled")
+        logger.warning("fuel prices disabled (no DB pool — unset DATABASE_URL or connection failure; see warnings above)")
     yield
     if scheduler is not None:
         scheduler.shutdown(wait=False)

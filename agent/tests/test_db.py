@@ -1,6 +1,8 @@
+import logging
 import os
 import pytest
 from datetime import datetime, timezone
+from unittest.mock import patch, AsyncMock
 from app import db
 from app.db import FuelPriceRow, FxRateRow, pg_dsn
 
@@ -69,3 +71,22 @@ async def test_upsert_and_read_roundtrip():
         assert got[0].price == pytest.approx(1.6)
     finally:
         await db.close_pool()
+
+
+async def test_open_pool_logs_on_connection_failure(monkeypatch, caplog):
+    """Verify that connection failures are logged, not silently swallowed."""
+    monkeypatch.setenv("DATABASE_URL", "jdbc:postgresql://127.0.0.1:1/x")
+    monkeypatch.setenv("DATABASE_USERNAME", "u")
+    monkeypatch.setenv("DATABASE_PASSWORD", "p")
+
+    # Mock AsyncConnectionPool to raise on open()
+    mock_pool = AsyncMock()
+    mock_pool.open.side_effect = RuntimeError("connection refused")
+
+    with patch("app.db.AsyncConnectionPool", return_value=mock_pool):
+        with caplog.at_level(logging.WARNING, logger="app.db"):
+            result = await db.open_pool()
+
+    assert result is False
+    assert any("fuel DB pool failed to open" in record.message for record in caplog.records)
+    assert any("connection refused" in record.message for record in caplog.records)
