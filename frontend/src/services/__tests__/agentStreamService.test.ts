@@ -40,12 +40,18 @@ describe('createSseParser', () => {
 
 describe('streamRouteWithAgent fallback discipline', () => {
   it('falls back once and signals degraded on transport failure', async () => {
-    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('network down')))
+    // vitest runs without a DOM; getCsrfToken reads document.cookie, so stub
+    // it — otherwise the fallback triggers from the missing DOM before fetch
+    // even runs, and the test passes for the wrong reason
+    vi.stubGlobal('document', { cookie: '' })
+    const fetchMock = vi.fn().mockRejectedValue(new Error('network down'))
+    vi.stubGlobal('fetch', fetchMock)
     const fallback = vi.spyOn(agentService, 'parseRouteWithAgent')
       .mockResolvedValue({ data: null, error: 'sync answered' })
     const onDegraded = vi.fn()
     const { streamRouteWithAgent } = await import('../agentStreamService')
     const result = await streamRouteWithAgent('Kyiv to Lviv', 'en', [], undefined, () => {}, onDegraded)
+    expect(fetchMock).toHaveBeenCalledTimes(1)   // failure genuinely came from transport
     expect(onDegraded).toHaveBeenCalledTimes(1)
     expect(fallback).toHaveBeenCalledTimes(1)
     expect(result.error).toBe('sync answered')
@@ -53,4 +59,29 @@ describe('streamRouteWithAgent fallback discipline', () => {
     fallback.mockRestore()
   })
 
+})
+
+describe('streamRouteWithAgent caller-callback bugs', () => {
+  it('a throwing onStage bypasses the fallback and surfaces', async () => {
+    const sse =
+      'event: stage\ndata: {"stage":"route","status":"done"}\n\n' +
+      'event: result\ndata: {"success":true,"route":{"waypoints":[],"settings":{}}}\n\n'
+    vi.stubGlobal('document', { cookie: '' })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const fallback = vi.spyOn(agentService, 'parseRouteWithAgent')
+      .mockResolvedValue({ data: null, error: 'should not be called' })
+    const { streamRouteWithAgent } = await import('../agentStreamService')
+
+    await expect(
+      streamRouteWithAgent('Kyiv to Lviv', 'en', [], undefined, () => {
+        throw new Error('ui bug')
+      }),
+    ).rejects.toThrow('ui bug')
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    expect(fallback).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+    fallback.mockRestore()
+  })
 })

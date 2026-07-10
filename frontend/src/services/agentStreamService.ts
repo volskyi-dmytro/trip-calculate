@@ -14,6 +14,17 @@ const STREAM_TIMEOUT_MS = 80_000
 export type AgentStage = 'supervisor' | 'route' | 'geocoding' | 'fuel' | 'compose'
 const STAGES: readonly AgentStage[] = ['supervisor', 'route', 'geocoding', 'fuel', 'compose']
 
+/** Marks an exception thrown by the caller's own callback: it must bypass
+ * the transport fallback and surface — retrying the request cannot fix a
+ * UI-layer bug, it only masks it (and doubles backend load). */
+class CallerCallbackError extends Error {
+  readonly cause: unknown
+  constructor(cause: unknown) {
+    super('onStage callback threw')
+    this.cause = cause
+  }
+}
+
 /** Stateful SSE frame parser: frames may split across chunks or arrive
  * several per chunk; comment lines (": keepalive") are ignored. */
 export function createSseParser() {
@@ -103,7 +114,11 @@ export const streamRouteWithAgent = async (
           if (validStage) {
             // The catch above only handles transport/parse failures; a throwing onStage callback
             // is a real bug that must surface, not be swallowed as a malformed frame.
-            onStage(validStage)
+            try {
+              onStage(validStage)
+            } catch (err) {
+              throw new CallerCallbackError(err)
+            }
           }
         } else if (frame.event === 'result') {
           try {
@@ -123,7 +138,9 @@ export const streamRouteWithAgent = async (
       }
     }
     throw new Error('stream ended without result')
-  } catch {
+  } catch (err) {
+    // A caller-callback bug bypasses the fallback entirely — see CallerCallbackError
+    if (err instanceof CallerCallbackError) throw err.cause
     // Transport failure before a result frame: one silent sync retry —
     // the worst case is exactly the pre-SP2 UX. onDegraded lets the
     // progress UI keep its last honest state with a shimmer meanwhile.
