@@ -936,10 +936,11 @@ export function RoutePlanner() {
           kind: 'result',
         };
         setChatMessages(prev => [...prev, responseMsg]);
-        // Activate the latest-result concierge slot (undismiss in case a
-        // previous card had been dismissed)
-        setShowResultCard(true);
-        setCardDismissed(false);
+        // Activate the result card only if we created a genuine route (shares require 2+ waypoints)
+        if (newWaypoints.length >= 2) {
+          setShowResultCard(true);
+          setCardDismissed(false);
+        }
 
         // Success toast notification
         if (updates.length > 0) {
@@ -1442,7 +1443,7 @@ export function RoutePlanner() {
 
                 <button
                   onClick={clearRoute}
-                  disabled={waypoints.length === 0}
+                  disabled={waypoints.length === 0 || isProcessingAi}
                   className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
                   style={{
                     background: 'var(--nav-bg-input)',
@@ -1971,7 +1972,7 @@ export function RoutePlanner() {
 
                     <button
                       onClick={clearRoute}
-                      disabled={waypoints.length === 0}
+                      disabled={waypoints.length === 0 || isProcessingAi}
                       className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
                       style={{
                         background: 'var(--nav-bg-input)',
