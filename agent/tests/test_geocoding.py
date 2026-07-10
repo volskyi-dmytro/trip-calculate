@@ -1,7 +1,7 @@
 import pytest
 import respx
 import httpx
-from app.geocoding import geocode_location
+from app.geocoding import geocode_location, reverse_country, REVERSE_URL, _country_cache
 from app.schema import ParsedLocation
 
 
@@ -125,3 +125,39 @@ async def test_ai_coords_ignored_when_disallowed():
     result = await geocode_location(loc, allow_ai_coords=False)
     assert result.source == "failed"
     assert result.error is True
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_forward_geocode_captures_country_code():
+    respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=[{
+            "lat": "50.45", "lon": "30.52", "display_name": "Kyiv, Ukraine",
+            "name": "Kyiv", "class": "place", "type": "city",
+            "address": {"city": "Kyiv", "country_code": "ua"},
+        }])
+    )
+    loc = _loc("Kyiv Ukraine", location_type="origin")
+    result = await geocode_location(loc)
+    assert result.country_code == "UA"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_reverse_country_caches_by_rounded_coords():
+    _country_cache.clear()
+    route = respx.get(REVERSE_URL).mock(
+        return_value=httpx.Response(200, json={"address": {"country_code": "pl"}})
+    )
+    assert await reverse_country(52.2297, 21.0122, "test-agent") == "PL"
+    # Second call within ~1km rounds to the same key → served from cache
+    assert await reverse_country(52.2301, 21.0119, "test-agent") == "PL"
+    assert route.call_count == 1
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_reverse_country_failure_returns_none():
+    _country_cache.clear()
+    respx.get(REVERSE_URL).mock(return_value=httpx.Response(500))
+    assert await reverse_country(1.0, 1.0, "test-agent") is None

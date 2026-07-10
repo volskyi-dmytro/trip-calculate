@@ -132,6 +132,12 @@ public class AiInsightsController {
                 body.put("current_route", currentRoute);
             }
 
+            // The user's fuel type + display currency, so the agent's fuel
+            // node prices the right fuel in the right currency
+            if (request.get("settingsContext") instanceof Map<?, ?> settingsContext) {
+                body.put("settings_context", settingsContext);
+            }
+
             ResponseEntity<String> response = restTemplate.postForEntity(
                     agentUrl + "/parse-route",
                     new HttpEntity<>(body, headers),

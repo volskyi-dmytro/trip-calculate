@@ -150,3 +150,32 @@ def test_parse_route_rejects_oversized_current_route(mock_graph):
 
     assert response.status_code == 422
     mock_graph.ainvoke.assert_not_awaited()
+
+
+@patch("app.main.route_graph")
+def test_parse_route_accepts_settings_context(mock_graph):
+    mock_graph.ainvoke = AsyncMock(return_value={"response": _success_response()})
+
+    from app.main import app
+    client = TestClient(app)
+    resp = client.post("/parse-route", json={
+        "message": "Kyiv to Lviv",
+        "settings_context": {"fuel_type": "diesel", "currency": "EUR"},
+    })
+    assert resp.status_code == 200
+    state = mock_graph.ainvoke.await_args.args[0]
+    assert state["settings_context"].fuel_type == "diesel"
+
+
+@patch("app.main.route_graph")
+def test_parse_route_rejects_bad_settings_context(mock_graph):
+    mock_graph.ainvoke = AsyncMock(return_value={"response": _success_response()})
+
+    from app.main import app
+    client = TestClient(app)
+    resp = client.post("/parse-route", json={
+        "message": "Kyiv to Lviv",
+        "settings_context": {"fuel_type": "rocket"},
+    })
+    assert resp.status_code == 422
+    mock_graph.ainvoke.assert_not_awaited()

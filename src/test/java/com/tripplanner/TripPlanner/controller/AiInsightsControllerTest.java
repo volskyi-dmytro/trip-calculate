@@ -89,4 +89,20 @@ class AiInsightsControllerTest {
 
         assertEquals(503, response.getStatusCode().value());
     }
+
+    @Test
+    void settingsContextDoesNotBreakValidation() {
+        // agentUrl points at an unreachable localhost port so the call fails
+        // fast; reaching the agent-call stage (500) proves the new field
+        // passed request validation rather than being rejected upstream
+        AiInsightsController controller = controller();
+        ReflectionTestUtils.setField(controller, "agentUrl", "http://localhost:1");
+
+        ResponseEntity<?> response = controller.generateInsights(
+                Map.of("message", "Kyiv to Lviv",
+                        "settingsContext", Map.of("fuel_type", "diesel", "currency", "EUR")),
+                new MockHttpServletRequest());
+
+        assertEquals(500, response.getStatusCode().value());
+    }
 }

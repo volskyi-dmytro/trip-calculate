@@ -2,10 +2,11 @@ import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.schema import (
     GraphState, ParsedRoute, ParsedLocation, TripSettings,
-    GeocodedLocation,
+    GeocodedLocation, FuelData, CountryFuelPrice, SettingsContext,
 )
 from app.nodes import (
     parse_locations, geocode_locations, retry_failed_locations,
+    fuel_enrichment, _ordered_successful,
     format_response, format_error, route_after_geocode,
 )
 
@@ -560,3 +561,89 @@ async def test_off_topic_with_current_route_still_rejected(mock_client):
 
     assert result["error"] is not None
     assert result["parsed"] is None
+
+
+# ── fuel_enrichment ────────────────────────────────────────────────────────
+
+def _geo(name, lt, lat, lon, cc=None, source="nominatim"):
+    return GeocodedLocation(name=name, clean_name=name, location_type=lt,
+                            latitude=lat, longitude=lon, source=source,
+                            country_code=cc)
+
+
+_FD = FuelData(price_per_liter=58.9, currency="UAH", fuel_type="petrol",
+               countries=[CountryFuelPrice(code="UA", price=58.9, weight=1.0)],
+               source="minfin", fetched_at="2026-07-07T04:00:00Z")
+
+
+@pytest.mark.asyncio
+async def test_fuel_enrichment_passes_ordered_points_and_context():
+    state = {
+        "geocoded": [_geo("Lviv", "destination", 49.84, 24.03, "UA"),
+                     _geo("Kyiv", "origin", 50.45, 30.52, "UA")],
+        "settings_context": SettingsContext(fuel_type="diesel", currency="EUR"),
+        "error": None,
+    }
+    with patch("app.nodes.compute_fuel_data",
+               AsyncMock(return_value=_FD)) as compute:
+        result = await fuel_enrichment(state)
+    assert result["fuel_data"] is _FD
+    points = compute.await_args.args[0]
+    assert points[0][:2] == (50.45, 30.52)          # origin first
+    assert compute.await_args.args[1] == "diesel"
+    assert compute.await_args.args[2] == "EUR"
+
+
+@pytest.mark.asyncio
+async def test_fuel_enrichment_defaults_context_when_absent():
+    state = {"geocoded": [_geo("Kyiv", "origin", 50.45, 30.52, "UA"),
+                          _geo("Lviv", "destination", 49.84, 24.03, "UA")],
+             "settings_context": None, "error": None}
+    with patch("app.nodes.compute_fuel_data", AsyncMock(return_value=None)) as compute:
+        result = await fuel_enrichment(state)
+    assert result["fuel_data"] is None
+    assert compute.await_args.args[1] == "petrol"
+    assert compute.await_args.args[2] == "UAH"
+
+
+@pytest.mark.asyncio
+async def test_fuel_enrichment_reverse_geocodes_current_route_points():
+    kept = _geo("Home", "origin", 50.45, 30.52, cc=None, source="current_route")
+    state = {"geocoded": [kept, _geo("Lviv", "destination", 49.84, 24.03, "UA")],
+             "settings_context": None, "error": None}
+    with patch("app.nodes.reverse_country", AsyncMock(return_value="UA")) as rev, \
+         patch("app.nodes.compute_fuel_data", AsyncMock(return_value=_FD)) as compute:
+        await fuel_enrichment(state)
+    rev.assert_awaited_once()
+    assert compute.await_args.args[0][0][2] == "UA"
+
+
+@pytest.mark.asyncio
+async def test_fuel_enrichment_never_breaks_routing():
+    state = {"geocoded": [_geo("Kyiv", "origin", 50.45, 30.52, "UA"),
+                          _geo("Lviv", "destination", 49.84, 24.03, "UA")],
+             "settings_context": None, "error": None}
+    with patch("app.nodes.compute_fuel_data",
+               AsyncMock(side_effect=RuntimeError("db exploded"))):
+        result = await fuel_enrichment(state)
+    assert result["fuel_data"] is None and not result.get("error")
+
+
+@pytest.mark.asyncio
+async def test_fuel_enrichment_skips_on_error_state():
+    state = {"error": "boom", "geocoded": [], "settings_context": None}
+    result = await fuel_enrichment(state)
+    assert result.get("fuel_data") is None
+
+
+def test_format_response_attaches_fuel_data_and_country_codes():
+    state = {
+        "geocoded": [_geo("Kyiv", "origin", 50.45, 30.52, "UA"),
+                     _geo("Lviv", "destination", 49.84, 24.03, "UA")],
+        "parsed": ParsedRoute(locations=[], settings=TripSettings()),
+        "fuel_data": _FD,
+    }
+    result = format_response(state)
+    resp = result["response"]
+    assert resp.fuel_data is _FD
+    assert resp.route.waypoints[0].countryCode == "UA"

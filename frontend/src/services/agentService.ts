@@ -17,6 +17,7 @@ interface AgentWaypoint {
   name: string;
   latitude: number;
   longitude: number;
+  countryCode?: string;
 }
 
 interface AgentRouteResponse {
@@ -33,6 +34,14 @@ interface AgentRouteResponse {
   message?: string;
   error?: string;
   skippedLocations?: { name: string; reason?: string }[];
+  fuel_data?: {
+    price_per_liter: number;
+    currency: string;
+    fuel_type: string;
+    source: string;
+    fetched_at: string;
+    stale: boolean;
+  };
 }
 
 /** A waypoint already on the user's map, sent so the agent can apply
@@ -55,12 +64,14 @@ export interface AgentParseResult {
  * @param query The user's natural language input (e.g. "Trip to Paris")
  * @param language Language code (default: 'en')
  * @param currentRoute Waypoints already on the map — included so the agent can merge modifications
+ * @param settingsContext Current fuel type + currency, forwarded so the agent's fuel tool prices correctly
  * @returns Structured trip data, or null data with the agent's error message
  */
 export const parseRouteWithAgent = async (
   query: string,
   language: string = 'en',
   currentRoute: CurrentRouteWaypoint[] = [],
+  settingsContext?: { fuel_type: 'petrol' | 'diesel' | 'lpg'; currency: string },
 ): Promise<AgentParseResult> => {
   // Debounce: Prevent too-frequent requests
   const now = Date.now();
@@ -103,6 +114,7 @@ export const parseRouteWithAgent = async (
         message: query,
         language,
         ...(currentRoute.length > 0 ? { currentRoute } : {}),
+        ...(settingsContext ? { settingsContext } : {}),
       }),
       credentials: 'include', // Include cookies for authentication
     });
@@ -154,6 +166,19 @@ export const parseRouteWithAgent = async (
       if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
       if (data.route.settings.currency) result.currency = data.route.settings.currency;
       if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
+    }
+
+    // Map the agent's live fuel-price advisory (weighted average across the
+    // route's countries). Consumers apply it through applyLiveFuelPrice so a
+    // manually touched price is never overwritten.
+    if (data.fuel_data && data.fuel_data.price_per_liter > 0) {
+      result.fuelData = {
+        price: data.fuel_data.price_per_liter,
+        currency: data.fuel_data.currency,
+        stale: data.fuel_data.stale,
+        fetchedAt: data.fuel_data.fetched_at,
+        source: data.fuel_data.source,
+      };
     }
 
     // Surface locations the agent had to skip so the UI can tell the user

@@ -16,6 +16,7 @@ import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { parseRouteWithAgent } from '../services/agentService'
+import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { ChatMessage } from '../types'
@@ -26,6 +27,7 @@ export interface Waypoint {
   lat: number
   lng: number
   name: string
+  countryCode?: string
 }
 
 export interface RouteSettings {
@@ -33,6 +35,19 @@ export interface RouteSettings {
   fuelCostPerLiter: number
   currency: string
   passengerCount: number
+  fuelType: 'petrol' | 'diesel' | 'lpg'
+  // True once the user manually edits the fuel price — live/AI suggestions
+  // must never overwrite a touched value
+  fuelPriceTouched: boolean
+}
+
+const DEFAULT_ROUTE_SETTINGS: RouteSettings = {
+  fuelConsumption: 9.2,
+  fuelCostPerLiter: 55,
+  currency: 'UAH',
+  passengerCount: 1,
+  fuelType: 'petrol',
+  fuelPriceTouched: false,
 }
 
 export function RoutePlanner() {
@@ -45,19 +60,13 @@ export function RoutePlanner() {
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
-    if (!saved) return {
-      fuelConsumption: 9.2,
-      fuelCostPerLiter: 55,
-      currency: 'UAH',
-      passengerCount: 1
-    }
-    try { return JSON.parse(saved) } catch { return {
-      fuelConsumption: 9.2,
-      fuelCostPerLiter: 55,
-      currency: 'UAH',
-      passengerCount: 1
-    } }
+    if (!saved) return DEFAULT_ROUTE_SETTINGS
+    try { return { ...DEFAULT_ROUTE_SETTINGS, ...JSON.parse(saved) } }
+    catch { return DEFAULT_ROUTE_SETTINGS }
   })
+  const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
+  // Latest-wins sequence guard for the debounced fuel suggestion fetch below
+  const fuelFetchSeq = useRef(0)
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
   const [savingRoute, setSavingRoute] = useState(false)
@@ -280,6 +289,28 @@ export function RoutePlanner() {
     updateRoute()
   }, [waypoints])
 
+  // Live fuel price: advisory fetch whenever the route's shape or the fuel
+  // context changes; auto-applies only while the price field is untouched
+  useEffect(() => {
+    if (waypoints.length < 2) { setFuelSuggestion(null); return }
+    // Latest-wins guard: getFuelSuggestion awaits sequential Nominatim
+    // reverse lookups and can take seconds, so a newer effect run may start
+    // a second fetch before an older one resolves. Without this, the older
+    // (stale) response could land last and overwrite state for a route
+    // shape that no longer exists.
+    const seq = ++fuelFetchSeq.current
+    const handle = setTimeout(async () => {
+      const suggestion = await getFuelSuggestion(
+        waypoints, routeSettings.fuelType, routeSettings.currency)
+      if (seq !== fuelFetchSeq.current) return // superseded by a newer route shape
+      setFuelSuggestion(suggestion)
+      if (suggestion) {
+        setRouteSettings(prev => applyLiveFuelPrice(prev, suggestion) ?? prev)
+      }
+    }, 1000)
+    return () => clearTimeout(handle)
+  }, [waypoints, routeSettings.fuelType, routeSettings.currency])
+
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
     try {
@@ -367,6 +398,11 @@ export function RoutePlanner() {
     setRouteSettings(settings)
   }, [])
 
+  const handleApplyFuelSuggestion = useCallback(() => {
+    if (!fuelSuggestion) return
+    setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: fuelSuggestion.price, fuelPriceTouched: false }))
+  }, [fuelSuggestion])
+
   const clearRoute = useCallback(() => {
     setWaypoints([])
     setRouteName('')
@@ -453,10 +489,15 @@ export function RoutePlanner() {
 
       setWaypoints(loadedWaypoints)
       setRouteSettings({
+        ...DEFAULT_ROUTE_SETTINGS,
         fuelConsumption: route.fuelConsumption,
         fuelCostPerLiter: route.fuelCostPerLiter,
         currency: route.currency,
-        passengerCount: route.passengerCount || 1
+        passengerCount: route.passengerCount || 1,
+        // A persisted price is a user-chosen price: mark it touched so the
+        // live fuel suggestion effect (see applyLiveFuelPrice guard) never
+        // silently overwrites it once the new waypoints trigger a refetch.
+        fuelPriceTouched: true
       })
       setRouteName(route.name)
       setShowLoadDialog(false)
@@ -739,7 +780,8 @@ export function RoutePlanner() {
         latitude: wp.lat,
         longitude: wp.lng,
       }));
-      const agentResult = await parseRouteWithAgent(userMsg.content, language, currentRoute);
+      const agentResult = await parseRouteWithAgent(userMsg.content, language, currentRoute,
+        { fuel_type: routeSettings.fuelType, currency: routeSettings.currency });
       const agentData = agentResult.data;
 
       if (agentData) {
@@ -751,9 +793,10 @@ export function RoutePlanner() {
           updates.push(`${t.routeSettings.fuelConsumption}: ${agentData.consumption}`);
         }
 
-        // Update fuel cost
+        // Update fuel cost — a chat-dictated price is user-chosen, so mark it
+        // touched: the applyLiveFuelPrice guard must never overwrite it
         if (agentData.price) {
-          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price! }));
+          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: true }));
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
 
@@ -766,6 +809,14 @@ export function RoutePlanner() {
         if (agentData.passengers) {
           setRouteSettings(prev => ({ ...prev, passengerCount: agentData.passengers! }));
           updates.push(`${language === 'uk' ? 'Пасажири' : 'Passengers'}: ${agentData.passengers}`);
+        }
+
+        // Live fuel price advisory from the agent's fuel tool — routed
+        // through the same guard as the debounced effect, so a touched
+        // price is NEVER overwritten
+        if (agentData.fuelData) {
+          setFuelSuggestion(agentData.fuelData);
+          setRouteSettings(prev => applyLiveFuelPrice(prev, agentData.fuelData!) ?? prev);
         }
 
         // Add waypoints from agent data
@@ -906,7 +957,7 @@ export function RoutePlanner() {
     } finally {
       setIsProcessingAi(false);
     }
-  }, [chatInput, t, showWelcomeScreen, language, waypoints]);
+  }, [chatInput, t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
 
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
@@ -1171,6 +1222,8 @@ export function RoutePlanner() {
                 onUpdateSettings={updateRouteSettings}
                 onAddManually={() => setShowManualInputDialog(true)}
                 isCalculating={isCalculatingRoute}
+                fuelSuggestion={fuelSuggestion}
+                onApplyFuelSuggestion={handleApplyFuelSuggestion}
               />
 
               {/* ── Divider ── */}
@@ -1690,6 +1743,8 @@ export function RoutePlanner() {
                     onUpdateSettings={updateRouteSettings}
                     onAddManually={() => setShowManualInputDialog(true)}
                     isCalculating={isCalculatingRoute}
+                    fuelSuggestion={fuelSuggestion}
+                    onApplyFuelSuggestion={handleApplyFuelSuggestion}
                   />
 
                   {/* ── Divider ── */}
