@@ -16,17 +16,20 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Stream;
 
 /**
@@ -66,6 +69,12 @@ public class AiStreamController {
         this.cacheService = cacheService;
         this.usageService = usageService;
         this.objectMapper = objectMapper;
+    }
+
+    /** Destination for a single parsed SSE frame (event name + joined data payload). */
+    @FunctionalInterface
+    interface SseFrameSink {
+        void frame(String event, String data) throws IOException;
     }
 
     @PostMapping("/insights/stream")
@@ -144,18 +153,29 @@ public class AiStreamController {
         CompletableFuture<HttpResponse<Stream<String>>> future =
                 httpClient.sendAsync(upstream, HttpResponse.BodyHandlers.ofLines());
 
-        // Any terminal emitter state cancels the upstream request so the
-        // agent doesn't keep computing for a client that's gone
-        emitter.onCompletion(() -> future.cancel(true));
-        emitter.onTimeout(() -> future.cancel(true));
-        emitter.onError(e -> future.cancel(true));
+        // Holds the upstream body stream once relay() has one, so a terminal
+        // emitter callback (client gone) can close it and unblock the relay
+        // thread instead of leaving it parked on the upstream connection.
+        AtomicReference<Stream<String>> bodyRef = new AtomicReference<>();
 
-        relayExecutor.submit(() -> relay(future, emitter, cacheable, cacheKey, logId, startTime));
+        // Any terminal emitter state cancels the upstream request so the
+        // agent doesn't keep computing for a client that's gone. cancel(true)
+        // only takes effect before response headers arrive (ofLines()
+        // completes the future on headers) — closing the body stream is what
+        // actually unblocks a relay thread already iterating the body.
+        emitter.onCompletion(() -> { future.cancel(true); closeBody(bodyRef); });
+        emitter.onTimeout(() -> { future.cancel(true); closeBody(bodyRef); });
+        emitter.onError(e -> { future.cancel(true); closeBody(bodyRef); });
+
+        relayExecutor.submit(() -> relay(future, emitter, cacheable, cacheKey, logId, startTime, bodyRef));
         return emitter;
     }
 
-    private void relay(CompletableFuture<HttpResponse<Stream<String>>> future, SseEmitter emitter,
-                       boolean cacheable, String cacheKey, Long logId, long startTime) {
+    // Package-private (not private) so AiStreamControllerTest can drive it directly
+    // with a mocked HttpResponse, without mocking the JDK HttpClient async pipeline.
+    void relay(CompletableFuture<HttpResponse<Stream<String>>> future, SseEmitter emitter,
+                       boolean cacheable, String cacheKey, Long logId, long startTime,
+                       AtomicReference<Stream<String>> bodyRef) {
         try {
             HttpResponse<Stream<String>> response = future.get();
             if (response.statusCode() != 200) {
@@ -166,25 +186,24 @@ public class AiStreamController {
                 emitter.complete();
                 return;
             }
-            String event = null;
-            StringBuilder data = new StringBuilder();
-            for (String line : (Iterable<String>) () -> response.body().iterator()) {
-                if (line.startsWith("event: ")) {
-                    event = line.substring("event: ".length()).trim();
-                } else if (line.startsWith("data: ")) {
-                    data.append(line.substring("data: ".length()));
-                } else if (line.isEmpty() && event != null) {
-                    String payload = data.toString();
-                    emitter.send(SseEmitter.event().name(event).data(payload, MediaType.APPLICATION_JSON));
-                    if ("result".equals(event)) {
-                        recordResult(payload, cacheable, cacheKey, logId, startTime);
-                    } else if ("error".equals(event)) {
-                        usageService.logResponse(logId, "error", "stream_failed",
-                                System.currentTimeMillis() - startTime);
-                    }
-                    event = null;
-                    data.setLength(0);
+
+            SseFrameSink sink = (event, data) -> {
+                emitter.send(SseEmitter.event().name(event).data(data, MediaType.APPLICATION_JSON));
+                if ("result".equals(event)) {
+                    recordResult(data, cacheable, cacheKey, logId, startTime);
+                } else if ("error".equals(event)) {
+                    usageService.logResponse(logId, "error", "stream_failed",
+                            System.currentTimeMillis() - startTime);
                 }
+            };
+
+            try (Stream<String> lines = response.body()) {
+                // Publish immediately so a concurrent onCompletion/onTimeout/onError
+                // callback can close this exact stream and unblock the iteration below.
+                bodyRef.set(lines);
+                forwardSseLines(lines.iterator(), sink);
+            } finally {
+                bodyRef.set(null);
             }
             emitter.complete();
         } catch (Exception e) {
@@ -196,6 +215,47 @@ public class AiStreamController {
                 emitter.complete();
             } catch (Exception ignored) {
                 emitter.completeWithError(e);
+            }
+        }
+    }
+
+    /**
+     * Parses raw SSE lines (as produced by the agent's text/event-stream
+     * response) into event/data frames and hands each complete frame to
+     * {@code sink} on the blank-line terminator. Multiple {@code data:}
+     * lines within one frame are joined with {@code \n} per the SSE spec.
+     * Lines before any {@code event:} line are ignored, and a trailing
+     * frame with no terminating blank line is intentionally NOT emitted
+     * (matches upstream's well-formed framing; avoids emitting partial data
+     * on a truncated stream).
+     */
+    static void forwardSseLines(Iterator<String> lines, SseFrameSink sink) throws IOException {
+        String event = null;
+        StringBuilder data = new StringBuilder();
+        while (lines.hasNext()) {
+            String line = lines.next();
+            if (line.startsWith("event: ")) {
+                event = line.substring("event: ".length()).trim();
+            } else if (line.startsWith("data: ")) {
+                if (data.length() > 0) {
+                    data.append('\n');
+                }
+                data.append(line.substring("data: ".length()));
+            } else if (line.isEmpty() && event != null) {
+                sink.frame(event, data.toString());
+                event = null;
+                data.setLength(0);
+            }
+        }
+    }
+
+    private static void closeBody(AtomicReference<Stream<String>> bodyRef) {
+        Stream<String> lines = bodyRef.get();
+        if (lines != null) {
+            try {
+                lines.close();
+            } catch (Exception ignored) {
+                // Best-effort unblock; relay()'s own catch handles termination.
             }
         }
     }
