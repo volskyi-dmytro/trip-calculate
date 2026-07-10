@@ -167,6 +167,7 @@ export const routePlannerTranslations = {
       save: 'Save route',
       share: 'Share receipt',
       pendingRoute: 'Calculating road distance…',
+      dismiss: 'Dismiss result',
     },
   },
   uk: {
@@ -333,6 +334,7 @@ export const routePlannerTranslations = {
       save: 'Зберегти маршрут',
       share: 'Поділитися квитанцією',
       pendingRoute: 'Рахую відстань дорогами…',
+      dismiss: 'Приховати результат',
     },
   },
 };

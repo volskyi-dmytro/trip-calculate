@@ -15,8 +15,12 @@ import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
-import { parseRouteWithAgent } from '../services/agentService'
+import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
+import { downsampleGeometry } from '../services/receiptService'
+import { computeTripStats } from '../services/tripStats'
+import { AgentActivitySlot } from './AgentActivitySlot'
+import { ShareReceiptModal } from './receipt/ShareReceiptModal'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { ChatMessage } from '../types'
@@ -97,6 +101,17 @@ export function RoutePlanner() {
   const [isProcessingAi, setIsProcessingAi] = useState(false)
   const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
   const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
+
+  // SSE progress: stages completed so far for the in-flight AI request;
+  // degraded = stream fell back to sync (keep last honest state + shimmer)
+  const [agentDoneStages, setAgentDoneStages] = useState<AgentStage[]>([])
+  const [agentDegraded, setAgentDegraded] = useState(false)
+  // Latest-result concierge slot: showResultCard is true once a request
+  // succeeds with an active result; cardDismissed hides it without losing
+  // the "there is an active result" bookkeeping until the next request/clear
+  const [showResultCard, setShowResultCard] = useState(false)
+  const [cardDismissed, setCardDismissed] = useState(false)
+  const [showResultShareDialog, setShowResultShareDialog] = useState(false)
 
   // View mode: welcome screen vs dashboard
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
@@ -411,6 +426,12 @@ export function RoutePlanner() {
     localStorage.removeItem('tripCalculate_currentRoute')
     navigate('/route-planner', { replace: true })
     toast.success(t.toasts.routeCleared)
+    // Clearing the route also clears the latest-result concierge slot —
+    // a stale result card no longer describes anything on the map
+    setShowResultCard(false)
+    setCardDismissed(false)
+    setAgentDoneStages([])
+    setAgentDegraded(false)
   }, [t, navigate])
 
   const createNewRoute = useCallback(() => {
@@ -764,6 +785,14 @@ export function RoutePlanner() {
     setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setIsProcessingAi(true);
+    // New request replaces whatever the slot was showing: hide any
+    // previous result immediately (progress UI takes over the slot while
+    // isProcessing is true, then this stays false on error so the slot
+    // renders nothing until/unless the new request succeeds)
+    setShowResultCard(false);
+    setCardDismissed(false);
+    setAgentDoneStages([]);
+    setAgentDegraded(false);
 
     // Transition to dashboard after first user message
     if (showWelcomeScreen) {
@@ -780,8 +809,12 @@ export function RoutePlanner() {
         latitude: wp.lat,
         longitude: wp.lng,
       }));
-      const agentResult = await parseRouteWithAgent(userMsg.content, language, currentRoute,
-        { fuel_type: routeSettings.fuelType, currency: routeSettings.currency });
+      const agentResult = await streamRouteWithAgent(
+        userMsg.content, language, currentRoute,
+        { fuel_type: routeSettings.fuelType, currency: routeSettings.currency },
+        (stage) => setAgentDoneStages(prev => [...prev, stage]),
+        () => setAgentDegraded(true),
+      );
       const agentData = agentResult.data;
 
       if (agentData) {
@@ -899,9 +932,14 @@ export function RoutePlanner() {
           content: updates.length > 0
             ? `✓ Updated: ${updates.join(', ')}.${skippedNote}`
             : 'No changes made. Please provide more details.',
-          timestamp: Date.now()
+          timestamp: Date.now(),
+          kind: 'result',
         };
         setChatMessages(prev => [...prev, responseMsg]);
+        // Activate the latest-result concierge slot (undismiss in case a
+        // previous card had been dismissed)
+        setShowResultCard(true);
+        setCardDismissed(false);
 
         // Success toast notification
         if (updates.length > 0) {
@@ -956,6 +994,8 @@ export function RoutePlanner() {
       );
     } finally {
       setIsProcessingAi(false);
+      setAgentDoneStages([]);
+      setAgentDegraded(false);
     }
   }, [chatInput, t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
 
@@ -1423,12 +1463,20 @@ export function RoutePlanner() {
             className="flex-shrink-0 p-3"
             style={{ borderTop: '1px solid var(--nav-border)' }}
           >
-            {isProcessingAi && (
-              <div
-                className="h-0.5 mb-2 rounded-full animate-pulse"
-                style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
-              />
-            )}
+            <AgentActivitySlot
+              isProcessing={isProcessingAi}
+              doneStages={agentDoneStages}
+              degraded={agentDegraded}
+              showResult={showResultCard && !cardDismissed}
+              onDismiss={() => setCardDismissed(true)}
+              waypoints={waypoints}
+              routeSettings={routeSettings}
+              routeDistance={routeDistance}
+              routeDuration={routeDuration}
+              fuelSuggestion={fuelSuggestion}
+              onSaveRoute={() => setShowSaveDialog(true)}
+              onShareReceipt={() => setShowResultShareDialog(true)}
+            />
             <div className="flex gap-2">
               <Input
                 type="text"
@@ -1944,12 +1992,20 @@ export function RoutePlanner() {
                 className="flex-shrink-0 p-3"
                 style={{ borderTop: '1px solid var(--nav-border)' }}
               >
-                {isProcessingAi && (
-                  <div
-                    className="h-0.5 mb-2 rounded-full animate-pulse"
-                    style={{ background: 'linear-gradient(90deg, var(--nav-accent), #6366f1, var(--nav-accent))' }}
-                  />
-                )}
+                <AgentActivitySlot
+                  isProcessing={isProcessingAi}
+                  doneStages={agentDoneStages}
+                  degraded={agentDegraded}
+                  showResult={showResultCard && !cardDismissed}
+                  onDismiss={() => setCardDismissed(true)}
+                  waypoints={waypoints}
+                  routeSettings={routeSettings}
+                  routeDistance={routeDistance}
+                  routeDuration={routeDuration}
+                  fuelSuggestion={fuelSuggestion}
+                  onSaveRoute={() => setShowSaveDialog(true)}
+                  onShareReceipt={() => setShowResultShareDialog(true)}
+                />
                 <div className="flex gap-2">
                   <Input
                     type="text"
@@ -1990,6 +2046,28 @@ export function RoutePlanner() {
       )}
 
       {/* ── Dialogs — rendered at root level for correct z-index ── */}
+
+      {/* Share receipt dialog for the result card's Share button — mirrors
+          the payload StatsPanel's own ShareReceiptButton builds, but lives
+          here because TripResultCard exposes a plain onShareReceipt callback
+          rather than owning its own dialog (see task-7-report.md) */}
+      {waypoints.length >= 2 && (
+        <ShareReceiptModal
+          payload={{
+            originLabel: waypoints[0].name,
+            destinationLabel: waypoints[waypoints.length - 1].name,
+            distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration).totalDistance,
+            fuelConsumption: routeSettings.fuelConsumption,
+            fuelPrice: routeSettings.fuelCostPerLiter,
+            currency: routeSettings.currency,
+            people: routeSettings.passengerCount || 1,
+            locale: language,
+            routeGeometry: routeGeometry ? downsampleGeometry(routeGeometry) : undefined,
+          }}
+          isOpen={showResultShareDialog}
+          onClose={() => setShowResultShareDialog(false)}
+        />
+      )}
 
       {/* Manual Address Input Dialog */}
       <Dialog open={showManualInputDialog} onOpenChange={setShowManualInputDialog}>
