@@ -30,6 +30,12 @@ describe('createSseParser', () => {
     const p = createSseParser()
     expect(p.push(': keepalive\n\n')).toEqual([])
   })
+
+  it('joins multiple data lines with newline per SSE spec', () => {
+    const p = createSseParser()
+    const frames = p.push('event: stage\ndata: a\ndata: b\n\n')
+    expect(frames).toEqual([{ event: 'stage', data: 'a\nb' }])
+  })
 })
 
 describe('streamRouteWithAgent fallback discipline', () => {
@@ -46,4 +52,5 @@ describe('streamRouteWithAgent fallback discipline', () => {
     vi.unstubAllGlobals()
     fallback.mockRestore()
   })
+
 })

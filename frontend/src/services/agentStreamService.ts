@@ -32,7 +32,7 @@ export function createSseParser() {
           if (line.startsWith('event: ')) event = line.slice(7).trim()
           else if (line.startsWith('data: ')) data.push(line.slice(6))
         }
-        if (event) frames.push({ event, data: data.join('') })
+        if (event) frames.push({ event, data: data.join('\n') })
       }
       return frames
     },
@@ -44,6 +44,11 @@ export function createSseParser() {
  * Fallback contract: ONLY a transport failure before a result frame falls
  * back (once) to the sync endpoint. error frames and success=false results
  * are real answers and resolve normally.
+ *
+ * Rate-limit errors thrown by the sync fallback propagate to the caller
+ * exactly like the sync client's (parseRouteWithAgent re-throws rate limits
+ * by convention so the UI can show reset timing). The fallback request itself
+ * has no client-side timeout, matching sync behavior.
  */
 export const streamRouteWithAgent = async (
   query: string,
@@ -82,17 +87,34 @@ export const streamRouteWithAgent = async (
 
     for (;;) {
       const { done, value } = await reader.read()
-      if (done) break
+      if (done) {
+        decoder.decode() // flush any trailing bytes from an unterminated partial frame
+        break
+      }
       for (const frame of parser.push(decoder.decode(value, { stream: true }))) {
         if (frame.event === 'stage') {
+          let validStage: AgentStage | null = null
           try {
             const payload = JSON.parse(frame.data) as { stage: string; status: string }
             if (payload.status === 'done' && (STAGES as readonly string[]).includes(payload.stage)) {
-              onStage(payload.stage as AgentStage)
+              validStage = payload.stage as AgentStage
             }
           } catch { /* malformed stage frame — progress only, never fatal */ }
+          if (validStage) {
+            // The catch above only handles transport/parse failures; a throwing onStage callback
+            // is a real bug that must surface, not be swallowed as a malformed frame.
+            onStage(validStage)
+          }
         } else if (frame.event === 'result') {
-          return mapAgentRouteResponse(JSON.parse(frame.data) as AgentRouteResponse)
+          try {
+            return mapAgentRouteResponse(JSON.parse(frame.data) as AgentRouteResponse)
+          } catch (err) {
+            // A corrupt result frame is transport-equivalent (truncation is the likely cause),
+            // so we deliberately fall back to sync rather than surface parse/mapping errors.
+            // Log for visibility on systematic parse bugs client-side.
+            console.error('AI stream result frame could not be interpreted; falling back to sync', err)
+            throw err
+          }
         } else if (frame.event === 'error') {
           // Real answer from the streaming layer — no fallback, no leak of
           // internals; the caller shows its default localized error text
