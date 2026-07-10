@@ -5,6 +5,9 @@ export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   timestamp: number;
+  // 'result' renders as the TripResultCard in the planner chat; content
+  // stays as the plain-text fallback for renderers that don't know kinds
+  kind?: 'text' | 'result';
 }
 
 export interface Location {
