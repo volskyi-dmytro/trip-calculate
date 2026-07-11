@@ -1,5 +1,6 @@
 import asyncio
 import os
+from datetime import date, datetime, timezone
 from langfuse.openai import AsyncOpenAI
 from .schema import (
     GraphState, ParsedRoute, GeocodedLocation, SettingsContext,
@@ -35,7 +36,11 @@ RULES:
    For villages, small towns, and any place you are not certain of, ALWAYS leave lat/lon null —
    a wrong guess silently corrupts the route
 8. location_type: first location = "origin", last = "destination", middle = "waypoint"
-9. "picking my friend" / "з другом" → set passengers to 2"""
+9. "picking my friend" / "з другом" → set passengers to 2
+10. If the message mentions a departure date ("tomorrow", "this Saturday",
+    "20 July", "у суботу"), set departure_date to that date in ISO format
+    (YYYY-MM-DD), resolved relative to today: {today}. If no date is
+    mentioned, leave departure_date null. Never invent a date."""
 
 # Appended as a second system message when the caller sends the route already
 # on the user's map, turning "add a stop in X" from an unanswerable fragment
@@ -98,6 +103,18 @@ def _settings_present(settings) -> bool:
         for v in (settings.passengers, settings.fuelConsumption,
                   settings.fuelCostPerLiter, settings.currency)
     )
+
+
+def _valid_departure_date(raw) -> "str | None":
+    """LLM-parsed dates are untrusted: unparseable or past dates are
+    treated as not-mentioned (spec: → today / keep current)."""
+    if not raw:
+        return None
+    try:
+        parsed = date.fromisoformat(raw)
+    except ValueError:
+        return None
+    return raw if parsed >= datetime.now(timezone.utc).date() else None
 
 
 def _locations_from_current_route(current_route) -> list:
@@ -193,7 +210,8 @@ def route_after_supervisor(state: GraphState) -> str:
 
 
 async def parse_locations(state: GraphState) -> GraphState:
-    messages = [{"role": "system", "content": _SYSTEM_PROMPT}]
+    today = datetime.now(timezone.utc).date().isoformat()
+    messages = [{"role": "system", "content": _SYSTEM_PROMPT.format(today=today)}]
     current_route = state.get("current_route") or []
     if current_route:
         route_lines = "\n".join(
@@ -418,6 +436,8 @@ def format_response(state: GraphState) -> GraphState:
                 fuelConsumption=settings.fuelConsumption,
                 fuelCostPerLiter=settings.fuelCostPerLiter,
                 currency=settings.currency,
+                departureDate=_valid_departure_date(
+                    getattr(state["parsed"], "departure_date", None)),
             ),
         ),
         message=msg,

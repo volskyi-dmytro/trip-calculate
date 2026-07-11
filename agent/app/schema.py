@@ -34,6 +34,9 @@ class ParsedRoute(BaseModel):
     is_route_request: Optional[bool] = None
     locations: list[ParsedLocation]
     settings: TripSettings
+    # ISO YYYY-MM-DD departure date the user mentioned, resolved against
+    # today by the parser prompt. None = not mentioned = leave picker alone.
+    departure_date: Optional[str] = None
 
 
 class SupervisorDecision(BaseModel):
@@ -103,6 +106,7 @@ class RouteSettings(BaseModel):
     fuelConsumption: Optional[float] = None
     fuelCostPerLiter: Optional[float] = None
     currency: Optional[str] = None
+    departureDate: Optional[str] = None
 
 
 class RouteOut(BaseModel):

@@ -647,3 +647,51 @@ def test_format_response_attaches_fuel_data_and_country_codes():
     resp = result["response"]
     assert resp.fuel_data is _FD
     assert resp.route.waypoints[0].countryCode == "UA"
+
+
+# ── departure_date ───────────────────────────────────────────────────────
+
+from datetime import datetime as _dt, timedelta as _td, timezone as _tz
+
+from app.nodes import _valid_departure_date
+from app.schema import GeocodedLocation, ParsedRoute, TripSettings
+
+_TODAY = _dt.now(_tz.utc).date()
+
+
+def test_valid_departure_date_accepts_today_and_future():
+    assert _valid_departure_date(_TODAY.isoformat()) == _TODAY.isoformat()
+    future = (_TODAY + _td(days=10)).isoformat()
+    assert _valid_departure_date(future) == future
+
+
+def test_valid_departure_date_rejects_past_garbage_and_none():
+    assert _valid_departure_date((_TODAY - _td(days=1)).isoformat()) is None
+    assert _valid_departure_date("next Saturday") is None
+    assert _valid_departure_date("2026-13-45") is None
+    assert _valid_departure_date(None) is None
+    assert _valid_departure_date("") is None
+
+
+def _state_with_date(departure_date):
+    return {
+        "parsed": ParsedRoute(is_route_request=True, locations=[],
+                              settings=TripSettings(),
+                              departure_date=departure_date),
+        "geocoded": [_geo("Kyiv", "origin", 50.45, 30.52),
+                     _geo("Lviv", "destination", 49.84, 24.03)],
+    }
+
+
+def test_format_response_echoes_valid_departure_date():
+    day = (_TODAY + _td(days=3)).isoformat()
+    result = format_response(_state_with_date(day))
+    assert result["response"].route.settings.departureDate == day
+
+
+def test_format_response_drops_invalid_departure_date():
+    past = (_TODAY - _td(days=3)).isoformat()
+    assert format_response(_state_with_date(past)) \
+        ["response"].route.settings.departureDate is None
+    assert format_response(_state_with_date(None)) \
+        ["response"].route.settings.departureDate is None
