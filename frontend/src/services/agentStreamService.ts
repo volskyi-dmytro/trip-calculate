@@ -25,6 +25,12 @@ class CallerCallbackError extends Error {
   }
 }
 
+/** Per SSE spec, a single leading space after the field colon is not part
+ * of the value; any further spaces are. */
+function stripFieldValue(raw: string): string {
+  return raw.startsWith(' ') ? raw.slice(1) : raw
+}
+
 /** Stateful SSE frame parser: frames may split across chunks or arrive
  * several per chunk; comment lines (": keepalive") are ignored. */
 export function createSseParser() {
@@ -40,8 +46,11 @@ export function createSseParser() {
         let event = ''
         const data: string[] = []
         for (const line of block.split('\n')) {
-          if (line.startsWith('event: ')) event = line.slice(7).trim()
-          else if (line.startsWith('data: ')) data.push(line.slice(6))
+          // SSE spec: the field value follows "name:" with ONE optional
+          // leading space. The Python agent emits "event: x" (with space)
+          // but Spring's SseEmitter re-serializes as "event:x" — accept both.
+          if (line.startsWith('event:')) event = stripFieldValue(line.slice(6)).trim()
+          else if (line.startsWith('data:')) data.push(stripFieldValue(line.slice(5)))
         }
         if (event) frames.push({ event, data: data.join('\n') })
       }

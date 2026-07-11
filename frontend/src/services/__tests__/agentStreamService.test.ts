@@ -85,3 +85,17 @@ describe('streamRouteWithAgent caller-callback bugs', () => {
     fallback.mockRestore()
   })
 })
+
+describe('createSseParser — spaceless field format (Spring SseEmitter)', () => {
+  it('parses "event:stage" without a space after the colon', () => {
+    const p = createSseParser()
+    const frames = p.push('event:stage\ndata:{"stage":"route","status":"done"}\n\n')
+    expect(frames).toEqual([{ event: 'stage', data: '{"stage":"route","status":"done"}' }])
+  })
+
+  it('preserves value-leading spaces beyond the first (spec)', () => {
+    const p = createSseParser()
+    const frames = p.push('event: result\ndata:  padded\n\n')
+    expect(frames).toEqual([{ event: 'result', data: ' padded' }])
+  })
+})
