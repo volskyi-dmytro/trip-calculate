@@ -179,3 +179,58 @@ def test_parse_route_rejects_bad_settings_context(mock_graph):
     })
     assert resp.status_code == 422
     mock_graph.ainvoke.assert_not_awaited()
+
+
+# ── Weather Corridor Tests ────────────────────────────────────────────────
+
+from datetime import datetime as _dt2, timezone as _tz2
+from unittest.mock import AsyncMock as _AsyncMock2, patch as _patch2
+
+from app.schema import WeatherData as _WeatherData
+
+_CORRIDOR_BODY = {
+    "waypoints": [
+        {"name": "Kyiv", "latitude": 50.45, "longitude": 30.52},
+        {"name": "Lviv", "latitude": 49.84, "longitude": 24.03},
+    ],
+    "date": _dt2.now(_tz2.utc).date().isoformat(),
+}
+
+
+def test_weather_corridor_returns_data():
+    fake = _WeatherData(date=_CORRIDOR_BODY["date"], samples=[],
+                        risk_flags=[], source="open-meteo",
+                        fetched_at=_dt2.now(_tz2.utc))
+    with _patch2("app.main.compute_weather_data",
+                 new=_AsyncMock2(return_value=fake)) as compute:
+        from app.main import app
+        client = TestClient(app)
+        resp = client.post("/weather-corridor", json=_CORRIDOR_BODY)
+    assert resp.status_code == 200
+    assert resp.json()["weather_data"]["source"] == "open-meteo"
+    # Waypoint names travel as labels
+    assert compute.await_args.args[0] == [
+        (50.45, 30.52, "Kyiv"), (49.84, 24.03, "Lviv")]
+
+
+def test_weather_corridor_null_when_unavailable():
+    with _patch2("app.main.compute_weather_data",
+                 new=_AsyncMock2(return_value=None)):
+        from app.main import app
+        client = TestClient(app)
+        resp = client.post("/weather-corridor", json=_CORRIDOR_BODY)
+    assert resp.status_code == 200
+    assert resp.json() == {"weather_data": None}
+
+
+def test_weather_corridor_validates_payload():
+    from app.main import app
+    client = TestClient(app)
+    assert client.post("/weather-corridor", json={
+        "waypoints": [], "date": _CORRIDOR_BODY["date"]}).status_code == 422
+    assert client.post("/weather-corridor", json={
+        "waypoints": _CORRIDOR_BODY["waypoints"],
+        "date": "not-a-date"}).status_code == 422
+    too_many = {"waypoints": [_CORRIDOR_BODY["waypoints"][0]] * 26,
+                "date": _CORRIDOR_BODY["date"]}
+    assert client.post("/weather-corridor", json=too_many).status_code == 422

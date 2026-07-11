@@ -182,6 +182,17 @@ class ParseRouteResponse(BaseModel):
     weather_data: Optional[WeatherData] = None
 
 
+class WeatherCorridorRequest(BaseModel):
+    """Manual-flow corridor forecast request (proxied by Spring). Same
+    waypoint cap as ParseRouteRequest.current_route."""
+    waypoints: list[CurrentWaypoint] = Field(min_length=1, max_length=25)
+    date: str  # ISO YYYY-MM-DD; format validated in the endpoint
+
+
+class WeatherCorridorResponse(BaseModel):
+    weather_data: Optional[WeatherData] = None
+
+
 # ── LangGraph state ────────────────────────────────────────────────────────
 
 class GraphState(TypedDict):

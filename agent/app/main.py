@@ -3,15 +3,17 @@ import logging
 import os
 import time
 from contextlib import asynccontextmanager
+from datetime import date as date_cls
 from dotenv import load_dotenv
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import StreamingResponse
 from langfuse import Langfuse, propagate_attributes
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db
 from .fetchers.refresh import refresh_all
-from .schema import ParseRouteRequest, ParseRouteResponse
+from .schema import ParseRouteRequest, ParseRouteResponse, WeatherCorridorRequest, WeatherCorridorResponse
+from .tools.weather import compute_weather_data
 from .graph import build_graph
 from .streaming import stream_route
 
@@ -138,3 +140,17 @@ async def parse_route_stream(request: ParseRouteRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+@app.post("/weather-corridor", response_model=WeatherCorridorResponse)
+async def weather_corridor(request: WeatherCorridorRequest):
+    """Deterministic corridor forecast for the manual flow — zero LLM
+    tokens, so no Langfuse span. Out-of-window dates and provider failures
+    both surface as weather_data=null (advisory contract)."""
+    try:
+        day = date_cls.fromisoformat(request.date)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="date must be YYYY-MM-DD")
+    points = [(wp.latitude, wp.longitude, wp.name) for wp in request.waypoints]
+    return WeatherCorridorResponse(
+        weather_data=await compute_weather_data(points, day))
