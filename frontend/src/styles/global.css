@@ -1062,3 +1062,31 @@ footer {
   opacity: 0.3;
   margin: 0.5rem 0;
 }
+
+/* SP3: corridor weather strip (TripResultCard + route panel) */
+.weather-strip {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--glass-bg, rgba(255, 255, 255, 0.06));
+  font-size: 12px;
+}
+
+.weather-strip-stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+}
+
+.weather-strip-flags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  color: var(--nav-text-secondary, inherit);
+}
+
+.weather-strip-flag {
+  font-weight: 500;
+}

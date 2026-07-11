@@ -152,6 +152,7 @@ export const routePlannerTranslations = {
       route: 'Route agent — parsing your trip',
       geocoding: 'Locating stops on the map',
       fuel: 'Fuel agent — live prices',
+      weather: 'Weather agent — forecast along route',
       compose: 'Composing your trip',
       stillWorking: 'Still working…',
     },
@@ -168,6 +169,17 @@ export const routePlannerTranslations = {
       share: 'Share receipt',
       pendingRoute: 'Calculating road distance…',
       dismiss: 'Dismiss result',
+    },
+    weather: {
+      title: 'Weather along the route',
+      departureDate: 'Departure date',
+      flags: {
+        snow: 'Snow expected',
+        heavy_rain: 'Heavy rain',
+        strong_wind: 'Strong wind',
+        ice_risk: 'Ice risk',
+        storm: 'Thunderstorm',
+      },
     },
   },
   uk: {
@@ -319,6 +331,7 @@ export const routePlannerTranslations = {
       route: 'Агент маршруту — розбираю вашу подорож',
       geocoding: 'Шукаю зупинки на карті',
       fuel: 'Паливний агент — актуальні ціни',
+      weather: 'Погодний агент — прогноз на маршруті',
       compose: 'Складаю вашу подорож',
       stillWorking: 'Ще працюю…',
     },
@@ -335,6 +348,17 @@ export const routePlannerTranslations = {
       share: 'Поділитися квитанцією',
       pendingRoute: 'Рахую відстань дорогами…',
       dismiss: 'Приховати результат',
+    },
+    weather: {
+      title: 'Погода на маршруті',
+      departureDate: 'Дата виїзду',
+      flags: {
+        snow: 'Очікується сніг',
+        heavy_rain: 'Сильний дощ',
+        strong_wind: 'Сильний вітер',
+        ice_risk: 'Ризик ожеледиці',
+        storm: 'Гроза',
+      },
     },
   },
 };

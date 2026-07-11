@@ -5,11 +5,11 @@ import type { AgentStage } from '../services/agentStreamService'
 
 // Visible steps; the wire-level 'supervisor' stage counts toward 'route'
 // so users see agents, not internals
-const VISIBLE_STEPS = ['route', 'geocoding', 'fuel', 'compose'] as const
+const VISIBLE_STEPS = ['route', 'geocoding', 'fuel', 'weather', 'compose'] as const
 type VisibleStep = (typeof VISIBLE_STEPS)[number]
 
 const STEP_ICONS: Record<VisibleStep, string> = {
-  route: '🧭', geocoding: '📍', fuel: '⛽', compose: '✨',
+  route: '🧭', geocoding: '📍', fuel: '⛽', weather: '🌦️', compose: '✨',
 }
 
 export function AgentProgress({ doneStages, degraded }: {
