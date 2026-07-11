@@ -137,6 +137,36 @@ class FuelData(BaseModel):
     stale: bool = False
 
 
+class WeatherSample(BaseModel):
+    """Daily forecast at one corridor point. label is the stop name for
+    waypoint samples and None for interpolated corridor points."""
+    lat: float
+    lon: float
+    label: Optional[str] = None
+    temp_max_c: float
+    temp_min_c: float
+    precipitation_mm: float
+    snowfall_cm: float
+    wind_gust_kmh: float
+    weather_code: int
+
+
+class RiskFlag(BaseModel):
+    type: Literal["snow", "heavy_rain", "strong_wind", "ice_risk", "storm"]
+    # Nearest labeled stop, for display ("strong wind near Rivne")
+    near: Optional[str] = None
+
+
+class WeatherData(BaseModel):
+    """Advisory corridor forecast for the departure date. Omitted (None)
+    whenever it cannot be computed — never an error the user sees."""
+    date: str  # ISO YYYY-MM-DD the forecast is for
+    samples: list[WeatherSample]
+    risk_flags: list[RiskFlag]
+    source: str
+    fetched_at: datetime
+
+
 class ParseRouteResponse(BaseModel):
     success: bool
     route: Optional[RouteOut] = None
