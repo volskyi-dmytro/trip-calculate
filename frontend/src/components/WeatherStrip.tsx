@@ -1,10 +1,7 @@
-/* eslint-disable react-refresh/only-export-components */
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { RiskFlagType, WeatherData } from '../types/weather'
 import { weatherIcon } from '../utils/weatherUtils'
-
-export { weatherIcon }
 
 const FLAG_ICONS: Record<RiskFlagType, string> = {
   snow: '❄️', heavy_rain: '🌧️', strong_wind: '💨', ice_risk: '🧊', storm: '⛈️',

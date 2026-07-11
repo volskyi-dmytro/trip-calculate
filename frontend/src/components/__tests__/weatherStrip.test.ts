@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { weatherIcon } from '../WeatherStrip'
+import { weatherIcon } from '../../utils/weatherUtils'
 
 describe('weatherIcon WMO buckets', () => {
   it('maps representative codes to distinct glyph families', () => {
