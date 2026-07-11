@@ -1,5 +1,7 @@
 // AI and Chat-related types
 
+import type { WeatherData } from './weather'
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -47,4 +49,11 @@ export interface AgentTripData {
     fetchedAt: string;
     source: string;
   };
+
+  // ISO YYYY-MM-DD departure date the agent parsed from chat (valid,
+  // not in the past). Absent = user didn't mention one = keep current.
+  departureDate?: string;
+
+  // Advisory corridor forecast from the agent's weather tool
+  weatherData?: WeatherData;
 }

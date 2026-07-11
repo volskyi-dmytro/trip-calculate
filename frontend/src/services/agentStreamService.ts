@@ -11,8 +11,8 @@ import type { FuelType } from './fuelPriceService'
 const STREAM_ENDPOINT = '/api/ai/insights/stream'
 const STREAM_TIMEOUT_MS = 80_000
 
-export type AgentStage = 'supervisor' | 'route' | 'geocoding' | 'fuel' | 'compose'
-const STAGES: readonly AgentStage[] = ['supervisor', 'route', 'geocoding', 'fuel', 'compose']
+export type AgentStage = 'supervisor' | 'route' | 'geocoding' | 'fuel' | 'weather' | 'compose'
+const STAGES: readonly AgentStage[] = ['supervisor', 'route', 'geocoding', 'fuel', 'weather', 'compose']
 
 /** Marks an exception thrown by the caller's own callback: it must bypass
  * the transport fallback and surface — retrying the request cannot fix a

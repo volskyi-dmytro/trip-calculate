@@ -99,3 +99,19 @@ describe('createSseParser — spaceless field format (Spring SseEmitter)', () =>
     expect(frames).toEqual([{ event: 'result', data: ' padded' }])
   })
 })
+
+describe('weather stage (SP3)', () => {
+  it('recognizes a weather stage frame and fires onStage', async () => {
+    const sse =
+      'event: stage\ndata: {"stage":"weather","status":"done"}\n\n' +
+      'event: result\ndata: {"success":true,"route":{"waypoints":[],"settings":{}}}\n\n'
+    vi.stubGlobal('document', { cookie: '' })
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(sse, { status: 200 })))
+    const { streamRouteWithAgent } = await import('../agentStreamService')
+    const stages: string[] = []
+    await streamRouteWithAgent('Kyiv to Lviv', 'en', [], undefined,
+      (s) => stages.push(s))
+    expect(stages).toContain('weather')
+    vi.unstubAllGlobals()
+  })
+})

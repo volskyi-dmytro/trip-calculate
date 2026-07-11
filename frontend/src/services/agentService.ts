@@ -1,4 +1,5 @@
 import type { AgentTripData } from '../types';
+import type { WeatherData } from '../types/weather';
 
 // Spring Boot proxy endpoint in front of the Python LangGraph agent
 const AI_INSIGHTS_ENDPOINT = '/api/ai/insights';
@@ -29,6 +30,7 @@ export interface AgentRouteResponse {
       fuelCostPerLiter?: number;
       currency?: string;
       passengers?: number;
+      departureDate?: string;
     };
   };
   message?: string;
@@ -42,6 +44,7 @@ export interface AgentRouteResponse {
     fetched_at: string;
     stale: boolean;
   };
+  weather_data?: WeatherData;
 }
 
 /** A waypoint already on the user's map, sent so the agent can apply
@@ -82,6 +85,7 @@ export const mapAgentRouteResponse = (data: AgentRouteResponse): AgentParseResul
     if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
     if (data.route.settings.currency) result.currency = data.route.settings.currency;
     if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
+    if (data.route.settings.departureDate) result.departureDate = data.route.settings.departureDate;
   }
 
   // Map the agent's live fuel-price advisory (weighted average across the
@@ -95,6 +99,12 @@ export const mapAgentRouteResponse = (data: AgentRouteResponse): AgentParseResul
       fetchedAt: data.fuel_data.fetched_at,
       source: data.fuel_data.source,
     };
+  }
+
+  // Advisory corridor weather — passed through untouched; the UI decides
+  // whether/where to render it
+  if (data.weather_data) {
+    result.weatherData = data.weather_data;
   }
 
   // Surface locations the agent had to skip so the UI can tell the user
