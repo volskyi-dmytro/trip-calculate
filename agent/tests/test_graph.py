@@ -252,3 +252,37 @@ async def test_graph_routes_to_error_when_only_one_location_geocodes(mock_client
     assert result["response"].success is False
     assert result["retry_count"] == 1
     assert "1" in result["response"].error
+
+
+@respx.mock
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_weather_failure_still_yields_successful_route(mock_client):
+    """Same arrangement as test_graph_happy_path_two_cities, plus a failing
+    weather agent: the trip must still succeed with weather_data=None."""
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+            ParsedLocation(name="Lviv Ukraine", location_type="destination"),
+        ],
+        settings=TripSettings(passengers=1, currency="UAH"),
+    )
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        side_effect=[supervisor_llm_response(), _mock_parse_response(parsed)]
+    )
+
+    def handler(request):
+        q = request.url.params.get("q", "")
+        if "Kyiv" in q:
+            return httpx.Response(200, json=_nominatim_resp("Kyiv", "50.4501", "30.5234"))
+        return httpx.Response(200, json=_nominatim_resp("Lviv", "49.8397", "24.0297"))
+
+    respx.get("https://nominatim.openstreetmap.org/search").mock(side_effect=handler)
+
+    graph = build_graph()
+    with patch("app.nodes.compute_weather_data",
+               new=AsyncMock(side_effect=RuntimeError("open-meteo down"))):
+        result = await graph.ainvoke(_initial_state("Kyiv to Lviv"))
+
+    assert result["response"].success is True
+    assert result["response"].weather_data is None

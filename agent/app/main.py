@@ -69,6 +69,7 @@ def _initial_state(request: ParseRouteRequest) -> dict:
         "retry_count": 0,
         "settings_context": request.settings_context,
         "fuel_data": None,
+        "weather_data": None,
         "intent": None,
     }
 

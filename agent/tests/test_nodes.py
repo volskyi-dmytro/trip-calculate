@@ -695,3 +695,48 @@ def test_format_response_drops_invalid_departure_date():
         ["response"].route.settings.departureDate is None
     assert format_response(_state_with_date(None)) \
         ["response"].route.settings.departureDate is None
+
+
+# ── weather_enrichment ──────────────────────────────────────────────────
+
+from unittest.mock import AsyncMock as _AsyncMock, patch as _patch
+
+from app.nodes import weather_enrichment
+from app.schema import WeatherData
+
+
+async def test_weather_enrichment_attaches_weather():
+    fake = WeatherData(date=_TODAY.isoformat(), samples=[], risk_flags=[],
+                       source="open-meteo",
+                       fetched_at=_dt.now(_tz.utc))
+    state = _state_with_date(None)
+    with _patch("app.nodes.compute_weather_data",
+                new=_AsyncMock(return_value=fake)) as compute:
+        result = await weather_enrichment(state)
+    assert result["weather_data"] is fake
+    # Points built from ordered successful geocodes with clean_name labels
+    points = compute.await_args.args[0]
+    assert points == [(50.45, 30.52, "Kyiv"), (49.84, 24.03, "Lviv")]
+
+
+async def test_weather_enrichment_never_errors():
+    state = _state_with_date(None)
+    with _patch("app.nodes.compute_weather_data",
+                new=_AsyncMock(side_effect=RuntimeError("boom"))):
+        result = await weather_enrichment(state)
+    assert result["weather_data"] is None
+    assert not result.get("error")
+
+
+async def test_weather_enrichment_skips_on_error_state():
+    with _patch("app.nodes.compute_weather_data", new=_AsyncMock()) as compute:
+        result = await weather_enrichment({"error": "nope", "geocoded": []})
+    assert "weather_data" not in result
+    compute.assert_not_awaited()
+
+
+def test_format_response_carries_weather_data():
+    fake = WeatherData(date=_TODAY.isoformat(), samples=[], risk_flags=[],
+                       source="open-meteo", fetched_at=_dt.now(_tz.utc))
+    state = {**_state_with_date(None), "weather_data": fake}
+    assert format_response(state)["response"].weather_data is fake

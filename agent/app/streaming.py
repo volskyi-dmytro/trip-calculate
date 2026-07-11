@@ -21,6 +21,7 @@ NODE_TO_STAGE = {
     "geocode_locations": "geocoding",
     "retry_failed_locations": "geocoding",
     "fuel_enrichment": "fuel",
+    "weather_enrichment": "weather",
     "format_response": "compose",
     "format_error": "compose",
 }

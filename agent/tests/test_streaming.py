@@ -46,15 +46,20 @@ async def test_happy_path_frame_sequence():
         {"parse_locations": {"parsed": object()}},
         {"geocode_locations": {"geocoded": []}},
         {"fuel_enrichment": {"fuel_data": None}},
+        {"weather_enrichment": {"weather_data": None}},
         {"format_response": {"response": _OK_RESPONSE}},
     ])
     raw = "".join([f async for f in stream_route(graph, {})])
     frames = _frames(raw)
     assert frames[0] == ("stage", {"stage": "supervisor", "status": "running"})
     stage_dones = [d["stage"] for e, d in frames if e == "stage" and d["status"] == "done"]
-    assert stage_dones == ["supervisor", "route", "geocoding", "fuel", "compose"]
+    assert stage_dones == ["supervisor", "route", "geocoding", "fuel", "weather", "compose"]
     assert frames[-1][0] == "result"
     assert frames[-1][1]["success"] is True
+
+
+def test_node_to_stage_maps_weather():
+    assert NODE_TO_STAGE["weather_enrichment"] == "weather"
 
 
 async def test_retry_folds_into_single_geocoding_stage():

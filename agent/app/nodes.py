@@ -1,4 +1,5 @@
 import asyncio
+import logging
 import os
 from datetime import date, datetime, timezone
 from langfuse.openai import AsyncOpenAI
@@ -9,6 +10,9 @@ from .schema import (
 )
 from .geocoding import geocode_location, reverse_country
 from .tools.fuel import compute_fuel_data
+from .tools.weather import compute_weather_data
+
+logger = logging.getLogger(__name__)
 
 _SYSTEM_PROMPT = """You normalize location names for geocoding AND provide coordinates when possible.
 
@@ -396,6 +400,27 @@ async def fuel_enrichment(state: GraphState) -> GraphState:
         return {**state, "fuel_data": None}
 
 
+async def weather_enrichment(state: GraphState) -> GraphState:
+    """Weather agent: deterministic, zero LLM tokens. Advisory only —
+    any failure yields weather_data=None and the trip proceeds untouched."""
+    if state.get("error"):
+        return state
+    try:
+        raw = getattr(state.get("parsed"), "departure_date", None)
+        valid = _valid_departure_date(raw)
+        day = date.fromisoformat(valid) if valid \
+            else datetime.now(timezone.utc).date()
+        points = [
+            (loc.latitude, loc.longitude, loc.clean_name)
+            for loc in _ordered_successful(state.get("geocoded", []))
+        ]
+        weather = await compute_weather_data(points, day)
+        return {**state, "weather_data": weather}
+    except Exception:
+        logger.info("weather enrichment failed", exc_info=True)
+        return {**state, "weather_data": None}
+
+
 def format_response(state: GraphState) -> GraphState:
     geocoded = state["geocoded"]
     successful = [loc for loc in geocoded if loc.source != "failed"]
@@ -451,6 +476,7 @@ def format_response(state: GraphState) -> GraphState:
         ),
         skippedLocations=[{"name": l.name, "reason": l.message} for l in failed] or None,
         fuel_data=state.get("fuel_data"),
+        weather_data=state.get("weather_data"),
     )
     return {**state, "response": response}
 

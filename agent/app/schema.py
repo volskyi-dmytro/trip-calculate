@@ -179,6 +179,7 @@ class ParseRouteResponse(BaseModel):
     error: Optional[str] = None
     skippedLocations: Optional[list[dict]] = None
     fuel_data: Optional[FuelData] = None
+    weather_data: Optional[WeatherData] = None
 
 
 # ── LangGraph state ────────────────────────────────────────────────────────
@@ -195,4 +196,5 @@ class GraphState(TypedDict):
     retry_count: int
     settings_context: Optional[SettingsContext]
     fuel_data: Optional[FuelData]
+    weather_data: Optional[WeatherData]
     intent: Optional[str]
