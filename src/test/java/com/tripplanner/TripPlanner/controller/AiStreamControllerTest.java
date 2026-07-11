@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
@@ -32,6 +33,7 @@ class AiStreamControllerTest {
     private AiCacheService cacheService;
     private AiUsageService usageService;
     private HttpServletRequest httpRequest;
+    private HttpServletResponse httpResponse;
     private AiStreamController controller;
 
     @BeforeEach
@@ -39,6 +41,7 @@ class AiStreamControllerTest {
         cacheService = mock(AiCacheService.class);
         usageService = mock(AiUsageService.class);
         httpRequest = mock(HttpServletRequest.class);
+        httpResponse = mock(HttpServletResponse.class);
         controller = new AiStreamController(cacheService, usageService, new ObjectMapper());
         ReflectionTestUtils.setField(controller, "agentUrl", "http://localhost:1");
         when(usageService.logRequest(any(), any(), any(), any(), any())).thenReturn(1L);
@@ -54,18 +57,18 @@ class AiStreamControllerTest {
 
     @Test
     void rejectsEmptyAndOversizedWithoutOpeningStream() {
-        assertInstanceOf(ResponseEntity.class, controller.streamInsights(request("  "), httpRequest));
-        assertInstanceOf(ResponseEntity.class, controller.streamInsights(request("x".repeat(501)), httpRequest));
+        assertInstanceOf(ResponseEntity.class, controller.streamInsights(request("  "), httpRequest, httpResponse));
+        assertInstanceOf(ResponseEntity.class, controller.streamInsights(request("x".repeat(501)), httpRequest, httpResponse));
         Map<String, Object> big = request("Kyiv to Lviv");
         big.put("currentRoute", java.util.Collections.nCopies(26, Map.of()));
-        assertInstanceOf(ResponseEntity.class, controller.streamInsights(big, httpRequest));
+        assertInstanceOf(ResponseEntity.class, controller.streamInsights(big, httpRequest, httpResponse));
         verifyNoInteractions(cacheService);
     }
 
     @Test
     void rejectsWhenAgentNotConfigured() {
         ReflectionTestUtils.setField(controller, "agentUrl", "");
-        Object result = controller.streamInsights(request("Kyiv to Lviv"), httpRequest);
+        Object result = controller.streamInsights(request("Kyiv to Lviv"), httpRequest, httpResponse);
         assertInstanceOf(ResponseEntity.class, result);
         assertEquals(503, ((ResponseEntity<?>) result).getStatusCode().value());
     }
@@ -73,7 +76,7 @@ class AiStreamControllerTest {
     @Test
     void cacheHitEmitsResultWithoutContactingAgent() {
         when(cacheService.get("key")).thenReturn("{\"success\":true}");
-        Object result = controller.streamInsights(request("Kyiv to Lviv"), httpRequest);
+        Object result = controller.streamInsights(request("Kyiv to Lviv"), httpRequest, httpResponse);
         assertInstanceOf(SseEmitter.class, result);
         // Cached body served → outcome logged as cached; upstream never dialed
         verify(usageService).logResponse(eq(1L), eq("success_cached"), isNull(), anyLong());
@@ -83,7 +86,7 @@ class AiStreamControllerTest {
     void modificationRequestsBypassCache() {
         Map<String, Object> m = request("add a stop in Ternopil");
         m.put("currentRoute", List.of(Map.of("name", "Kyiv", "latitude", 50.45, "longitude", 30.52)));
-        Object result = controller.streamInsights(m, httpRequest);
+        Object result = controller.streamInsights(m, httpRequest, httpResponse);
         assertInstanceOf(SseEmitter.class, result);
         verify(cacheService, never()).get(anyString());
     }
@@ -152,6 +155,26 @@ class AiStreamControllerTest {
         assertTrue(sink.frames.isEmpty());
     }
 
+    @Test
+    void forwardSseLines_spacelessFieldsParseIdenticallyToSpaced() throws Exception {
+        RecordingSink sink = new RecordingSink();
+        // Spring's SseEmitter re-serializes "event: x" as "event:x" (no space);
+        // the parser must accept both forms identically.
+        forward(sink, "event:stage", "data:{\"a\":1}", "");
+        assertEquals(1, sink.frames.size());
+        assertArrayEquals(new String[]{"stage", "{\"a\":1}"}, sink.frames.get(0));
+    }
+
+    @Test
+    void forwardSseLines_dataWithTwoLeadingSpacesPreservesOne() throws Exception {
+        RecordingSink sink = new RecordingSink();
+        // Per SSE spec only ONE leading space after the colon is stripped as
+        // field syntax; any further leading whitespace is part of the value.
+        forward(sink, "event: result", "data:  padded", "");
+        assertEquals(1, sink.frames.size());
+        assertArrayEquals(new String[]{"result", " padded"}, sink.frames.get(0));
+    }
+
     // ---- relay(): exception path when the upstream body stream fails mid-iteration ----
 
     @Test
@@ -184,5 +207,22 @@ class AiStreamControllerTest {
         verify(emitter).complete();
         verify(emitter, never()).completeWithError(any());
         verify(usageService).logResponse(eq(1L), eq("error"), eq("boom"), anyLong());
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void relay_streamEndsWithoutTerminalFrameLogsError() throws Exception {
+        HttpResponse<Stream<String>> response = mock(HttpResponse.class);
+        when(response.statusCode()).thenReturn(200);
+        // Upstream body ends cleanly (mid-iteration close, not an exception) after
+        // only a stage frame — no "result" or "error" frame is ever produced.
+        when(response.body()).thenReturn(Stream.of("event: stage", "data: {\"stage\":\"route\"}", ""));
+        CompletableFuture<HttpResponse<Stream<String>>> future = CompletableFuture.completedFuture(response);
+        SseEmitter emitter = mock(SseEmitter.class);
+
+        controller.relay(future, emitter, false, "key", 1L, System.currentTimeMillis(), new AtomicReference<>());
+
+        verify(emitter).complete();
+        verify(usageService).logResponse(eq(1L), eq("error"), eq("stream ended without terminal frame"), anyLong());
     }
 }

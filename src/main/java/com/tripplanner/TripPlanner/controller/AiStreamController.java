@@ -5,6 +5,7 @@ import com.tripplanner.TripPlanner.dto.AgentResponse;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -83,8 +84,14 @@ public class AiStreamController {
 
     @PostMapping("/insights/stream")
     public Object streamInsights(@RequestBody Map<String, Object> request,
-                                 HttpServletRequest httpRequest) {
+                                 HttpServletRequest httpRequest,
+                                 HttpServletResponse httpResponse) {
         long startTime = System.currentTimeMillis();
+        // Cloudflare and other origin proxies in front of this response must not
+        // buffer the SSE stream; set once here so it covers both the cache-hit
+        // and relay paths below.
+        httpResponse.setHeader("Cache-Control", "no-cache");
+        httpResponse.setHeader("X-Accel-Buffering", "no");
         String prompt = request.get("message") instanceof String s ? s : null;
         String language = request.get("language") instanceof String l ? l : "en";
         List<?> currentRoute = request.get("currentRoute") instanceof List<?> route ? route : List.of();
@@ -191,11 +198,17 @@ public class AiStreamController {
                 return;
             }
 
+            // Set true when a result or error frame is forwarded, so a stream that
+            // ends without either (truncation, upstream closing mid-iteration) still
+            // gets a logged outcome instead of leaving this request's usage log open.
+            AtomicReference<Boolean> terminalFrameSeen = new AtomicReference<>(false);
             SseFrameSink sink = (event, data) -> {
                 emitter.send(SseEmitter.event().name(event).data(data, MediaType.APPLICATION_JSON));
                 if ("result".equals(event)) {
+                    terminalFrameSeen.set(true);
                     recordResult(data, cacheable, cacheKey, logId, startTime);
                 } else if ("error".equals(event)) {
+                    terminalFrameSeen.set(true);
                     usageService.logResponse(logId, "error", "stream_failed",
                             System.currentTimeMillis() - startTime);
                 }
@@ -208,6 +221,10 @@ public class AiStreamController {
                 forwardSseLines(lines.iterator(), sink);
             } finally {
                 bodyRef.set(null);
+            }
+            if (!terminalFrameSeen.get()) {
+                usageService.logResponse(logId, "error", "stream ended without terminal frame",
+                        System.currentTimeMillis() - startTime);
             }
             emitter.complete();
         } catch (Exception e) {
@@ -238,19 +255,29 @@ public class AiStreamController {
         StringBuilder data = new StringBuilder();
         while (lines.hasNext()) {
             String line = lines.next();
-            if (line.startsWith("event: ")) {
-                event = line.substring("event: ".length()).trim();
-            } else if (line.startsWith("data: ")) {
+            if (line.startsWith("event:")) {
+                event = stripFieldValue(line.substring("event:".length())).trim();
+            } else if (line.startsWith("data:")) {
                 if (data.length() > 0) {
                     data.append('\n');
                 }
-                data.append(line.substring("data: ".length()));
+                data.append(stripFieldValue(line.substring("data:".length())));
             } else if (line.isEmpty() && event != null) {
                 sink.frame(event, data.toString());
                 event = null;
                 data.setLength(0);
             }
         }
+    }
+
+    /**
+     * Per SSE spec, a single leading space after the field colon is not part
+     * of the value; any further spaces are. Mirrors the frontend's
+     * {@code stripFieldValue} so both hops tolerate the agent emitting either
+     * {@code "event: x"} (with space) or {@code "event:x"} (spaceless).
+     */
+    private static String stripFieldValue(String raw) {
+        return raw.startsWith(" ") ? raw.substring(1) : raw;
     }
 
     private static void closeBody(AtomicReference<Stream<String>> bodyRef) {
