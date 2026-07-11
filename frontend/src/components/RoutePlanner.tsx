@@ -17,6 +17,7 @@ import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
+import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
 import { computeTripStats } from '../services/tripStats'
 import { AgentActivitySlot } from './AgentActivitySlot'
@@ -24,6 +25,7 @@ import { ShareReceiptModal } from './receipt/ShareReceiptModal'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import type { ChatMessage } from '../types'
+import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
 
 export interface Waypoint {
@@ -54,6 +56,9 @@ const DEFAULT_ROUTE_SETTINGS: RouteSettings = {
   fuelPriceTouched: false,
 }
 
+const isoDate = (d: Date) => d.toISOString().slice(0, 10)
+const todayISO = () => isoDate(new Date())
+
 export function RoutePlanner() {
   const { language } = useLanguage()
   const languageRef = useRef(language)
@@ -71,6 +76,13 @@ export function RoutePlanner() {
   const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
   // Latest-wins sequence guard for the debounced fuel suggestion fetch below
   const fuelFetchSeq = useRef(0)
+  const [departureDate, setDepartureDate] = useState<string>(todayISO())
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
+  // Latest-wins guard, same rationale as fuelFetchSeq above
+  const weatherFetchSeq = useRef(0)
+  // Set when an AI response delivered weather; the next effect run (its
+  // own waypoint change) skips one duplicate corridor fetch
+  const skipNextWeatherFetch = useRef(false)
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
   const [savingRoute, setSavingRoute] = useState(false)
@@ -326,6 +338,24 @@ export function RoutePlanner() {
     return () => clearTimeout(handle)
   }, [waypoints, routeSettings.fuelType, routeSettings.currency])
 
+  // Corridor weather: advisory fetch whenever the route shape or the
+  // departure date changes. AI responses deliver their own weather_data,
+  // so the run their waypoint update triggers is skipped once.
+  useEffect(() => {
+    if (waypoints.length < 2) { setWeatherData(null); return }
+    if (skipNextWeatherFetch.current) { skipNextWeatherFetch.current = false; return }
+    const seq = ++weatherFetchSeq.current
+    const handle = setTimeout(async () => {
+      const weather = await fetchCorridorWeather(
+        waypoints.map(wp => ({ name: wp.name, latitude: wp.lat, longitude: wp.lng })),
+        departureDate,
+      )
+      if (seq !== weatherFetchSeq.current) return // superseded
+      setWeatherData(weather)
+    }, 800)
+    return () => clearTimeout(handle)
+  }, [waypoints, departureDate])
+
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
     try {
@@ -432,6 +462,9 @@ export function RoutePlanner() {
     setCardDismissed(false)
     setAgentDoneStages([])
     setAgentDegraded(false)
+    // departureDate is intentionally NOT reset here — it isn't tied to the
+    // route being cleared, only weatherData (which described that route)
+    setWeatherData(null)
   }, [t, navigate])
 
   const createNewRoute = useCallback(() => {
@@ -852,6 +885,19 @@ export function RoutePlanner() {
           setRouteSettings(prev => applyLiveFuelPrice(prev, agentData.fuelData!) ?? prev);
         }
 
+        // Chat-parsed departure date ("trip on Saturday") updates the picker;
+        // absent means unmentioned — keep the current date (no-reset contract)
+        if (agentData.departureDate) {
+          setDepartureDate(agentData.departureDate);
+        }
+
+        // Weather arrived with the AI response — adopt it and skip the one
+        // duplicate corridor fetch the waypoint update below would trigger
+        if (agentData.weatherData) {
+          setWeatherData(agentData.weatherData);
+          skipNextWeatherFetch.current = true;
+        }
+
         // Add waypoints from agent data
         const newWaypoints: Waypoint[] = [];
 
@@ -1265,6 +1311,9 @@ export function RoutePlanner() {
                 isCalculating={isCalculatingRoute}
                 fuelSuggestion={fuelSuggestion}
                 onApplyFuelSuggestion={handleApplyFuelSuggestion}
+                weather={weatherData}
+                departureDate={departureDate}
+                onDepartureDateChange={setDepartureDate}
               />
 
               {/* ── Divider ── */}
@@ -1475,6 +1524,7 @@ export function RoutePlanner() {
               routeDistance={routeDistance}
               routeDuration={routeDuration}
               fuelSuggestion={fuelSuggestion}
+              weather={weatherData}
               onSaveRoute={() => setShowSaveDialog(true)}
               onShareReceipt={() => setShowResultShareDialog(true)}
             />
@@ -1794,6 +1844,9 @@ export function RoutePlanner() {
                     isCalculating={isCalculatingRoute}
                     fuelSuggestion={fuelSuggestion}
                     onApplyFuelSuggestion={handleApplyFuelSuggestion}
+                    weather={weatherData}
+                    departureDate={departureDate}
+                    onDepartureDateChange={setDepartureDate}
                   />
 
                   {/* ── Divider ── */}
@@ -2004,6 +2057,7 @@ export function RoutePlanner() {
                   routeDistance={routeDistance}
                   routeDuration={routeDuration}
                   fuelSuggestion={fuelSuggestion}
+                  weather={weatherData}
                   onSaveRoute={() => setShowSaveDialog(true)}
                   onShareReceipt={() => setShowResultShareDialog(true)}
                 />

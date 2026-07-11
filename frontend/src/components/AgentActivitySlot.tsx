@@ -6,6 +6,7 @@ import { TripResultCard } from './TripResultCard'
 import type { AgentStage } from '../services/agentStreamService'
 import type { RouteSettings, Waypoint } from './RoutePlanner'
 import type { FuelSuggestion } from '../services/fuelPriceService'
+import type { WeatherData } from '../types/weather'
 
 interface AgentActivitySlotProps {
   isProcessing: boolean
@@ -20,6 +21,7 @@ interface AgentActivitySlotProps {
   routeDistance: number
   routeDuration: number
   fuelSuggestion: FuelSuggestion | null
+  weather: WeatherData | null
   onSaveRoute: () => void
   onShareReceipt: () => void
 }
@@ -42,6 +44,7 @@ export function AgentActivitySlot({
   routeDistance,
   routeDuration,
   fuelSuggestion,
+  weather,
   onSaveRoute,
   onShareReceipt,
 }: AgentActivitySlotProps) {
@@ -75,6 +78,7 @@ export function AgentActivitySlot({
         routeDistance={routeDistance}
         routeDuration={routeDuration}
         fuelSuggestion={fuelSuggestion}
+        weather={weather}
         onSaveRoute={onSaveRoute}
         onShareReceipt={onShareReceipt}
       />

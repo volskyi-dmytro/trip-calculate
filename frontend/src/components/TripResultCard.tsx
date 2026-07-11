@@ -5,6 +5,8 @@ import { computeTripStats } from '../services/tripStats'
 import { wazeLegLinks } from '../services/wazeExport'
 import type { FuelSuggestion } from '../services/fuelPriceService'
 import type { RouteSettings, Waypoint } from './RoutePlanner'
+import { WeatherStrip } from './WeatherStrip'
+import type { WeatherData } from '../types/weather'
 
 interface TripResultCardProps {
   waypoints: Waypoint[]
@@ -12,13 +14,14 @@ interface TripResultCardProps {
   routeDistance: number
   routeDuration: number
   fuelSuggestion: FuelSuggestion | null
+  weather: WeatherData | null
   onSaveRoute: () => void
   onShareReceipt: () => void
 }
 
 export function TripResultCard({
   waypoints, routeSettings, routeDistance, routeDuration,
-  fuelSuggestion, onSaveRoute, onShareReceipt,
+  fuelSuggestion, weather, onSaveRoute, onShareReceipt,
 }: TripResultCardProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -60,6 +63,8 @@ export function TripResultCard({
           <dd>{stats.costPerPerson.toFixed(2)} {routeSettings.currency}</dd>
         </div>
       </dl>
+
+      <WeatherStrip weather={weather} />
 
       {legs.length > 0 && (
         <div className="trip-result-waze">

@@ -8,6 +8,8 @@ import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
 import { toast } from 'sonner'
+import { WeatherStrip } from './WeatherStrip'
+import type { WeatherData } from '../types/weather'
 
 // Currency options with symbols
 const CURRENCIES = [
@@ -35,6 +37,9 @@ interface RoutePanelProps {
   isCalculating?: boolean
   fuelSuggestion: FuelSuggestion | null
   onApplyFuelSuggestion: () => void
+  weather: WeatherData | null
+  departureDate: string
+  onDepartureDateChange: (date: string) => void
 }
 
 export function RoutePanel({
@@ -48,6 +53,9 @@ export function RoutePanel({
   isCalculating = false,
   fuelSuggestion,
   onApplyFuelSuggestion,
+  weather,
+  departureDate,
+  onDepartureDateChange,
 }: RoutePanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -516,6 +524,20 @@ export function RoutePanel({
             className="h-8 text-sm font-mono"
           />
         </div>
+
+        <div className="space-y-1">
+          <label style={labelStyle} htmlFor="departure-date">{t.weather.departureDate}</label>
+          <Input
+            id="departure-date"
+            type="date"
+            value={departureDate}
+            min={new Date().toISOString().slice(0, 10)}
+            max={new Date(Date.now() + 16 * 86400000).toISOString().slice(0, 10)}
+            onChange={(e) => { if (e.target.value) onDepartureDateChange(e.target.value) }}
+            style={inputStyle}
+            className="h-8 text-sm font-mono"
+          />
+        </div>
       </div>
 
       {/* Waypoints List */}
@@ -631,6 +653,8 @@ export function RoutePanel({
           </div>
         )}
       </div>
+
+      <WeatherStrip weather={weather} />
 
       {/* Waze Export Links */}
       {waypoints.length >= 2 && (
