@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import type { FuelSuggestion } from '../services/fuelPriceService'
+import { wazeLegLinks } from '../services/wazeExport'
 import { Input } from '@/components/ui/input'
-import { MapPin, Trash2, GripVertical, Plus, Loader2, ChevronDown } from 'lucide-react'
+import { MapPin, Trash2, GripVertical, Plus, Loader2, ChevronDown, Navigation } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -630,6 +631,19 @@ export function RoutePanel({
           </div>
         )}
       </div>
+
+      {/* Waze Export Links */}
+      {waypoints.length >= 2 && (
+        <div style={cardStyle} className="p-3 space-y-2">
+          {wazeLegLinks(waypoints).map(leg => (
+            <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer"
+               className="trip-result-waze-link">
+              <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
+              {t.resultCard.navigate}: {leg.label}
+            </a>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

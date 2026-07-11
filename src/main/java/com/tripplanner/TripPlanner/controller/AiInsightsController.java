@@ -16,7 +16,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
-import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -103,7 +102,7 @@ public class AiInsightsController {
         // depends on the caller's current route, so replaying it to another
         // user (or the same user with a different route) would be wrong
         boolean cacheable = currentRoute.isEmpty();
-        String cacheKey = generateCacheKey(prompt, language);
+        String cacheKey = cacheService.cacheKey(prompt, language);
         String cached = cacheable ? cacheService.get(cacheKey) : null;
         if (cached != null) {
             logger.info("Cache HIT for prompt length={}", prompt.length());
@@ -208,18 +207,6 @@ public class AiInsightsController {
             logger.debug("Could not extract user email", e);
         }
         return null;
-    }
-
-    private String generateCacheKey(String prompt, String language) {
-        try {
-            String normalized = prompt.toLowerCase().trim().replaceAll("\\s+", " ");
-            byte[] hash = MessageDigest.getInstance("MD5").digest((normalized + "|" + language).getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            StringBuilder sb = new StringBuilder();
-            for (byte b : hash) sb.append(String.format("%02x", b));
-            return sb.toString();
-        } catch (Exception e) {
-            return String.valueOf((prompt + language).hashCode());
-        }
     }
 
     private String getClientIp(HttpServletRequest request) {

@@ -1,10 +1,31 @@
 package com.tripplanner.TripPlanner.service;
 
+import java.security.MessageDigest;
+
 /**
  * Interface for AI response caching
  * Implementations: MemoryCacheService (staging) and RedisCacheService (production)
  */
 public interface AiCacheService {
+
+    /**
+     * Build the cache key for a prompt + language pair.
+     * MD5 hash of the normalized prompt (lowercased, trimmed, whitespace-collapsed)
+     * concatenated with the language, falling back to a plain hashCode if MD5
+     * is unavailable. Shared by every caller (sync proxy, SSE relay) so cache
+     * keys always agree regardless of entry point.
+     */
+    default String cacheKey(String prompt, String language) {
+        try {
+            String normalized = prompt.toLowerCase().trim().replaceAll("\\s+", " ");
+            byte[] hash = MessageDigest.getInstance("MD5").digest((normalized + "|" + language).getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            StringBuilder sb = new StringBuilder();
+            for (byte b : hash) sb.append(String.format("%02x", b));
+            return sb.toString();
+        } catch (Exception e) {
+            return String.valueOf((prompt + language).hashCode());
+        }
+    }
 
     /**
      * Get cached response by key

@@ -564,3 +564,214 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
 .fuel-chip-action:hover {
   opacity: 0.8;
 }
+
+/* ── Agent Progress ────────────────────────────────────────────────────
+   Vertical step list showing agent stages. Pending (muted), running (accent
+   with spinner), done (checkmark). Shimmer effect when degraded (fallback). */
+
+.agent-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1rem;
+  border-radius: var(--radius-md);
+  background: var(--glass-inset);
+}
+
+.agent-progress-step {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  transition: color 0.2s ease;
+}
+
+.agent-progress-step.agent-progress-pending {
+  color: var(--text-3);
+}
+
+.agent-progress-step.agent-progress-running {
+  color: var(--nav-accent);
+  font-weight: 600;
+}
+
+.agent-progress-step.agent-progress-done {
+  color: var(--text);
+  font-weight: 500;
+}
+
+.agent-progress-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.agent-progress-degraded {
+  margin-top: 0.75rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--nav-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: center;
+  animation: shimmer-subtle 1.5s ease-in-out infinite;
+}
+
+@keyframes shimmer-subtle {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-progress-degraded {
+    animation: none;
+    opacity: 0.8;
+  }
+}
+
+
+/* ── Trip Result Card ──────────────────────────────────────────────────
+   Summary card with stops, distance, duration, fuel cost breakdown. Waze
+   leg links and Save/Share action buttons. */
+
+.trip-result-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 1.25rem;
+  border-radius: var(--radius-md);
+}
+
+.trip-result-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.trip-result-stops {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+
+.trip-result-stop {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+}
+
+.trip-result-figures {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  font-size: 0.9rem;
+}
+
+.trip-result-figures > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.trip-result-figures dt {
+  color: var(--text-2);
+  font-size: 0.85rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.trip-result-figures dd {
+  color: var(--text);
+  font-size: 1rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  margin: 0;
+}
+
+.trip-result-live {
+  color: var(--text-3);
+  font-size: 0.8rem;
+  font-weight: 400;
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.trip-result-waze {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.trip-result-waze-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--nav-accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-decoration: none;
+  border: 1px solid transparent;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+.trip-result-waze-link:hover {
+  border-color: var(--nav-accent);
+}
+
+.trip-result-waze-link:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 2px;
+}
+
+.trip-result-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.trip-result-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.7rem 1rem;
+  border-radius: 10px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: var(--text);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.trip-result-action:hover {
+  background: var(--accent-soft);
+  border-color: var(--nav-accent);
+  color: var(--nav-accent);
+}
+
+.trip-result-action:focus-visible {
+  outline: 2px solid var(--nav-accent);
+  outline-offset: 2px;
+}
+
+.trip-result-action:active {
+  transform: scale(0.98);
+}
+
