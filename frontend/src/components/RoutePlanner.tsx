@@ -341,9 +341,11 @@ export function RoutePlanner() {
   // Corridor weather: advisory fetch whenever the route shape or the
   // departure date changes. AI responses deliver their own weather_data,
   // so the run their waypoint update triggers is skipped once.
+  // Drain the skip flag first (before the route-size early return) so a
+  // pending skip doesn't outlive the route it was set for.
   useEffect(() => {
-    if (waypoints.length < 2) { setWeatherData(null); return }
     if (skipNextWeatherFetch.current) { skipNextWeatherFetch.current = false; return }
+    if (waypoints.length < 2) { setWeatherData(null); return }
     const seq = ++weatherFetchSeq.current
     const handle = setTimeout(async () => {
       const weather = await fetchCorridorWeather(
@@ -465,6 +467,8 @@ export function RoutePlanner() {
     // departureDate is intentionally NOT reset here — it isn't tied to the
     // route being cleared, only weatherData (which described that route)
     setWeatherData(null)
+    // A pending skip flag must not outlive the route it was set for
+    skipNextWeatherFetch.current = false
   }, [t, navigate])
 
   const createNewRoute = useCallback(() => {
