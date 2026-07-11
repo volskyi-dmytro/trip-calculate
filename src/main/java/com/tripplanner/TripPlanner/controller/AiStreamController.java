@@ -55,7 +55,11 @@ public class AiStreamController {
     private final AiCacheService cacheService;
     private final AiUsageService usageService;
     private final ObjectMapper objectMapper;
+    // HTTP/1.1 forced: the JDK client's default h2c Upgrade request makes
+    // uvicorn drop the request body ("Unsupported upgrade request" -> 422),
+    // which would silently kill every stream in production
     private final HttpClient httpClient = HttpClient.newBuilder()
+            .version(HttpClient.Version.HTTP_1_1)
             .connectTimeout(Duration.ofSeconds(5))
             .build();
     private final ExecutorService relayExecutor = Executors.newCachedThreadPool(r -> {
