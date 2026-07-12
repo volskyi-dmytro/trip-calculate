@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Map, Users } from 'lucide-react';
+import { Calculator, Map, Sparkles, Users } from 'lucide-react';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
@@ -11,6 +11,11 @@ export function HomePage() {
   const { t } = useLanguage();
 
   const features = [
+    {
+      icon: Sparkles,
+      title: t('intro.aiAssistant.title'),
+      text: t('intro.aiAssistant.text'),
+    },
     {
       icon: Calculator,
       title: t('intro.userFriendly.title'),

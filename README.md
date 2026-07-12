@@ -4,9 +4,14 @@ A modern full-stack web application for trip expense calculation and route plann
 
 **Live Demo:** [trip-calculate.online](https://trip-calculate.online)
 
-## Recent Updates (v2.2)
+## Recent Updates (v3.0)
 
-- 🤖 **LangGraph AI Agent** - Replaced n8n workflow with a Python FastAPI + LangGraph service for production-grade AI route parsing
+- 🧠 **Multi-Agent Architecture** - The AI service is now a supervisor-orchestrated LangGraph: a supervisor classifies each request, then dispatches to a route/geocode agent and two deterministic, zero-LLM specialist agents (fuel, weather)
+- ⛽ **Live Fuel Price Agent** - Country-average petrol/diesel/LPG prices, refreshed daily from EU Oil Bulletin, minfin.com.ua, and NBU (all keyless, no API cost); advisory only, never overwrites a manually entered price
+- 🌦️ **Weather Agent** - Corridor forecast along the route for the trip's departure date (Open-Meteo, keyless), with risk flags for snow, heavy rain, strong wind, ice, and storms; departure date can be typed in chat or set with a picker
+- 📡 **Streamed Agent Progress (SSE)** - Trip creation streams real per-agent progress (supervisor → route → geocoding → fuel → weather → compose) instead of a single request/response round trip, with a silent same-request fallback if streaming is unavailable
+- ✨ **Concierge Result Card** - AI-created trips render as a card with stops, distance, driving time, live fuel cost, per-person split, and per-leg Waze navigation links
+- 🗺️ **Waze Navigation Export** - One-tap turn-by-turn navigation for every leg of a route, from both the AI result card and the manual route panel
 - 🔍 **Langfuse Observability** - Full LLM tracing with token counts, cost tracking, and session metadata per request
 - 🗺️ **3D Map Visualization** - Mapbox GL with terrain and satellite views
 - 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL for faster results
@@ -21,17 +26,22 @@ A modern full-stack web application for trip expense calculation and route plann
 - 🧮 **Smart Cost Splitting** - Automatic per-person expense breakdown
 - 🔐 **Secure Authentication** - Google OAuth 2.0 with session persistence
 
-### AI-Powered Route Planner (Beta)
-- 🤖 **Natural Language Parsing** - Type a route in plain text ("Kyiv to Lviv via Zhytomyr") and the LangGraph agent extracts, normalizes, and geocodes all locations
+### AI-Powered Route Planner
+- 🧠 **Supervisor + Specialist Agents** - A supervisor node classifies each request (create / modify / settings-only / off-topic) and routes it through a route-parsing agent, then the fuel and weather agents, all in one LangGraph graph
+- 🤖 **Natural Language Parsing** - Type a route in plain text ("Kyiv to Lviv via Zhytomyr, leaving Saturday") and the agent extracts, normalizes, and geocodes all locations plus an optional departure date
+- 📡 **Live Streamed Progress** - Watch the supervisor, route, geocoding, fuel, and weather agents complete in real time over Server-Sent Events as your trip is built
+- ⛽ **Live Fuel Prices** - Country-average fuel prices attached to every AI-created route, refreshed daily, converted to your currency
+- 🌦️ **Weather Along the Route** - Corridor forecast for the departure date at every stop, with risk flags (snow, heavy rain, strong wind, ice, storm) shown on the nearest stop
+- 🗺️ **Per-Leg Waze Export** - Turn-by-turn navigation links for every leg of the trip
 - 🔍 **Full LLM Observability** - Every AI request traced in Langfuse with token counts, cost, and session metadata
 - 🗺️ **3D Map Visualization** - Mapbox-powered 3D terrain and satellite views
 - 💾 **Semantic Caching** - Redis-backed AI response caching with 24h TTL
 - 🛣️ **Road-Based Routing** - Multi-provider routing (Mapbox + OSRM fallback)
 - 📍 **Geocoding** - Search locations and get addresses from coordinates
 - 💾 **Cloud Storage** - Save and load routes with user authentication
-- 🎯 **Manual Waypoints** - Add locations by address or map click
+- 🎯 **Manual Waypoints** - Add locations by address or map click, with the same live fuel price and weather data available to the manual flow
 - ⛽ **Cost Estimation** - Real-time fuel cost calculation with caching
-- 🔒 **Access Control** - Beta feature with request-based access
+- 🔒 **Access Control** - Requires sign-in (Google OAuth); beta feature with request-based access
 
 ### General Features
 - 🎨 **Neo-Travel Design** - Modern terminal-inspired interface with seasonal backgrounds
@@ -67,12 +77,14 @@ A modern full-stack web application for trip expense calculation and route plann
 - **Lombok** - Code generation
 
 ### AI Agent Service
-- **Python 3.12** + **FastAPI** - HTTP API for the agent
-- **LangGraph** - Agentic graph: parse → geocode → (LLM retry loop for failed locations) → format
-- **OpenAI gpt-4o-mini** - Structured location extraction
+- **Python 3.12** + **FastAPI** - HTTP API for the agent, with a streaming (SSE) endpoint alongside the sync one
+- **LangGraph** - Supervisor-orchestrated graph: supervise → parse/geocode (with an LLM retry loop for failed locations) → fuel agent → weather agent → format. Fuel and weather are deterministic, zero-LLM specialist agents; the supervisor and route parser are the only LLM calls per trip
+- **OpenAI gpt-4o-mini** - Structured output for supervisor classification, location extraction, and optional departure-date parsing
 - **Nominatim** - Open-source geocoding with retry/backoff
+- **Open-Meteo** - Keyless weather forecast API for the corridor weather agent
+- **APScheduler** - Daily refresh of cached fuel prices and FX rates (EU Oil Bulletin, minfin.com.ua, NBU)
 - **Langfuse** - LLM tracing and cost observability
-- **httpx** - Async HTTP for Nominatim calls
+- **httpx** - Async HTTP for Nominatim, Open-Meteo, and fuel-price source calls
 
 ## Architecture
 
@@ -251,45 +263,55 @@ tripcalculate/
 ├── frontend/                      # React 19 + TypeScript SPA
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── auth/             # Login, logout, user profile
-│   │   │   ├── calculator/       # Trip expense calculator
-│   │   │   ├── common/           # Header, footer, modal
-│   │   │   ├── ui/               # Tailwind UI components
-│   │   │   ├── MapContainer.tsx  # Leaflet map wrapper
-│   │   │   ├── RoutePlanner.tsx  # Main route planner
-│   │   │   ├── RoutePanel.tsx    # Waypoint management
-│   │   │   └── StatsPanel.tsx    # Route statistics
-│   │   ├── contexts/             # Auth, Theme, Language providers
-│   │   ├── i18n/                 # Translation files
-│   │   ├── pages/                # HomePage, RoutePlannerPage
-│   │   ├── services/             # API clients (axios)
-│   │   ├── styles/               # Global CSS, Tailwind config
-│   │   └── types/                # TypeScript interfaces
-│   ├── public/                   # Static assets (images)
+│   │   │   ├── auth/              # Login, logout, user profile
+│   │   │   ├── calculator/        # Trip expense calculator
+│   │   │   ├── common/            # Header, footer, modal
+│   │   │   ├── ui/                # Tailwind UI components
+│   │   │   ├── MapContainer.tsx   # Leaflet map wrapper
+│   │   │   ├── RoutePlanner.tsx   # Main route planner
+│   │   │   ├── RoutePanel.tsx     # Waypoint management, settings, date picker
+│   │   │   ├── StatsPanel.tsx     # Route statistics
+│   │   │   ├── AgentActivitySlot.tsx # Latest-result concierge slot (progress → result card)
+│   │   │   ├── AgentProgress.tsx  # Live per-agent SSE progress steps
+│   │   │   ├── TripResultCard.tsx # AI trip result: stops, cost, fuel, Waze links
+│   │   │   └── WeatherStrip.tsx   # Shared weather + risk-flag strip (card + panel)
+│   │   ├── contexts/              # Auth, Theme, Language providers
+│   │   ├── i18n/                  # Translation files
+│   │   ├── pages/                 # HomePage, RoutePlannerPage
+│   │   ├── services/              # API clients (axios), agentStreamService (SSE), weatherService
+│   │   ├── styles/                # Global CSS, Tailwind config
+│   │   └── types/                 # TypeScript interfaces
+│   ├── public/                    # Static assets (images)
 │   └── package.json
 │
 ├── agent/                         # Python FastAPI + LangGraph AI service
 │   ├── app/
-│   │   ├── main.py               # FastAPI app, Langfuse tracing wrapper
-│   │   ├── graph.py              # LangGraph StateGraph definition
-│   │   ├── nodes.py              # parse_locations, geocode_locations, retry_failed_locations, format_*
-│   │   ├── geocoding.py          # Nominatim client with retry/backoff
-│   │   └── schema.py             # Pydantic models (GraphState, ParseRouteResponse)
-│   ├── tests/                    # pytest unit + API contract tests
-│   ├── Dockerfile                # python:3.12-slim, non-root user
-│   └── pyproject.toml            # Python dependencies
+│   │   ├── main.py                # FastAPI app (sync + SSE endpoints), Langfuse tracing wrapper
+│   │   ├── graph.py               # LangGraph StateGraph: supervise → parse/geocode → fuel → weather → format
+│   │   ├── nodes.py               # supervise, parse_locations, geocode_locations, retry_failed_locations, weather_enrichment, format_*
+│   │   ├── streaming.py           # SSE frame generator over graph.astream (per-agent stage events)
+│   │   ├── geocoding.py           # Nominatim client with retry/backoff
+│   │   ├── schema.py              # Pydantic models (GraphState, ParseRouteResponse, WeatherData, FuelData)
+│   │   ├── tools/
+│   │   │   ├── fuel.py            # Deterministic, zero-LLM country-average fuel pricing
+│   │   │   └── weather.py         # Deterministic, zero-LLM Open-Meteo corridor forecast + risk flags
+│   │   └── fetchers/              # Daily fuel/FX source fetchers (EU Oil Bulletin, minfin, NBU)
+│   ├── tests/                     # pytest unit + API contract tests
+│   ├── Dockerfile                 # python:3.12-slim, non-root user
+│   └── pyproject.toml             # Python dependencies
 │
 ├── src/main/
 │   ├── java/com/tripplanner/
-│   │   ├── config/               # Security, HTTPS, CORS
-│   │   ├── controller/           # REST endpoints
-│   │   ├── dto/                  # Data transfer objects
-│   │   ├── entity/               # JPA entities
-│   │   ├── filter/               # Rate limiting, attack mitigation
-│   │   ├── repository/           # JPA repositories
-│   │   └── service/              # Business logic
+│   │   ├── config/                # Security, HTTPS, CORS
+│   │   ├── controller/            # REST endpoints, incl. AiStreamController (SSE relay), WeatherProxyController
+│   │   ├── routing/               # Multi-provider routing proxy (Mapbox + OSRM)
+│   │   ├── dto/                   # Data transfer objects
+│   │   ├── entity/                # JPA entities
+│   │   ├── filter/                # Rate limiting, attack mitigation
+│   │   ├── repository/            # JPA repositories
+│   │   └── service/               # Business logic
 │   └── resources/
-│       ├── static/               # Built React app (auto-generated)
+│       ├── static/                # Built React app (auto-generated)
 │       └── application.properties
 │
 ├── docs/                         # Documentation
@@ -415,7 +437,10 @@ java -jar target/TripPlanner-v2.jar
 - `POST /api/routes/request-access` - Request access via email
 
 ### AI Integration (Beta)
-- `POST /api/ai/insights` - Parse a natural language route via the LangGraph agent
+- `POST /api/ai/insights` - Parse a natural language route via the LangGraph agent (single request/response)
+- `POST /api/ai/insights/stream` - Same agent call, streamed as Server-Sent Events with per-agent progress frames; falls back to the sync endpoint on transport failure
+- `GET /api/fuel-prices` - Country-average live fuel prices for the manual (non-AI) flow
+- `POST /api/weather/corridor` - Corridor weather forecast for the manual (non-AI) flow, given waypoints + a departure date
 - `POST /api/routing/calculate` - Multi-provider routing with fallback (Mapbox → OSRM)
 
 ### Monitoring

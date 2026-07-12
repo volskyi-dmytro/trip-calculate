@@ -33,18 +33,20 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Intro
     'intro.title': 'Everything a road trip needs',
-    'intro.description': 'Trip Calculate covers the practical side of travelling by car: how far it is, what the fuel will cost, and who owes what at the end.',
+    'intro.description': 'Trip Calculate covers the practical side of travelling by car: how far it is, what the fuel will cost, and who owes what at the end — plan it yourself, or describe the trip and let a team of AI agents build it for you.',
+    'intro.aiAssistant.title': 'AI trip assistant',
+    'intro.aiAssistant.text': 'Describe your trip in plain language. Specialist AI agents find the stops, check live country-average fuel prices, and pull a weather forecast for your route and travel date — with every step visible as it runs.',
     'intro.userFriendly.title': 'Clear cost breakdown',
     'intro.userFriendly.text': 'Enter consumption, distance, and fuel price — get the total cost and the per-passenger share in seconds.',
     'intro.routePlanner.title': 'Route planning',
-    'intro.routePlanner.text': 'Build multi-stop routes on an interactive map with real road distances and driving times, then save them to your account.',
+    'intro.routePlanner.text': 'Build multi-stop routes on an interactive map with real road distances and driving times, then hand off to Waze for turn-by-turn navigation.',
     'intro.quickLookup.title': 'Quick calculator',
     'intro.quickLookup.text': 'No account needed for a fast estimate. Repeated calculations are cached, so checking variants stays instant.',
 
     // FAQ
     'faq.title': 'Frequently Asked Questions',
     'faq.howWorks.question': 'How does the route planner work?',
-    'faq.howWorks.answer': 'You place stops on an interactive map and the planner calculates the route over real roads, including distance and driving time. Cost estimates and route suggestions update as you edit the trip.',
+    'faq.howWorks.answer': 'Type your trip in plain language and AI agents build the route, price the fuel, and check the weather along the way — or place stops on the map yourself. Either way, distances and driving times come from real roads, and estimates update as you edit the trip.',
     'faq.free.question': 'Is Trip Calculate free to use?',
     'faq.free.answer': 'The expense calculator is free and works without an account. The route planner is currently in beta — you can request access from the planner page.',
     'faq.abroad.question': 'Can I use Trip Calculate abroad?',
@@ -272,18 +274,20 @@ const translations: Record<Language, Record<string, string>> = {
 
     // Intro
     'intro.title': 'Усе потрібне для подорожі автомобілем',
-    'intro.description': 'Trip Calculate бере на себе практичний бік подорожі: яка відстань, скільки коштуватиме паливо і хто скільки винен наприкінці.',
+    'intro.description': 'Trip Calculate бере на себе практичний бік подорожі: яка відстань, скільки коштуватиме паливо і хто скільки винен наприкінці — сплануйте самостійно або опишіть поїздку, і команда AI-агентів побудує маршрут за вас.',
+    'intro.aiAssistant.title': 'AI-асистент подорожі',
+    'intro.aiAssistant.text': 'Опишіть поїздку звичайною мовою. Спеціалізовані AI-агенти знаходять зупинки, перевіряють актуальні середні ціни на пальне по країнах і отримують прогноз погоди на маршруті та дату виїзду — кожен крок видно в реальному часі.',
     'intro.userFriendly.title': 'Зрозумілий розрахунок витрат',
     'intro.userFriendly.text': 'Вкажіть витрату палива, відстань і ціну за літр — отримайте загальну вартість і частку кожного пасажира за секунди.',
     'intro.routePlanner.title': 'Планування маршрутів',
-    'intro.routePlanner.text': 'Створюйте маршрути з кількома зупинками на інтерактивній мапі з реальними відстанями та часом у дорозі, а потім зберігайте їх в акаунті.',
+    'intro.routePlanner.text': 'Створюйте маршрути з кількома зупинками на інтерактивній мапі з реальними відстанями та часом у дорозі, а потім переходьте до навігації у Waze.',
     'intro.quickLookup.title': 'Швидкий калькулятор',
     'intro.quickLookup.text': 'Для швидкої оцінки акаунт не потрібен. Повторні розрахунки кешуються, тож перевірка варіантів займає мить.',
 
     // FAQ
     'faq.title': 'Часто задавані питання',
     'faq.howWorks.question': 'Як працює планувальник маршрутів?',
-    'faq.howWorks.answer': 'Ви додаєте зупинки на інтерактивній мапі, а планувальник прокладає маршрут реальними дорогами з відстанню та часом у дорозі. Оцінка витрат і підказки оновлюються під час редагування поїздки.',
+    'faq.howWorks.answer': 'Опишіть поїздку звичайною мовою — AI-агенти побудують маршрут, порахують вартість пального та перевірять погоду на шляху, — або додайте зупинки на мапі самостійно. В обох випадках відстані та час у дорозі рахуються реальними дорогами, а оцінки оновлюються під час редагування поїздки.',
     'faq.free.question': 'Чи є Trip Calculate безкоштовним?',
     'faq.free.answer': 'Калькулятор витрат безкоштовний і працює без акаунта. Планувальник маршрутів зараз у бета-версії — доступ можна запросити на сторінці планувальника.',
     'faq.abroad.question': 'Чи можу я використовувати Trip Calculate за кордоном?',
