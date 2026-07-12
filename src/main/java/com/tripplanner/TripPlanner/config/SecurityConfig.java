@@ -249,6 +249,10 @@ public class SecurityConfig {
                         // AI API endpoints (require authentication to prevent abuse)
                         .requestMatchers("/api/ai/**").authenticated()
 
+                        // Weather corridor endpoint: /route-planner is login-gated
+                        // (ProtectedRoute), so only authenticated sessions ever call this
+                        .requestMatchers("/api/weather/**").authenticated()
+
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()
                         .requestMatchers("/api/routes/**", "/api/access-requests/**").authenticated()
