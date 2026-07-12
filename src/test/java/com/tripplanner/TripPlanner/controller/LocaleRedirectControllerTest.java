@@ -54,4 +54,14 @@ class LocaleRedirectControllerTest {
 
         assertEquals("/en/dashboard?tab=routes", response.getHeaders().getLocation().toString());
     }
+
+    @Test
+    void setsVaryAcceptLanguageHeader() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+        when(localeResolver.resolve(null)).thenReturn("uk");
+
+        ResponseEntity<Void> response = controller.redirectToLocale(request);
+
+        assertEquals("Accept-Language", response.getHeaders().getFirst(HttpHeaders.VARY));
+    }
 }

@@ -31,6 +31,9 @@ public class LocaleRedirectController {
         String path = "/".equals(uri) ? "" : uri;
         String query = request.getQueryString();
         String location = "/" + locale + path + (query != null ? "?" + query : "");
-        return ResponseEntity.status(HttpStatus.FOUND).location(URI.create(location)).build();
+        return ResponseEntity.status(HttpStatus.FOUND)
+                .location(URI.create(location))
+                .header(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE)
+                .build();
     }
 }
