@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useSeason } from './hooks/useSeason';
 import { AuthProvider } from './contexts/AuthContext';
@@ -11,7 +11,7 @@ import { ReceiptPage } from './pages/ReceiptPage';
 import { UserDashboard } from './pages/UserDashboard';
 import { AdminDashboard } from './pages/AdminDashboard';
 import { AdminRoute } from './components/auth/AdminRoute';
-import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { LocaleBoundary } from './components/common/LocaleBoundary';
 import './styles/global.css';
 
 function App() {
@@ -34,23 +34,47 @@ function App() {
         <LanguageProvider>
           <AuthProvider>
             <Routes>
-              <Route path="/" element={<HomePage />} />
+              {/* Server-side redirect (LocaleRedirectController) handles bare "/"
+                  for real visitors and crawlers; this is a client-side safety net
+                  for any in-app navigation that lands here directly. */}
+              <Route path="/" element={<Navigate to="/uk" replace />} />
+
+              {/* Receipt pages are intentionally NOT locale-prefixed — see
+                  Global Constraints in the implementation plan. */}
               <Route path="/r/:slug" element={<ReceiptPage />} />
+
               <Route
-                path="/route-planner"
+                path="/:locale"
                 element={
-                  <ProtectedRoute>
-                    <RoutePlannerPage />
-                  </ProtectedRoute>
+                  <LocaleBoundary>
+                    <HomePage />
+                  </LocaleBoundary>
                 }
               />
-              <Route path="/dashboard" element={<UserDashboard />} />
               <Route
-                path="/admin"
+                path="/:locale/route-planner"
                 element={
-                  <AdminRoute>
-                    <AdminDashboard />
-                  </AdminRoute>
+                  <LocaleBoundary>
+                    <RoutePlannerPage />
+                  </LocaleBoundary>
+                }
+              />
+              <Route
+                path="/:locale/dashboard"
+                element={
+                  <LocaleBoundary>
+                    <UserDashboard />
+                  </LocaleBoundary>
+                }
+              />
+              <Route
+                path="/:locale/admin"
+                element={
+                  <LocaleBoundary>
+                    <AdminRoute>
+                      <AdminDashboard />
+                    </AdminRoute>
+                  </LocaleBoundary>
                 }
               />
             </Routes>
