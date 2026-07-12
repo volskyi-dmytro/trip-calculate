@@ -1,6 +1,8 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { Language } from '../types';
+import { isSupportedLocale, withLocalePrefix } from '../utils/locale';
 
 interface LanguageContextType {
   language: Language;
@@ -497,10 +499,24 @@ const translations: Record<Language, Record<string, string>> = {
 };
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const urlLocale = location.pathname.split('/')[1];
+
   const [language, setLanguageState] = useState<Language>(() => {
+    if (isSupportedLocale(urlLocale)) return urlLocale;
     const savedLang = localStorage.getItem('language');
     return (savedLang as Language) || 'uk';
   });
+
+  // The URL is authoritative once it carries a locale: navigating to a
+  // /en or /uk path (via a link, back/forward, or a shared URL) must
+  // update the active language even if it doesn't match localStorage yet.
+  useEffect(() => {
+    if (isSupportedLocale(urlLocale) && urlLocale !== language) {
+      setLanguageState(urlLocale);
+    }
+  }, [urlLocale, language]);
 
   useEffect(() => {
     document.documentElement.setAttribute('lang', language);
@@ -509,6 +525,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
+    navigate(withLocalePrefix(location.pathname, lang));
   };
 
   const t = (key: string): string => {
