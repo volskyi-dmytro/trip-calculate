@@ -16,6 +16,7 @@ import {
 import type { RouteListItem } from '../../services/dashboardService';
 import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { withLocalePrefix } from '../../utils/locale';
 
 interface RoutesListProps {
   routes: RouteListItem[];
@@ -25,7 +26,7 @@ interface RoutesListProps {
 type SortOption = 'newest' | 'oldest' | 'distance';
 
 export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [sortBy, setSortBy] = useState<SortOption>('newest');
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -84,7 +85,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {t('dashboard.routes.empty')}
             </p>
-            <Button onClick={() => navigate('/route-planner')}>
+            <Button onClick={() => navigate(withLocalePrefix('/route-planner', language))}>
               {t('dashboard.routes.createFirst')}
             </Button>
           </div>

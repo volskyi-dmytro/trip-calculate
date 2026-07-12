@@ -4,6 +4,7 @@ import { Loader2, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { receiptService } from '../services/receiptService';
 import type { Receipt } from '../types/Receipt';
+import { withLocalePrefix } from '../utils/locale';
 
 type PageState = 'loading' | 'ready' | 'expired' | 'notFound';
 
@@ -117,7 +118,7 @@ export function ReceiptPage() {
 
   const handleCta = () => {
     if (slug) receiptService.registerCta(slug);
-    navigate('/');
+    navigate(withLocalePrefix('/', language));
   };
 
   if (state === 'loading') {

@@ -15,13 +15,14 @@ import {
 import { dashboardService, type UserProfile } from '../../services/dashboardService';
 import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { withLocalePrefix } from '../../utils/locale';
 
 interface QuickActionsProps {
   profile: UserProfile;
 }
 
 export function QuickActions({ profile }: QuickActionsProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -71,7 +72,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       icon: Navigation,
       label: t('dashboard.quickActions.createRoute'),
       description: t('dashboard.quickActions.createRouteDesc'),
-      onClick: () => navigate('/route-planner'),
+      onClick: () => navigate(withLocalePrefix('/route-planner', language)),
       destructive: false,
       show: profile.routePlannerAccess,
     },
@@ -79,7 +80,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       icon: Calculator,
       label: t('dashboard.quickActions.calculateTrip'),
       description: t('dashboard.quickActions.calculateTripDesc'),
-      onClick: () => navigate('/'),
+      onClick: () => navigate(withLocalePrefix('/', language)),
       destructive: false,
       show: true,
     },

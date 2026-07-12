@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { ChevronDown, User, LayoutDashboard, Shield, LogOut } from 'lucide-react';
 import { avatarProxyUrl } from '../../utils/avatar';
+import { withLocalePrefix } from '../../utils/locale';
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -11,7 +12,7 @@ export function UserMenu() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -33,7 +34,7 @@ export function UserMenu() {
   const handleLogout = async () => {
     try {
       await logout();
-      navigate('/');
+      navigate(withLocalePrefix('/', language));
     } catch (error) {
       console.error('Logout failed:', error);
     }
@@ -44,7 +45,7 @@ export function UserMenu() {
       icon: LayoutDashboard,
       label: t('header.nav.dashboard'),
       onClick: () => {
-        navigate('/dashboard');
+        navigate(withLocalePrefix('/dashboard', language));
         setIsOpen(false);
       },
       show: true,
@@ -53,7 +54,7 @@ export function UserMenu() {
       icon: Shield,
       label: t('header.nav.admin'),
       onClick: () => {
-        navigate('/admin');
+        navigate(withLocalePrefix('/admin', language));
         setIsOpen(false);
       },
       show: user?.isAdmin || false,

@@ -4,6 +4,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { withLocalePrefix } from '../../utils/locale';
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -11,7 +12,7 @@ interface AdminRouteProps {
 
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   if (loading) {
     return (
@@ -22,7 +23,7 @@ export function AdminRoute({ children }: AdminRouteProps) {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={withLocalePrefix('/', language)} replace />;
   }
 
   if (!user.isAdmin) {

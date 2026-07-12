@@ -8,6 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { UserMenu } from '../components/auth/UserMenu';
 import { routeService } from '../services/routeService';
+import { withLocalePrefix } from '../utils/locale';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -208,7 +209,7 @@ export function RoutePlannerPage() {
       >
         {/* Left: logo + wordmark — links back to homepage */}
         <Link
-          to="/"
+          to={withLocalePrefix('/', language)}
           className="flex items-center gap-2 hover:opacity-80 transition-opacity no-underline"
           style={{ color: 'inherit' }}
         >

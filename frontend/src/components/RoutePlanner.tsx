@@ -24,6 +24,7 @@ import { AgentActivitySlot } from './AgentActivitySlot'
 import { ShareReceiptModal } from './receipt/ShareReceiptModal'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
+import { withLocalePrefix } from '../utils/locale'
 import type { ChatMessage } from '../types'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
@@ -456,7 +457,7 @@ export function RoutePlanner() {
     setCurrentRouteId(null)
     setIsEditMode(false)
     localStorage.removeItem('tripCalculate_currentRoute')
-    navigate('/route-planner', { replace: true })
+    navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.routeCleared)
     // Clearing the route also clears the latest-result concierge slot —
     // a stale result card no longer describes anything on the map
@@ -469,16 +470,16 @@ export function RoutePlanner() {
     setWeatherData(null)
     // A pending skip flag must not outlive the route it was set for
     skipNextWeatherFetch.current = false
-  }, [t, navigate])
+  }, [t, navigate, language])
 
   const createNewRoute = useCallback(() => {
     setWaypoints([])
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
-    navigate('/route-planner', { replace: true })
+    navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success('Ready to create new route')
-  }, [navigate])
+  }, [navigate, language])
 
   const saveRouteToServer = useCallback(async (saveAsNew = false) => {
     if (waypoints.length < 2) {
