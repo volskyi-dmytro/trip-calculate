@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { Calculator, Map, Sparkles, Users } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { withLocalePrefix } from '../utils/locale';
 
 export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const features = [
     {
@@ -25,6 +27,7 @@ export function HomePage() {
       icon: Map,
       title: t('intro.routePlanner.title'),
       text: t('intro.routePlanner.text'),
+      href: withLocalePrefix('/route-planner', language),
     },
     {
       icon: Users,
@@ -48,15 +51,25 @@ export function HomePage() {
           <h2>{t('intro.title')}</h2>
           <p className="section-lead">{t('intro.description')}</p>
           <div className="features">
-            {features.map(({ icon: Icon, title, text }) => (
-              <article className="feature" key={title}>
-                <span className="feature-icon">
-                  <Icon size={20} strokeWidth={2} aria-hidden="true" />
-                </span>
-                <h3>{title}</h3>
-                <p>{text}</p>
-              </article>
-            ))}
+            {features.map(({ icon: Icon, title, text, href }) =>
+              href ? (
+                <Link className="feature" to={href} key={title}>
+                  <span className="feature-icon">
+                    <Icon size={20} strokeWidth={2} aria-hidden="true" />
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </Link>
+              ) : (
+                <article className="feature" key={title}>
+                  <span className="feature-icon">
+                    <Icon size={20} strokeWidth={2} aria-hidden="true" />
+                  </span>
+                  <h3>{title}</h3>
+                  <p>{text}</p>
+                </article>
+              )
+            )}
           </div>
         </section>
 
