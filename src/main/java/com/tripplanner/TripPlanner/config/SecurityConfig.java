@@ -227,6 +227,9 @@ public class SecurityConfig {
                         // SPA routes (forwarded to index.html for client-side routing)
                         .requestMatchers("/dashboard", "/admin", "/profile", "/route-planner", "/trips/**", "/routes/**").permitAll()
 
+                        // Locale-prefixed app routes (SpaShellController)
+                        .requestMatchers("/en", "/en/**", "/uk", "/uk/**").permitAll()
+
                         // Public API endpoint
                         .requestMatchers("/calculate").permitAll()
 
