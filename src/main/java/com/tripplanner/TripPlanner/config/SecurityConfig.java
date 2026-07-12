@@ -212,7 +212,9 @@ public class SecurityConfig {
                                 "/*.gif",                     // GIF images
                                 "/*.svg",                     // SVG files
                                 "/favicon.ico",               // Specific favicon
-                                "/vite.svg"                   // Vite logo
+                                "/vite.svg",                  // Vite logo
+                                "/robots.txt",                // Crawl directives
+                                "/sitemap.xml"                // Sitemap
                         ).permitAll()
 
                         // Additional static resource directories (for compatibility)
