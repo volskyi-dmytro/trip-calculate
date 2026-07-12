@@ -673,6 +673,16 @@ def test_valid_departure_date_rejects_past_garbage_and_none():
     assert _valid_departure_date("") is None
 
 
+def test_valid_departure_date_accepts_window_boundary_and_rejects_beyond():
+    # Mirrors tools/weather.py:FORECAST_WINDOW_DAYS (16) — the boundary date
+    # itself is still in-window, one day past it is not.
+    boundary = (_TODAY + _td(days=16)).isoformat()
+    assert _valid_departure_date(boundary) == boundary
+
+    beyond = (_TODAY + _td(days=17)).isoformat()
+    assert _valid_departure_date(beyond) is None
+
+
 def _state_with_date(departure_date):
     return {
         "parsed": ParsedRoute(is_route_request=True, locations=[],

@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from langfuse.openai import AsyncOpenAI
 from .schema import (
     GraphState, ParsedRoute, GeocodedLocation, SettingsContext,
@@ -10,7 +10,7 @@ from .schema import (
 )
 from .geocoding import geocode_location, reverse_country
 from .tools.fuel import compute_fuel_data
-from .tools.weather import compute_weather_data
+from .tools.weather import compute_weather_data, FORECAST_WINDOW_DAYS
 
 logger = logging.getLogger(__name__)
 
@@ -110,15 +110,20 @@ def _settings_present(settings) -> bool:
 
 
 def _valid_departure_date(raw) -> "str | None":
-    """LLM-parsed dates are untrusted: unparseable or past dates are
-    treated as not-mentioned (spec: → today / keep current)."""
+    """LLM-parsed dates are untrusted: unparseable, past, or dates beyond the
+    forecast window are treated as not-mentioned (spec: → today / keep
+    current). Upper bound mirrors tools/weather.py:FORECAST_WINDOW_DAYS so the
+    parsed date never falls outside what the weather tool itself will accept."""
     if not raw:
         return None
     try:
         parsed = date.fromisoformat(raw)
     except ValueError:
         return None
-    return raw if parsed >= datetime.now(timezone.utc).date() else None
+    today = datetime.now(timezone.utc).date()
+    if parsed < today or parsed > today + timedelta(days=FORECAST_WINDOW_DAYS):
+        return None
+    return raw
 
 
 def _locations_from_current_route(current_route) -> list:

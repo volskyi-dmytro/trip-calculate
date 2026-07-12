@@ -17,6 +17,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.time.format.DateTimeParseException;
 import java.util.List;
 import java.util.Map;
@@ -114,7 +115,7 @@ public class WeatherProxyController {
         } catch (DateTimeParseException | NullPointerException e) {
             return "date must be YYYY-MM-DD";
         }
-        LocalDate today = LocalDate.now();
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
         if (day.isBefore(today) || day.isAfter(today.plusDays(FORECAST_WINDOW_DAYS))) {
             return "date outside forecast window";
         }
