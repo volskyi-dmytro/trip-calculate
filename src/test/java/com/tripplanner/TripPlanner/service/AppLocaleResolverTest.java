@@ -4,9 +4,9 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-class LocaleResolverTest {
+class AppLocaleResolverTest {
 
-    private final LocaleResolver resolver = new LocaleResolver();
+    private final AppLocaleResolver resolver = new AppLocaleResolver();
 
     @Test
     void fallsBackToUkrainianWhenHeaderMissing() {

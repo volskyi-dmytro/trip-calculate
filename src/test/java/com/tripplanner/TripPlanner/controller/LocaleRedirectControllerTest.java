@@ -1,6 +1,6 @@
 package com.tripplanner.TripPlanner.controller;
 
-import com.tripplanner.TripPlanner.service.LocaleResolver;
+import com.tripplanner.TripPlanner.service.AppLocaleResolver;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
@@ -13,12 +13,12 @@ import static org.mockito.Mockito.when;
 
 class LocaleRedirectControllerTest {
 
-    private LocaleResolver localeResolver;
+    private AppLocaleResolver localeResolver;
     private LocaleRedirectController controller;
 
     @BeforeEach
     void setUp() {
-        localeResolver = mock(LocaleResolver.class);
+        localeResolver = mock(AppLocaleResolver.class);
         controller = new LocaleRedirectController(localeResolver);
     }
 

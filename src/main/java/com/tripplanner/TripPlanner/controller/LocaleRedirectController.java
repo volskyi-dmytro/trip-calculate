@@ -1,6 +1,6 @@
 package com.tripplanner.TripPlanner.controller;
 
-import com.tripplanner.TripPlanner.service.LocaleResolver;
+import com.tripplanner.TripPlanner.service.AppLocaleResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -22,7 +22,7 @@ import java.net.URI;
 @RequiredArgsConstructor
 public class LocaleRedirectController {
 
-    private final LocaleResolver localeResolver;
+    private final AppLocaleResolver localeResolver;
 
     @GetMapping({"/", "/route-planner", "/dashboard", "/admin", "/profile"})
     public ResponseEntity<Void> redirectToLocale(HttpServletRequest request) {
