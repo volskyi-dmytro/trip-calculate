@@ -6,6 +6,7 @@ import { useSeason } from '../../hooks/useSeason';
 import { LoginButton } from '../auth/LoginButton';
 import { UserMenu } from '../auth/UserMenu';
 import { Route, Sun, Moon } from 'lucide-react';
+import { withLocalePrefix } from '../../utils/locale';
 
 interface HeaderProps {
   onCalculateClick?: () => void;
@@ -19,11 +20,11 @@ export function Header({ onCalculateClick }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
   const season = useSeason();
 
-  const isHomePage = location.pathname === '/';
+  const isHomePage = location.pathname === withLocalePrefix('/', language);
 
   const handleCreateTripClick = () => {
     if (user) {
-      navigate('/route-planner');
+      navigate(withLocalePrefix('/route-planner', language));
     }
   };
 
@@ -38,7 +39,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
           <button
             type="button"
             className="brand"
-            onClick={() => navigate('/')}
+            onClick={() => navigate(withLocalePrefix('/', language))}
             title={t('header.nav.home')}
           >
             <Route size={20} strokeWidth={2.25} aria-hidden="true" />
