@@ -25,6 +25,8 @@ import { ShareReceiptModal } from './receipt/ShareReceiptModal'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import { withLocalePrefix } from '../utils/locale'
+import { routeEditPath } from '../utils/routePaths'
+import { routeCalculationKey, resolveRouteCalculation } from '../utils/aiResultCard'
 import type { ChatMessage } from '../types'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
@@ -125,6 +127,8 @@ export function RoutePlanner() {
   const [showResultCard, setShowResultCard] = useState(false)
   const [cardDismissed, setCardDismissed] = useState(false)
   const [showResultShareDialog, setShowResultShareDialog] = useState(false)
+  const pendingAiResultRouteKey = useRef<string | null>(null)
+  const routeCalculationSeq = useRef(0)
 
   // View mode: welcome screen vs dashboard
   const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
@@ -239,6 +243,15 @@ export function RoutePlanner() {
 
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
+    const calculationId = ++routeCalculationSeq.current
+    const calculationRouteKey = routeCalculationKey(waypoints)
+    if (
+      pendingAiResultRouteKey.current !== null &&
+      pendingAiResultRouteKey.current !== calculationRouteKey
+    ) {
+      pendingAiResultRouteKey.current = null
+    }
+
     const updateRoute = async () => {
       console.log('🟢 [PLANNER] Waypoints changed, count:', waypoints.length);
 
@@ -258,6 +271,14 @@ export function RoutePlanner() {
 
       try {
         const route = await routingService.getRoute(waypoints)
+        const resolution = resolveRouteCalculation(
+          calculationId,
+          routeCalculationSeq.current,
+          pendingAiResultRouteKey.current,
+          calculationRouteKey,
+          route.totalDistance,
+        )
+        if (!resolution.apply) return
 
         console.log('🟢 [PLANNER] Received route result:', {
           totalDistance: route.totalDistance,
@@ -270,6 +291,14 @@ export function RoutePlanner() {
         setRouteGeometry(route.geometry)
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
+
+        if (resolution.revealAiResult) {
+          setShowResultCard(true)
+          setCardDismissed(false)
+        }
+        if (pendingAiResultRouteKey.current === calculationRouteKey) {
+          pendingAiResultRouteKey.current = null
+        }
 
         console.log('🟢 [PLANNER] State updated with route geometry');
 
@@ -294,6 +323,7 @@ export function RoutePlanner() {
 
         setIsCalculatingRoute(false)
       } catch (error) {
+        if (calculationId !== routeCalculationSeq.current) return
         console.error('❌ [PLANNER] Failed to calculate route:', error);
         // Fallback to straight lines
         const fallbackGeometry = waypoints.map(w => [w.lat, w.lng] as [number, number]);
@@ -302,6 +332,9 @@ export function RoutePlanner() {
         setRouteDistance(0)
         setRouteDuration(0)
         setIsCalculatingRoute(false)
+        if (pendingAiResultRouteKey.current === calculationRouteKey) {
+          pendingAiResultRouteKey.current = null
+        }
         toast.error(
           languageRef.current === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
           {
@@ -520,7 +553,7 @@ export function RoutePlanner() {
         // If saving as new from edit mode, switch to editing the new route
         if (saveAsNew && isEditMode) {
           setCurrentRouteId(newRoute.id!)
-          navigate(`/route-planner?routeId=${newRoute.id}`, { replace: true })
+          navigate(routeEditPath(newRoute.id!, language), { replace: true })
         }
       }
 
@@ -532,7 +565,7 @@ export function RoutePlanner() {
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate])
+  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -829,6 +862,7 @@ export function RoutePlanner() {
     // renders nothing until/unless the new request succeeds)
     setShowResultCard(false);
     setCardDismissed(false);
+    pendingAiResultRouteKey.current = null;
     setAgentDoneStages([]);
     setAgentDegraded(false);
 
@@ -966,6 +1000,11 @@ export function RoutePlanner() {
         }
 
         if (newWaypoints.length > 0) {
+          // Correlate the pending concierge card with exactly the route that
+          // the agent produced. A later manual edit must not reveal it.
+          pendingAiResultRouteKey.current = newWaypoints.length >= 2
+            ? routeCalculationKey(newWaypoints)
+            : null
           setWaypoints(newWaypoints);
         }
 
@@ -987,11 +1026,6 @@ export function RoutePlanner() {
           kind: 'result',
         };
         setChatMessages(prev => [...prev, responseMsg]);
-        // Activate the result card only if we created a genuine route (shares require 2+ waypoints)
-        if (newWaypoints.length >= 2) {
-          setShowResultCard(true);
-          setCardDismissed(false);
-        }
 
         // Success toast notification
         if (updates.length > 0) {

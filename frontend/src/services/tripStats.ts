@@ -33,6 +33,25 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c
 }
 
+function reconcileRoundedSegments(distances: number[], totalDistance: number): number[] {
+  if (distances.length === 0) return []
+
+  const targetCents = Math.max(0, Math.round(totalDistance * 100))
+  const exactCents = distances.map(distance => Math.max(0, distance) * 100)
+  const allocatedCents = exactCents.map(Math.floor)
+  let remaining = targetCents - allocatedCents.reduce((sum, cents) => sum + cents, 0)
+
+  const byLargestRemainder = exactCents
+    .map((cents, index) => ({ index, remainder: cents - Math.floor(cents) }))
+    .sort((a, b) => b.remainder - a.remainder)
+
+  for (let i = 0; remaining > 0; i++, remaining--) {
+    allocatedCents[byLargestRemainder[i % byLargestRemainder.length].index]++
+  }
+
+  return allocatedCents.map(cents => cents / 100)
+}
+
 export function computeTripStats(
   waypoints: Waypoint[],
   routeSettings: RouteSettings,
@@ -56,15 +75,25 @@ export function computeTripStats(
 
   const segments: { from: string; to: string; distance: number }[] = []
 
-  // Calculate segment distances for display (still using Haversine as approximation for individual segments)
+  // Use straight-line proportions to split the routed total between legs when
+  // the routing API does not provide per-leg distances. This keeps the segment
+  // display internally consistent while preserving each leg's relative weight.
+  const haversineDistances = waypoints.slice(0, -1).map((from, index) => {
+    const to = waypoints[index + 1]
+    return calculateDistance(from.lat, from.lng, to.lat, to.lng)
+  })
+  const haversineTotal = haversineDistances.reduce((sum, distance) => sum + distance, 0)
+  const routedScale = totalDistance > 0 && haversineTotal > 0 ? totalDistance / haversineTotal : 1
+  const scaledDistances = haversineDistances.map(distance => distance * routedScale)
+  const segmentDistances = totalDistance > 0
+    ? reconcileRoundedSegments(scaledDistances, totalDistance)
+    : scaledDistances
+
   for (let i = 0; i < waypoints.length - 1; i++) {
-    const from = waypoints[i]
-    const to = waypoints[i + 1]
-    const distance = calculateDistance(from.lat, from.lng, to.lat, to.lng)
     segments.push({
-      from: from.name,
-      to: to.name,
-      distance
+      from: waypoints[i].name,
+      to: waypoints[i + 1].name,
+      distance: segmentDistances[i]
     })
   }
 

@@ -17,6 +17,7 @@ import type { RouteListItem } from '../../services/dashboardService';
 import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { withLocalePrefix } from '../../utils/locale';
+import { routeEditPath } from '../../utils/routePaths';
 
 interface RoutesListProps {
   routes: RouteListItem[];
@@ -47,7 +48,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
   });
 
   const handleEdit = (routeId: number) => {
-    navigate(`/route-planner?routeId=${routeId}`);
+    navigate(routeEditPath(routeId, language));
   };
 
   const confirmDelete = (route: RouteListItem) => {
