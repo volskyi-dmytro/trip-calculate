@@ -84,19 +84,6 @@ export const adminService = {
     return response.data;
   },
 
-  /**
-   * Grant route planner access
-   */
-  async grantAccess(userId: number): Promise<void> {
-    await api.post(`/api/admin/users/${userId}/grant-access`);
-  },
-
-  /**
-   * Revoke route planner access
-   */
-  async revokeAccess(userId: number): Promise<void> {
-    await api.post(`/api/admin/users/${userId}/revoke-access`);
-  },
 
   /**
    * Delete user
@@ -121,23 +108,5 @@ export const adminService = {
     return response.data;
   },
 
-  /**
-   * Approve access request
-   */
-  async approveAccessRequest(requestId: number): Promise<AccessRequest> {
-    const response = await api.post(
-      `/api/admin/access-requests/${requestId}/approve`
-    );
-    return response.data;
-  },
 
-  /**
-   * Deny access request
-   */
-  async denyAccessRequest(requestId: number): Promise<AccessRequest> {
-    const response = await api.post(
-      `/api/admin/access-requests/${requestId}/deny`
-    );
-    return response.data;
-  },
 };

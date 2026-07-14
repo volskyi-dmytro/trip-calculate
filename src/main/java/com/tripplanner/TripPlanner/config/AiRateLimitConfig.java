@@ -7,13 +7,12 @@ import org.springframework.context.annotation.Configuration;
 /**
  * Configuration properties for AI rate limiting and caching
  *
- * Default Strategy (Beta Testing Phase):
- * - Authenticated (Beta Testers): 20/min, 400/hour, 1500/day
- * - Unauthenticated: 3/min, 10/hour, 30/day
- * - Premium (Future): 30/min, 600/hour, 2000/day
+ * Authenticated public-beta defaults:
+ * - Per Google user: 3/min, 20/hour, 10/day
+ * - Process-wide: 30/min, 200/hour, 500/day
  *
  * Values can be overridden in application.properties using prefix "ai."
- * Example: ai.ratelimit.authenticated.minute=20
+ * Example: ai.ratelimit.authenticated.minute=3
  *
  * @see application.properties for detailed configuration
  */
@@ -23,8 +22,7 @@ import org.springframework.context.annotation.Configuration;
 public class AiRateLimitConfig {
 
     /**
-     * Rate limit configuration with three-tier system
-     * Each tier has per-minute, per-hour, and per-day limits
+     * Per-user and process-wide limits.
      */
     private RateLimit ratelimit = new RateLimit();
 
@@ -40,9 +38,9 @@ public class AiRateLimitConfig {
 
     @Data
     public static class RateLimit {
-        private Tier unauthenticated = new Tier(3, 10, 30);
-        private Tier authenticated = new Tier(20, 400, 1500);
-        private Tier premium = new Tier(30, 600, 2000);
+        private Tier authenticated = new Tier(3, 20, 10);
+        private Tier global = new Tier(30, 200, 500);
+        private int maxIdentities = 1000;
 
         @Data
         public static class Tier {
@@ -84,7 +82,7 @@ public class AiRateLimitConfig {
 
         @Data
         public static class Daily {
-            private int threshold = 1000;
+            private int threshold = 400;
         }
 
         @Data

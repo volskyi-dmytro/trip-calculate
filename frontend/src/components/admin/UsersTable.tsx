@@ -77,27 +77,6 @@ export function UsersTable() {
     setFilteredUsers(filtered);
   };
 
-  const handleGrantAccess = async (user: UserManagement) => {
-    try {
-      await adminService.grantAccess(user.id);
-      toast.success(t('admin.users.action.grantSuccess'));
-      fetchUsers();
-    } catch (error) {
-      console.error('Failed to grant access:', error);
-      toast.error(t('admin.users.action.grantError'));
-    }
-  };
-
-  const handleRevokeAccess = async (user: UserManagement) => {
-    try {
-      await adminService.revokeAccess(user.id);
-      toast.success(t('admin.users.action.revokeSuccess'));
-      fetchUsers();
-    } catch (error) {
-      console.error('Failed to revoke access:', error);
-      toast.error(t('admin.users.action.revokeError'));
-    }
-  };
 
   const handleToggleRole = async (user: UserManagement) => {
     const newRole = user.role === 'ADMIN' ? 'USER' : 'ADMIN';
@@ -264,27 +243,7 @@ export function UsersTable() {
                               <Eye className="h-4 w-4 mr-2" />
                               {t('admin.users.action.viewDetails')}
                             </button>
-                            <button
-                              onClick={() => {
-                                user.routePlannerAccess
-                                  ? handleRevokeAccess(user)
-                                  : handleGrantAccess(user);
-                                setActionMenuOpen(null);
-                              }}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
-                            >
-                              {user.routePlannerAccess ? (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-2" />
-                                  {t('admin.users.action.revokeAccess')}
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-2" />
-                                  {t('admin.users.action.grantAccess')}
-                                </>
-                              )}
-                            </button>
+
                             <button
                               onClick={() => {
                                 handleToggleRole(user);

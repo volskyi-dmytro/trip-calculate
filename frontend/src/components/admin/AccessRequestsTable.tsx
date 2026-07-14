@@ -3,7 +3,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { CheckCircle, XCircle, Loader2, Clock, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
+
 import { adminService, type AccessRequest } from '../../services/adminService';
 import { useLanguage } from '../../contexts/LanguageContext';
 
@@ -15,7 +15,7 @@ export function AccessRequestsTable() {
   const [filteredRequests, setFilteredRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
-  const [processingId, setProcessingId] = useState<number | null>(null);
+
 
   useEffect(() => {
     fetchRequests();
@@ -49,33 +49,6 @@ export function AccessRequestsTable() {
     }
   };
 
-  const handleApprove = async (requestId: number) => {
-    setProcessingId(requestId);
-    try {
-      await adminService.approveAccessRequest(requestId);
-      toast.success(t('admin.requests.action.approveSuccess'));
-      fetchRequests();
-    } catch (error) {
-      console.error('Failed to approve request:', error);
-      toast.error(t('admin.requests.action.approveError'));
-    } finally {
-      setProcessingId(null);
-    }
-  };
-
-  const handleDeny = async (requestId: number) => {
-    setProcessingId(requestId);
-    try {
-      await adminService.denyAccessRequest(requestId);
-      toast.success(t('admin.requests.action.denySuccess'));
-      fetchRequests();
-    } catch (error) {
-      console.error('Failed to deny request:', error);
-      toast.error(t('admin.requests.action.denyError'));
-    } finally {
-      setProcessingId(null);
-    }
-  };
 
   const getStatusBadge = (status: string) => {
     switch (status) {
@@ -159,9 +132,7 @@ export function AccessRequestsTable() {
                     <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
                       {t('admin.requests.table.requestedAt')}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
-                      {t('admin.requests.table.actions')}
-                    </th>
+
                   </tr>
                 </thead>
                 <tbody>
@@ -193,52 +164,7 @@ export function AccessRequestsTable() {
                           })}
                         </span>
                       </td>
-                      <td className="py-3 px-4">
-                        {request.status === 'PENDING' && (
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleApprove(request.id)}
-                              disabled={processingId === request.id}
-                              className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:text-green-400 dark:hover:bg-green-900/20"
-                            >
-                              {processingId === request.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <CheckCircle className="h-4 w-4 mr-1" />
-                                  {t('admin.requests.action.approve')}
-                                </>
-                              )}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleDeny(request.id)}
-                              disabled={processingId === request.id}
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
-                            >
-                              {processingId === request.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <>
-                                  <XCircle className="h-4 w-4 mr-1" />
-                                  {t('admin.requests.action.deny')}
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        )}
-                        {request.status !== 'PENDING' && (
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            {request.processedAt &&
-                              formatDistanceToNow(new Date(request.processedAt), {
-                                addSuffix: true,
-                              })}
-                          </span>
-                        )}
-                      </td>
+
                     </tr>
                   ))}
                 </tbody>
@@ -281,42 +207,7 @@ export function AccessRequestsTable() {
                       </span>
                     </div>
                   </div>
-                  {request.status === 'PENDING' && (
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleApprove(request.id)}
-                        disabled={processingId === request.id}
-                        className="flex-1 text-green-600"
-                      >
-                        {processingId === request.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <CheckCircle className="h-4 w-4 mr-1" />
-                            {t('admin.requests.action.approve')}
-                          </>
-                        )}
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDeny(request.id)}
-                        disabled={processingId === request.id}
-                        className="flex-1 text-red-600"
-                      >
-                        {processingId === request.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <XCircle className="h-4 w-4 mr-1" />
-                            {t('admin.requests.action.deny')}
-                          </>
-                        )}
-                      </Button>
-                    </div>
-                  )}
+
                 </div>
               ))}
             </div>

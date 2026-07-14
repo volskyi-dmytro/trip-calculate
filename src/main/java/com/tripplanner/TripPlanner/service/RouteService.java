@@ -16,7 +16,7 @@ import java.util.stream.Collectors;
 public class RouteService {
     private final RouteRepository routeRepository;
     private final WaypointRepository waypointRepository;
-    private final FeatureAccessRepository featureAccessRepository;
+
 
     @Transactional(readOnly = true)
     public List<RouteDTO> getUserRoutes(Long userId) {
@@ -35,9 +35,6 @@ public class RouteService {
 
     @Transactional
     public RouteDTO saveRoute(SaveRouteRequest request, Long userId) {
-        // Check if user has access
-        checkFeatureAccess(userId);
-
         Route route = new Route();
         route.setUserId(userId);
         route.setName(request.getName());
@@ -121,15 +118,7 @@ public class RouteService {
     }
 
     public boolean hasFeatureAccess(Long userId) {
-        return featureAccessRepository.findByUserId(userId)
-                .map(FeatureAccess::getRoutePlannerEnabled)
-                .orElse(false);
-    }
-
-    private void checkFeatureAccess(Long userId) {
-        if (!hasFeatureAccess(userId)) {
-            throw new RuntimeException("Route planner access not enabled for this user");
-        }
+        return true;
     }
 
     private BigDecimal calculateTotalDistance(List<WaypointDTO> waypoints) {

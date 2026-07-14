@@ -78,7 +78,7 @@ export function UserDashboard() {
               profile={dashboardData.profile}
               onProfileUpdate={fetchDashboard}
             />
-            <QuickActions profile={dashboardData.profile} />
+            <QuickActions />
           </div>
 
           {/* Middle & Right Columns - Stats & Routes */}

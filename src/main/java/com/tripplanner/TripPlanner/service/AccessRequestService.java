@@ -1,187 +1,23 @@
 package com.tripplanner.TripPlanner.service;
 
-import com.tripplanner.TripPlanner.entity.*;
-import com.tripplanner.TripPlanner.exception.DuplicateAccessRequestException;
-import com.tripplanner.TripPlanner.repository.*;
+import com.tripplanner.TripPlanner.entity.AccessRequest;
+import com.tripplanner.TripPlanner.repository.AccessRequestRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
+
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Value;
-import lombok.extern.slf4j.Slf4j;
-
+/**
+ * Read-only access to historical manual access requests.
+ * Route Planner access is automatic for Google-authenticated users.
+ */
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AccessRequestService {
     private final AccessRequestRepository accessRequestRepository;
-    private final FeatureAccessRepository featureAccessRepository;
-    private final JavaMailSender mailSender;
-
-    @Value("${app.admin.email}")
-    private String adminEmail;
-
-    @Transactional
-    public void requestAccess(Long userId, String featureName, String userEmail, String userName) {
-        // Check if already requested
-        boolean alreadyRequested = accessRequestRepository.existsByUserIdAndFeatureNameAndStatus(
-                userId, featureName, AccessRequest.RequestStatus.PENDING);
-
-        if (alreadyRequested) {
-            log.warn("Duplicate access request attempt for user ID: {}, feature: {}", userId, featureName);
-            throw new DuplicateAccessRequestException(
-                "You already have a pending request for this feature. " +
-                "Please wait for admin approval. You will receive an email notification once your request is processed."
-            );
-        }
-
-        AccessRequest request = new AccessRequest();
-        request.setUserId(userId);
-        request.setFeatureName(featureName);
-        request.setUserEmail(userEmail);
-        request.setUserName(userName);
-        request.setStatus(AccessRequest.RequestStatus.PENDING);
-
-        accessRequestRepository.save(request);
-        log.info("Access request saved for user ID: {}, feature: {}", userId, featureName);
-
-        // Send email notification to admin
-        sendAccessRequestEmail(userId, userName, userEmail, featureName);
-
-        // Send confirmation email to user
-        sendPendingConfirmationEmail(userName, userEmail, featureName);
-    }
-
-    @Transactional
-    public void approveRequest(Long requestId, String approvedBy) {
-        AccessRequest request = accessRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
-
-        request.setStatus(AccessRequest.RequestStatus.APPROVED);
-        request.setProcessedAt(LocalDateTime.now());
-        request.setProcessedBy(approvedBy);
-        accessRequestRepository.save(request);
-
-        // Grant feature access
-        FeatureAccess access = featureAccessRepository.findByUserId(request.getUserId())
-                .orElse(new FeatureAccess());
-        access.setUserId(request.getUserId());
-        access.setRoutePlannerEnabled(true);
-        access.setGrantedAt(LocalDateTime.now());
-        access.setGrantedBy(approvedBy);
-        featureAccessRepository.save(access);
-    }
-
-    @Transactional
-    public void rejectRequest(Long requestId, String rejectedBy) {
-        AccessRequest request = accessRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Request not found"));
-
-        request.setStatus(AccessRequest.RequestStatus.REJECTED);
-        request.setProcessedAt(LocalDateTime.now());
-        request.setProcessedBy(rejectedBy);
-        accessRequestRepository.save(request);
-    }
 
     public List<AccessRequest> getPendingRequests() {
-        return accessRequestRepository.findByStatusOrderByRequestedAtDesc(AccessRequest.RequestStatus.PENDING);
-    }
-
-    private void sendAccessRequestEmail(Long userId, String userName, String userEmail, String featureName) {
-        log.info("Attempting to send access request email for user ID: {}, feature: {}", userId, featureName);
-
-        // Validate admin email is configured
-        if (adminEmail == null || adminEmail.trim().isEmpty()) {
-            log.error("ADMIN_EMAIL is not configured! Cannot send notification email. Check environment variable.");
-            return;
-        }
-
-        log.debug("Admin email configured as: {}", adminEmail);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(adminEmail);
-            message.setSubject(BilingualEmailMessageBuilder.AdminNotification.subject(featureName));
-            message.setText(BilingualEmailMessageBuilder.AdminNotification.body(userName, userEmail, featureName));
-
-            log.info("Sending bilingual email to: {}", adminEmail);
-            mailSender.send(message);
-            log.info("Bilingual email sent successfully for user ID: {}", userId);
-        } catch (Exception e) {
-            // Log detailed error information
-            log.error("Failed to send access request email notification for user ID: {}. Error type: {}, Message: {}",
-                    userId, e.getClass().getName(), e.getMessage(), e);
-        }
-    }
-
-    private void sendPendingConfirmationEmail(String userName, String userEmail, String featureName) {
-        log.info("Sending pending confirmation email to user: {}", userEmail);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(userEmail);
-            message.setSubject(BilingualEmailMessageBuilder.PendingConfirmation.subject(formatFeatureName(featureName)));
-            message.setText(BilingualEmailMessageBuilder.PendingConfirmation.body(userName, formatFeatureName(featureName)));
-
-            mailSender.send(message);
-            log.info("Bilingual pending confirmation email sent successfully to: {}", userEmail);
-        } catch (Exception e) {
-            log.error("Failed to send pending confirmation email to user: {}. Error: {}",
-                    userEmail, e.getMessage(), e);
-        }
-    }
-
-    public void sendApprovalEmail(String userName, String userEmail, String featureName) {
-        log.info("Sending approval notification email to user: {}", userEmail);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(userEmail);
-            message.setSubject(BilingualEmailMessageBuilder.Approval.subject(formatFeatureName(featureName)));
-            message.setText(BilingualEmailMessageBuilder.Approval.body(userName, formatFeatureName(featureName)));
-
-            mailSender.send(message);
-            log.info("Bilingual approval email sent successfully to: {}", userEmail);
-        } catch (Exception e) {
-            log.error("Failed to send approval email to user: {}. Error: {}",
-                    userEmail, e.getMessage(), e);
-        }
-    }
-
-    public void sendRejectionEmail(String userName, String userEmail, String featureName) {
-        log.info("Sending rejection notification email to user: {}", userEmail);
-
-        try {
-            SimpleMailMessage message = new SimpleMailMessage();
-            message.setTo(userEmail);
-            message.setSubject(BilingualEmailMessageBuilder.Rejection.subject(formatFeatureName(featureName)));
-            message.setText(BilingualEmailMessageBuilder.Rejection.body(userName, formatFeatureName(featureName)));
-
-            mailSender.send(message);
-            log.info("Bilingual rejection email sent successfully to: {}", userEmail);
-        } catch (Exception e) {
-            log.error("Failed to send rejection email to user: {}. Error: {}",
-                    userEmail, e.getMessage(), e);
-        }
-    }
-
-    private String formatFeatureName(String featureName) {
-        // Convert "route_planner" to "Route Planner"
-        String[] words = featureName.replace("_", " ").toLowerCase().split(" ");
-        StringBuilder result = new StringBuilder();
-
-        for (String word : words) {
-            if (!word.isEmpty()) {
-                result.append(Character.toUpperCase(word.charAt(0)))
-                      .append(word.substring(1))
-                      .append(" ");
-            }
-        }
-
-        return result.toString().trim();
+        return accessRequestRepository.findByStatusOrderByRequestedAtDesc(
+                AccessRequest.RequestStatus.PENDING);
     }
 }

@@ -1,10 +1,8 @@
 package com.tripplanner.TripPlanner.controller;
 
 import com.tripplanner.TripPlanner.dto.*;
-import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.entity.UserRole;
 import com.tripplanner.TripPlanner.service.AdminDashboardService;
-import com.tripplanner.TripPlanner.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,7 +24,6 @@ import java.util.Map;
 public class AdminController {
 
     private final AdminDashboardService adminService;
-    private final UserService userService;
     private final com.tripplanner.TripPlanner.service.EmailTestService emailTestService;
 
     /**
@@ -74,9 +71,7 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> grantAccess(
             @PathVariable Long userId,
             @AuthenticationPrincipal OAuth2User principal) {
-        String adminEmail = getAdminEmail(principal);
-        adminService.updateRoutePlannerAccess(userId, true, adminEmail);
-        return ResponseEntity.ok(Map.of("message", "Access granted successfully"));
+        return ResponseEntity.status(410).body(Map.of("message", "Route Planner access is automatic"));
     }
 
     /**
@@ -86,9 +81,7 @@ public class AdminController {
     public ResponseEntity<Map<String, String>> revokeAccess(
             @PathVariable Long userId,
             @AuthenticationPrincipal OAuth2User principal) {
-        String adminEmail = getAdminEmail(principal);
-        adminService.updateRoutePlannerAccess(userId, false, adminEmail);
-        return ResponseEntity.ok(Map.of("message", "Access revoked successfully"));
+        return ResponseEntity.status(410).body(Map.of("message", "Route Planner access is automatic"));
     }
 
     /**
@@ -125,9 +118,7 @@ public class AdminController {
     public ResponseEntity<AccessRequestDTO> approveAccessRequest(
             @PathVariable Long requestId,
             @AuthenticationPrincipal OAuth2User principal) {
-        String adminEmail = getAdminEmail(principal);
-        AccessRequestDTO request = adminService.approveAccessRequest(requestId, adminEmail);
-        return ResponseEntity.ok(request);
+        return ResponseEntity.status(410).build();
     }
 
     /**
@@ -137,9 +128,7 @@ public class AdminController {
     public ResponseEntity<AccessRequestDTO> denyAccessRequest(
             @PathVariable Long requestId,
             @AuthenticationPrincipal OAuth2User principal) {
-        String adminEmail = getAdminEmail(principal);
-        AccessRequestDTO request = adminService.denyAccessRequest(requestId, adminEmail);
-        return ResponseEntity.ok(request);
+        return ResponseEntity.status(410).build();
     }
 
     /**
@@ -161,24 +150,6 @@ public class AdminController {
         }
     }
 
-    /**
-     * Helper method to get admin email from OAuth2 principal
-     */
-    private String getAdminEmail(OAuth2User principal) {
-        if (principal == null) {
-            throw new RuntimeException("User not authenticated");
-        }
-
-        String googleId = principal.getAttribute("sub");
-        User user = userService.findByGoogleId(googleId)
-                .orElseThrow(() -> new RuntimeException("User not found"));
-
-        if (!user.isAdmin()) {
-            throw new RuntimeException("User is not an admin");
-        }
-
-        return user.getEmail();
-    }
 
     // ========================================
     // AI Usage Endpoints

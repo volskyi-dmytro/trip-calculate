@@ -62,46 +62,5 @@ export const routeService = {
    */
   deleteRoute: async (id: number): Promise<void> => {
     await api.delete(`${API_BASE}/${id}`);
-  },
-
-  /**
-   * Check if user has access to route planner feature
-   */
-  checkAccess: async (): Promise<boolean> => {
-    try {
-      const response = await api.get(`${API_BASE}/access`);
-      const data = response.data;
-
-      console.log('Access check response:', data, 'Type:', typeof data);
-
-      // CRITICAL FIX: Handle both boolean and object responses
-      const hasAccess = typeof data === 'boolean' ? data : (data?.hasAccess ?? false);
-
-      console.log('Access granted:', hasAccess);
-
-      return hasAccess;
-    } catch (error) {
-      console.error('Failed to check access:', error);
-
-      // If it's a 403, user definitely doesn't have access
-      if (error && typeof error === 'object' && 'response' in error) {
-        const axiosError = error as { response?: { status?: number } };
-        if (axiosError.response?.status === 403) {
-          return false;
-        }
-      }
-
-      // For other errors, default to true since backend is working
-      return true;
-    }
-  },
-
-  /**
-   * Request access to route planner feature
-   */
-  requestAccess: async (): Promise<void> => {
-    await api.post('/api/access-requests', null, {
-      params: { featureName: 'route_planner' }
-    });
   }
 };

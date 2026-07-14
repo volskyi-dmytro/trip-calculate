@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Navigation, Calculator, Download, Trash2, Send, Loader2 } from 'lucide-react';
+import { Navigation, Calculator, Download, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -12,34 +12,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from '../ui/dialog';
-import { dashboardService, type UserProfile } from '../../services/dashboardService';
-import { routeService } from '../../services/routeService';
+import { dashboardService } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { withLocalePrefix } from '../../utils/locale';
 
-interface QuickActionsProps {
-  profile: UserProfile;
-}
-
-export function QuickActions({ profile }: QuickActionsProps) {
+export function QuickActions() {
   const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-  const [requesting, setRequesting] = useState(false);
 
-  const handleRequestAccess = async () => {
-    setRequesting(true);
-    try {
-      await routeService.requestAccess();
-      toast.success(t('dashboard.quickActions.requestAccessSuccess'));
-    } catch (error) {
-      console.error('Failed to request access:', error);
-      toast.error(t('dashboard.quickActions.requestAccessError'));
-    } finally {
-      setRequesting(false);
-    }
-  };
 
   const handleDownloadData = async () => {
     try {
@@ -74,7 +56,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       description: t('dashboard.quickActions.createRouteDesc'),
       onClick: () => navigate(withLocalePrefix('/route-planner', language)),
       destructive: false,
-      show: profile.routePlannerAccess,
+      show: true,
     },
     {
       icon: Calculator,
@@ -84,15 +66,7 @@ export function QuickActions({ profile }: QuickActionsProps) {
       destructive: false,
       show: true,
     },
-    {
-      icon: Send,
-      label: t('dashboard.quickActions.requestAccess'),
-      description: t('dashboard.quickActions.requestAccessDesc'),
-      onClick: handleRequestAccess,
-      destructive: false,
-      show: !profile.routePlannerAccess,
-      loading: requesting,
-    },
+
     {
       icon: Download,
       label: t('dashboard.quickActions.downloadData'),
@@ -130,15 +104,10 @@ export function QuickActions({ profile }: QuickActionsProps) {
                 <button
                   key={index}
                   onClick={action.onClick}
-                  disabled={action.loading}
                   className="w-full flex items-center p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset hover:bg-white/70 dark:hover:bg-white/10 transition-colors"
                 >
                   <div className="flex-shrink-0">
-                    {action.loading ? (
-                      <Loader2 className={`h-5 w-5 ${iconColor} animate-spin`} />
-                    ) : (
-                      <Icon className={`h-5 w-5 ${iconColor}`} />
-                    )}
+                    <Icon className={`h-5 w-5 ${iconColor}`} />
                   </div>
                   <div className="ml-3 text-left flex-1">
                     <p

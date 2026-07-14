@@ -4,9 +4,8 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { Header } from '../components/common/Header';
 import { SystemOverview } from '../components/admin/SystemOverview';
 import { UsersTable } from '../components/admin/UsersTable';
-import { AccessRequestsTable } from '../components/admin/AccessRequestsTable';
 
-type TabType = 'overview' | 'users' | 'requests';
+type TabType = 'overview' | 'users';
 
 export function AdminDashboard() {
   const { t } = useLanguage();
@@ -15,7 +14,7 @@ export function AdminDashboard() {
   const tabs = [
     { id: 'overview' as TabType, label: t('admin.tabs.overview') },
     { id: 'users' as TabType, label: t('admin.tabs.users') },
-    { id: 'requests' as TabType, label: t('admin.tabs.accessRequests') },
+
   ];
 
   return (
@@ -66,7 +65,7 @@ export function AdminDashboard() {
         <div className="mt-6">
           {activeTab === 'overview' && <SystemOverview />}
           {activeTab === 'users' && <UsersTable />}
-          {activeTab === 'requests' && <AccessRequestsTable />}
+
         </div>
         </div>
       </div>

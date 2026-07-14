@@ -2,7 +2,7 @@ package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.dto.*;
 import com.tripplanner.TripPlanner.entity.AccessRequest;
-import com.tripplanner.TripPlanner.entity.FeatureAccess;
+
 import com.tripplanner.TripPlanner.entity.Route;
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.entity.UserRole;
@@ -29,7 +29,6 @@ public class AdminDashboardService {
     private final RouteRepository routeRepository;
     private final FeatureAccessRepository featureAccessRepository;
     private final AccessRequestRepository accessRequestRepository;
-    private final AccessRequestService accessRequestService;
     private final AiUsageService aiUsageService;
     private final AiCacheService aiCacheService;
 
@@ -47,10 +46,8 @@ public class AdminDashboardService {
         long totalWaypoints = routeRepository.findAll().stream()
                 .mapToLong(r -> r.getWaypoints() != null ? r.getWaypoints().size() : 0)
                 .sum();
-        long pendingAccessRequests = accessRequestRepository.findByStatusOrderByRequestedAtDesc(
-                AccessRequest.RequestStatus.PENDING
-        ).size();
-        long usersWithRoutePlanner = featureAccessRepository.countByRoutePlannerEnabled(true);
+        long pendingAccessRequests = 0;
+        long usersWithRoutePlanner = totalUsers;
 
         // AI usage statistics
         long aiRequestsLast24h = aiUsageService.getRequestsLast24h();
@@ -119,36 +116,6 @@ public class AdminDashboardService {
         return convertToUserManagementDTO(user);
     }
 
-    /**
-     * Grant or revoke route planner access for a user
-     */
-    @Transactional
-    public void updateRoutePlannerAccess(Long userId, boolean granted, String grantedBy) {
-        FeatureAccess featureAccess = featureAccessRepository.findByUserId(userId)
-                .orElse(new FeatureAccess(null, userId, false, null, null, null));
-
-        featureAccess.setRoutePlannerEnabled(granted);
-        if (granted) {
-            featureAccess.setGrantedAt(LocalDateTime.now());
-            featureAccess.setGrantedBy(grantedBy);
-
-            // Auto-approve any pending access requests for this user and feature
-            List<AccessRequest> pendingRequests = accessRequestRepository
-                .findByUserIdAndFeatureNameAndStatus(userId, "route_planner", AccessRequest.RequestStatus.PENDING);
-
-            for (AccessRequest request : pendingRequests) {
-                request.setStatus(AccessRequest.RequestStatus.APPROVED);
-                request.setProcessedAt(LocalDateTime.now());
-                request.setProcessedBy(grantedBy + " (auto-approved)");
-                accessRequestRepository.save(request);
-            }
-        } else {
-            featureAccess.setGrantedAt(null);
-            featureAccess.setGrantedBy(null);
-        }
-
-        featureAccessRepository.save(featureAccess);
-    }
 
     /**
      * Get all access requests
@@ -174,54 +141,6 @@ public class AdminDashboardService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Approve access request
-     */
-    @Transactional
-    public AccessRequestDTO approveAccessRequest(Long requestId, String approvedBy) {
-        AccessRequest request = accessRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Access request not found"));
-
-        request.setStatus(AccessRequest.RequestStatus.APPROVED);
-        request.setProcessedAt(LocalDateTime.now());
-        request.setProcessedBy(approvedBy);
-        request = accessRequestRepository.save(request);
-
-        // Grant access to the feature
-        updateRoutePlannerAccess(request.getUserId(), true, approvedBy);
-
-        // Send approval email to user
-        accessRequestService.sendApprovalEmail(
-            request.getUserName(),
-            request.getUserEmail(),
-            request.getFeatureName()
-        );
-
-        return convertToAccessRequestDTO(request);
-    }
-
-    /**
-     * Deny access request
-     */
-    @Transactional
-    public AccessRequestDTO denyAccessRequest(Long requestId, String deniedBy) {
-        AccessRequest request = accessRequestRepository.findById(requestId)
-                .orElseThrow(() -> new RuntimeException("Access request not found"));
-
-        request.setStatus(AccessRequest.RequestStatus.REJECTED);
-        request.setProcessedAt(LocalDateTime.now());
-        request.setProcessedBy(deniedBy);
-        request = accessRequestRepository.save(request);
-
-        // Send rejection email to user
-        accessRequestService.sendRejectionEmail(
-            request.getUserName(),
-            request.getUserEmail(),
-            request.getFeatureName()
-        );
-
-        return convertToAccessRequestDTO(request);
-    }
 
     /**
      * Delete user (admin action)
@@ -242,8 +161,6 @@ public class AdminDashboardService {
     // Helper methods
 
     private UserManagementDTO convertToUserManagementDTO(User user) {
-        FeatureAccess featureAccess = featureAccessRepository.findByUserId(user.getId())
-                .orElse(null);
         long routeCount = routeRepository.countByUserId(user.getId());
 
         return UserManagementDTO.builder()
@@ -254,7 +171,7 @@ public class AdminDashboardService {
                 .role(user.getRole())
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
-                .routePlannerAccess(featureAccess != null && featureAccess.getRoutePlannerEnabled())
+                .routePlannerAccess(true)
                 .routeCount(routeCount)
                 .build();
     }

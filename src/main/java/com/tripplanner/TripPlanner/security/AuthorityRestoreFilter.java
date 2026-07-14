@@ -165,15 +165,11 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) throws ServletException {
-        // Temporarily disabled optimization to enable full logging for debugging
-        // TODO: Re-enable after confirming the filter works correctly
         String path = request.getRequestURI();
-        log.info(">>> shouldNotFilter check for: {}", path);
-        return false;
-
-        /* Original optimization - restore after testing:
-        String path = request.getRequestURI();
-        return path.startsWith("/css/") ||
+        // AI endpoints only require a verified OIDC identity, not a database role.
+        // Skipping restoration here keeps rejected AI traffic away from PostgreSQL.
+        return path.startsWith("/api/ai/") ||
+               path.startsWith("/css/") ||
                path.startsWith("/js/") ||
                path.startsWith("/images/") ||
                path.startsWith("/static/") ||
@@ -181,7 +177,6 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                path.equals("/calculate") ||
                path.startsWith("/oauth2/") ||
                path.startsWith("/login/");
-        */
     }
 
     @Override

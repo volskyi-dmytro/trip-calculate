@@ -60,9 +60,8 @@ public class SecurityConfig {
     }
 
     @Bean
-    public com.tripplanner.TripPlanner.filter.AiRateLimitingFilter aiRateLimitingFilter(
-            com.tripplanner.TripPlanner.repository.UserRepository userRepository) {
-        return new com.tripplanner.TripPlanner.filter.AiRateLimitingFilter(userRepository);
+    public com.tripplanner.TripPlanner.filter.AiRateLimitingFilter aiRateLimitingFilter() {
+        return new com.tripplanner.TripPlanner.filter.AiRateLimitingFilter();
     }
 
     @Bean
@@ -71,8 +70,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http,
-                                          com.tripplanner.TripPlanner.repository.UserRepository userRepository) throws Exception {
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         OAuth2AuthorizationRequestResolver authorizationRequestResolver =
                 buildAuthorizationRequestResolver();
 
@@ -168,7 +166,7 @@ public class SecurityConfig {
                 .addFilterAfter(attackMitigationFilter(), com.tripplanner.TripPlanner.security.AuthorityRestoreFilter.class)
 
                 // Add AI rate limiting filter AFTER attack mitigation (checks /api/ai/** endpoints only)
-                .addFilterAfter(aiRateLimitingFilter(userRepository), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
+                .addFilterAfter(aiRateLimitingFilter(), com.tripplanner.TripPlanner.filter.AttackMitigationFilter.class)
 
                 // Add general rate limiting filter AFTER AI rate limiting
                 .addFilterAfter(rateLimitingFilter(), com.tripplanner.TripPlanner.filter.AiRateLimitingFilter.class)

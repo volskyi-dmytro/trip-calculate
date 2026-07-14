@@ -1,7 +1,6 @@
 package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.dto.*;
-import com.tripplanner.TripPlanner.entity.FeatureAccess;
 import com.tripplanner.TripPlanner.entity.Route;
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
@@ -120,9 +119,6 @@ public class UserDashboardService {
     // Helper methods
 
     private UserProfileDTO buildUserProfile(User user) {
-        FeatureAccess featureAccess = featureAccessRepository.findByUserId(user.getId())
-                .orElse(null);
-
         return UserProfileDTO.builder()
                 .id(user.getId())
                 .email(user.getEmail())
@@ -135,7 +131,7 @@ public class UserDashboardService {
                 .preferredLanguage(user.getPreferredLanguage())
                 .defaultFuelConsumption(user.getDefaultFuelConsumption())
                 .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
-                .routePlannerAccess(featureAccess != null && featureAccess.getRoutePlannerEnabled())
+                .routePlannerAccess(true)
                 .build();
     }
 
