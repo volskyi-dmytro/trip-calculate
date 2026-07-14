@@ -62,6 +62,9 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
     passengers: language === 'uk' ? 'Пасажири' : 'Passengers',
     consumption: language === 'uk' ? 'Л/100км' : 'L/100km',
     fuelPrice: language === 'uk' ? 'Ціна палива' : 'Fuel Price',
+    currency: language === 'uk' ? 'Валюта' : 'Currency',
+    decreasePassengers: language === 'uk' ? 'Зменшити кількість пасажирів' : 'Decrease passengers',
+    increasePassengers: language === 'uk' ? 'Збільшити кількість пасажирів' : 'Increase passengers',
     totalCost: language === 'uk' ? 'Загальна вартість' : 'Total Cost',
     perPassenger: language === 'uk' ? 'На пасажира' : 'Per Passenger',
     exampleBadge:
@@ -92,10 +95,11 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
       <div className="space-y-4">
         {/* Distance */}
         <div>
-          <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-distance" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
             {t.distance}
           </Label>
           <Input
+            id="quick-distance"
             type="number"
             min="0"
             value={distance}
@@ -107,11 +111,12 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
 
         {/* Passengers */}
         <div>
-          <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-passengers" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
             {t.passengers}
           </Label>
           <div className="flex items-center gap-2 mt-1">
             <Button
+              aria-label={t.decreasePassengers}
               variant="outline"
               size="icon"
               onClick={() => edited(setPassengers)(Math.max(1, passengers - 1))}
@@ -120,6 +125,7 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
               <Minus className="h-4 w-4" />
             </Button>
             <Input
+              id="quick-passengers"
               type="number"
               min="1"
               value={passengers}
@@ -127,6 +133,7 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
               className="text-center"
             />
             <Button
+              aria-label={t.increasePassengers}
               variant="outline"
               size="icon"
               onClick={() => edited(setPassengers)(passengers + 1)}
@@ -139,10 +146,11 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
 
         {/* Fuel Consumption */}
         <div>
-          <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-consumption" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
             {t.consumption}
           </Label>
           <Input
+            id="quick-consumption"
             type="number"
             min="0"
             step="0.1"
@@ -154,27 +162,32 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
 
         {/* Fuel Price */}
         <div>
-          <Label className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-fuel-price" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
             {t.fuelPrice}
           </Label>
           <div className="flex gap-2 mt-1">
             <Input
+              id="quick-fuel-price"
               type="number"
               min="0"
               value={fuelPrice}
               onChange={(e) => edited(setFuelPrice)(Number(e.target.value))}
               className="flex-1"
             />
-            <select
-              value={currency}
-              onChange={(e) => edited(setCurrency)(e.target.value)}
-              className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <option value="UAH">UAH</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="PLN">PLN</option>
-            </select>
+            <div>
+              <Label htmlFor="quick-currency" className="sr-only">{t.currency}</Label>
+              <select
+                id="quick-currency"
+                value={currency}
+                onChange={(e) => edited(setCurrency)(e.target.value)}
+                className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="UAH">UAH</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+                <option value="PLN">PLN</option>
+              </select>
+            </div>
           </div>
         </div>
 

@@ -25,6 +25,7 @@ export function TopChatBar({
     processing: language === 'uk'
       ? 'Обробка...'
       : 'Processing...',
+    send: language === 'uk' ? 'Надіслати повідомлення' : 'Send message',
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -53,6 +54,7 @@ export function TopChatBar({
               className="flex-1 h-10 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200"
             />
             <Button
+              aria-label={t.send}
               onClick={onSendMessage}
               disabled={isProcessing || !chatInput.trim()}
               className="px-4 bg-primary hover:bg-primary/90 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-lg hover:shadow-xl"

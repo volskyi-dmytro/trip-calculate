@@ -905,6 +905,12 @@ export function RoutePlanner() {
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
 
+        // Update fuel type without changing the selected currency
+        if (agentData.fuelType) {
+          setRouteSettings(prev => ({ ...prev, fuelType: agentData.fuelType! }));
+          updates.push(`${language === 'uk' ? 'Тип палива' : 'Fuel type'}: ${agentData.fuelType}`);
+        }
+
         // Update currency
         if (agentData.currency) {
           setRouteSettings(prev => ({ ...prev, currency: agentData.currency! }));
@@ -1585,6 +1591,7 @@ export function RoutePlanner() {
                 }}
               />
               <button
+                aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
                 onClick={handleSendChat}
                 disabled={isProcessingAi || !chatInput.trim()}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
@@ -2118,6 +2125,7 @@ export function RoutePlanner() {
                     }}
                   />
                   <button
+                    aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
                     onClick={handleSendChat}
                     disabled={isProcessingAi || !chatInput.trim()}
                     className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"

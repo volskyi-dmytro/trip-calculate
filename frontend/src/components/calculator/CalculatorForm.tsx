@@ -75,7 +75,7 @@ export function CalculatorForm() {
           name="numberOfPassengers"
           value={formData.numberOfPassengers || ''}
           onChange={(e) => handleChange('numberOfPassengers', e.target.value)}
-          min="0"
+          min="1"
           required
         />
       </div>

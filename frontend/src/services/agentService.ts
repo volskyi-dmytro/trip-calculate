@@ -28,6 +28,7 @@ export interface AgentRouteResponse {
     settings: {
       fuelConsumption?: number;
       fuelCostPerLiter?: number;
+      fuelType?: 'petrol' | 'diesel' | 'lpg';
       currency?: string;
       passengers?: number;
       departureDate?: string;
@@ -83,6 +84,7 @@ export const mapAgentRouteResponse = (data: AgentRouteResponse): AgentParseResul
   if (data.route.settings) {
     if (data.route.settings.fuelConsumption) result.consumption = data.route.settings.fuelConsumption;
     if (data.route.settings.fuelCostPerLiter) result.price = data.route.settings.fuelCostPerLiter;
+    if (data.route.settings.fuelType) result.fuelType = data.route.settings.fuelType;
     if (data.route.settings.currency) result.currency = data.route.settings.currency;
     if (data.route.settings.passengers) result.passengers = data.route.settings.passengers;
     if (data.route.settings.departureDate) result.departureDate = data.route.settings.departureDate;

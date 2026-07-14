@@ -111,6 +111,7 @@ export function ChatInterface({
       ? 'Опишіть ваш маршрут (наприклад, "Подорож із Києва до Львова на двох пасажирів")...'
       : 'Describe your trip (e.g., "Trip from Kyiv to Lviv for 2 passengers")...',
     chatPlaceholderShort: language === 'uk' ? 'Запитайте AI...' : 'Ask AI...',
+    send: language === 'uk' ? 'Надіслати повідомлення' : 'Send message',
   };
 
   return (
@@ -191,7 +192,7 @@ export function ChatInterface({
           className="flex-1 text-sm"
           autoFocus={isCentered}
         />
-        <Button onClick={onSendMessage} disabled={isProcessing || !chatInput.trim()} size="sm">
+        <Button aria-label={t.send} onClick={onSendMessage} disabled={isProcessing || !chatInput.trim()} size="sm">
           <Send className="w-4 h-4" />
         </Button>
       </div>

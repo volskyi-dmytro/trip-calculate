@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from app.nodes import supervise, route_after_supervisor
 from app.schema import (
@@ -63,6 +64,29 @@ async def test_supervise_settings_only_rebuilds_route_deterministically():
     assert all(l.from_current_route for l in parsed.locations)
     assert parsed.settings.fuelCostPerLiter == 60.0
     assert route_after_supervisor(result) == "geocode_locations"
+
+
+async def test_supervise_settings_only_applies_fuel_type_without_changing_currency():
+    decision = SupervisorDecision(
+        intent="settings_only",
+        settings=TripSettings(passengers=3, fuelType="diesel"),
+    )
+    with patch("app.nodes._openai_client") as client:
+        client.beta.chat.completions.parse = AsyncMock(return_value=_llm_response(decision))
+        result = await supervise(_state(
+            message="Change passengers to 3 and use diesel",
+            current_route=_ROUTE,
+        ))
+
+    parsed = result["parsed"]
+    assert parsed.settings.passengers == 3
+    assert parsed.settings.fuelType == "diesel"
+    assert parsed.settings.currency is None
+
+
+def test_trip_settings_rejects_fuel_type_as_currency():
+    with pytest.raises(ValidationError):
+        TripSettings(fuelType="diesel", currency="diesel")
 
 
 async def test_supervise_settings_only_without_route_is_off_topic():

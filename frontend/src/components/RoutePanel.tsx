@@ -611,6 +611,7 @@ export function RoutePanel({
                         {index + 1}
                       </div>
                       <Input
+                        aria-label={`${language === 'uk' ? 'Точка маршруту' : 'Waypoint'} ${index + 1}: ${waypoint.name}`}
                         value={waypoint.name}
                         onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
                         className="h-7 text-xs"
@@ -619,6 +620,7 @@ export function RoutePanel({
                       />
                     </div>
                     <button
+                      aria-label={`${language === 'uk' ? 'Видалити точку маршруту' : 'Delete waypoint'} ${index + 1}: ${waypoint.name}`}
                       className="h-7 w-7 flex items-center justify-center rounded flex-shrink-0 transition-colors disabled:opacity-30"
                       onClick={() => handleDeleteWaypoint(waypoint.id)}
                       disabled={isCalculating || waypoints.length <= 2}

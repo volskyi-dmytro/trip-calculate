@@ -9,7 +9,7 @@ const ok = {
       { positionOrder: 0, name: 'Kyiv', latitude: 50.45, longitude: 30.52 },
       { positionOrder: 2, name: 'Lviv', latitude: 49.84, longitude: 24.03 },
     ],
-    settings: { passengers: 3, fuelCostPerLiter: 60 },
+    settings: { passengers: 3, fuelCostPerLiter: 60, fuelType: 'diesel' },
   },
   fuel_data: {
     price_per_liter: 61.83, currency: 'UAH', fuel_type: 'petrol',
@@ -30,6 +30,8 @@ describe('mapAgentRouteResponse', () => {
     const { data } = mapAgentRouteResponse(ok as never)
     expect(data!.passengers).toBe(3)
     expect(data!.price).toBe(60)
+    expect(data!.fuelType).toBe('diesel')
+    expect(data!.currency).toBeUndefined()
     expect(data!.fuelData!.price).toBe(61.83)
   })
 

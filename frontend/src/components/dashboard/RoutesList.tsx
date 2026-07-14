@@ -102,10 +102,11 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-xl">{t('dashboard.routes.title')}</CardTitle>
             <div className="flex items-center gap-2">
-              <label className="text-sm text-gray-600 dark:text-gray-400">
+              <label htmlFor="route-sort" className="text-sm text-gray-600 dark:text-gray-400">
                 {t('dashboard.routes.sortBy')}:
               </label>
               <select
+                id="route-sort"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="px-3 py-1.5 text-sm border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
@@ -156,6 +157,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                   <Button
                     variant="outline"
                     size="sm"
+                    aria-label={`${t('dashboard.routes.delete')} ${route.name}`}
                     onClick={() => confirmDelete(route)}
                     className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
                   >

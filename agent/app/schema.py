@@ -23,7 +23,8 @@ class TripSettings(BaseModel):
     passengers: Optional[int] = None
     fuelConsumption: Optional[float] = None
     fuelCostPerLiter: Optional[float] = None
-    currency: Optional[str] = None
+    fuelType: Optional[Literal["petrol", "diesel", "lpg"]] = None
+    currency: Optional[Literal["UAH", "USD", "EUR"]] = None
 
 
 class ParsedRoute(BaseModel):
@@ -105,7 +106,8 @@ class RouteSettings(BaseModel):
     passengers: Optional[int] = None
     fuelConsumption: Optional[float] = None
     fuelCostPerLiter: Optional[float] = None
-    currency: Optional[str] = None
+    fuelType: Optional[Literal["petrol", "diesel", "lpg"]] = None
+    currency: Optional[Literal["UAH", "USD", "EUR"]] = None
     departureDate: Optional[str] = None
 
 

@@ -44,6 +44,7 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
             <Button
               variant="ghost"
               size="sm"
+              aria-label={t('dashboard.editProfile.title')}
               onClick={() => setIsEditModalOpen(true)}
             >
               <Edit className="h-4 w-4" />

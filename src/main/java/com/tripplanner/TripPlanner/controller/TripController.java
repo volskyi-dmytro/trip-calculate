@@ -30,8 +30,8 @@ public class TripController {
             if (customFuelConsumption == null || customFuelConsumption <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Custom fuel consumption must be a positive number"));
             }
-            if (numberOfPassengers == null || numberOfPassengers < 0) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Number of passengers cannot be negative"));
+            if (numberOfPassengers == null || numberOfPassengers <= 0) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Number of passengers must be a positive number"));
             }
             if (distance == null || distance <= 0) {
                 return ResponseEntity.badRequest().body(Map.of("error", "Distance must be a positive number"));
@@ -46,8 +46,9 @@ public class TripController {
             // Calculate total cost
             double totalFuelCost = totalFuelNeeded * fuelCost;
 
-            // Calculate cost per person (including driver)
-            int totalPeople = numberOfPassengers + 1; // +1 for driver
+            // Split the total among the number of people entered by the user,
+            // matching the landing-page calculator's passenger semantics.
+            int totalPeople = numberOfPassengers;
             double costPerPassenger = totalFuelCost / totalPeople;
 
             // Return calculation results matching your JavaScript expectations

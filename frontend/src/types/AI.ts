@@ -34,6 +34,7 @@ export interface AgentTripData {
   passengers?: number;
   consumption?: number;
   price?: number;
+  fuelType?: 'petrol' | 'diesel' | 'lpg';
   currency?: string;
 
   // Locations the agent could not geocode (even after its retry pass)
