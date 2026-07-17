@@ -261,6 +261,10 @@ public class SecurityConfig {
                         // not from the page being gated
                         .requestMatchers("/api/weather/**").authenticated()
 
+                        // Garage + consumption estimate: any logged-in user (NOT beta-gated —
+                        // the garage exists for everyone, unlike /api/ai/**)
+                        .requestMatchers("/api/cars", "/api/cars/**").authenticated()
+
                         // API endpoints for authenticated users
                         .requestMatchers("/api/user/**", "/api/trips/**").authenticated()
                         .requestMatchers("/api/routes/**", "/api/access-requests/**").authenticated()
