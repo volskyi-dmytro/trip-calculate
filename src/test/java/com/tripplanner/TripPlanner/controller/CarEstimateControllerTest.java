@@ -169,6 +169,18 @@ class CarEstimateControllerTest {
     }
 
     @Test
+    void internalWhitespaceRunsNormalizeToSameCacheKey() {
+        CanningController controller = controllerReturning(HAPPY_JSON);
+
+        ResponseEntity<?> first = controller.estimate(req("skoda   octavia  a5"), principal);
+        ResponseEntity<?> second = controller.estimate(req("skoda octavia a5"), principal);
+
+        assertEquals(200, first.getStatusCode().value());
+        assertEquals(200, second.getStatusCode().value());
+        assertEquals(1, controller.callCount.get());
+    }
+
+    @Test
     void agentIOExceptionReturns503() {
         CanningController controller = controllerThrowing(new IOException("boom"));
 
