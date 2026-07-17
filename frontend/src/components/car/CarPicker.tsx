@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../ui/dialog';
 import { Button } from '../ui/button';
@@ -48,6 +48,10 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<'rate_limited' | 'recognize_failed' | null>(null);
   const [aiResult, setAiResult] = useState<AiEstimateResult | null>(null);
+  // Monotonically increasing request id. Bumped before each estimate request
+  // and again whenever the dialog resets, so responses belonging to a stale
+  // request (superseded or from a closed session) are discarded on arrival.
+  const estimateSeq = useRef(0);
 
   // Re-arm transient state each time the picker opens, so a previous AI
   // result or search query doesn't linger into an unrelated session.
@@ -58,6 +62,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
       setDescription('');
       setAiError(null);
       setAiResult(null);
+      estimateSeq.current += 1;
     }
   }, [open]);
 
@@ -104,6 +109,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
         : 'Describe the car, e.g. "Toyota Camry 2015, petrol"',
     aiDescLabel: language === 'uk' ? 'Опис авто' : 'Car description',
     aiEstimate: language === 'uk' ? 'Оцінити' : 'Estimate',
+    aiEstimating: language === 'uk' ? 'Оцінюємо…' : 'Estimating…',
     aiUse: language === 'uk' ? 'Використати' : 'Use',
     aiRateLimited:
       language === 'uk' ? 'Забагато запитів — спробуйте за хвилину' : 'Too many requests — try again in a minute',
@@ -147,23 +153,27 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   };
 
   const handleEstimate = async () => {
+    if (aiLoading) return;
     const trimmed = description.trim();
     if (!trimmed) return;
+    const id = ++estimateSeq.current;
     setAiLoading(true);
     setAiError(null);
     setAiResult(null);
     try {
       const result = await carService.estimate(trimmed, language);
+      if (id !== estimateSeq.current) return;
       setAiResult({
         makeModel: result.makeModel,
         fuelType: result.fuelType,
         consumption: result.consumptionL100km,
       });
     } catch (err: unknown) {
+      if (id !== estimateSeq.current) return;
       const status = (err as { response?: { status?: number } })?.response?.status;
       setAiError(status === 429 ? 'rate_limited' : 'recognize_failed');
     } finally {
-      setAiLoading(false);
+      if (id === estimateSeq.current) setAiLoading(false);
     }
   };
 
@@ -260,14 +270,19 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                       <span className="text-gray-500 dark:text-gray-400 font-normal">({entry.years})</span>
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
-                      {entry.variants.map((variant, idx) => (
+                      {entry.variants.map((variant) => (
                         <button
-                          key={`${entry.id}-${idx}`}
+                          key={`${entry.id}-${variant.label}-${variant.fuelType}`}
                           type="button"
                           onClick={() => handleCatalogSelect(entry, variant)}
                           className="px-2 py-1 text-xs rounded-full border border-gray-300/70 dark:border-gray-600/70 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
                         >
-                          {variant.label} · {variant.consumption} {t.consumptionShort} · {variant.fuelType}
+                          {variant.label} · {variant.consumption} {t.consumptionShort} ·{' '}
+                          {variant.fuelType === 'petrol'
+                            ? t.fuelPetrol
+                            : variant.fuelType === 'diesel'
+                              ? t.fuelDiesel
+                              : t.fuelLpg}
                         </button>
                       ))}
                     </div>
@@ -334,7 +349,13 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                 className="flex w-full rounded-md border border-gray-300/70 dark:border-gray-600/70 bg-[var(--glass-input)] text-gray-900 dark:text-white px-3 py-2 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
             </div>
-            <Button onClick={handleEstimate} disabled={aiLoading || !description.trim()} className="w-full">
+            <Button
+              onClick={handleEstimate}
+              disabled={aiLoading || !description.trim()}
+              aria-label={aiLoading ? t.aiEstimating : undefined}
+              aria-busy={aiLoading}
+              className="w-full"
+            >
               {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t.aiEstimate}
             </Button>
 
@@ -370,13 +391,22 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                     id="car-picker-ai-consumption"
                     type="number"
                     step="0.1"
-                    min="0"
+                    min="3"
+                    max="25"
                     value={aiResult.consumption}
                     onChange={(e) => setAiResult({ ...aiResult, consumption: Number(e.target.value) })}
                     className="mt-1"
                   />
                 </div>
-                <Button onClick={handleAiUse} className="w-full">
+                <Button
+                  onClick={handleAiUse}
+                  disabled={
+                    !Number.isFinite(aiResult.consumption) ||
+                    aiResult.consumption < 3 ||
+                    aiResult.consumption > 25
+                  }
+                  className="w-full"
+                >
                   {t.aiUse}
                 </Button>
               </div>
