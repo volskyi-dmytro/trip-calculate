@@ -13,6 +13,5 @@ import lombok.NoArgsConstructor;
 public class UpdateProfileRequest {
     private String displayName;
     private String preferredLanguage;
-    private Double defaultFuelConsumption;
     private Boolean emailNotificationsEnabled;
 }
