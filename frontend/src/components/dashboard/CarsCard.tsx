@@ -48,6 +48,8 @@ export function CarsCard() {
   const [carToDelete, setCarToDelete] = useState<GarageCar | null>(null);
   const [deleting, setDeleting] = useState(false);
 
+  const [settingDefaultId, setSettingDefaultId] = useState<number | null>(null);
+
   const fetchCars = async () => {
     try {
       setLoading(true);
@@ -123,7 +125,7 @@ export function CarsCard() {
       await fetchCars();
     } catch (error) {
       console.error('Failed to save car:', error);
-      toast.error(extractErrorMessage(error) ?? t('dashboard.error.fetchFailed'));
+      toast.error(extractErrorMessage(error) ?? t('dashboard.cars.actionFailed'));
     } finally {
       setSaving(false);
     }
@@ -142,19 +144,23 @@ export function CarsCard() {
       await fetchCars();
     } catch (error) {
       console.error('Failed to delete car:', error);
-      toast.error(extractErrorMessage(error) ?? t('dashboard.error.fetchFailed'));
+      toast.error(extractErrorMessage(error) ?? t('dashboard.cars.actionFailed'));
     } finally {
       setDeleting(false);
     }
   };
 
   const handleSetDefault = async (car: GarageCar) => {
+    if (settingDefaultId !== null) return;
+    setSettingDefaultId(car.id);
     try {
       await carService.setDefault(car.id);
       await fetchCars();
     } catch (error) {
       console.error('Failed to set default car:', error);
-      toast.error(extractErrorMessage(error) ?? t('dashboard.error.fetchFailed'));
+      toast.error(extractErrorMessage(error) ?? t('dashboard.cars.actionFailed'));
+    } finally {
+      setSettingDefaultId(null);
     }
   };
 
@@ -227,8 +233,13 @@ export function CarsCard() {
                           size="sm"
                           aria-label={`${t('dashboard.cars.setDefault')} ${car.name}`}
                           onClick={() => handleSetDefault(car)}
+                          disabled={settingDefaultId !== null}
                         >
-                          {t('dashboard.cars.setDefault')}
+                          {settingDefaultId === car.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            t('dashboard.cars.setDefault')
+                          )}
                         </Button>
                       )}
                       <Button

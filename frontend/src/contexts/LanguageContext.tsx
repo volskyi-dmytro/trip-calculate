@@ -161,6 +161,7 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.cars.consumption': 'Consumption (L/100km)',
     'dashboard.cars.save': 'Save',
     'dashboard.cars.limitReached': 'Car limit reached (10)',
+    'dashboard.cars.actionFailed': 'Something went wrong. Please try again.',
 
     'dashboard.security.title': 'Security',
     'dashboard.security.provider': 'Authentication Provider',
@@ -416,7 +417,8 @@ const translations: Record<Language, Record<string, string>> = {
     'dashboard.cars.name': 'Назва',
     'dashboard.cars.consumption': 'Витрата (л/100км)',
     'dashboard.cars.save': 'Зберегти',
-    'dashboard.cars.limitReached': 'Досягнуто ліміт авто (10)',
+    'dashboard.cars.limitReached': 'Досягнуто ліміту авто (10)',
+    'dashboard.cars.actionFailed': 'Сталася помилка. Спробуйте ще раз.',
 
     'dashboard.security.title': 'Безпека',
     'dashboard.security.provider': 'Провайдер Автентифікації',
