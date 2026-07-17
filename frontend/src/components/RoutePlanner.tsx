@@ -234,7 +234,12 @@ export function RoutePlanner() {
   // owns the settings there) and guarded by a ref so it can never re-apply
   // over AI/user changes made before this fetch resolves.
   useEffect(() => {
-    if (!user) return
+    if (!user) {
+      // Logged out (or never logged in) — clear any garage fetched under a
+      // previous session so a stale list doesn't linger in state.
+      setGarageCars([])
+      return
+    }
     carService.list()
       .then((cars) => {
         setGarageCars(cars)
@@ -242,11 +247,18 @@ export function RoutePlanner() {
         const editingExistingRoute = searchParams.has('routeId')
         if (defaultCar && !editingExistingRoute && !appliedDefaultCar.current) {
           appliedDefaultCar.current = true
-          setRouteSettings(prev => ({
-            ...prev,
-            fuelConsumption: defaultCar.fuelConsumption,
-            fuelType: defaultCar.fuelType,
-          }))
+          setRouteSettings(prev => {
+            // The prefill must never overwrite values the user or the AI
+            // already set — only apply while settings are still pristine defaults.
+            if (prev.fuelConsumption !== DEFAULT_ROUTE_SETTINGS.fuelConsumption || prev.fuelType !== DEFAULT_ROUTE_SETTINGS.fuelType) {
+              return prev
+            }
+            return {
+              ...prev,
+              fuelConsumption: defaultCar.fuelConsumption,
+              fuelType: defaultCar.fuelType,
+            }
+          })
         }
       })
       .catch(() => {})
