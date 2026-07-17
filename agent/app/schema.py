@@ -195,6 +195,26 @@ class WeatherCorridorResponse(BaseModel):
     weather_data: Optional[WeatherData] = None
 
 
+class EstimateCarRequest(BaseModel):
+    description: str = Field(max_length=200)
+    language: Literal["en", "uk"] = "en"
+
+
+class CarEstimate(BaseModel):
+    """Structured output of the car-estimation LLM call."""
+    unknown: bool = False
+    makeModel: Optional[str] = None
+    fuelType: Optional[Literal["petrol", "diesel", "lpg"]] = None
+    consumptionL100km: Optional[float] = None
+
+
+class EstimateCarResponse(BaseModel):
+    makeModel: Optional[str] = None
+    fuelType: Optional[Literal["petrol", "diesel", "lpg"]] = None
+    consumptionL100km: Optional[float] = None
+    unknown: bool = False
+
+
 # ── LangGraph state ────────────────────────────────────────────────────────
 
 class GraphState(TypedDict):
