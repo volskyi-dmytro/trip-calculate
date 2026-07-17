@@ -10,6 +10,8 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { toast } from 'sonner'
 import { WeatherStrip } from './WeatherStrip'
 import type { WeatherData } from '../types/weather'
+import type { GarageCar } from '../types/Car'
+import { matchingCarId } from '../utils/carSelection'
 
 // Currency options with symbols
 const CURRENCIES = [
@@ -40,6 +42,8 @@ interface RoutePanelProps {
   weather: WeatherData | null
   departureDate: string
   onDepartureDateChange: (date: string) => void
+  garageCars?: GarageCar[]
+  onSelectCar?: (car: GarageCar) => void
 }
 
 export function RoutePanel({
@@ -56,6 +60,8 @@ export function RoutePanel({
   weather,
   departureDate,
   onDepartureDateChange,
+  garageCars,
+  onSelectCar,
 }: RoutePanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -351,6 +357,25 @@ export function RoutePanel({
         <div style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
           {t.routeSettings.title}
         </div>
+
+        {garageCars && garageCars.length > 0 && onSelectCar && (
+          <select
+            aria-label={language === 'uk' ? 'Авто' : 'Car'}
+            className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 mb-1"
+            value={matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption) ?? 'custom'}
+            onChange={(e) => {
+              const car = garageCars.find((c) => c.id === Number(e.target.value))
+              if (car) onSelectCar(car)
+            }}
+          >
+            {garageCars.map((car) => (
+              <option key={car.id} value={car.id}>
+                {car.name} · {car.fuelConsumption} L
+              </option>
+            ))}
+            <option value="custom">{language === 'uk' ? 'Власні значення' : 'Custom'}</option>
+          </select>
+        )}
 
         <div className="space-y-1">
           <label style={labelStyle} htmlFor="fuel-consumption">{t.routeSettings.fuelConsumption}</label>
