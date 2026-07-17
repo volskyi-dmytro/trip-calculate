@@ -1,11 +1,16 @@
 import { useState, useEffect } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareReceiptButton } from './receipt/ShareReceiptButton';
+import { CarPicker } from './car/CarPicker';
+import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorage';
+import { carService } from '../services/carService';
+import type { CarSelection, GarageCar } from '../types/Car';
 
 interface QuickCalculatorProps {
   /** Prefill with a locale-appropriate worked example (public landing). */
@@ -20,15 +25,24 @@ const EXAMPLES = {
 
 export function QuickCalculator({ example = false }: QuickCalculatorProps) {
   const { language } = useLanguage();
+  const { user } = useAuth();
   const initial = example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
+  const stored = loadStoredCar();
   const [exampleActive, setExampleActive] = useState(example);
   const [distance, setDistance] = useState<number>(initial?.distance ?? 0);
   const [passengers, setPassengers] = useState<number>(initial?.people ?? 1);
-  const [fuelConsumption, setFuelConsumption] = useState<number>(initial?.consumption ?? 8.5);
+  const [fuelConsumption, setFuelConsumption] = useState<number>(initial?.consumption ?? stored?.consumption ?? 8.5);
   const [fuelPrice, setFuelPrice] = useState<number>(initial?.price ?? 55);
   const [currency, setCurrency] = useState<string>(initial?.currency ?? 'UAH');
   const [totalCost, setTotalCost] = useState<number>(0);
   const [costPerPassenger, setCostPerPassenger] = useState<number>(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [storedCar, setStoredCar] = useState<CarSelection | null>(stored);
+  const [garageCars, setGarageCars] = useState<GarageCar[]>([]);
+
+  useEffect(() => {
+    if (user) carService.list().then(setGarageCars).catch(() => {});
+  }, [user]);
 
   // Calculate costs whenever inputs change
   useEffect(() => {
@@ -53,6 +67,13 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
   const edited = <T,>(setter: (v: T) => void) => (v: T) => {
     setExampleActive(false);
     setter(v);
+  };
+
+  const handleCarSelect = (selection: CarSelection) => {
+    edited(setFuelConsumption)(selection.consumption);
+    saveStoredCar(selection);
+    setStoredCar(selection);
+    setPickerOpen(false);
   };
 
   const t = {
@@ -158,6 +179,33 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
             onChange={(e) => edited(setFuelConsumption)(Number(e.target.value))}
             className="mt-1"
           />
+          {storedCar ? (
+            <div className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
+              <button
+                type="button"
+                onClick={() => setPickerOpen(true)}
+                className="hover:underline"
+              >
+                🚗 {storedCar.name} · {storedCar.consumption} L/100km
+              </button>
+              <button
+                type="button"
+                aria-label={language === 'uk' ? 'Прибрати збережене авто' : 'Clear saved car'}
+                className="opacity-60 hover:opacity-100"
+                onClick={() => { clearStoredCar(); setStoredCar(null); }}
+              >
+                ×
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              className="mt-1 text-xs text-primary hover:underline"
+            >
+              🚗 {language === 'uk' ? 'Не знаєте витрату пального?' : "Don't know your fuel consumption?"}
+            </button>
+          )}
         </div>
 
         {/* Fuel Price */}
@@ -224,6 +272,13 @@ export function QuickCalculator({ example = false }: QuickCalculatorProps) {
           />
         </div>
       </div>
+
+      <CarPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        onSelect={handleCarSelect}
+        garageCars={garageCars}
+      />
     </Card>
   );
 }
