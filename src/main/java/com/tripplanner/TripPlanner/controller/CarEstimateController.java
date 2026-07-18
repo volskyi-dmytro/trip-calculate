@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -49,6 +50,10 @@ public class CarEstimateController {
     private final ConcurrentHashMap<String, UserWindow> windows = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, CachedEstimate> cache = new ConcurrentHashMap<>();
 
+    // @Autowired is required: with two constructors and no annotation, Spring
+    // cannot pick one and falls back to a (nonexistent) default constructor,
+    // failing servlet startup. Unit tests instantiate directly and never see this.
+    @Autowired
     public CarEstimateController(ObjectMapper objectMapper) { this(objectMapper, Clock.systemUTC()); }
 
     CarEstimateController(ObjectMapper objectMapper, Clock clock) {
