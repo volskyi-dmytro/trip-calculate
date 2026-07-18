@@ -156,6 +156,7 @@ export function CarsCard() {
     try {
       await carService.setDefault(car.id);
       await fetchCars();
+      toast.success(`${t('dashboard.cars.setDefaultSuccess')}: ${car.name}`);
     } catch (error) {
       console.error('Failed to set default car:', error);
       toast.error(extractErrorMessage(error) ?? t('dashboard.cars.actionFailed'));
