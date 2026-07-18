@@ -25,7 +25,6 @@ public class UserProfileDTO {
     private LocalDateTime lastLogin;
     private UserRole role;
     private String preferredLanguage;
-    private Double defaultFuelConsumption;
     private Boolean emailNotificationsEnabled;
     private Boolean routePlannerAccess;
 }

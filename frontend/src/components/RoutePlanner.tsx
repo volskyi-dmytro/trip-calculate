@@ -20,8 +20,11 @@ import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../s
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
 import { computeTripStats } from '../services/tripStats'
+import { carService } from '../services/carService'
+import type { GarageCar } from '../types/Car'
 import { AgentActivitySlot } from './AgentActivitySlot'
 import { ShareReceiptModal } from './receipt/ShareReceiptModal'
+import { useAuth } from '../contexts/AuthContext'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import { withLocalePrefix } from '../utils/locale'
@@ -68,6 +71,7 @@ export function RoutePlanner() {
   const t = getTranslation(language as Language)
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
+  const { user } = useAuth()
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
@@ -79,6 +83,10 @@ export function RoutePlanner() {
   const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
   // Latest-wins sequence guard for the debounced fuel suggestion fetch below
   const fuelFetchSeq = useRef(0)
+  const [garageCars, setGarageCars] = useState<GarageCar[]>([])
+  // Guards the one-time default-car prefill below so it never re-applies
+  // over AI/user edits made before the garage fetch resolves
+  const appliedDefaultCar = useRef(false)
   const [departureDate, setDepartureDate] = useState<string>(todayISO())
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   // Latest-wins guard, same rationale as fuelFetchSeq above
@@ -220,6 +228,41 @@ export function RoutePlanner() {
       }
     }
   }, [searchParams])
+
+  // Fetch the user's garage and prefill the default car's fuel settings on a
+  // fresh planner. Skipped when editing an existing route (loadRouteFromServer
+  // owns the settings there) and guarded by a ref so it can never re-apply
+  // over AI/user changes made before this fetch resolves.
+  useEffect(() => {
+    if (!user) {
+      // Logged out (or never logged in) — clear any garage fetched under a
+      // previous session so a stale list doesn't linger in state.
+      setGarageCars([])
+      return
+    }
+    carService.list()
+      .then((cars) => {
+        setGarageCars(cars)
+        const defaultCar = cars.find((c) => c.isDefault)
+        const editingExistingRoute = searchParams.has('routeId')
+        if (defaultCar && !editingExistingRoute && !appliedDefaultCar.current) {
+          appliedDefaultCar.current = true
+          setRouteSettings(prev => {
+            // The prefill must never overwrite values the user or the AI
+            // already set — only apply while settings are still pristine defaults.
+            if (prev.fuelConsumption !== DEFAULT_ROUTE_SETTINGS.fuelConsumption || prev.fuelType !== DEFAULT_ROUTE_SETTINGS.fuelType) {
+              return prev
+            }
+            return {
+              ...prev,
+              fuelConsumption: defaultCar.fuelConsumption,
+              fuelType: defaultCar.fuelType,
+            }
+          })
+        }
+      })
+      .catch(() => {})
+  }, [user])
 
   // Track mobile viewport
   useEffect(() => {
@@ -483,6 +526,14 @@ export function RoutePlanner() {
     if (!fuelSuggestion) return
     setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: fuelSuggestion.price, fuelPriceTouched: false }))
   }, [fuelSuggestion])
+
+  const handleSelectCar = useCallback((car: GarageCar) => {
+    setRouteSettings(prev => ({
+      ...prev,
+      fuelConsumption: car.fuelConsumption,
+      fuelType: car.fuelType,
+    }))
+  }, [])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
@@ -1359,6 +1410,8 @@ export function RoutePlanner() {
                 weather={weatherData}
                 departureDate={departureDate}
                 onDepartureDateChange={setDepartureDate}
+                garageCars={garageCars}
+                onSelectCar={handleSelectCar}
               />
 
               {/* ── Divider ── */}
@@ -1893,6 +1946,8 @@ export function RoutePlanner() {
                     weather={weatherData}
                     departureDate={departureDate}
                     onDepartureDateChange={setDepartureDate}
+                    garageCars={garageCars}
+                    onSelectCar={handleSelectCar}
                   />
 
                   {/* ── Divider ── */}

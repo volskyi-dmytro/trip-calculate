@@ -1,0 +1,499 @@
+[
+  { "id": "daewoo-lanos", "make": "Daewoo", "model": "Lanos", "years": "1997–2017", "aliases": ["ланос", "деу ланос", "lanos"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 9.2, "label": "1.5 ГБО" }
+  ]},
+  { "id": "daewoo-sens", "make": "Daewoo", "model": "Sens", "years": "2002–2008", "aliases": ["сенс", "деу сенс", "sens"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.3" },
+    { "fuelType": "lpg", "consumption": 8.6, "label": "1.3 ГБО" }
+  ]},
+  { "id": "daewoo-nexia", "make": "Daewoo", "model": "Nexia", "years": "1995–2016", "aliases": ["нексія", "нексия", "nexia"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 9.8, "label": "1.5 ГБО" }
+  ]},
+  { "id": "zaz-slavuta", "make": "ZAZ", "model": "Slavuta", "years": "1998–2011", "aliases": ["славута", "заз славута", "slavuta"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.1" },
+    { "fuelType": "lpg", "consumption": 9.8, "label": "1.1 ГБО" }
+  ]},
+  { "id": "zaz-tavria", "make": "ZAZ", "model": "Tavria", "years": "1988–2008", "aliases": ["таврія", "таврия", "заз таврія", "zaz tavria"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.8, "label": "1.1" },
+    { "fuelType": "lpg", "consumption": 10.1, "label": "1.1 ГБО" }
+  ]},
+  { "id": "zaz-forza", "make": "ZAZ", "model": "Forza", "years": "2011–2015", "aliases": ["форза", "заз форза", "forza"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.2, "label": "1.5" }
+  ]},
+  { "id": "zaz-vida", "make": "ZAZ", "model": "Vida", "years": "2012–2015", "aliases": ["віда", "заз віда", "vida"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.5" }
+  ]},
+  { "id": "vaz-2107", "make": "VAZ", "model": "2107", "years": "1982–2012", "aliases": ["ваз 2107", "жигулі", "жигули", "семерка", "семёрка"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 10.9, "label": "1.5 ГБО" }
+  ]},
+  { "id": "vaz-2109", "make": "VAZ", "model": "2109", "years": "1987–2011", "aliases": ["ваз 2109", "девятка", "дев'ятка"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 10.4, "label": "1.5 ГБО" }
+  ]},
+  { "id": "vaz-21099", "make": "VAZ", "model": "21099", "years": "1990–2004", "aliases": ["ваз 21099", "девяносто дев'ята", "дев'яносто дев'ята"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.2, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 10.6, "label": "1.5 ГБО" }
+  ]},
+  { "id": "vaz-2110", "make": "VAZ", "model": "2110", "years": "1995–2007", "aliases": ["ваз 2110", "десятка", "vaz 2110"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.7, "label": "1.5" }
+  ]},
+  { "id": "vaz-2114", "make": "VAZ", "model": "2114", "years": "2001–2013", "aliases": ["ваз 2114", "чотирнадцята", "vaz 2114"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.6" }
+  ]},
+  { "id": "lada-priora", "make": "Lada", "model": "Priora", "years": "2007–2018", "aliases": ["пріора", "приора", "lada priora"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.3, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 9.5, "label": "1.6 ГБО" }
+  ]},
+  { "id": "lada-vesta", "make": "Lada", "model": "Vesta", "years": "2015–present", "aliases": ["веста", "лада веста", "lada vesta"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" }
+  ]},
+  { "id": "lada-niva", "make": "Lada", "model": "Niva (ВАЗ-2121)", "years": "1977–present", "aliases": ["нива", "ваз 2121", "lada niva"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.5, "label": "1.7" },
+    { "fuelType": "lpg", "consumption": 12.1, "label": "1.7 ГБО" }
+  ]},
+  { "id": "skoda-fabia", "make": "Škoda", "model": "Fabia", "years": "1999–2021", "aliases": ["фабія", "фабия", "skoda fabia"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.8, "label": "1.4" },
+    { "fuelType": "diesel", "consumption": 5.2, "label": "1.4 TDI" }
+  ]},
+  { "id": "skoda-octavia-tour", "make": "Škoda", "model": "Octavia Tour", "years": "1996–2010", "aliases": ["октавія тур", "октавия тур", "шкода тур", "octavia tour"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.6, "label": "1.6 MPI" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.9 SDI" }
+  ]},
+  { "id": "skoda-octavia-a5", "make": "Škoda", "model": "Octavia A5", "years": "2004–2013", "aliases": ["октавія", "октавия", "octavia a5", "шкода октавія"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6 MPI" },
+    { "fuelType": "diesel", "consumption": 6.2, "label": "1.9 TDI" }
+  ]},
+  { "id": "skoda-octavia-a7", "make": "Škoda", "model": "Octavia A7", "years": "2013–2020", "aliases": ["октавія а7", "октавия а7", "octavia a7"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.4 TSI" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "2.0 TDI" }
+  ]},
+  { "id": "skoda-superb", "make": "Škoda", "model": "Superb", "years": "2008–2023", "aliases": ["суперб", "шкода суперб", "superb"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.9, "label": "2.0 TSI" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.0 TDI" }
+  ]},
+  { "id": "skoda-rapid", "make": "Škoda", "model": "Rapid", "years": "2012–2019", "aliases": ["рапід", "рапид", "skoda rapid"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.6 MPI" }
+  ]},
+  { "id": "skoda-yeti", "make": "Škoda", "model": "Yeti", "years": "2009–2017", "aliases": ["єті", "йети", "yeti"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.8 TSI" },
+    { "fuelType": "diesel", "consumption": 6.2, "label": "2.0 TDI" }
+  ]},
+  { "id": "skoda-roomster", "make": "Škoda", "model": "Roomster", "years": "2006–2015", "aliases": ["румстер", "roomster"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.4 MPI" }
+  ]},
+  { "id": "vw-golf-4", "make": "Volkswagen", "model": "Golf IV", "years": "1997–2003", "aliases": ["гольф 4", "фольксваген гольф 4", "golf iv", "golf 4"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "1.9 TDI" }
+  ]},
+  { "id": "vw-golf-5", "make": "Volkswagen", "model": "Golf V", "years": "2003–2008", "aliases": ["гольф 5", "фольксваген гольф 5", "golf v", "golf 5"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.6, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.6, "label": "1.9 TDI" }
+  ]},
+  { "id": "vw-golf-6", "make": "Volkswagen", "model": "Golf VI", "years": "2008–2013", "aliases": ["гольф 6", "фольксваген гольф 6", "golf vi", "golf 6"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.4 TSI" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "2.0 TDI" }
+  ]},
+  { "id": "vw-golf-7", "make": "Volkswagen", "model": "Golf VII", "years": "2012–2020", "aliases": ["гольф 7", "фольксваген гольф 7", "golf vii", "golf 7"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.5, "label": "1.4 TSI" },
+    { "fuelType": "diesel", "consumption": 4.8, "label": "1.6 TDI" }
+  ]},
+  { "id": "vw-passat-b5", "make": "Volkswagen", "model": "Passat B5", "years": "1996–2005", "aliases": ["пасат б5", "пассат б5", "passat b5"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.8T" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.9 TDI" }
+  ]},
+  { "id": "vw-passat-b6", "make": "Volkswagen", "model": "Passat B6", "years": "2005–2010", "aliases": ["пасат б6", "пассат б6", "passat b6"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.8, "label": "2.0 FSI" },
+    { "fuelType": "diesel", "consumption": 6.2, "label": "2.0 TDI" }
+  ]},
+  { "id": "vw-passat-b7", "make": "Volkswagen", "model": "Passat B7", "years": "2010–2014", "aliases": ["пасат б7", "пассат б7", "passat b7"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.8 TSI" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "2.0 TDI" }
+  ]},
+  { "id": "vw-passat-b8", "make": "Volkswagen", "model": "Passat B8", "years": "2014–2023", "aliases": ["пасат б8", "пассат б8", "passat b8"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.4 TSI" },
+    { "fuelType": "diesel", "consumption": 5.5, "label": "2.0 TDI" }
+  ]},
+  { "id": "vw-polo", "make": "Volkswagen", "model": "Polo", "years": "2001–2021", "aliases": ["поло", "фольксваген поло", "polo"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.5, "label": "1.4" },
+    { "fuelType": "diesel", "consumption": 4.8, "label": "1.4 TDI" }
+  ]},
+  { "id": "vw-jetta", "make": "Volkswagen", "model": "Jetta", "years": "2005–2018", "aliases": ["джетта", "jetta"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.6, "label": "1.9 TDI" }
+  ]},
+  { "id": "vw-caddy", "make": "Volkswagen", "model": "Caddy", "years": "2004–2015", "aliases": ["кадді", "кадди", "caddy"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "1.9 TDI" }
+  ]},
+  { "id": "vw-transporter-t4", "make": "Volkswagen", "model": "Transporter T4", "years": "1990–2003", "aliases": ["транспортер т4", "фольксваген т4", "t4"], "variants": [
+    { "fuelType": "diesel", "consumption": 9.5, "label": "2.5 TDI" }
+  ]},
+  { "id": "vw-transporter-t5", "make": "Volkswagen", "model": "Transporter T5", "years": "2003–2015", "aliases": ["транспортер т5", "фольксваген т5", "t5"], "variants": [
+    { "fuelType": "diesel", "consumption": 9.0, "label": "2.5 TDI" },
+    { "fuelType": "petrol", "consumption": 10.5, "label": "2.0" }
+  ]},
+  { "id": "vw-tiguan", "make": "Volkswagen", "model": "Tiguan", "years": "2007–present", "aliases": ["тігуан", "тигуан", "tiguan"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.8, "label": "1.4 TSI" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.0 TDI" }
+  ]},
+  { "id": "renault-logan", "make": "Renault", "model": "Logan", "years": "2004–2021", "aliases": ["логан", "рено логан", "logan"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.4" },
+    { "fuelType": "lpg", "consumption": 8.1, "label": "1.4 ГБО" }
+  ]},
+  { "id": "renault-sandero", "make": "Renault", "model": "Sandero", "years": "2007–present", "aliases": ["сандеро", "рено сандеро", "sandero"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.4" },
+    { "fuelType": "lpg", "consumption": 8.1, "label": "1.4 ГБО" }
+  ]},
+  { "id": "renault-megane", "make": "Renault", "model": "Megane", "years": "1996–2020", "aliases": ["меган", "меган рено", "megane"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.2, "label": "1.5 dCi" }
+  ]},
+  { "id": "renault-duster", "make": "Renault", "model": "Duster", "years": "2010–present", "aliases": ["дастер", "рено дастер", "duster"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.5 dCi" }
+  ]},
+  { "id": "renault-trafic", "make": "Renault", "model": "Trafic", "years": "2001–present", "aliases": ["трафік", "трафик", "trafic"], "variants": [
+    { "fuelType": "diesel", "consumption": 9.5, "label": "2.0 dCi" }
+  ]},
+  { "id": "renault-kangoo", "make": "Renault", "model": "Kangoo", "years": "1997–present", "aliases": ["канго", "кенго", "kangoo"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.4" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.5 dCi" }
+  ]},
+  { "id": "toyota-corolla", "make": "Toyota", "model": "Corolla", "years": "2000–present", "aliases": ["королла", "тойота королла", "corolla"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.6" }
+  ]},
+  { "id": "toyota-yaris", "make": "Toyota", "model": "Yaris", "years": "1999–present", "aliases": ["ярис", "тойота ярис", "yaris"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.2, "label": "1.3" }
+  ]},
+  { "id": "toyota-avensis", "make": "Toyota", "model": "Avensis", "years": "1997–2018", "aliases": ["авенсіс", "авенсис", "avensis"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.2, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "2.0 D-4D" }
+  ]},
+  { "id": "toyota-camry-40", "make": "Toyota", "model": "Camry (V40)", "years": "2006–2011", "aliases": ["камрі 40", "камри 40", "camry v40"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.5, "label": "2.4" }
+  ]},
+  { "id": "toyota-camry-50", "make": "Toyota", "model": "Camry (V50)", "years": "2011–2017", "aliases": ["камрі 50", "камри 50", "camry v50"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.8, "label": "2.5" }
+  ]},
+  { "id": "toyota-camry-70", "make": "Toyota", "model": "Camry (V70)", "years": "2017–present", "aliases": ["камрі 70", "камри 70", "camry v70"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "2.5" }
+  ]},
+  { "id": "toyota-rav4", "make": "Toyota", "model": "RAV4", "years": "2000–present", "aliases": ["рав4", "рав 4", "rav4"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.0, "label": "2.2 D-4D" }
+  ]},
+  { "id": "toyota-land-cruiser-prado", "make": "Toyota", "model": "Land Cruiser Prado", "years": "2002–present", "aliases": ["прадо", "ленд крузер прадо", "land cruiser prado"], "variants": [
+    { "fuelType": "petrol", "consumption": 14.5, "label": "4.0 V6" },
+    { "fuelType": "diesel", "consumption": 10.5, "label": "3.0 D-4D" }
+  ]},
+  { "id": "honda-civic", "make": "Honda", "model": "Civic", "years": "2001–present", "aliases": ["сівік", "сивик", "honda civic"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.5, "label": "2.2 i-CTDi" }
+  ]},
+  { "id": "honda-cr-v", "make": "Honda", "model": "CR-V", "years": "1997–present", "aliases": ["црв", "ср-в", "cr-v"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.0, "label": "2.2 i-CTDi" }
+  ]},
+  { "id": "honda-accord", "make": "Honda", "model": "Accord", "years": "1998–present", "aliases": ["акорд", "honda accord"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.2 i-CTDi" }
+  ]},
+  { "id": "hyundai-accent", "make": "Hyundai", "model": "Accent", "years": "1999–2017", "aliases": ["акцент", "хюндай акцент", "accent"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 8.3, "label": "1.5 ГБО" }
+  ]},
+  { "id": "hyundai-solaris", "make": "Hyundai", "model": "Solaris", "years": "2010–present", "aliases": ["соляріс", "солярис", "solaris"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" }
+  ]},
+  { "id": "hyundai-elantra", "make": "Hyundai", "model": "Elantra", "years": "2000–present", "aliases": ["елантра", "хюндай елантра", "elantra"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "1.6 CRDi" }
+  ]},
+  { "id": "hyundai-i30", "make": "Hyundai", "model": "i30", "years": "2007–present", "aliases": ["і30", "ай30", "i30"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "1.6 CRDi" }
+  ]},
+  { "id": "hyundai-tucson", "make": "Hyundai", "model": "Tucson", "years": "2004–present", "aliases": ["туксон", "тусон", "tucson"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.2, "label": "2.0 CRDi" }
+  ]},
+  { "id": "hyundai-santa-fe", "make": "Hyundai", "model": "Santa Fe", "years": "2000–present", "aliases": ["санта фе", "санта-фе", "santa fe"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.5, "label": "2.4" },
+    { "fuelType": "diesel", "consumption": 7.8, "label": "2.2 CRDi" }
+  ]},
+  { "id": "hyundai-getz", "make": "Hyundai", "model": "Getz", "years": "2002–2011", "aliases": ["гетц", "ґетц", "getz"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.8, "label": "1.4" },
+    { "fuelType": "lpg", "consumption": 7.8, "label": "1.4 ГБО" }
+  ]},
+  { "id": "kia-rio", "make": "Kia", "model": "Rio", "years": "2000–present", "aliases": ["ріо", "рио", "rio"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.9, "label": "1.4" },
+    { "fuelType": "lpg", "consumption": 7.9, "label": "1.4 ГБО" }
+  ]},
+  { "id": "kia-picanto", "make": "Kia", "model": "Picanto", "years": "2004–present", "aliases": ["піканто", "пиканто", "picanto"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.0, "label": "1.0" },
+    { "fuelType": "lpg", "consumption": 6.9, "label": "1.0 ГБО" }
+  ]},
+  { "id": "kia-ceed", "make": "Kia", "model": "Ceed", "years": "2006–present", "aliases": ["сід", "сид", "ceed"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.6, "label": "1.6 CRDi" }
+  ]},
+  { "id": "kia-sportage", "make": "Kia", "model": "Sportage", "years": "1993–present", "aliases": ["спортейдж", "спортаж", "sportage"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.2, "label": "2.0 CRDi" }
+  ]},
+  { "id": "kia-sorento", "make": "Kia", "model": "Sorento", "years": "2002–present", "aliases": ["соренто", "sorento"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.8, "label": "2.4" },
+    { "fuelType": "diesel", "consumption": 7.8, "label": "2.2 CRDi" }
+  ]},
+  { "id": "nissan-almera", "make": "Nissan", "model": "Almera", "years": "1995–2018", "aliases": ["альмера", "ніссан альмера", "almera"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 8.6, "label": "1.6 ГБО" }
+  ]},
+  { "id": "nissan-note", "make": "Nissan", "model": "Note", "years": "2004–2016", "aliases": ["ноут", "ноте", "note"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.8, "label": "1.4" }
+  ]},
+  { "id": "nissan-qashqai", "make": "Nissan", "model": "Qashqai", "years": "2006–present", "aliases": ["кашкай", "кашкай ніссан", "qashqai"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.5 dCi" }
+  ]},
+  { "id": "nissan-x-trail", "make": "Nissan", "model": "X-Trail", "years": "2000–present", "aliases": ["ікс-трейл", "х-трейл", "x-trail"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.8, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.5, "label": "2.0 dCi" }
+  ]},
+  { "id": "mitsubishi-lancer-9", "make": "Mitsubishi", "model": "Lancer IX", "years": "2000–2010", "aliases": ["лансер 9", "ланцер 9", "lancer ix"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 9.0, "label": "1.6 ГБО" }
+  ]},
+  { "id": "mitsubishi-lancer-x", "make": "Mitsubishi", "model": "Lancer X", "years": "2007–2017", "aliases": ["лансер 10", "ланцер х", "lancer x"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" },
+    { "fuelType": "petrol", "consumption": 8.2, "label": "1.8" }
+  ]},
+  { "id": "mitsubishi-colt", "make": "Mitsubishi", "model": "Colt", "years": "1996–2012", "aliases": ["кольт", "colt"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.5, "label": "1.3" }
+  ]},
+  { "id": "mitsubishi-outlander", "make": "Mitsubishi", "model": "Outlander", "years": "2001–present", "aliases": ["аутлендер", "аутлендер мітсубісі", "outlander"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.2, "label": "2.2 DI-D" }
+  ]},
+  { "id": "mitsubishi-pajero", "make": "Mitsubishi", "model": "Pajero", "years": "1999–present", "aliases": ["паджеро", "паджеро мітсубісі", "pajero"], "variants": [
+    { "fuelType": "petrol", "consumption": 14.0, "label": "3.0 V6" },
+    { "fuelType": "diesel", "consumption": 11.0, "label": "3.2 DI-D" }
+  ]},
+  { "id": "ford-focus-1", "make": "Ford", "model": "Focus I", "years": "1998–2004", "aliases": ["фокус 1", "форд фокус 1", "focus i"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" }
+  ]},
+  { "id": "ford-focus-2", "make": "Ford", "model": "Focus II", "years": "2004–2011", "aliases": ["фокус 2", "форд фокус 2", "focus ii"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.6, "label": "1.8 TDCi" }
+  ]},
+  { "id": "ford-focus-3", "make": "Ford", "model": "Focus III", "years": "2011–2018", "aliases": ["фокус 3", "форд фокус 3", "focus iii"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.2, "label": "1.6 TDCi" }
+  ]},
+  { "id": "ford-fiesta", "make": "Ford", "model": "Fiesta", "years": "1995–2017", "aliases": ["фієста", "фиеста", "fiesta"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.5, "label": "1.25" },
+    { "fuelType": "diesel", "consumption": 4.8, "label": "1.4 TDCi" }
+  ]},
+  { "id": "ford-mondeo", "make": "Ford", "model": "Mondeo", "years": "1993–present", "aliases": ["мондео", "форд мондео", "mondeo"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.2, "label": "2.0 TDCi" }
+  ]},
+  { "id": "ford-kuga", "make": "Ford", "model": "Kuga", "years": "2008–present", "aliases": ["куга", "форд куга", "kuga"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "1.6 EcoBoost" },
+    { "fuelType": "diesel", "consumption": 6.8, "label": "2.0 TDCi" }
+  ]},
+  { "id": "ford-transit", "make": "Ford", "model": "Transit", "years": "2000–present", "aliases": ["транзит", "форд транзит", "transit"], "variants": [
+    { "fuelType": "diesel", "consumption": 10.5, "label": "2.2 TDCi" }
+  ]},
+  { "id": "opel-astra-g", "make": "Opel", "model": "Astra G", "years": "1998–2009", "aliases": ["астра г", "опель астра g", "astra g"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.6, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 8.7, "label": "1.6 ГБО" }
+  ]},
+  { "id": "opel-astra-h", "make": "Opel", "model": "Astra H", "years": "2004–2014", "aliases": ["астра н", "опель астра h", "astra h"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "1.7 CDTI" }
+  ]},
+  { "id": "opel-astra-j", "make": "Opel", "model": "Astra J", "years": "2009–2015", "aliases": ["астра ж", "опель астра j", "astra j"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.0, "label": "1.4 Turbo" },
+    { "fuelType": "diesel", "consumption": 5.2, "label": "1.7 CDTI" }
+  ]},
+  { "id": "opel-vectra", "make": "Opel", "model": "Vectra", "years": "1995–2008", "aliases": ["вектра", "опель вектра", "vectra"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.2, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "2.0 DTI" }
+  ]},
+  { "id": "opel-zafira", "make": "Opel", "model": "Zafira", "years": "1999–2014", "aliases": ["зафіра", "зафира", "zafira"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.8, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "1.9 CDTI" }
+  ]},
+  { "id": "opel-corsa", "make": "Opel", "model": "Corsa", "years": "1993–present", "aliases": ["корса", "опель корса", "corsa"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.5, "label": "1.2" },
+    { "fuelType": "lpg", "consumption": 7.5, "label": "1.2 ГБО" }
+  ]},
+  { "id": "peugeot-206", "make": "Peugeot", "model": "206", "years": "1998–2012", "aliases": ["206", "пежо 206", "peugeot 206"], "variants": [
+    { "fuelType": "petrol", "consumption": 6.8, "label": "1.4" },
+    { "fuelType": "diesel", "consumption": 5.0, "label": "1.4 HDi" }
+  ]},
+  { "id": "peugeot-307", "make": "Peugeot", "model": "307", "years": "2001–2008", "aliases": ["307", "пежо 307", "peugeot 307"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "1.6 HDi" }
+  ]},
+  { "id": "peugeot-308", "make": "Peugeot", "model": "308", "years": "2007–present", "aliases": ["308", "пежо 308", "peugeot 308"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.2, "label": "1.6 HDi" }
+  ]},
+  { "id": "peugeot-partner", "make": "Peugeot", "model": "Partner", "years": "1996–present", "aliases": ["партнер", "пежо партнер", "partner"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.6 HDi" }
+  ]},
+  { "id": "citroen-berlingo", "make": "Citroën", "model": "Berlingo", "years": "1996–present", "aliases": ["берлінго", "берлинго", "berlingo"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.6 HDi" }
+  ]},
+  { "id": "citroen-c4", "make": "Citroën", "model": "C4", "years": "2004–present", "aliases": ["сі4", "це4", "c4"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "1.6 HDi" }
+  ]},
+  { "id": "mazda-3", "make": "Mazda", "model": "3", "years": "2003–present", "aliases": ["мазда 3", "mazda3", "mazda 3"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.4, "label": "1.6 CD" }
+  ]},
+  { "id": "mazda-6", "make": "Mazda", "model": "6", "years": "2002–present", "aliases": ["мазда 6", "mazda6", "mazda 6"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.8, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.2, "label": "2.2 CD" }
+  ]},
+  { "id": "mazda-cx-5", "make": "Mazda", "model": "CX-5", "years": "2012–present", "aliases": ["сх-5", "мазда сх-5", "cx-5"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.8, "label": "2.2 CD" }
+  ]},
+  { "id": "bmw-3-e46", "make": "BMW", "model": "3 Series (E46)", "years": "1998–2006", "aliases": ["бмв е46", "бэха е46", "e46"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.9" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.0d" }
+  ]},
+  { "id": "bmw-3-e90", "make": "BMW", "model": "3 Series (E90)", "years": "2005–2013", "aliases": ["бмв е90", "бэха е90", "e90"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.2, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "2.0d" }
+  ]},
+  { "id": "bmw-3-f30", "make": "BMW", "model": "3 Series (F30)", "years": "2012–2019", "aliases": ["бмв ф30", "бэха ф30", "f30"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 5.5, "label": "2.0d" }
+  ]},
+  { "id": "bmw-5-e39", "make": "BMW", "model": "5 Series (E39)", "years": "1995–2003", "aliases": ["бмв е39", "бэха е39", "e39"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.5" },
+    { "fuelType": "diesel", "consumption": 7.2, "label": "2.5d" }
+  ]},
+  { "id": "bmw-5-e60", "make": "BMW", "model": "5 Series (E60)", "years": "2003–2010", "aliases": ["бмв е60", "бэха е60", "e60"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.8, "label": "2.5" },
+    { "fuelType": "diesel", "consumption": 7.5, "label": "3.0d" }
+  ]},
+  { "id": "bmw-5-f10", "make": "BMW", "model": "5 Series (F10)", "years": "2010–2017", "aliases": ["бмв ф10", "бэха ф10", "f10"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "2.0d" }
+  ]},
+  { "id": "bmw-x5", "make": "BMW", "model": "X5", "years": "1999–present", "aliases": ["бмв х5", "икс5", "x5"], "variants": [
+    { "fuelType": "petrol", "consumption": 12.5, "label": "3.0" },
+    { "fuelType": "diesel", "consumption": 9.5, "label": "3.0d" }
+  ]},
+  { "id": "mercedes-c-w203", "make": "Mercedes-Benz", "model": "C-Class (W203)", "years": "2000–2007", "aliases": ["мерседес в203", "мерс в203", "w203"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-c-w204", "make": "Mercedes-Benz", "model": "C-Class (W204)", "years": "2007–2014", "aliases": ["мерседес в204", "мерс в204", "w204"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-e-w210", "make": "Mercedes-Benz", "model": "E-Class (W210)", "years": "1995–2002", "aliases": ["мерседес в210", "мерс в210", "w210"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.0, "label": "2.2" },
+    { "fuelType": "diesel", "consumption": 7.5, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-e-w211", "make": "Mercedes-Benz", "model": "E-Class (W211)", "years": "2002–2009", "aliases": ["мерседес в211", "мерс в211", "w211"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.8, "label": "2.2" },
+    { "fuelType": "diesel", "consumption": 7.0, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-e-w212", "make": "Mercedes-Benz", "model": "E-Class (W212)", "years": "2009–2016", "aliases": ["мерседес в212", "мерс в212", "w212"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.0, "label": "1.8" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-vito", "make": "Mercedes-Benz", "model": "Vito", "years": "1996–present", "aliases": ["віто", "вито", "vito"], "variants": [
+    { "fuelType": "diesel", "consumption": 9.5, "label": "2.2 CDI" }
+  ]},
+  { "id": "mercedes-sprinter", "make": "Mercedes-Benz", "model": "Sprinter", "years": "1995–present", "aliases": ["спринтер", "мерс спринтер", "sprinter"], "variants": [
+    { "fuelType": "diesel", "consumption": 11.0, "label": "2.2 CDI" }
+  ]},
+  { "id": "audi-a4-b6", "make": "Audi", "model": "A4 (B6)", "years": "2000–2004", "aliases": ["ауді а4 б6", "ауди а4 б6", "a4 b6"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.8T" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.9 TDI" }
+  ]},
+  { "id": "audi-a4-b7", "make": "Audi", "model": "A4 (B7)", "years": "2004–2008", "aliases": ["ауді а4 б7", "ауди а4 б7", "a4 b7"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.2, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "2.0 TDI" }
+  ]},
+  { "id": "audi-a4-b8", "make": "Audi", "model": "A4 (B8)", "years": "2007–2015", "aliases": ["ауді а4 б8", "ауди а4 б8", "a4 b8"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.8 TFSI" },
+    { "fuelType": "diesel", "consumption": 5.5, "label": "2.0 TDI" }
+  ]},
+  { "id": "audi-a6-c5", "make": "Audi", "model": "A6 (C5)", "years": "1997–2004", "aliases": ["ауді а6 с5", "ауди а6 с5", "a6 c5"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.8, "label": "2.4" },
+    { "fuelType": "diesel", "consumption": 7.2, "label": "2.5 TDI" }
+  ]},
+  { "id": "audi-a6-c6", "make": "Audi", "model": "A6 (C6)", "years": "2004–2011", "aliases": ["ауді а6 с6", "ауди а6 с6", "a6 c6"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.4" },
+    { "fuelType": "diesel", "consumption": 7.0, "label": "2.7 TDI" }
+  ]},
+  { "id": "audi-a6-c7", "make": "Audi", "model": "A6 (C7)", "years": "2011–2018", "aliases": ["ауді а6 с7", "ауди а6 с7", "a6 c7"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "2.0 TFSI" },
+    { "fuelType": "diesel", "consumption": 5.8, "label": "2.0 TDI" }
+  ]},
+  { "id": "audi-q5", "make": "Audi", "model": "Q5", "years": "2008–present", "aliases": ["ауді ку5", "ауди ку5", "q5"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0 TFSI" },
+    { "fuelType": "diesel", "consumption": 6.8, "label": "2.0 TDI" }
+  ]},
+  { "id": "chevrolet-aveo", "make": "Chevrolet", "model": "Aveo", "years": "2002–2011", "aliases": ["авео", "шевроле авео", "aveo"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.2, "label": "1.5" },
+    { "fuelType": "lpg", "consumption": 8.3, "label": "1.5 ГБО" }
+  ]},
+  { "id": "chevrolet-lacetti", "make": "Chevrolet", "model": "Lacetti", "years": "2004–2013", "aliases": ["лачетті", "лачетти", "lacetti"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 9.0, "label": "1.6 ГБО" }
+  ]},
+  { "id": "fiat-doblo", "make": "Fiat", "model": "Doblo", "years": "2000–present", "aliases": ["добло", "фіат добло", "doblo"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.0, "label": "1.9 JTD" }
+  ]},
+  { "id": "fiat-ducato", "make": "Fiat", "model": "Ducato", "years": "1994–present", "aliases": ["дукато", "фіат дукато", "ducato"], "variants": [
+    { "fuelType": "diesel", "consumption": 10.5, "label": "2.3 MultiJet" }
+  ]},
+  { "id": "suzuki-vitara", "make": "Suzuki", "model": "Vitara", "years": "1988–present", "aliases": ["вітара", "витара", "vitara"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.5, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 6.5, "label": "1.9 DDiS" }
+  ]},
+  { "id": "suzuki-sx4", "make": "Suzuki", "model": "SX4", "years": "2006–present", "aliases": ["сх4", "sx4"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.8, "label": "1.6" }
+  ]},
+  { "id": "subaru-forester", "make": "Subaru", "model": "Forester", "years": "1997–present", "aliases": ["форестер", "субару форестер", "forester"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" },
+    { "fuelType": "diesel", "consumption": 7.0, "label": "2.0D" }
+  ]},
+  { "id": "subaru-outback", "make": "Subaru", "model": "Outback", "years": "1994–present", "aliases": ["аутбек", "аутбэк", "outback"], "variants": [
+    { "fuelType": "petrol", "consumption": 10.0, "label": "2.5" }
+  ]},
+  { "id": "geely-emgrand", "make": "Geely", "model": "Emgrand (EC7)", "years": "2009–present", "aliases": ["емгранд", "джилі емгранд", "geely ec7"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.8" }
+  ]},
+  { "id": "geely-mk", "make": "Geely", "model": "MK", "years": "2006–2014", "aliases": ["мк", "джилі мк", "geely mk"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.5, "label": "1.5" }
+  ]},
+  { "id": "chery-amulet", "make": "Chery", "model": "Amulet", "years": "2003–2010", "aliases": ["амулет", "чері амулет", "amulet"], "variants": [
+    { "fuelType": "petrol", "consumption": 8.0, "label": "1.6" },
+    { "fuelType": "lpg", "consumption": 9.2, "label": "1.6 ГБО" }
+  ]},
+  { "id": "chery-tiggo", "make": "Chery", "model": "Tiggo", "years": "2005–present", "aliases": ["тігго", "тиго", "tiggo"], "variants": [
+    { "fuelType": "petrol", "consumption": 9.5, "label": "2.0" }
+  ]},
+  { "id": "seat-leon", "make": "Seat", "model": "Leon", "years": "1999–present", "aliases": ["леон", "сеат леон", "leon"], "variants": [
+    { "fuelType": "petrol", "consumption": 7.4, "label": "1.6" },
+    { "fuelType": "diesel", "consumption": 5.6, "label": "1.9 TDI" }
+  ]}
+]

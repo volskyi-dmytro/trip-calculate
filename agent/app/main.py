@@ -12,7 +12,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from . import db
 from .fetchers.refresh import refresh_all
-from .schema import ParseRouteRequest, ParseRouteResponse, WeatherCorridorRequest, WeatherCorridorResponse
+from .schema import ParseRouteRequest, ParseRouteResponse, WeatherCorridorRequest, WeatherCorridorResponse, EstimateCarRequest, EstimateCarResponse
+from .nodes import estimate_car
 from .tools.weather import compute_weather_data
 from .graph import build_graph
 from .streaming import stream_route
@@ -154,3 +155,8 @@ async def weather_corridor(request: WeatherCorridorRequest):
     points = [(wp.latitude, wp.longitude, wp.name) for wp in request.waypoints]
     return WeatherCorridorResponse(
         weather_data=await compute_weather_data(points, day))
+
+
+@app.post("/estimate-car", response_model=EstimateCarResponse)
+async def estimate_car_endpoint(request: EstimateCarRequest):
+    return await estimate_car(request.description, request.language)

@@ -33,7 +33,6 @@ export function EditProfileModal({
   const [formData, setFormData] = useState({
     displayName: profile.displayName || '',
     preferredLanguage: profile.preferredLanguage || 'en',
-    defaultFuelConsumption: profile.defaultFuelConsumption || 8.0,
     emailNotificationsEnabled: profile.emailNotificationsEnabled,
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -43,10 +42,6 @@ export function EditProfileModal({
 
     if (formData.displayName && formData.displayName.length > 50) {
       newErrors.displayName = t('dashboard.editProfile.error.displayNameTooLong');
-    }
-
-    if (formData.defaultFuelConsumption <= 0) {
-      newErrors.defaultFuelConsumption = t('dashboard.editProfile.error.fuelConsumptionInvalid');
     }
 
     setErrors(newErrors);
@@ -65,7 +60,6 @@ export function EditProfileModal({
       await dashboardService.updateProfile({
         displayName: formData.displayName || undefined,
         preferredLanguage: formData.preferredLanguage,
-        defaultFuelConsumption: formData.defaultFuelConsumption,
         emailNotificationsEnabled: formData.emailNotificationsEnabled,
       });
       toast.success(t('dashboard.editProfile.success'));
@@ -130,36 +124,6 @@ export function EditProfileModal({
                 <option value="en">{t('dashboard.editProfile.languageEnglish')}</option>
                 <option value="uk">{t('dashboard.editProfile.languageUkrainian')}</option>
               </select>
-            </div>
-
-            {/* Default Fuel Consumption */}
-            <div className="space-y-2">
-              <Label htmlFor="fuelConsumption">
-                {t('dashboard.editProfile.fuelConsumption')}
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="fuelConsumption"
-                  type="number"
-                  step="0.1"
-                  min="0.1"
-                  value={formData.defaultFuelConsumption}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      defaultFuelConsumption: parseFloat(e.target.value) || 0,
-                    })
-                  }
-                />
-                <span className="text-sm text-gray-600 dark:text-gray-400">
-                  {t('dashboard.editProfile.fuelConsumptionUnit')}
-                </span>
-              </div>
-              {errors.defaultFuelConsumption && (
-                <p className="text-sm text-red-600 dark:text-red-400">
-                  {errors.defaultFuelConsumption}
-                </p>
-              )}
             </div>
 
             {/* Email Notifications */}

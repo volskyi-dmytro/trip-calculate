@@ -9,6 +9,7 @@ import { StatsCard } from '../components/dashboard/StatsCard';
 import { RoutesList } from '../components/dashboard/RoutesList';
 import { ReceiptsList } from '../components/dashboard/ReceiptsList';
 import { QuickActions } from '../components/dashboard/QuickActions';
+import { CarsCard } from '../components/dashboard/CarsCard';
 import { SecuritySection } from '../components/dashboard/SecuritySection';
 
 export function UserDashboard() {
@@ -79,6 +80,7 @@ export function UserDashboard() {
               onProfileUpdate={fetchDashboard}
             />
             <QuickActions />
+            <CarsCard />
           </div>
 
           {/* Middle & Right Columns - Stats & Routes */}

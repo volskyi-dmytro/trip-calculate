@@ -10,7 +10,6 @@ export interface UserProfile {
   lastLogin: string;
   role: 'USER' | 'ADMIN';
   preferredLanguage: string;
-  defaultFuelConsumption?: number;
   emailNotificationsEnabled: boolean;
   routePlannerAccess: boolean;
 }
@@ -44,7 +43,6 @@ export interface UserDashboard {
 export interface UpdateProfileRequest {
   displayName?: string;
   preferredLanguage?: string;
-  defaultFuelConsumption?: number;
   emailNotificationsEnabled?: boolean;
 }
 

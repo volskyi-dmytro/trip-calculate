@@ -89,9 +89,6 @@ public class UserDashboardService {
         if (request.getPreferredLanguage() != null) {
             user.setPreferredLanguage(request.getPreferredLanguage());
         }
-        if (request.getDefaultFuelConsumption() != null) {
-            user.setDefaultFuelConsumption(request.getDefaultFuelConsumption());
-        }
         if (request.getEmailNotificationsEnabled() != null) {
             user.setEmailNotificationsEnabled(request.getEmailNotificationsEnabled());
         }
@@ -129,7 +126,6 @@ public class UserDashboardService {
                 .lastLogin(user.getLastLogin())
                 .role(user.getRole())
                 .preferredLanguage(user.getPreferredLanguage())
-                .defaultFuelConsumption(user.getDefaultFuelConsumption())
                 .emailNotificationsEnabled(user.getEmailNotificationsEnabled())
                 .routePlannerAccess(true)
                 .build();

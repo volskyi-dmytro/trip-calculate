@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MemoryRouter } from 'react-router-dom'
 import { LanguageProvider } from '../../contexts/LanguageContext'
+import { AuthProvider } from '../../contexts/AuthContext'
 import { QuickCalculator } from '../QuickCalculator'
 import { ProfileCard } from '../dashboard/ProfileCard'
 import { RoutesList } from '../dashboard/RoutesList'
@@ -13,7 +14,9 @@ import { RoutePanel } from '../RoutePanel'
 function renderEnglish(node: React.ReactNode) {
   return renderToStaticMarkup(
     <MemoryRouter initialEntries={['/en']}>
-      <LanguageProvider>{node}</LanguageProvider>
+      <LanguageProvider>
+        <AuthProvider>{node}</AuthProvider>
+      </LanguageProvider>
     </MemoryRouter>,
   )
 }
