@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Calculator, Map, Sparkles, Users } from 'lucide-react';
+import { Calculator, Car, Map, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
@@ -22,6 +22,11 @@ export function HomePage() {
       icon: Calculator,
       title: t('intro.userFriendly.title'),
       text: t('intro.userFriendly.text'),
+    },
+    {
+      icon: Car,
+      title: t('intro.carGarage.title'),
+      text: t('intro.carGarage.text'),
     },
     {
       icon: Map,
@@ -83,6 +88,10 @@ export function HomePage() {
             <div className="faq-item">
               <h3>{t('faq.free.question')}</h3>
               <p>{t('faq.free.answer')}</p>
+            </div>
+            <div className="faq-item">
+              <h3>{t('faq.consumption.question')}</h3>
+              <p>{t('faq.consumption.answer')}</p>
             </div>
             <div className="faq-item">
               <h3>{t('faq.abroad.question')}</h3>

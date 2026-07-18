@@ -44,15 +44,19 @@ const translations: Record<Language, Record<string, string>> = {
     'intro.routePlanner.text': 'Build multi-stop routes on an interactive map with real road distances and driving times, then hand off to Waze for turn-by-turn navigation.',
     'intro.quickLookup.title': 'Quick calculator',
     'intro.quickLookup.text': 'No account needed for a fast estimate. Repeated calculations are cached, so checking variants stays instant.',
+    'intro.carGarage.title': 'Car garage',
+    'intro.carGarage.text': "Don't know your car's fuel consumption? Pick your model from a catalog of 130+ cars with real-world consumption figures, or let AI estimate it. Save cars to your garage and your default car fills in every calculation automatically.",
 
     // FAQ
     'faq.title': 'Frequently Asked Questions',
     'faq.howWorks.question': 'How does the route planner work?',
     'faq.howWorks.answer': 'Type your trip in plain language and AI agents build the route, price the fuel, and check the weather along the way — or place stops on the map yourself. Either way, distances and driving times come from real roads, and estimates update as you edit the trip.',
     'faq.free.question': 'Is Trip Calculate free to use?',
-    'faq.free.answer': 'The expense calculator is free and works without an account. The route planner is currently in beta — you can request access from the planner page.',
+    'faq.free.answer': 'Yes. The expense calculator works without an account, and the route planner is free too — just sign in with Google to build, save, and share routes.',
     'faq.abroad.question': 'Can I use Trip Calculate abroad?',
     'faq.abroad.answer': 'Yes. Routing works worldwide, so you can plan international trips with road-based distances in any country.',
+    'faq.consumption.question': "How do I find my car's fuel consumption?",
+    'faq.consumption.answer': 'Use the built-in car catalog: 130+ popular models with realistic mixed-cycle consumption for each fuel type (petrol, diesel, LPG). Can’t find your car? Sign in and describe it in plain words to get an AI estimate, or pick a vehicle-class preset — from city car to minivan.',
 
     // Calculator
     'calculator.title': 'Calculate Trip Expenses',
@@ -299,15 +303,19 @@ const translations: Record<Language, Record<string, string>> = {
     'intro.routePlanner.text': 'Створюйте маршрути з кількома зупинками на інтерактивній мапі з реальними відстанями та часом у дорозі, а потім переходьте до навігації у Waze.',
     'intro.quickLookup.title': 'Швидкий калькулятор',
     'intro.quickLookup.text': 'Для швидкої оцінки акаунт не потрібен. Повторні розрахунки кешуються, тож перевірка варіантів займає мить.',
+    'intro.carGarage.title': 'Гараж авто',
+    'intro.carGarage.text': 'Не знаєте витрату пального свого авто? Оберіть модель із каталогу 130+ авто з реальними показниками витрати або довірте оцінку AI. Зберігайте авто у гаражі — основне авто автоматично підставляється в усі розрахунки.',
 
     // FAQ
     'faq.title': 'Часто задавані питання',
     'faq.howWorks.question': 'Як працює планувальник маршрутів?',
     'faq.howWorks.answer': 'Опишіть поїздку звичайною мовою — AI-агенти побудують маршрут, порахують вартість пального та перевірять погоду на шляху, — або додайте зупинки на мапі самостійно. В обох випадках відстані та час у дорозі рахуються реальними дорогами, а оцінки оновлюються під час редагування поїздки.',
     'faq.free.question': 'Чи є Trip Calculate безкоштовним?',
-    'faq.free.answer': 'Калькулятор витрат безкоштовний і працює без акаунта. Планувальник маршрутів зараз у бета-версії — доступ можна запросити на сторінці планувальника.',
+    'faq.free.answer': 'Так. Калькулятор витрат працює без акаунта, а планувальник маршрутів теж безкоштовний — достатньо увійти через Google, щоб створювати, зберігати та ділитися маршрутами.',
     'faq.abroad.question': 'Чи можу я використовувати Trip Calculate за кордоном?',
     'faq.abroad.answer': 'Так. Маршрутизація працює в усьому світі, тож можна планувати міжнародні поїздки з реальними дорожніми відстанями в будь-якій країні.',
+    'faq.consumption.question': 'Як дізнатися витрату пального мого авто?',
+    'faq.consumption.answer': 'Скористайтеся вбудованим каталогом авто: понад 130 популярних моделей із реалістичною змішаною витратою для кожного типу пального (бензин, дизель, ГБО). Немає вашого авто? Увійдіть і опишіть його своїми словами, щоб отримати оцінку від AI, або оберіть клас авто — від міського хетчбека до мінівена.',
 
     // Calculator
     'calculator.title': 'Розрахувати витрати на поїздку',

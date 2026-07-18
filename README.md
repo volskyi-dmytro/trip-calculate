@@ -4,7 +4,18 @@ A modern full-stack web application for trip expense calculation and route plann
 
 **Live Demo:** [trip-calculate.online](https://trip-calculate.online)
 
-## Recent Updates (v3.0)
+## Recent Updates (v3.1)
+
+- 🚗 **Car Garage** - Signed-in users save their cars (name, fuel type, real-world consumption) and mark a default; the default car pre-fills fuel consumption and fuel type in the route planner and quick calculator automatically
+- 📖 **Car Catalog** - A built-in, offline catalog of 130+ car models popular in Ukraine with realistic mixed-cycle consumption per fuel variant (petrol / diesel / LPG), searchable in Ukrainian, Russian, and Latin spellings — no account needed
+- 🤖 **AI Consumption Estimate** - Can't find your car in the catalog? Describe it in plain words ("Škoda Octavia A5 1.9 TDI 2006") and an AI estimate fills in fuel type and consumption (signed-in users, rate-limited and cached server-side)
+- 🚙 **Vehicle-Class Presets** - Five one-tap consumption presets (city car → minivan) per fuel type for users who just don't know their numbers
+- 💾 **Anonymous Car Memory** - The landing-page calculator remembers your last picked car in the browser, so returning visitors get their consumption pre-filled without an account
+- 🔓 **Route Planner Open to Everyone** - The planner is out of beta: any Google account can build, save, and share routes (no access request needed)
+- 🌍 **Locale-Prefixed URLs** - Bilingual SEO-friendly routing (`/en/...`, `/uk/...`) with server-side language detection, robots.txt, and sitemap
+
+<details>
+<summary>v3.0 highlights</summary>
 
 - 🧠 **Multi-Agent Architecture** - The AI service is now a supervisor-orchestrated LangGraph: a supervisor classifies each request, then dispatches to a route/geocode agent and two deterministic, zero-LLM specialist agents (fuel, weather)
 - ⛽ **Live Fuel Price Agent** - Country-average petrol/diesel/LPG prices, refreshed daily from EU Oil Bulletin, minfin.com.ua, and NBU (all keyless, no API cost); advisory only, never overwrites a manually entered price
@@ -19,12 +30,21 @@ A modern full-stack web application for trip expense calculation and route plann
 - 📊 **Admin Dashboard** - AI usage statistics and system monitoring
 - 🌍 **Unicode Support** - Full Cyrillic and international character support in routes
 
+</details>
+
 ## Features
 
 ### Trip Expense Calculator
 - 💰 **Fuel Cost Calculation** - Calculate and split fuel costs among passengers
 - 🧮 **Smart Cost Splitting** - Automatic per-person expense breakdown
+- 🚗 **"Don't know your consumption?" Helper** - Pick your car from the catalog, use a class preset, or (signed in) get an AI estimate; the picked car is remembered in the browser
 - 🔐 **Secure Authentication** - Google OAuth 2.0 with session persistence
+
+### Car Garage & Consumption Helper
+- 🏠 **My Cars** - A garage of up to 10 saved cars per user in the dashboard, each with name, fuel type (petrol / diesel / LPG), and consumption; one car is the default
+- ⛽ **Default-Car Prefill** - The default car's consumption and fuel type pre-fill the route planner and quick calculator
+- 📖 **Offline Car Catalog** - 130+ models common in Ukraine with realistic real-world consumption per engine variant, searchable in three scripts
+- 🤖 **AI Estimate Endpoint** - `POST /api/cars/estimate` proxies a structured-output LLM call (per-user rate limits: 5/min, 20/hour; 24h response cache; strict 3.0–25.0 L/100km validation)
 
 ### AI-Powered Route Planner
 - 🧠 **Supervisor + Specialist Agents** - A supervisor node classifies each request (create / modify / settings-only / off-topic) and routes it through a route-parsing agent, then the fuel and weather agents, all in one LangGraph graph
@@ -41,7 +61,7 @@ A modern full-stack web application for trip expense calculation and route plann
 - 💾 **Cloud Storage** - Save and load routes with user authentication
 - 🎯 **Manual Waypoints** - Add locations by address or map click, with the same live fuel price and weather data available to the manual flow
 - ⛽ **Cost Estimation** - Real-time fuel cost calculation with caching
-- 🔒 **Access Control** - Requires sign-in (Google OAuth); beta feature with request-based access
+- 🔒 **Access Control** - Free for any Google account — sign in to build, save, and share routes
 
 ### General Features
 - 🎨 **Neo-Travel Design** - Modern terminal-inspired interface with seasonal backgrounds
@@ -265,6 +285,8 @@ tripcalculate/
 │   │   ├── components/
 │   │   │   ├── auth/              # Login, logout, user profile
 │   │   │   ├── calculator/        # Trip expense calculator
+│   │   │   ├── car/               # CarPicker (catalog search / presets / AI estimate)
+│   │   │   ├── dashboard/         # Profile, stats, routes, CarsCard (My Cars garage)
 │   │   │   ├── common/            # Header, footer, modal
 │   │   │   ├── ui/                # Tailwind UI components
 │   │   │   ├── MapContainer.tsx   # Leaflet map wrapper
@@ -435,6 +457,14 @@ java -jar target/TripPlanner-v2.jar
 - `DELETE /api/routes/{id}` - Delete route
 - `GET /api/routes/access` - Check route planner access
 - `POST /api/routes/request-access` - Request access via email
+
+### Car Garage (Authenticated)
+- `GET /api/cars` - List saved cars (default first)
+- `POST /api/cars` - Add a car (max 10 per user; first car becomes default)
+- `PUT /api/cars/{id}` - Update a car
+- `DELETE /api/cars/{id}` - Delete a car (default promotes to most recently updated)
+- `PUT /api/cars/{id}/default` - Set the default car
+- `POST /api/cars/estimate` - AI fuel-consumption estimate from a free-text car description (rate-limited, cached)
 
 ### AI Integration (Beta)
 - `POST /api/ai/insights` - Parse a natural language route via the LangGraph agent (single request/response)
