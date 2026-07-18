@@ -88,9 +88,14 @@ public class CarService {
     }
 
     private void clearCurrentDefault(Long userId) {
+        // Must flush (not just save) here: prod has a NON-DEFERRABLE partial unique index
+        // uq_cars_one_default_per_user ON cars(user_id) WHERE is_default, so the old default's
+        // is_default=false write has to reach the DB before any new is_default=true write/insert
+        // in the same transaction, or the swap trips a DataIntegrityViolationException.
+        // (Dev/test schemas don't have this index, so this can only surface in prod.)
         carRepository.findByUserIdAndIsDefaultTrue(userId).ifPresent(current -> {
             current.setIsDefault(false);
-            carRepository.save(current);
+            carRepository.saveAndFlush(current);
         });
     }
 

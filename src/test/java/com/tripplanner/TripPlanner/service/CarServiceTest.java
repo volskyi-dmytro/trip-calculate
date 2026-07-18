@@ -6,6 +6,7 @@ import com.tripplanner.TripPlanner.entity.Car;
 import com.tripplanner.TripPlanner.repository.CarRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 
 import java.math.BigDecimal;
 import java.util.NoSuchElementException;
@@ -54,11 +55,12 @@ class CarServiceTest {
         when(carRepository.countByUserId(1L)).thenReturn(3L);
         when(carRepository.findByUserIdAndIsDefaultTrue(1L)).thenReturn(Optional.of(oldDefault));
         when(carRepository.save(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(carRepository.saveAndFlush(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
 
         service.createCar(1L, request);
 
         assertFalse(oldDefault.getIsDefault());
-        verify(carRepository).save(oldDefault);
+        verify(carRepository).saveAndFlush(oldDefault);
     }
 
     @Test
@@ -148,10 +150,28 @@ class CarServiceTest {
         when(carRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(target));
         when(carRepository.findByUserIdAndIsDefaultTrue(1L)).thenReturn(Optional.of(oldDefault));
         when(carRepository.save(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(carRepository.saveAndFlush(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CarDTO result = service.setDefault(7L, 1L);
 
         assertFalse(oldDefault.getIsDefault());
         assertTrue(result.getIsDefault());
+        verify(carRepository).saveAndFlush(oldDefault);
+    }
+
+    @Test
+    void clearOldDefaultFlushesBeforeNewDefaultWrite() {
+        Car oldDefault = car(5L, 1L, true);
+        Car target = car(7L, 1L, false);
+        when(carRepository.findByIdAndUserId(7L, 1L)).thenReturn(Optional.of(target));
+        when(carRepository.findByUserIdAndIsDefaultTrue(1L)).thenReturn(Optional.of(oldDefault));
+        when(carRepository.save(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(carRepository.saveAndFlush(any(Car.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        service.setDefault(7L, 1L);
+
+        InOrder inOrder = inOrder(carRepository);
+        inOrder.verify(carRepository).saveAndFlush(oldDefault);
+        inOrder.verify(carRepository).save(target);
     }
 }
