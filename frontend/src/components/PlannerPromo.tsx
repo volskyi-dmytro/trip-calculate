@@ -2,22 +2,25 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { MapPin, Save, Navigation, Sparkles, Chrome } from 'lucide-react';
+import { MapPin, Save, Navigation, Sparkles, Chrome, Car } from 'lucide-react';
 
-export function PremiumPromo() {
+export function PlannerPromo() {
   const { language } = useLanguage();
   const { login } = useAuth();
 
   const t = {
-    title: language === 'uk' ? 'Преміум-версія' : 'Go Premium',
+    title: language === 'uk' ? 'Безкоштовно з акаунтом Google' : 'Free with Google sign-in',
     features: {
-      visualRoute: language === 'uk' ? 'Візуальне планування маршруту' : 'Visual Route Planning',
-      saveHistory: language === 'uk' ? 'Збереження історії поїздок' : 'Save Trip History',
-      wazeIntegration: language === 'uk' ? 'Інтеграція з Waze' : 'Direct Waze Integration',
-      aiInsights: language === 'uk' ? 'AI-інсайти' : 'AI-Powered Insights',
+      visualRoute: language === 'uk' ? 'Візуальне планування маршруту' : 'Visual route planning',
+      saveHistory: language === 'uk' ? 'Збереження історії поїздок' : 'Save your trip history',
+      carGarage: language === 'uk' ? 'Гараж авто зі збереженою витратою пального' : 'Car garage with saved fuel consumption',
+      wazeIntegration: language === 'uk' ? 'Інтеграція з Waze' : 'Direct Waze integration',
+      aiInsights: language === 'uk' ? 'AI-планування природною мовою' : 'AI trip planning in plain language',
     },
     signInButton: language === 'uk' ? 'Увійти через Google' : 'Sign In with Google',
-    noCard: language === 'uk' ? 'Кредитна картка не потрібна для демо' : 'No credit card required for demo',
+    freeNote: language === 'uk'
+      ? 'Повністю безкоштовно — без карток і підписок'
+      : 'Completely free — no card, no subscription',
   };
 
   return (
@@ -38,6 +41,7 @@ export function PremiumPromo() {
         {[
           { icon: MapPin, label: t.features.visualRoute },
           { icon: Save, label: t.features.saveHistory },
+          { icon: Car, label: t.features.carGarage },
           { icon: Navigation, label: t.features.wazeIntegration },
           { icon: Sparkles, label: t.features.aiInsights },
         ].map(({ icon: Icon, label }) => (
@@ -53,7 +57,7 @@ export function PremiumPromo() {
         {t.signInButton}
       </Button>
 
-      <p className="text-xs text-center mt-3 text-gray-500 dark:text-gray-400">{t.noCard}</p>
+      <p className="text-xs text-center mt-3 text-gray-500 dark:text-gray-400">{t.freeNote}</p>
     </Card>
   );
 }

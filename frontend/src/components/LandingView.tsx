@@ -1,6 +1,6 @@
 import { useLanguage } from '../contexts/LanguageContext';
 import { QuickCalculator } from './QuickCalculator';
-import { PremiumPromo } from './PremiumPromo';
+import { PlannerPromo } from './PlannerPromo';
 
 export function LandingView() {
   const { language } = useLanguage();
@@ -34,9 +34,9 @@ export function LandingView() {
             <QuickCalculator />
           </div>
 
-          {/* Right: Premium Promo */}
+          {/* Right: Free planner promo */}
           <div className="flex items-start">
-            <PremiumPromo />
+            <PlannerPromo />
           </div>
         </div>
       </div>
