@@ -1,6 +1,17 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createSseParser } from '../agentStreamService'
+import { getCsrfToken } from '../agentService'
 import * as agentService from '../agentService'
+
+describe('getCsrfToken', () => {
+  it('ignores malformed unrelated cookies instead of blocking AI requests', () => {
+    vi.stubGlobal('document', { cookie: 'broken=%E0%A4%A; XSRF-TOKEN=csrf%20token' })
+
+    expect(getCsrfToken()).toBe('csrf token')
+
+    vi.unstubAllGlobals()
+  })
+})
 
 describe('createSseParser', () => {
   it('parses complete frames', () => {

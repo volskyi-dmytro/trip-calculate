@@ -266,13 +266,19 @@ export const parseRouteWithAgent = async (
  */
 export function getCsrfToken(): string | null {
   const name = 'XSRF-TOKEN=';
-  const decodedCookie = decodeURIComponent(document.cookie);
-  const cookies = decodedCookie.split(';');
+  const cookies = document.cookie.split(';');
 
   for (let cookie of cookies) {
     cookie = cookie.trim();
     if (cookie.indexOf(name) === 0) {
-      return cookie.substring(name.length);
+      const rawToken = cookie.substring(name.length);
+      try {
+        return decodeURIComponent(rawToken);
+      } catch {
+        // A malformed cookie must not abort the AI request before fetch runs.
+        // Returning the raw value lets the backend validate it normally.
+        return rawToken;
+      }
     }
   }
   return null;
