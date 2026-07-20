@@ -3,6 +3,9 @@ package com.tripplanner.TripPlanner.routing;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
 import java.util.*;
@@ -12,8 +15,11 @@ import java.util.stream.Collectors;
 @Service
 public class RoutingService {
 
+    private static final String DEFAULT_MAPBOX_REQUEST_ORIGIN = "https://trip-calculate.online";
+
     private final RestTemplate restTemplate;
     private final String mapboxAccessToken;
+    private final String mapboxRequestOrigin;
 
     // Mapbox as primary provider (reliable, fast, 100k free requests/month)
     // OSRM as fallback (free but currently overloaded)
@@ -23,8 +29,22 @@ public class RoutingService {
     );
 
     public RoutingService() {
-        // Get Mapbox token from environment
-        this.mapboxAccessToken = System.getenv("MAPBOX_ACCESS_TOKEN");
+        this(
+            createRestTemplate(),
+            System.getenv("MAPBOX_ACCESS_TOKEN"),
+            Optional.ofNullable(System.getenv("MAPBOX_REQUEST_ORIGIN"))
+                .filter(origin -> !origin.isBlank())
+                .orElse(DEFAULT_MAPBOX_REQUEST_ORIGIN)
+        );
+    }
+
+    RoutingService(RestTemplate restTemplate, String mapboxAccessToken, String mapboxRequestOrigin) {
+        this.restTemplate = restTemplate;
+        this.mapboxAccessToken = mapboxAccessToken;
+        this.mapboxRequestOrigin = mapboxRequestOrigin.endsWith("/")
+            ? mapboxRequestOrigin.substring(0, mapboxRequestOrigin.length() - 1)
+            : mapboxRequestOrigin;
+
         if (mapboxAccessToken == null || mapboxAccessToken.isBlank()) {
             log.warn("MAPBOX_ACCESS_TOKEN not set - Mapbox routing will be disabled, falling back to OSRM");
         } else {
@@ -33,21 +53,25 @@ public class RoutingService {
                 log.error("Invalid Mapbox token format! Token should start with 'pk.' or 'sk.'. Current: {}...",
                     mapboxAccessToken.length() > 10 ? mapboxAccessToken.substring(0, 10) : mapboxAccessToken);
             } else {
-                log.info("Mapbox routing enabled with token: {}...", mapboxAccessToken.substring(0, 15));
+                log.info("Mapbox routing enabled with token: {}...",
+                    mapboxAccessToken.substring(0, Math.min(15, mapboxAccessToken.length())));
             }
         }
+    }
 
+    private static RestTemplate createRestTemplate() {
         // Configure RestTemplate with reasonable timeouts
         var factory = new org.springframework.http.client.SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(5000);  // 5 seconds to establish connection
         factory.setReadTimeout(10000);    // 10 seconds to read response
 
-        this.restTemplate = new RestTemplate(factory);
-        this.restTemplate.getInterceptors().add((request, body, execution) -> {
+        RestTemplate restTemplate = new RestTemplate(factory);
+        restTemplate.getInterceptors().add((request, body, execution) -> {
             request.getHeaders().add("Accept", "application/json");
             request.getHeaders().add("User-Agent", "TripPlanner/1.0");
             return execution.execute(request, body);
         });
+        return restTemplate;
     }
 
     @SuppressWarnings("unchecked")
@@ -99,8 +123,17 @@ public class RoutingService {
         log.debug("Mapbox URL: {}", url.replace(mapboxAccessToken, "***TOKEN***"));
 
         try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setOrigin(mapboxRequestOrigin);
+            headers.set(HttpHeaders.REFERER, mapboxRequestOrigin + "/");
+
             @SuppressWarnings("rawtypes")
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                Map.class
+            );
 
             log.debug("Mapbox response status: {}", response.getStatusCode());
 
