@@ -13,7 +13,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -95,18 +97,36 @@ public class AiRateLimitingFilter implements Filter {
             return;
         }
 
-        if (!(authentication.getPrincipal() instanceof OidcUser oidcUser)) {
+        String email;
+        String subject;
+        boolean emailVerified;
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof OidcUser oidcUser) {
+            email = oidcUser.getEmail();
+            emailVerified = Boolean.TRUE.equals(oidcUser.getEmailVerified());
+            subject = oidcUser.getSubject();
+        } else if (authentication instanceof OAuth2AuthenticationToken oauth2Token
+                && "google".equals(oauth2Token.getAuthorizedClientRegistrationId())
+                && principal instanceof OAuth2User oauth2User) {
+            // Spring Session JDBC can restore Google's DefaultOidcUser as a
+            // DefaultOAuth2User after a restart. The signed-in Google registration
+            // and the persisted verified claims still establish the same identity.
+            Object emailClaim = oauth2User.getAttribute("email");
+            email = emailClaim instanceof String value ? value : null;
+            emailVerified = Boolean.TRUE.equals(oauth2User.getAttribute("email_verified"));
+            Object subjectClaim = oauth2User.getAttribute("sub");
+            subject = subjectClaim instanceof String value ? value : null;
+        } else {
             rejectUnauthorized(httpResponse, "Google OIDC authentication is required.");
             return;
         }
 
-        String email = oidcUser.getEmail();
-        if (email == null || email.isBlank() || !Boolean.TRUE.equals(oidcUser.getEmailVerified())) {
+        if (email == null || email.isBlank() || !emailVerified) {
             rejectUnauthorized(httpResponse, "A verified Google email is required.");
             return;
         }
 
-        String subject = oidcUser.getSubject();
         if (subject == null || subject.isBlank()) {
             rejectUnauthorized(httpResponse, "A valid Google identity is required.");
             return;

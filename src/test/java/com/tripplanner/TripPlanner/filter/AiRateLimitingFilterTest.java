@@ -6,8 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.ArrayList;
@@ -164,6 +167,71 @@ class AiRateLimitingFilterTest {
         FilterChain chain = mock(FilterChain.class);
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("unexpected-principal", null, List.of()));
+
+        assertEquals(401, invoke(filter, chain).getStatus());
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void restoredGoogleOAuthPrincipalWithVerifiedEmailCanUseAi() throws Exception {
+        AiRateLimitingFilter filter = configuredFilter(100, 100, 10, 500);
+        FilterChain chain = mock(FilterChain.class);
+        Map<String, Object> attributes = Map.of(
+                "sub", "113588485487230062681",
+                "email", "user@example.com",
+                "email_verified", true,
+                "name", "Test User"
+        );
+        DefaultOAuth2User principal = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("ROLE_USER")), attributes, "sub");
+        SecurityContextHolder.getContext().setAuthentication(
+                new OAuth2AuthenticationToken(
+                        principal,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER")),
+                        "google"));
+
+        assertEquals(200, invoke(filter, chain).getStatus());
+        verify(chain, times(1)).doFilter(
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void restoredGoogleOAuthPrincipalWithNonStringEmailIsRejected() throws Exception {
+        AiRateLimitingFilter filter = configuredFilter(100, 100, 10, 500);
+        FilterChain chain = mock(FilterChain.class);
+        Map<String, Object> attributes = Map.of(
+                "sub", "123",
+                "email", 42,
+                "email_verified", true
+        );
+        DefaultOAuth2User principal = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("ROLE_USER")), attributes, "sub");
+        SecurityContextHolder.getContext().setAuthentication(
+                new OAuth2AuthenticationToken(
+                        principal,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER")),
+                        "google"));
+
+        assertEquals(401, invoke(filter, chain).getStatus());
+        verifyNoInteractions(chain);
+    }
+
+    @Test
+    void restoredGoogleOAuthPrincipalWithNonStringSubjectIsRejected() throws Exception {
+        AiRateLimitingFilter filter = configuredFilter(100, 100, 10, 500);
+        FilterChain chain = mock(FilterChain.class);
+        Map<String, Object> attributes = Map.of(
+                "sub", 123,
+                "email", "user@example.com",
+                "email_verified", true
+        );
+        DefaultOAuth2User principal = new DefaultOAuth2User(
+                List.of(new SimpleGrantedAuthority("ROLE_USER")), attributes, "email");
+        SecurityContextHolder.getContext().setAuthentication(
+                new OAuth2AuthenticationToken(
+                        principal,
+                        List.of(new SimpleGrantedAuthority("ROLE_USER")),
+                        "google"));
 
         assertEquals(401, invoke(filter, chain).getStatus());
         verifyNoInteractions(chain);
