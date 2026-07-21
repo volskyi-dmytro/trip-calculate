@@ -1143,6 +1143,12 @@ export function RoutePlanner() {
     }
   }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
 
+  const handleChatFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const message = new FormData(e.currentTarget).get('aiPrompt');
+    void handleSendChat(typeof message === 'string' ? message : '');
+  }, [handleSendChat]);
+
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
     if (!pendingSuggestions) return;
@@ -1627,15 +1633,13 @@ export function RoutePlanner() {
               onSaveRoute={() => setShowSaveDialog(true)}
               onShareReceipt={() => setShowResultShareDialog(true)}
             />
-            <div className="flex gap-2">
+            <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
               <Input
                 type="text"
+                name="aiPrompt"
                 placeholder={t.chat.askPlaceholder}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isProcessingAi && !e.nativeEvent.isComposing) handleSendChat(e.currentTarget.value)
-                }}
                 disabled={isProcessingAi}
                 className="flex-1 h-9 text-sm disabled:opacity-50"
                 style={{
@@ -1645,9 +1649,9 @@ export function RoutePlanner() {
                 }}
               />
               <button
+                type="submit"
                 aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
-                onClick={() => handleSendChat(chatInput)}
-                disabled={isProcessingAi || !chatInput.trim()}
+                disabled={isProcessingAi}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                 style={{
                   background: 'var(--nav-accent)',
@@ -1660,7 +1664,7 @@ export function RoutePlanner() {
                   <Send className="h-4 w-4" />
                 )}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       )}
@@ -2163,15 +2167,13 @@ export function RoutePlanner() {
                   onSaveRoute={() => setShowSaveDialog(true)}
                   onShareReceipt={() => setShowResultShareDialog(true)}
                 />
-                <div className="flex gap-2">
+                <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
                   <Input
                     type="text"
+                    name="aiPrompt"
                     placeholder={t.chat.askPlaceholder}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isProcessingAi && !e.nativeEvent.isComposing) handleSendChat(e.currentTarget.value)
-                    }}
                     disabled={isProcessingAi}
                     className="flex-1 h-9 text-sm disabled:opacity-50"
                     style={{
@@ -2181,9 +2183,9 @@ export function RoutePlanner() {
                     }}
                   />
                   <button
+                    type="submit"
                     aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
-                    onClick={() => handleSendChat(chatInput)}
-                    disabled={isProcessingAi || !chatInput.trim()}
+                    disabled={isProcessingAi}
                     className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                     style={{
                       background: 'var(--nav-accent)',
@@ -2196,7 +2198,7 @@ export function RoutePlanner() {
                       <Send className="h-4 w-4" />
                     )}
                   </button>
-                </div>
+                </form>
               </div>
             </>
           )}

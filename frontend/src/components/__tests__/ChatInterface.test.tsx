@@ -21,7 +21,7 @@ afterEach(() => {
 })
 
 describe('ChatInterface submission', () => {
-  it('submits the input DOM value on Enter even before controlled state catches up', () => {
+  it('uses native form submission and reads the current DOM value', () => {
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)
@@ -44,7 +44,9 @@ describe('ChatInterface submission', () => {
     })
 
     const input = container.querySelector('input')
+    const form = container.querySelector('form')
     expect(input).not.toBeNull()
+    expect(form).not.toBeNull()
 
     const valueSetter = Object.getOwnPropertyDescriptor(
       HTMLInputElement.prototype,
@@ -53,9 +55,9 @@ describe('ChatInterface submission', () => {
     valueSetter?.call(input, 'Нововолинськ - Лісабон, 2 пасажира')
 
     act(() => {
-      input?.dispatchEvent(new KeyboardEvent('keydown', {
-        key: 'Enter',
+      form?.dispatchEvent(new SubmitEvent('submit', {
         bubbles: true,
+        cancelable: true,
       }))
     })
 

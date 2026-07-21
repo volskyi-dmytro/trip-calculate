@@ -98,10 +98,10 @@ export function ChatInterface({
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, pendingSuggestions]);
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isProcessing && !e.nativeEvent.isComposing) {
-      onSendMessage(e.currentTarget.value);
-    }
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const message = new FormData(e.currentTarget).get('aiPrompt');
+    onSendMessage(typeof message === 'string' ? message : '');
   };
 
   const t = {
@@ -182,20 +182,21 @@ export function ChatInterface({
         <div ref={chatEndRef} />
       </div>
 
-      <div className="flex gap-2">
+      <form className="flex gap-2" onSubmit={handleSubmit}>
         <Input
           type="text"
+          name="aiPrompt"
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
-          onKeyDown={handleKeyDown}
           placeholder={isCentered ? t.chatPlaceholder : t.chatPlaceholderShort}
+          disabled={isProcessing}
           className="flex-1 text-sm"
           autoFocus={isCentered}
         />
-        <Button aria-label={t.send} onClick={() => onSendMessage(chatInput)} disabled={isProcessing || !chatInput.trim()} size="sm">
+        <Button aria-label={t.send} type="submit" disabled={isProcessing} size="sm">
           <Send className="w-4 h-4" />
         </Button>
-      </div>
+      </form>
     </div>
   );
 }
