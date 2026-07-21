@@ -8,7 +8,7 @@ interface WelcomeScreenProps {
   chatMessages: ChatMessage[];
   chatInput: string;
   onChatInputChange: (value: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (message: string) => void;
   isProcessing: boolean;
   onManualClick: () => void;
   pendingSuggestions?: string[] | null;

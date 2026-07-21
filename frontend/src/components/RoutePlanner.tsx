@@ -894,13 +894,14 @@ export function RoutePlanner() {
   }, [startLocationInput, destinationInput, waypoints, t])
 
   // AI Chat Handler
-  const handleSendChat = useCallback(async () => {
-    if (!chatInput.trim()) return;
+  const handleSendChat = useCallback(async (submittedMessage: string) => {
+    const message = submittedMessage.trim();
+    if (!message) return;
 
     const userMsg: ChatMessage = {
       id: Date.now().toString(),
       role: 'user',
-      content: chatInput,
+      content: message,
       timestamp: Date.now()
     };
 
@@ -1140,7 +1141,7 @@ export function RoutePlanner() {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [chatInput, t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
 
   // Apply Suggested Stops
   const handleApplySuggestions = useCallback(async () => {
@@ -1633,7 +1634,7 @@ export function RoutePlanner() {
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !isProcessingAi && chatInput.trim()) handleSendChat()
+                  if (e.key === 'Enter' && !isProcessingAi && !e.nativeEvent.isComposing) handleSendChat(e.currentTarget.value)
                 }}
                 disabled={isProcessingAi}
                 className="flex-1 h-9 text-sm disabled:opacity-50"
@@ -1645,7 +1646,7 @@ export function RoutePlanner() {
               />
               <button
                 aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
-                onClick={handleSendChat}
+                onClick={() => handleSendChat(chatInput)}
                 disabled={isProcessingAi || !chatInput.trim()}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                 style={{
@@ -2169,7 +2170,7 @@ export function RoutePlanner() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isProcessingAi && chatInput.trim()) handleSendChat()
+                      if (e.key === 'Enter' && !isProcessingAi && !e.nativeEvent.isComposing) handleSendChat(e.currentTarget.value)
                     }}
                     disabled={isProcessingAi}
                     className="flex-1 h-9 text-sm disabled:opacity-50"
@@ -2181,7 +2182,7 @@ export function RoutePlanner() {
                   />
                   <button
                     aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
-                    onClick={handleSendChat}
+                    onClick={() => handleSendChat(chatInput)}
                     disabled={isProcessingAi || !chatInput.trim()}
                     className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                     style={{

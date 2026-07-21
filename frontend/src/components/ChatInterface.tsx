@@ -9,7 +9,7 @@ interface ChatInterfaceProps {
   messages: ChatMessage[];
   chatInput: string;
   onChatInputChange: (value: string) => void;
-  onSendMessage: () => void;
+  onSendMessage: (message: string) => void;
   isProcessing: boolean;
   isCentered?: boolean;
   className?: string;
@@ -99,8 +99,8 @@ export function ChatInterface({
   }, [messages, pendingSuggestions]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !isProcessing) {
-      onSendMessage();
+    if (e.key === 'Enter' && !isProcessing && !e.nativeEvent.isComposing) {
+      onSendMessage(e.currentTarget.value);
     }
   };
 
@@ -192,7 +192,7 @@ export function ChatInterface({
           className="flex-1 text-sm"
           autoFocus={isCentered}
         />
-        <Button aria-label={t.send} onClick={onSendMessage} disabled={isProcessing || !chatInput.trim()} size="sm">
+        <Button aria-label={t.send} onClick={() => onSendMessage(chatInput)} disabled={isProcessing || !chatInput.trim()} size="sm">
           <Send className="w-4 h-4" />
         </Button>
       </div>
