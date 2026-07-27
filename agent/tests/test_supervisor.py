@@ -1,3 +1,5 @@
+import asyncio
+import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -105,6 +107,45 @@ async def test_supervise_fails_open_to_create_on_llm_error():
     # Fail open: the route agent's in-band guards still backstop garbage
     assert result["intent"] == "create" and not result.get("error")
     assert route_after_supervisor(result) == "parse_locations"
+
+
+async def test_supervise_gives_up_on_slow_llm_and_fails_open():
+    """A stalled provider must not own the user's latency: trace
+    4a10c386… spent 14.9s of an 18.3s request inside this one call."""
+    async def _stall(*args, **kwargs):
+        await asyncio.sleep(30)
+
+    with patch("app.nodes._SUPERVISOR_TIMEOUT_S", 0.05), \
+            patch("app.nodes.get_client") as get_client, \
+            patch("app.nodes._openai_client") as client:
+        client.beta.chat.completions.parse = _stall
+        started = time.monotonic()
+        result = await supervise(_state())
+        elapsed = time.monotonic() - started
+
+    # Bounded by the budget, not by the provider
+    assert elapsed < 1.0
+    # Same fail-open target as any other supervisor failure
+    assert result["intent"] == "create" and not result.get("error")
+    assert route_after_supervisor(result) == "parse_locations"
+    # wait_for cancels the request, so the generation span may never export —
+    # the event is the only in-trace record that the stall happened
+    assert get_client.return_value.create_event.call_args.kwargs["name"] \
+        == "supervisor_timeout"
+
+
+async def test_supervise_timeout_survives_broken_langfuse():
+    """Observability must never fail a request."""
+    async def _stall(*args, **kwargs):
+        await asyncio.sleep(30)
+
+    with patch("app.nodes._SUPERVISOR_TIMEOUT_S", 0.05), \
+            patch("app.nodes.get_client", side_effect=RuntimeError("no client")), \
+            patch("app.nodes._openai_client") as client:
+        client.beta.chat.completions.parse = _stall
+        result = await supervise(_state())
+
+    assert result["intent"] == "create" and not result.get("error")
 
 
 async def test_supervise_modify_routes_to_parser():

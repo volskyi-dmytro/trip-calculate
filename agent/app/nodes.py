@@ -2,6 +2,7 @@ import asyncio
 import logging
 import os
 from datetime import date, datetime, timedelta, timezone
+from langfuse import get_client
 from langfuse.openai import AsyncOpenAI
 from .schema import (
     GraphState, ParsedRoute, GeocodedLocation, SettingsContext,
@@ -175,6 +176,34 @@ CURRENT ROUTE EXISTS: {has_route}
 "off_topic".)"""
 
 
+# Hard wall-clock budget for the supervisor call. It sits serially in front of
+# every request, so a provider stall is paid by the user directly. Measured over
+# 22 traces (2026-07-10..26) this call runs 0.74-2.43s, p95 2.29s — except one
+# outlier at 14.9s that alone was 81% of its trace. 4s is ~1.65x the observed
+# max, so it only fires on that pathological tail. Wraps the whole call rather
+# than passing timeout= to the SDK, so the budget also covers the SDK's internal
+# retries instead of applying per-attempt.
+_SUPERVISOR_TIMEOUT_S = 4.0
+
+
+def _mark_supervisor_timeout() -> None:
+    """Record the stall as a Langfuse event on the current trace.
+
+    Needed because wait_for CANCELS the in-flight request, so the generation
+    span it belongs to may never be exported — the trace would show an
+    unexplained gap with no observation covering it. Best-effort: observability
+    must never fail a request, and get_client() no-ops when Langfuse is
+    unconfigured (local dev, tests)."""
+    try:
+        get_client().create_event(
+            name="supervisor_timeout",
+            level="WARNING",
+            status_message=f"supervise() exceeded {_SUPERVISOR_TIMEOUT_S}s budget",
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.debug("Could not record supervisor_timeout event", exc_info=True)
+
+
 async def supervise(state: GraphState) -> GraphState:
     """Supervisor: one cheap classification call that dispatches to the
     specialist path. Fails OPEN to the route agent — its in-band
@@ -182,20 +211,31 @@ async def supervise(state: GraphState) -> GraphState:
     garbage, so a misclassification degrades to current behavior."""
     current_route = state.get("current_route") or []
     try:
-        response = await _openai_client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
-            temperature=0,
-            messages=[
-                {"role": "system",
-                 "content": _SUPERVISOR_PROMPT.format(has_route=bool(current_route))},
-                {"role": "user", "content": state["message"]},
-            ],
-            response_format=SupervisorDecision,
+        response = await asyncio.wait_for(
+            _openai_client.beta.chat.completions.parse(
+                model="gpt-4o-mini",
+                temperature=0,
+                messages=[
+                    {"role": "system",
+                     "content": _SUPERVISOR_PROMPT.format(has_route=bool(current_route))},
+                    {"role": "user", "content": state["message"]},
+                ],
+                response_format=SupervisorDecision,
+            ),
+            timeout=_SUPERVISOR_TIMEOUT_S,
         )
         decision = response.choices[0].message.parsed
         if decision is None:
             raise ValueError("Supervisor returned no decision")
+    except asyncio.TimeoutError:
+        # Was silent before; without a log a stalled supervisor is invisible
+        # outside Langfuse, and the fallback hides it from the user.
+        logger.warning("Supervisor timed out after %.1fs — falling back to 'create'",
+                       _SUPERVISOR_TIMEOUT_S)
+        _mark_supervisor_timeout()
+        return {**state, "intent": "create"}
     except Exception:
+        logger.warning("Supervisor failed — falling back to 'create'", exc_info=True)
         return {**state, "intent": "create"}
 
     language = state.get("language", "en")
