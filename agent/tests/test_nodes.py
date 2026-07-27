@@ -767,3 +767,147 @@ def test_format_response_carries_weather_data():
                        source="open-meteo", fetched_at=_dt.now(_tz.utc))
     state = {**_state_with_date(None), "weather_data": fake}
     assert format_response(state)["response"].weather_data is fake
+
+
+# ── transit waypoints ("через X") ─────────────────────────────────────────
+#
+# Regression cover for Langfuse trace 9bb9866543a6debd3b1d0756e83ce459:
+# "подорож з Нітри до Поморіє на 4 пасажирів через Румунію" came back with
+# only origin + destination — the "через Румунію" constraint was silently
+# dropped because the prompt never said a transit phrase yields a waypoint,
+# and rule 5's "[Proper Name] [City] [Country]" format left a bare country
+# with no slot to land in.
+#
+# The parser's behaviour lives in the prompt, so it splits into two kinds of
+# test: prompt-contract assertions below (cheap, run always) and the live
+# integration test at the end (the only one that actually proves the model
+# obeys). Mocked parse_locations tests cannot validate a prompt — mocking the
+# response makes them pass whatever the prompt says.
+
+from app.nodes import _SYSTEM_PROMPT, _RETRY_SYSTEM_PROMPT
+
+
+def _flat(text: str) -> str:
+    """Collapse newlines and indentation so these assertions survive a
+    reflow of the prompt. Matching raw text made a one-word wording fix
+    fail the suite for a purely cosmetic line-wrap change."""
+    return " ".join(text.split())
+
+
+def test_system_prompt_forbids_dropping_transit_stops():
+    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27"))
+    assert "через" in prompt and "via" in prompt
+    assert "waypoint" in prompt
+    assert "never drop" in prompt.lower()
+
+
+def test_system_prompt_covers_country_and_same_country_region_transit():
+    """A transit stop may be larger than a city. Countries ("через Румунію")
+    and regions inside the trip's own country ("через Черкаську область")
+    must both be named in the prompt, or the model has no template for them
+    and omits them — which is exactly how the original bug presented."""
+    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27"))
+    assert "Румунію" in prompt and "Romania" in prompt
+    assert "Cherkasy Oblast Ukraine" in prompt
+    assert "-щина" in prompt  # colloquial oblast forms (Полтавщина, Львівщина)
+    # Countries/regions must reach Nominatim, not carry guessed coordinates,
+    # and must not be silently swapped for a city the model invents
+    assert "countries and regions ALWAYS leave lat/lon null" in prompt
+    assert "Never replace a named country or region with a city" in prompt
+
+
+def test_retry_prompt_falls_back_to_admin_centre_instead_of_dropping():
+    """If a region name misses in Nominatim, the retry pass must downgrade it
+    to its administrative centre rather than quietly shrink the route."""
+    assert "administrative centre" in _flat(_RETRY_SYSTEM_PROMPT)
+    assert "Cherkasy" in _RETRY_SYSTEM_PROMPT
+
+
+def test_country_transit_waypoint_survives_into_response():
+    """Nitra → Romania → Pomorie: the country waypoint keeps its middle slot
+    and is returned to the frontend as a real stop."""
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Nitra Slovakia", location_type="origin",
+                           original_name="Нітри"),
+            ParsedLocation(name="Romania", location_type="waypoint",
+                           original_name="Румунію"),
+            ParsedLocation(name="Pomorie Bulgaria", location_type="destination",
+                           original_name="Поморіє"),
+        ],
+        settings=TripSettings(passengers=4),
+    )
+    geocoded = [
+        _geocoded("Nitra Slovakia", "origin", "nominatim", lat=48.31, lon=18.09),
+        _geocoded("Romania", "waypoint", "nominatim", lat=45.94, lon=24.97),
+        _geocoded("Pomorie Bulgaria", "destination", "nominatim", lat=42.56, lon=27.64),
+    ]
+    result = format_response(_state(parsed=parsed, geocoded=geocoded))
+
+    waypoints = result["response"].route.waypoints
+    assert [w.positionOrder for w in waypoints] == [0, 1, 2]
+    assert waypoints[1].name == "Romania"
+    assert (waypoints[1].latitude, waypoints[1].longitude) == (45.94, 24.97)
+    assert result["response"].stats.skipped == 0
+    assert result["response"].route.settings.passengers == 4
+
+
+def test_same_country_region_transit_waypoints_keep_user_order():
+    """Kyiv → Cherkasy Oblast → Vinnytsia Oblast → Odesa: several transit
+    regions inside one country stay in the order the user named them."""
+    parsed = ParsedRoute(
+        locations=[
+            ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+            ParsedLocation(name="Cherkasy Oblast Ukraine", location_type="waypoint",
+                           original_name="Черкащину"),
+            ParsedLocation(name="Vinnytsia Oblast Ukraine", location_type="waypoint",
+                           original_name="Вінниччину"),
+            ParsedLocation(name="Odesa Ukraine", location_type="destination"),
+        ],
+        settings=TripSettings(),
+    )
+    geocoded = [
+        _geocoded("Kyiv Ukraine", "origin", "nominatim", lat=50.45, lon=30.52),
+        _geocoded("Cherkasy Oblast Ukraine", "waypoint", "nominatim", lat=49.35, lon=31.55),
+        _geocoded("Vinnytsia Oblast Ukraine", "waypoint", "nominatim", lat=49.10, lon=28.60),
+        _geocoded("Odesa Ukraine", "destination", "nominatim", lat=46.48, lon=30.73),
+    ]
+    result = format_response(_state(parsed=parsed, geocoded=geocoded))
+
+    names = [w.name for w in result["response"].route.waypoints]
+    assert names == [
+        "Kyiv Ukraine",
+        "Cherkasy Oblast Ukraine",
+        "Vinnytsia Oblast Ukraine",
+        "Odesa Ukraine",
+    ]
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("message,expect_any_of", [
+    # The original failing trace: transit country, cross-border trip
+    ("подорож з Нітри до Поморіє на 4 пасажирів через Румунію",
+     ("romania", "românia", "румун", "bucharest", "bucure")),
+    # Transit region inside the trip's own country
+    ("з Києва до Одеси через Черкащину",
+     ("cherkas", "черкас")),
+    ("поїздка зі Львова до Харкова через Полтавську область",
+     ("poltava", "полтав")),
+])
+async def test_transit_stop_is_parsed_as_waypoint_live(message, expect_any_of):
+    """The only test that actually proves the prompt fix: calls gpt-4o-mini
+    with the real system prompt. Requires a live OPENAI_API_KEY —
+    `pytest -m integration`. Skipped by default (conftest sets a dummy key)."""
+    import os
+    if os.environ.get("OPENAI_API_KEY", "").startswith("sk-test"):
+        pytest.skip("needs a real OPENAI_API_KEY")
+
+    result = await parse_locations(_state(message=message, language="uk"))
+
+    assert result.get("error") is None
+    locations = result["parsed"].locations
+    waypoints = [l for l in locations if l.location_type == "waypoint"]
+    assert waypoints, f"transit stop dropped from {[l.name for l in locations]}"
+    blob = " ".join(f"{l.name} {l.original_name or ''}" for l in waypoints).lower()
+    assert any(token in blob for token in expect_any_of), \
+        f"no expected transit stop in waypoints: {[l.name for l in waypoints]}"

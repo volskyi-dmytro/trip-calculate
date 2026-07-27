@@ -48,7 +48,27 @@ RULES:
 11. If the message mentions a departure date ("tomorrow", "this Saturday",
     "20 July", "у суботу"), set departure_date to that date in ISO format
     (YYYY-MM-DD), resolved relative to today: {today}. If no date is
-    mentioned, leave departure_date null. Never invent a date."""
+    mentioned, leave departure_date null. Never invent a date.
+12. TRANSIT STOPS — never drop one. A transit phrase ("через X", "via X",
+    "through X", "по дорозі через X", "із заїздом у X", "stopping in X")
+    ALWAYS adds X to locations with location_type "waypoint", positioned
+    between the origin and the destination. This holds no matter how large
+    X is:
+    - city: "через Житомир" -> "Zhytomyr Ukraine"
+    - country: "через Румунію" -> "Romania"
+    - region/oblast/province/state INSIDE the same country as the rest of
+      the trip: "через Черкаську область" -> "Cherkasy Oblast Ukraine",
+      "через Львівщину" -> "Lviv Oblast Ukraine", "via Bavaria" ->
+      "Bavaria Germany"
+    Ukrainian colloquial region names end in -щина/-чина; map them to
+    "[Adjective-free City] Oblast Ukraine" (Полтавщина -> "Poltava Oblast
+    Ukraine", Вінниччина -> "Vinnytsia Oblast Ukraine").
+    Several transit stops -> one waypoint each, in the order the user
+    named them.
+    For countries and regions ALWAYS leave lat/lon null and let geocoding
+    resolve them — a country or region resolves to a representative point
+    inside it, which is what pulls the route through it. Never replace a
+    named country or region with a city you picked yourself."""
 
 # Appended as a second system message when the caller sends the route already
 # on the user's map, turning "add a stop in X" from an unanswerable fragment
@@ -83,7 +103,11 @@ STRATEGIES (try a different one than before):
 5. Set original_name to the location's exact spelling from the original request
    (native script, e.g. "Соловичі") — OSM often matches native names directly
 6. Provide lat/lon ONLY if you are CERTAIN (world-famous landmark or major city);
-   never guess coordinates for villages or obscure places"""
+   never guess coordinates for villages or obscure places
+7. For a failed country or region/oblast transit waypoint, fall back to its
+   administrative centre ("Cherkasy Oblast Ukraine" → "Cherkasy Ukraine",
+   "Romania" → "Bucharest Romania"). Keep the stop — dropping it discards a
+   constraint the user explicitly asked for"""
 
 # Bounded self-correction: one LLM re-normalization pass for failed geocodes
 MAX_GEOCODE_RETRIES = 1
