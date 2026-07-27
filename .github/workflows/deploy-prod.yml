@@ -26,7 +26,9 @@ jobs:
         run: |
           cd frontend
           npm ci
-          npm audit --audit-level=high
+          # Scoped to production deps with a documented waiver list — see
+          # frontend/scripts/audit-ci.mjs for why bare `npm audit` cannot gate.
+          npm run audit:ci
           npm run build
 
       # Copy React build to Spring Boot static resources
