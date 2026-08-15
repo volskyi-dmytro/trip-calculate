@@ -826,6 +826,12 @@ def test_production_images_include_the_arm64_vps_platform():
     assert "docker/setup-qemu-action@v3" in workflow
 
 
+def test_application_runtime_base_supports_arm64_release_platform():
+    dockerfile = (REPO_ROOT / "Dockerfile").read_text()
+
+    assert dockerfile.startswith("# Use Amazon Corretto JDK\nFROM amazoncorretto:17-alpine\n")
+
+
 def test_production_agent_traces_are_separated_and_release_tagged():
     workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
 
