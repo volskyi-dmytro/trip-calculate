@@ -658,6 +658,7 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
 
     scores: list[dict] = []
     spans: list[dict] = []
+    propagated_attributes: list[dict] = []
     verified_trace_calls: list[str] = []
     depth = 0
 
@@ -686,14 +687,26 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
                 depth -= 1
 
         def get_current_trace_id(self): return "trace-abc"
-        def update_current_span(self, **kw): spans.append(kw)
+        # Match Langfuse 4.14.4: update_current_span does not accept tags.
+        def update_current_span(
+            self, *, name=None, input=None, output=None, metadata=None,
+            version=None, level=None, status_message=None,
+        ):
+            spans.append({"updated_name": name})
         def create_score(self, **kw): scores.append(kw)
         def flush(self): pass
         def get_trace_url(self, *, trace_id=None):
             return f"https://langfuse.test/traces/{trace_id}"
 
     import langfuse
+
+    @contextmanager
+    def fake_propagate_attributes(**kw):
+        propagated_attributes.append(kw)
+        yield
+
     monkeypatch.setattr(langfuse, "Langfuse", FakeClient)
+    monkeypatch.setattr(langfuse, "propagate_attributes", fake_propagate_attributes)
 
     report = await run("mock", dataset_filter="route_parsing",
                        today=date(2026, 8, 15))
@@ -715,7 +728,7 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
     assert published.url == "https://langfuse.test/traces/trace-abc"
     assert verified_trace_calls == ["trace-abc"]
 
-    tags = next(s["tags"] for s in spans if "tags" in s)
+    tags = propagated_attributes[0]["tags"]
     assert "evaluation" in tags
     assert "mode:mock" in tags
     assert any(t.startswith("dataset:") for t in tags)
