@@ -20,19 +20,7 @@ import { execFileSync } from 'node:child_process';
  * whenever a fix ships — an entry here is a standing risk acceptance, not a
  * way to silence noise.
  */
-const ALLOWED = {
-  'GHSA-qwww-vcr4-c8h2': {
-    package: 'react-router',
-    reason:
-      'RSC Mode CSRF bypass. This app is a client-side SPA — it uses ' +
-      'BrowserRouter only, with no RSC mode, no server routes and no router ' +
-      'actions, so the vulnerable code path is never reached. No fixed ' +
-      'version exists: the advisory names 8.3.0 but no 8.x is published, and ' +
-      "npm's only suggestion is downgrading to 7.11.0, which would reinstate " +
-      'four other react-router CVEs fixed in 7.18.1.',
-    recheck: 'Drop this entry once react-router publishes a fixed release.',
-  },
-};
+const ALLOWED = {};
 
 const BLOCKING = new Set(['high', 'critical']);
 
