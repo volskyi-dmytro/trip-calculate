@@ -816,6 +816,16 @@ def test_production_deploy_is_gated_by_live_evaluation():
     assert "python -m evals.runner --mode live --fail-under 1.0" in workflow
 
 
+def test_production_images_include_the_arm64_vps_platform():
+    workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
+
+    assert workflow.count(
+        "docker buildx build --platform linux/amd64,linux/arm64"
+    ) == 2
+    assert workflow.count("--push") >= 2
+    assert "docker/setup-qemu-action@v3" in workflow
+
+
 def test_production_agent_traces_are_separated_and_release_tagged():
     workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
 
