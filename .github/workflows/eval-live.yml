@@ -46,10 +46,12 @@ jobs:
       - name: Run live evaluation
         working-directory: agent
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          LANGFUSE_PUBLIC_KEY: ${{ secrets.LANGFUSE_PUBLIC_KEY }}
-          LANGFUSE_SECRET_KEY: ${{ secrets.LANGFUSE_SECRET_KEY }}
-          LANGFUSE_HOST: ${{ secrets.LANGFUSE_HOST }}
+          OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.PROD_LANGFUSE_HOST }}
+          LANGFUSE_TRACING_ENVIRONMENT: evaluation
+          LANGFUSE_RELEASE: ${{ github.sha }}
           DATASET: ${{ inputs.dataset }}
           FAIL_UNDER: ${{ inputs.fail_under }}
         run: |

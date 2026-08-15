@@ -46,6 +46,7 @@ class RouteObservation(BaseModel):
     geocode_failures: int = 0
     latency_s: Optional[float] = None
     usage: dict[str, Any] = Field(default_factory=dict)
+    model_calls: list[dict[str, Any]] = Field(default_factory=list)
     cost_usd: Optional[float] = None
     model: Optional[str] = None
     raw_error: Optional[str] = None
@@ -58,6 +59,7 @@ class CarObservation(BaseModel):
     make_model: Optional[str] = None
     latency_s: Optional[float] = None
     usage: dict[str, Any] = Field(default_factory=dict)
+    model_calls: list[dict[str, Any]] = Field(default_factory=list)
     cost_usd: Optional[float] = None
     model: Optional[str] = None
     raw_error: Optional[str] = None
@@ -315,6 +317,7 @@ def score_route_case(
             "latency_s": obs.latency_s,
             "cost_usd": obs.cost_usd,
             "tokens": obs.usage.get("total", 0),
+            "model_calls": obs.model_calls,
             "model": obs.model,
             "runner_error": obs.raw_error,
         },
@@ -394,6 +397,7 @@ def score_car_case(case: CarCase, obs: CarObservation) -> CaseResult:
             "latency_s": obs.latency_s,
             "cost_usd": obs.cost_usd,
             "tokens": obs.usage.get("total", 0),
+            "model_calls": obs.model_calls,
             "model": obs.model,
             "runner_error": obs.raw_error,
         },

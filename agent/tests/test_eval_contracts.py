@@ -6,6 +6,7 @@ negative control — a deliberately wrong observation that MUST fail — because
 scorer that only ever sees correct input proves nothing.
 """
 from datetime import date, timedelta
+from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
@@ -17,6 +18,7 @@ from evals.scoring import (
 )
 
 TODAY = date(2026, 8, 15)
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _stops(*names: str) -> list[ObservedStop]:
@@ -496,12 +498,15 @@ def test_template_placeholders_resolve_against_the_run_day():
 
 # ── Langfuse is best-effort ────────────────────────────────────────────────
 
-def test_langfuse_publish_is_skipped_when_unconfigured(monkeypatch):
+def test_langfuse_publish_is_skipped_explicitly_when_unconfigured(monkeypatch):
     from evals import langfuse_adapter
 
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
-    assert langfuse_adapter.publish(object()) is None  # type: ignore[arg-type]
+    result = langfuse_adapter.publish(object())  # type: ignore[arg-type]
+    assert result.status == "skipped"
+    assert result.trace_id is None
+    assert "LANGFUSE_PUBLIC_KEY" in result.message
 
 
 def test_langfuse_publish_swallows_failures(monkeypatch):
@@ -513,7 +518,94 @@ def test_langfuse_publish_swallows_failures(monkeypatch):
     monkeypatch.setattr(
         langfuse_adapter, "_publish",
         lambda _r: (_ for _ in ()).throw(RuntimeError("langfuse is down")))
-    assert langfuse_adapter.publish(object()) is None  # type: ignore[arg-type]
+    result = langfuse_adapter.publish(object())  # type: ignore[arg-type]
+    assert result.status == "failed"
+    assert result.trace_id is None
+    assert "langfuse is down" in result.message
+
+
+def test_langfuse_trace_verification_is_bounded_when_ingestion_is_not_visible(
+    monkeypatch,
+):
+    from evals import langfuse_adapter
+
+    calls: list[str] = []
+
+    class TraceApi:
+        @staticmethod
+        def get(trace_id):
+            calls.append(trace_id)
+            raise RuntimeError("not visible yet")
+
+    client = type(
+        "Client", (), {"api": type("Api", (), {"trace": TraceApi()})()}
+    )()
+    monkeypatch.setattr(langfuse_adapter.time, "sleep", lambda _seconds: None)
+
+    assert not langfuse_adapter._trace_was_ingested(client, "trace-abc")
+    assert calls == ["trace-abc"] * 5
+
+
+def test_langfuse_trace_url_failure_does_not_hide_submission():
+    from evals import langfuse_adapter
+
+    class Client:
+        @staticmethod
+        def get_trace_url(*, trace_id):
+            raise RuntimeError(f"project lookup failed for {trace_id}")
+
+    assert langfuse_adapter._safe_trace_url(Client(), "trace-abc") is None
+
+
+async def test_usage_recorder_keeps_privacy_safe_per_call_telemetry():
+    from evals.runner import _UsageRecorder
+
+    class Usage:
+        prompt_tokens = 11
+        completion_tokens = 7
+        total_tokens = 18
+
+    response = type("Response", (), {"usage": Usage(), "model": "model-version"})()
+
+    class Completions:
+        async def parse(self, **_kwargs):
+            return response
+
+    inner = type(
+        "Client", (),
+        {"beta": type("Beta", (), {"chat": type("Chat", (), {"completions": Completions()})()})()},
+    )()
+    recorder = _UsageRecorder(inner)
+    response_format = type("SupervisorDecision", (), {})
+
+    await recorder.parse(
+        response_format=response_format,
+        messages=[{"role": "user", "content": "private fixture prompt"}],
+    )
+
+    assert recorder.calls == [{
+        "operation": "SupervisorDecision",
+        "model": "model-version",
+        "input_tokens": 11,
+        "output_tokens": 7,
+        "total_tokens": 18,
+        "latency_s": recorder.calls[0]["latency_s"],
+    }]
+    assert recorder.calls[0]["latency_s"] >= 0
+    assert "private fixture prompt" not in repr(recorder.calls)
+
+
+def test_live_evaluation_uses_uninstrumented_provider_client(monkeypatch):
+    """The post-run evaluation hierarchy is the only Langfuse export. Using
+    app.nodes' instrumented client would also emit orphan generation traces and
+    duplicate tokens/cost outside the evaluation root."""
+    import openai
+
+    from evals import runner
+
+    sentinel = object()
+    monkeypatch.setattr(openai, "AsyncOpenAI", lambda: sentinel)
+    assert runner._build_live_client() is sentinel
 
 
 # ── Runner integration ─────────────────────────────────────────────────────
@@ -566,30 +658,62 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
 
     scores: list[dict] = []
     spans: list[dict] = []
+    verified_trace_calls: list[str] = []
+    depth = 0
 
     class FakeClient:
-        def __init__(self, **_kw): pass
+        def __init__(self, **_kw):
+            class TraceApi:
+                @staticmethod
+                def get(trace_id):
+                    verified_trace_calls.append(trace_id)
+                    return type("Trace", (), {"id": trace_id})()
+
+            self.api = type("Api", (), {"trace": TraceApi()})()
 
         @contextmanager
         def start_as_current_observation(self, **kw):
-            spans.append(kw)
-            yield None
+            nonlocal depth
+            spans.append({**kw, "depth": depth})
+            depth += 1
+            try:
+                observation_id = (
+                    "case-observation" if kw.get("name") == "route_intelligence_eval_case"
+                    else f"observation-{len(spans)}"
+                )
+                yield type("Observation", (), {"id": observation_id})()
+            finally:
+                depth -= 1
 
         def get_current_trace_id(self): return "trace-abc"
         def update_current_span(self, **kw): spans.append(kw)
         def create_score(self, **kw): scores.append(kw)
         def flush(self): pass
+        def get_trace_url(self, *, trace_id=None):
+            return f"https://langfuse.test/traces/{trace_id}"
 
     import langfuse
     monkeypatch.setattr(langfuse, "Langfuse", FakeClient)
 
     report = await run("mock", dataset_filter="route_parsing",
                        today=date(2026, 8, 15))
+    report.results[0].diagnostics["model_calls"] = [{
+        "operation": "SupervisorDecision",
+        "model": "gpt-4o-mini-2024-07-18",
+        "input_tokens": 11,
+        "output_tokens": 7,
+        "total_tokens": 18,
+        "latency_s": 0.125,
+    }]
     # Configured only after the run: the run itself must never publish to a
     # real Langfuse, and the fake below stands in for the publish step.
     monkeypatch.setenv("LANGFUSE_PUBLIC_KEY", "pk-test")
     monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk-test")
-    assert langfuse_adapter.publish(report) == "trace-abc"
+    published = langfuse_adapter.publish(report)
+    assert published.status == "published"
+    assert published.trace_id == "trace-abc"
+    assert published.url == "https://langfuse.test/traces/trace-abc"
+    assert verified_trace_calls == ["trace-abc"]
 
     tags = next(s["tags"] for s in spans if "tags" in s)
     assert "evaluation" in tags
@@ -602,10 +726,24 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
                      "settings_correct", "usable_route", "waypoint_retention",
                      "eval.case_pass_rate", "eval.waypoint_retention_rate"):
         assert required in names, f"missing score {required!r}"
+    assert all(
+        score["observation_id"] == "case-observation"
+        for score in scores if score["name"] == "eval_pass"
+    )
 
     # Fractional per-case retention, not a 0/1 flag
     retention = [s for s in scores if s["name"] == "waypoint_retention"]
     assert retention and all(0.0 <= s["value"] <= 1.0 for s in retention)
+
+    root = next(s for s in spans if s.get("name") == "route_intelligence_eval")
+    assert root["as_type"] == "evaluator" and root["depth"] == 0
+    case = next(s for s in spans if s.get("name") == "route_intelligence_eval_case")
+    assert case["as_type"] == "evaluator" and case["depth"] == 1
+    generation = next(s for s in spans if s.get("name") == "eval_model_call")
+    assert generation["as_type"] == "generation" and generation["depth"] == 2
+    assert generation["model"] == "gpt-4o-mini-2024-07-18"
+    assert generation["usage_details"] == {"input": 11, "output": 7, "total": 18}
+    assert generation["metadata"]["operation"] == "SupervisorDecision"
 
     # Nothing published may carry a fixture's prompt text
     blob = repr(scores) + repr(spans)
@@ -649,6 +787,38 @@ def test_fail_under_relaxes_the_pass_bar_but_never_the_safety_invariant():
     assert exit_code(_report(0.85), fail_under=0.9) == 1
     # Unsafe coordinates fail regardless of how low the bar is set
     assert exit_code(_report(1.0, unsafe=1.0), fail_under=0.0) == 1
+
+
+def test_production_deploy_is_gated_by_live_evaluation():
+    workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
+
+    assert "  evaluate:\n" in workflow
+    assert "  build:\n    needs: evaluate\n" in workflow
+    assert "OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}" in workflow
+    assert "LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}" in workflow
+    assert "LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}" in workflow
+    assert "LANGFUSE_HOST: ${{ secrets.PROD_LANGFUSE_HOST }}" in workflow
+    assert "LANGFUSE_TRACING_ENVIRONMENT: evaluation" in workflow
+    assert "LANGFUSE_RELEASE: ${{ github.sha }}" in workflow
+    assert "python -m evals.runner --mode live --fail-under 1.0" in workflow
+
+
+def test_production_agent_traces_are_separated_and_release_tagged():
+    workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
+
+    assert '-e LANGFUSE_TRACING_ENVIRONMENT="production"' in workflow
+    assert '-e LANGFUSE_RELEASE="${GITHUB_SHA}"' in workflow
+
+
+def test_manual_live_workflow_maps_existing_production_secrets():
+    workflow = (REPO_ROOT / ".github/workflows/eval-live.yml").read_text()
+
+    assert "OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}" in workflow
+    assert "LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}" in workflow
+    assert "LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}" in workflow
+    assert "LANGFUSE_HOST: ${{ secrets.PROD_LANGFUSE_HOST }}" in workflow
+    assert "LANGFUSE_TRACING_ENVIRONMENT: evaluation" in workflow
+    assert "LANGFUSE_RELEASE: ${{ github.sha }}" in workflow
 
 
 def test_empty_run_fails_rather_than_reporting_success():

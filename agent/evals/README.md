@@ -118,6 +118,8 @@ path, and a regression there would leave the suite green.
 | `OPENAI_API_KEY` | live mode only | Live mode exits 2. Mock mode is unaffected. |
 | `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` | publishing scores | Publishing is skipped; reports and exit code are unchanged. |
 | `LANGFUSE_HOST` | self-hosted Langfuse | Defaults to `https://cloud.langfuse.com`. |
+| `LANGFUSE_TRACING_ENVIRONMENT` | separating telemetry | Release workflows set `evaluation`; the deployed agent sets `production`. |
+| `LANGFUSE_RELEASE` | release correlation | Set to the full Git SHA by GitHub Actions. |
 
 ## Reading the report
 
@@ -213,10 +215,21 @@ an off day".
 ## Langfuse
 
 When Langfuse is configured, each run publishes one `route_intelligence_eval`
-trace tagged `evaluation`, `mode:<mock|live>`, `dataset:<version>`,
-`model:<id>` and `git_sha:<sha>`, with deterministic numeric scores attached —
+trace in the `evaluation` environment, tagged `evaluation`, `mode:<mock|live>`,
+`dataset:<version>`, `model:<id>` and `git_sha:<sha>`. It contains one
+`route_intelligence_eval_case` child evaluator observation per fixture and
+privacy-safe `eval_model_call` generation summaries beneath live cases. Those
+summaries contain operation name, measured latency, model, tokens and cost —
+never fixture prompts or model output. Deterministic numeric scores include
 run-level aggregates plus per-case `eval_pass`, `intent_correct`,
 `ordered_stops_correct`, `waypoint_retention` and the rest.
+
+The CLI always prints the export outcome. `published` means the trace was read
+back successfully after `flush()`; it includes the trace id and Langfuse URL.
+Missing credentials and synchronous failures are reported as `skipped` or
+`failed`. If the asynchronous exporter returns but the trace cannot be read back
+after bounded retries, the CLI reports `submitted_unverified` instead of falsely
+claiming success.
 
 This is strictly additive and strictly best-effort. Publishing failures are
 logged and swallowed; local reports, tests and exit codes never depend on
@@ -226,6 +239,14 @@ Production user traffic is **not** scored by an LLM judge and is never copied
 into a dataset. Production prompts can carry personal travel detail; the only
 safe additions there are deterministic operational signals (supervisor timeout,
 geocode retry count, requested-versus-retained stop count).
+
+On a push to `master`, `deploy-prod.yml` runs the real-model suite before it
+builds or pushes any production image. Every fixture must pass and every safety
+invariant must hold; otherwise the release is blocked. Langfuse itself remains
+best-effort: an observability outage is reported but does not change the
+evaluator's deterministic verdict. The manual
+`eval-live.yml` workflow remains available after it reaches the default branch
+for deliberate reruns without deployment.
 
 The installed SDK (`langfuse>=4.0`) does expose Dataset/Experiment APIs. This
 version deliberately uses plain traces plus scores instead: it keeps the local

@@ -160,18 +160,39 @@ class _UsageRecorder:
         self._inner = inner
         self.usage: dict[str, int] = {"input": 0, "output": 0, "total": 0}
         self.model: Optional[str] = None
+        # Privacy-safe call summaries for post-run observability. Prompts and
+        # outputs deliberately never enter this structure.
+        self.calls: list[dict[str, Any]] = []
         self.beta = type("_Beta", (), {"chat": self})()
         self.chat = self
         self.completions = self
 
     async def parse(self, **kwargs):
+        started = time.monotonic()
         response = await self._inner.beta.chat.completions.parse(**kwargs)
         usage = getattr(response, "usage", None)
+        model = getattr(response, "model", None)
         if usage is not None:
-            self.usage["input"] += getattr(usage, "prompt_tokens", 0) or 0
-            self.usage["output"] += getattr(usage, "completion_tokens", 0) or 0
-            self.usage["total"] += getattr(usage, "total_tokens", 0) or 0
-        self.model = getattr(response, "model", None) or self.model
+            call_usage = {
+                "input": getattr(usage, "prompt_tokens", 0) or 0,
+                "output": getattr(usage, "completion_tokens", 0) or 0,
+                "total": getattr(usage, "total_tokens", 0) or 0,
+            }
+            for key, value in call_usage.items():
+                self.usage[key] += value
+            call = {
+                "operation": getattr(kwargs.get("response_format"), "__name__", "structured_parse"),
+                "model": model,
+                "input_tokens": call_usage["input"],
+                "output_tokens": call_usage["output"],
+                "total_tokens": call_usage["total"],
+                "latency_s": round(time.monotonic() - started, 3),
+            }
+            cost = _cost_usd(model, call_usage)
+            if cost is not None:
+                call["cost_usd"] = cost
+            self.calls.append(call)
+        self.model = model or self.model
         return response
 
 
@@ -195,6 +216,19 @@ class _NullLangfuseClient:
 
 def _NullLangfuse():  # matches the get_client() call shape in app.nodes
     return _NullLangfuseClient()
+
+
+def _build_live_client():
+    """Use the provider SDK without Langfuse's OpenAI auto-instrumentation.
+
+    Evaluation calls are exported once, under the privacy-safe post-run
+    hierarchy. Reusing app.nodes._openai_client here would additionally emit
+    orphan generations while no evaluation root is active and double-count
+    tokens and cost in Langfuse.
+    """
+    from openai import AsyncOpenAI
+
+    return AsyncOpenAI()
 
 
 def _patches(stack: ExitStack, geocoder: Optional[RecordedGeocoder], client: Any):
@@ -233,7 +267,8 @@ def _patches(stack: ExitStack, geocoder: Optional[RecordedGeocoder], client: Any
 # ── Case execution ─────────────────────────────────────────────────────────
 
 async def run_route_case(
-    case: RouteCase, mode: str, geocoder: Optional[RecordedGeocoder], today: date
+    case: RouteCase, mode: str, geocoder: Optional[RecordedGeocoder], today: date,
+    provider_client: Any = None,
 ) -> RouteObservation:
     from app.graph import build_graph
     from app.nodes import _openai_client as real_client
@@ -244,7 +279,7 @@ async def run_route_case(
     if mode == "mock":
         client = _MockLLM(case, today)
     else:
-        recorder = _UsageRecorder(real_client)
+        recorder = _UsageRecorder(provider_client or real_client)
         client = recorder
 
     state = {
@@ -323,6 +358,7 @@ async def run_route_case(
         geocode_failures=sum(1 for loc in geocoded if loc.source == "failed"),
         latency_s=round(latency, 3),
         usage=usage,
+        model_calls=recorder.calls if recorder else [],
         cost_usd=_cost_usd(model, usage) if usage else None,
         model=model,
         # Same evidence-of-a-real-call guard the car path uses: supervise()
@@ -331,14 +367,16 @@ async def run_route_case(
     )
 
 
-async def run_car_case(case: CarCase, mode: str, today: date) -> CarObservation:
+async def run_car_case(
+    case: CarCase, mode: str, today: date, provider_client: Any = None,
+) -> CarObservation:
     from app.nodes import _openai_client as real_client, estimate_car
 
     recorder: Optional[_UsageRecorder] = None
     if mode == "mock":
         client: Any = _MockLLM(case, today)
     else:
-        recorder = _UsageRecorder(real_client)
+        recorder = _UsageRecorder(provider_client or real_client)
         client = recorder
 
     started = time.monotonic()
@@ -363,6 +401,7 @@ async def run_car_case(case: CarCase, mode: str, today: date) -> CarObservation:
         make_model=result.makeModel,
         latency_s=round(latency, 3),
         usage=usage,
+        model_calls=recorder.calls if recorder else [],
         cost_usd=_cost_usd(model, usage) if usage else None,
         model=model,
         raw_error=_no_model_call(mode, usage),
@@ -448,6 +487,10 @@ async def run(
     results: list[CaseResult] = []
     skipped: list[str] = []
     per_dataset: dict[str, dict[str, Optional[float]]] = {}
+    # One connection pool for the whole run. This is intentionally the plain
+    # provider client; see _build_live_client for why the production app's
+    # instrumented client is not reused here.
+    live_client = _build_live_client() if mode == "live" else None
 
     for path in discover():
         if dataset_filter and dataset_filter not in path.name:
@@ -468,10 +511,12 @@ async def run(
                 skipped.append(f"{path.name}:{case.id} (no mock block)")
                 continue
             if isinstance(dataset, RouteDataset):
-                obs = await run_route_case(case, mode, geocoder, today)  # type: ignore[arg-type]
+                obs = await run_route_case(
+                    case, mode, geocoder, today, live_client)  # type: ignore[arg-type]
                 dataset_results.append(score_route_case(case, obs, today))  # type: ignore[arg-type]
             elif isinstance(dataset, CarDataset):
-                obs_car = await run_car_case(case, mode, today)  # type: ignore[arg-type]
+                obs_car = await run_car_case(
+                    case, mode, today, live_client)  # type: ignore[arg-type]
                 dataset_results.append(score_car_case(case, obs_car))  # type: ignore[arg-type]
         if dataset_results:
             per_dataset[path.name] = aggregate(dataset_results)
@@ -558,7 +603,19 @@ def main(argv: Optional[list[str]] = None) -> int:
 
     from .langfuse_adapter import publish
 
-    publish(report)
+    published = publish(report)
+    if published.status == "published":
+        print(f"Langfuse publish: published trace {published.trace_id}")
+        if published.url:
+            print(f"Langfuse trace: {published.url}")
+    elif published.status == "submitted_unverified":
+        print(f"{published.message}: {published.trace_id}", file=sys.stderr)
+        if published.url:
+            print(f"Langfuse trace: {published.url}", file=sys.stderr)
+    else:
+        # Best-effort observability remains non-blocking, but it must never be
+        # invisible in a release log again.
+        print(published.message, file=sys.stderr)
 
     return exit_code(report, args.fail_under)
 
@@ -569,8 +626,8 @@ def exit_code(report: RunReport, fail_under: Optional[float] = None) -> int:
     Two independent gates. Accepting model-invented coordinates fails the run
     outright whatever the pass rate — it is a safety invariant, not a quality
     score. The pass-rate bar is 100% unless --fail-under explicitly relaxes it,
-    which live runs want (a single flaky model answer should not block a
-    release) and CI does not.
+    which an explicitly exploratory live run may want. The production release
+    workflow deliberately keeps the 100% bar.
     """
     if report.metrics.get("unsafe_ai_coords"):
         print("FAIL: model-provided coordinates were accepted on a first "
