@@ -864,6 +864,77 @@ def test_existing_production_redis_is_connected_to_the_deploy_network():
     )
 
 
+def test_deployment_summary_is_evidence_backed_and_fail_closed():
+    workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
+
+    summary_start = workflow.index("# ==================== DEPLOYMENT SUMMARY ====================")
+    summary = workflow[summary_start:]
+    verification_start = workflow.index("# ==================== FINAL VERIFICATION ====================")
+
+    immutable_app = '${DOCKER_USERNAME}/trip-calculate:prod-${GITHUB_SHA}'
+    assert f'docker pull "{immutable_app}"' in workflow
+    assert f'"{immutable_app}"\n' in workflow
+    assert workflow.index(f'docker pull "{immutable_app}"') < summary_start
+
+    # Final verification must finish before the celebratory summary can print.
+    assert verification_start < summary_start
+    for evidence in (
+        'APP_HEALTH="$(docker inspect -f',
+        'AGENT_HEALTH="$(docker inspect -f',
+        'APP_RESTARTS="$(docker inspect -f',
+        'AGENT_RESTARTS="$(docker inspect -f',
+        'DB_NETWORK="$(docker inspect -f',
+        'REDIS_NETWORK="$(docker inspect -f',
+        'DB_PORTS="$(docker port trip-calculate-db',
+        'REDIS_PORTS="$(docker port trip-calculate-redis',
+        'PUBLIC_HEALTH_CODE="$(curl',
+        'APP_IMAGE="$(docker inspect -f',
+        'AGENT_IMAGE="$(docker inspect -f',
+    ):
+        assert evidence in workflow[:summary_start]
+
+    assert '"${APP_HEALTH}" != "healthy"' in workflow[:summary_start]
+    assert '"${AGENT_HEALTH}" != "healthy"' in workflow[:summary_start]
+    assert '[ -n "${DB_PORTS}" ]' in workflow[:summary_start]
+    assert '[ -n "${REDIS_PORTS}" ]' in workflow[:summary_start]
+    assert '"${PUBLIC_HEALTH_CODE}" != "200"' in workflow[:summary_start]
+    assert 'if ! DB_PORTS="$(docker port trip-calculate-db' in workflow[:summary_start]
+    assert 'if ! REDIS_PORTS="$(docker port trip-calculate-redis' in workflow[:summary_start]
+    assert 'if ! APP_RESTARTS="$(docker inspect -f' in workflow[:summary_start]
+    assert 'if ! AGENT_RESTARTS="$(docker inspect -f' in workflow[:summary_start]
+    assert 'if ! ALL_CONTAINERS="$(docker ps -a' in workflow[:summary_start]
+    assert "ROLLBACK_CONTAINERS=\"$(" not in workflow[:summary_start]
+    assert 'if ! APP_LOG_TAIL="$(docker logs' in workflow[:summary_start]
+    assert 'if ! FINAL_CONTAINER_STATUS="$(docker ps' in workflow[:summary_start]
+
+    # No stale hardcoded IPs or exit-status-only docker-port checks.
+    assert "172.18.0.2" not in summary
+    assert "docker port trip-calculate-db >/dev/null" not in summary
+    assert "docker port trip-calculate-redis >/dev/null" not in summary
+
+    for label in (
+        "Release SHA:", "Architecture:", "Application image:", "Agent image:",
+        "Application health:", "Agent health:", "Database network:",
+        "Redis network:", "Database connectivity:", "Redis connectivity:",
+        "Internal health:", "Public health:", "Rollback containers:",
+        "Deployment status: VERIFIED COMPLETE",
+    ):
+        assert label in summary
+    assert summary.index("📦 Final container status:") < summary.index(
+        "Deployment status: VERIFIED COMPLETE"
+    )
+
+    assert "set -Eeuo pipefail" in workflow[:summary_start]
+    assert "docker stop trip-calculate-prod || true" not in workflow
+    assert "docker rm trip-calculate-prod || true" not in workflow
+    assert "docker stop trip-calculate-agent 2>/dev/null || true" not in workflow
+    assert "docker rm   trip-calculate-agent 2>/dev/null || true" not in workflow
+    assert "--connect-timeout 10 --max-time 30" in workflow[:summary_start]
+    assert "if: success()" in workflow
+    assert "if: failure()" in workflow
+    assert "Production deployment completed for commit" not in workflow
+
+
 def test_production_agent_traces_are_separated_and_release_tagged():
     workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
 
