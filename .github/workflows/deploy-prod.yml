@@ -6,7 +6,48 @@ on:
   workflow_dispatch:
 
 jobs:
+  # Run the real model against the curated, versioned fixtures before any
+  # production image is built or pushed. Langfuse export is best-effort, but
+  # deterministic evaluation failures block this release.
+  evaluate:
+    name: Live route-intelligence release gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: agent/pyproject.toml
+
+      - name: Install agent evaluation dependencies
+        working-directory: agent
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e ".[dev]"
+
+      - name: Run live evaluation
+        working-directory: agent
+        env:
+          OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}
+          LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}
+          LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}
+          LANGFUSE_HOST: ${{ secrets.PROD_LANGFUSE_HOST }}
+          LANGFUSE_TRACING_ENVIRONMENT: evaluation
+          LANGFUSE_RELEASE: ${{ github.sha }}
+        run: python -m evals.runner --mode live --fail-under 1.0
+
+      - name: Upload live evaluation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-live-report-${{ github.sha }}
+          path: agent/evals/results/
+          if-no-files-found: warn
+
   build:
+    needs: evaluate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -248,6 +289,8 @@ jobs:
               -e LANGFUSE_PUBLIC_KEY="${LANGFUSE_PUBLIC_KEY}" \
               -e LANGFUSE_SECRET_KEY="${LANGFUSE_SECRET_KEY}" \
               -e LANGFUSE_HOST="${LANGFUSE_HOST}" \
+              -e LANGFUSE_TRACING_ENVIRONMENT="production" \
+              -e LANGFUSE_RELEASE="${GITHUB_SHA}" \
               "${DOCKER_USERNAME}/trip-calculate-agent:prod-${GITHUB_SHA}"
 
             echo "✅ Agent container started"

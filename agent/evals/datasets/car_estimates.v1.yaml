@@ -1,0 +1,366 @@
+version: v1
+kind: car
+description: >
+  Eval cases for the estimate_car() node (agent/app/nodes.py), which turns a
+  free-text vehicle description into a structured CarEstimate (makeModel,
+  fuelType, consumptionL100km, unknown). Cases are seeded from the project's
+  offline catalog (frontend/src/data/carCatalog.json) so expected consumption
+  bands match figures the product already believes. Covers all three fuel
+  types, Cyrillic and Latin input, typo tolerance, incomplete descriptions
+  that force the model to pick a common variant, and cases that must yield
+  unknown=true (non-vehicles and genuinely under-determined vehicles).
+
+cases:
+  # ── Well-specified engine variants (tight bands, ~+/-1.2-1.5 L/100km) ──
+
+  - id: octavia-a5-tdi-en
+    tags: [diesel, latin, known-example]
+    input:
+      description: "octavia a5 1.9 tdi"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: diesel
+      consumption_range: [5.0, 7.5]
+      make_model_contains_any: ["octavia"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Škoda Octavia A5 1.9 TDI"
+        fuelType: diesel
+        consumptionL100km: 6.3
+
+  - id: octavia-a5-diesel-cyrillic
+    tags: [diesel, cyrillic]
+    input:
+      description: "шкода октавія 1.9 тді"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: diesel
+      consumption_range: [5.0, 7.5]
+      make_model_contains_any: ["octavia", "октав"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Škoda Octavia A5 1.9 TDI"
+        fuelType: diesel
+        consumptionL100km: 6.4
+
+  - id: octavia-a5-petrol-cyrillic
+    tags: [petrol, cyrillic]
+    input:
+      description: "октавія а5 1.6 мпі"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [6.5, 9.0]
+      make_model_contains_any: ["octavia", "октав"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Škoda Octavia A5 1.6 MPI"
+        fuelType: petrol
+        consumptionL100km: 7.9
+
+  - id: lanos-petrol-latin
+    tags: [petrol, latin]
+    input:
+      description: "daewoo lanos 1.5"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [6.8, 9.2]
+      make_model_contains_any: ["lanos"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Daewoo Lanos 1.5"
+        fuelType: petrol
+        consumptionL100km: 8.1
+
+  - id: lanos-lpg-cyrillic
+    tags: [lpg, cyrillic]
+    input:
+      description: "ланос 1.5 гбо"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: lpg
+      consumption_range: [8.0, 10.5]
+      make_model_contains_any: ["lanos", "ланос"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Daewoo Lanos 1.5 LPG"
+        fuelType: lpg
+        consumptionL100km: 9.3
+
+  - id: golf7-diesel-latin
+    tags: [diesel, latin]
+    input:
+      description: "vw golf 7 1.6 tdi"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: diesel
+      consumption_range: [3.8, 5.8]
+      make_model_contains_any: ["golf"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Volkswagen Golf VII 1.6 TDI"
+        fuelType: diesel
+        consumptionL100km: 4.9
+
+  - id: golf7-petrol-cyrillic
+    tags: [petrol, cyrillic]
+    input:
+      description: "гольф 7 1.4 tsi"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [5.3, 7.7]
+      make_model_contains_any: ["golf", "гольф"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Volkswagen Golf VII 1.4 TSI"
+        fuelType: petrol
+        consumptionL100km: 6.6
+
+  - id: lacetti-lpg-latin
+    tags: [lpg, latin]
+    input:
+      description: "chevrolet lacetti 1.6 lpg"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: lpg
+      consumption_range: [7.8, 10.2]
+      make_model_contains_any: ["lacetti"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Chevrolet Lacetti 1.6 LPG"
+        fuelType: lpg
+        consumptionL100km: 9.1
+
+  - id: niva-lpg-cyrillic
+    tags: [lpg, cyrillic]
+    input:
+      description: "нива 1.7 гбо"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: lpg
+      consumption_range: [10.5, 13.5]
+      make_model_contains_any: ["niva", "нива"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Lada Niva 1.7 LPG"
+        fuelType: lpg
+        consumptionL100km: 12.2
+
+  - id: kia-rio-lpg-cyrillic
+    tags: [lpg, cyrillic]
+    input:
+      description: "кіа ріо 1.4 газ"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: lpg
+      consumption_range: [6.7, 9.1]
+      make_model_contains_any: ["rio", "ріо"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Kia Rio 1.4 LPG"
+        fuelType: lpg
+        consumptionL100km: 8.0
+
+  # ── Typo-tolerant descriptions ──
+
+  - id: corolla-typo-latin
+    tags: [petrol, latin, typo]
+    input:
+      description: "toyta corola 1.6"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [6.0, 8.4]
+      make_model_contains_any: ["corolla"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Toyota Corolla 1.6"
+        fuelType: petrol
+        consumptionL100km: 7.3
+
+  - id: octavia-typo-diesel-cyrillic
+    tags: [diesel, cyrillic, typo]
+    input:
+      description: "шкода октавя а5 1.9 тді"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: diesel
+      consumption_range: [5.0, 7.5]
+      make_model_contains_any: ["octavia", "октав"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Škoda Octavia A5 1.9 TDI"
+        fuelType: diesel
+        consumptionL100km: 6.3
+
+  # ── Incomplete descriptions (model only, no engine -> wider bands) ──
+
+  - id: incomplete-lancer-x-latin
+    tags: [petrol, latin, incomplete]
+    input:
+      description: "mitsubishi lancer x"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [6.3, 9.7]
+      make_model_contains_any: ["lancer"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Mitsubishi Lancer X 1.6"
+        fuelType: petrol
+        consumptionL100km: 7.8
+
+  - id: incomplete-logan-cyrillic
+    tags: [petrol, cyrillic, incomplete]
+    input:
+      description: "рено логан"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [5.5, 8.5]
+      make_model_contains_any: ["logan", "логан"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Renault Logan 1.4"
+        fuelType: petrol
+        consumptionL100km: 7.1
+
+  - id: incomplete-corolla-latin
+    tags: [petrol, latin, incomplete]
+    input:
+      description: "toyota corolla"
+      language: en
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [6.0, 8.5]
+      make_model_contains_any: ["corolla"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Toyota Corolla"
+        fuelType: petrol
+        consumptionL100km: 7.3
+
+  - id: incomplete-yaris-cyrillic
+    tags: [petrol, cyrillic, incomplete]
+    input:
+      description: "тойота ярис"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: petrol
+      consumption_range: [5.0, 7.5]
+      make_model_contains_any: ["yaris", "ярис"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Toyota Yaris 1.3"
+        fuelType: petrol
+        consumptionL100km: 6.3
+
+  - id: incomplete-transporter-t4-diesel-cyrillic
+    tags: [diesel, cyrillic, incomplete]
+    input:
+      description: "фольксваген транспортер т4"
+      language: uk
+    expect:
+      unknown: false
+      fuel_type: diesel
+      consumption_range: [8.0, 11.0]
+      make_model_contains_any: ["transporter", "транспортер"]
+    mock:
+      estimate:
+        unknown: false
+        makeModel: "Volkswagen Transporter T4 2.5 TDI"
+        fuelType: diesel
+        consumptionL100km: 9.6
+
+  # ── Non-vehicle inputs (must yield unknown=true) ──
+
+  - id: non-vehicle-fridge-cyrillic
+    tags: [unknown, cyrillic, non-vehicle]
+    input:
+      description: "холодильник Samsung RB37"
+      language: uk
+    expect:
+      unknown: true
+    mock:
+      estimate:
+        unknown: true
+
+  - id: non-vehicle-nonsense-latin
+    tags: [unknown, latin, non-vehicle]
+    input:
+      description: "asdkjalksjd 12345 xyzzy"
+      language: en
+    expect:
+      unknown: true
+    mock:
+      estimate:
+        unknown: true
+
+  # ── Genuinely ambiguous vehicle descriptions (must yield unknown=true) ──
+
+  - id: ambiguous-bare-make-latin
+    tags: [unknown, latin, ambiguous]
+    input:
+      description: "Toyota"
+      language: en
+    expect:
+      unknown: true
+    mock:
+      estimate:
+        unknown: true
+
+  - id: ambiguous-bare-make-cyrillic
+    tags: [unknown, cyrillic, ambiguous]
+    input:
+      description: "Тойота"
+      language: uk
+    expect:
+      unknown: true
+    mock:
+      estimate:
+        unknown: true
+
+  - id: ambiguous-fake-model-latin
+    tags: [unknown, latin, ambiguous]
+    input:
+      description: "Volkswagen Zephyrion GTX"
+      language: en
+    expect:
+      unknown: true
+    mock:
+      estimate:
+        unknown: true

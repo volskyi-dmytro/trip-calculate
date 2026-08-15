@@ -108,3 +108,6 @@ venv/
 __pycache__/
 *.pyc
 *.egg-info/
+
+# Generated evaluation run output — reports are artefacts, fixtures are source
+agent/evals/results/

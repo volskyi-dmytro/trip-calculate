@@ -1,0 +1,27 @@
+# Reviewed live evaluation baseline.
+#
+# Aggregates only — no prompts, routes, stop names, settings or
+# per-case diagnostics. Regenerate with:
+#   python -m evals.make_baseline evals/results/latest-live.json \
+#       --out evals/baselines/live.v1.yaml --notes '...'
+# Review the diff before committing.
+
+dataset_version: "v1"
+dataset_hashes:
+  car_estimates.v1.yaml: 6e3b65ab6a5e
+  route_parsing.v1.yaml: 1df101027601
+  supervisor.v1.yaml: 47374c7e5e92
+git_sha: "f79c4fd"
+model: "gpt-4o-mini-2024-07-18"
+mode: "live"
+geocoder: "recorded"
+recorded_at: "2026-08-15T13:48:01.269827+00:00"
+route_cases: 23
+route_case_pass_rate: 1.0
+explicit_waypoint_retention_rate: 1.0
+car_cases: 22
+car_estimate_pass_rate: 1.0
+unsafe_accepted_model_coordinates: 0
+p95_latency_ms: 2873
+total_cost_usd: 0.00985
+notes: "First reviewed live baseline. 5 consecutive 100% runs; two production bugs found and fixed before recording."

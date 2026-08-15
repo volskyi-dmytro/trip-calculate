@@ -24,6 +24,10 @@ OUTPUT: a JSON object matching the ParsedRoute schema — is_route_request,
 locations array and settings. No markdown, no explanation, JSON only.
 
 RULES:
+0a. SETTINGS ARE OPT-IN. Every field of settings stays null unless the user's
+    message explicitly states it. Never supply a default or a "reasonable"
+    guess. Null means "the user did not say" and the app keeps the value they
+    already chose; any number you volunteer silently overwrites it.
 0. Set is_route_request to true if the message describes a trip or route
    between real-world locations, OR modifies the CURRENT ROUTE when one is
    provided (adding/removing/replacing stops, reordering, changing trip
@@ -41,14 +45,21 @@ RULES:
    For villages, small towns, and any place you are not certain of, ALWAYS leave lat/lon null —
    a wrong guess silently corrupts the route
 8. location_type: first location = "origin", last = "destination", middle = "waypoint"
-9. "picking my friend" / "з другом" → set passengers to 2
+9. passengers: set it ONLY when the message states or clearly implies a count
+   ("на 4 пасажирів" → 4, "picking my friend" / "з другом" → 2). If the message
+   says nothing about who is travelling, leave passengers NULL. Do not default
+   it to 1 or 2 — a plain "поїздка з Києва до Львова" names no passenger count
+   and must leave the field null.
 10. Fuel type words map ONLY to fuelType: petrol/gasoline/бензин → "petrol",
     diesel/дизель → "diesel", LPG/autogas/газ → "lpg". Never put a fuel
     type word in currency; currency is only UAH, USD, EUR, etc.
 11. If the message mentions a departure date ("tomorrow", "this Saturday",
     "20 July", "у суботу"), set departure_date to that date in ISO format
-    (YYYY-MM-DD), resolved relative to today: {today}. If no date is
-    mentioned, leave departure_date null. Never invent a date.
+    (YYYY-MM-DD), resolved relative to today: {today}. Count the days
+    explicitly: "today"/"сьогодні" is {today} itself, "tomorrow"/"завтра" is
+    the day AFTER {today}, "the day after tomorrow"/"післязавтра" is two days
+    after {today}. If no date is mentioned, leave departure_date null. Never
+    invent a date.
 12. TRANSIT STOPS — never drop one. A transit phrase ("через X", "via X",
     "through X", "по дорозі через X", "із заїздом у X", "stopping in X")
     ALWAYS adds X to locations with location_type "waypoint", positioned
@@ -425,23 +436,110 @@ async def retry_failed_locations(state: GraphState) -> GraphState:
         return {**state, "retry_count": next_count}
 
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
-    retry_locs = result.locations[: len(failed_idx)]
+    # Match each failed slot to a retried location of the SAME location_type.
+    # Taking the first N in order looks equivalent but is not: the prompt asks
+    # for only the failed locations, yet the model frequently returns the whole
+    # route. Positional slicing then merged the ORIGIN into a failed
+    # destination slot and produced routes like "Kyiv -> Kyiv" reported as
+    # success. Found by the live evaluation suite.
+    pairs = _pair_retry_slots(failed_idx, geocoded, result.locations)
+    if not pairs:
+        return {**state, "retry_count": next_count}
+
     # Only the retry pass may fall back to LLM-provided coordinates —
     # by now Nominatim has rejected both normalized and original names twice
     tasks = [
         geocode_location(loc, user_agent, allow_ai_coords=True)
-        for loc in retry_locs
+        for _, loc in pairs
     ]
     retried: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
 
     merged = list(geocoded)
-    for idx, new_loc in zip(failed_idx, retried):
+    for (idx, _), new_loc in zip(pairs, retried):
         if new_loc.source != "failed":
             # Keep the original slot's location_type; the LLM may have mangled it
             merged[idx] = new_loc.model_copy(
                 update={"location_type": geocoded[idx].location_type, "recovered": True}
             )
     return {**state, "geocoded": merged, "retry_count": next_count}
+
+
+# Tokens that appear in half the names on a Ukrainian route and therefore
+# identify nothing. Matching on these would pair any stop with any other.
+_GENERIC_NAME_TOKENS = {
+    "ukraine", "україна", "україни", "poland", "romania", "slovakia", "hungary",
+    "bulgaria", "moldova", "oblast", "область", "області", "region", "raion",
+    "район", "city", "місто", "town", "village", "село", "selo", "the", "and",
+}
+
+
+def _name_tokens(*names) -> set:
+    tokens = set()
+    for name in names:
+        for raw in (name or "").lower().replace(",", " ").split():
+            token = raw.strip("().'\"")
+            if len(token) >= 4 and token not in _GENERIC_NAME_TOKENS:
+                tokens.add(token)
+    return tokens
+
+
+def _pair_retry_slots(failed_idx, geocoded, retry_locations) -> list[tuple]:
+    """Pair each failed slot with the retried location meant for it.
+
+    Neither position nor location_type identifies a stop on its own, and both
+    have produced silent corruption:
+
+    * position — the model often echoes the WHOLE route instead of only the
+      failed stops, so the origin landed in a failed destination's slot and
+      produced "Kyiv -> Kyiv" with success=true. Equal counts do not rescue it
+      either: two fixes returned transposed swap origin and destination.
+    * location_type — any route with two waypoints has two candidates of the
+      same type, so taking the first replaces the stop the user asked for with
+      a duplicate of a different one.
+
+    So identity comes first: the retry prompt asks the model to echo the
+    original spelling, and a shared distinctive name token is the only signal
+    that actually says WHICH stop a correction belongs to. Type is used next,
+    but only when it is unambiguous. Position is the last resort, and only when
+    the model answered the question literally — one location per failed slot —
+    which is the case where its own labels are least trustworthy.
+
+    A slot that resolves to nothing is left failed on purpose: a stop the user
+    can see was skipped beats a plausible wrong one they cannot.
+    """
+    unused = list(retry_locations)
+    pairs: list[tuple] = []
+    unresolved: list = []
+
+    # 1. Identity — shared distinctive token with the failed stop's name.
+    for idx in failed_idx:
+        wanted = _name_tokens(geocoded[idx].name, geocoded[idx].clean_name)
+        match = next(
+            (loc for loc in unused
+             if wanted & _name_tokens(loc.name, loc.original_name)), None)
+        if match is None:
+            unresolved.append(idx)
+            continue
+        unused.remove(match)
+        pairs.append((idx, match))
+
+    # 2. Type — only when exactly one candidate could possibly be meant.
+    still_unresolved: list = []
+    for idx in unresolved:
+        wanted_type = geocoded[idx].location_type
+        candidates = [loc for loc in unused if loc.location_type == wanted_type]
+        if len(candidates) != 1:
+            still_unresolved.append(idx)
+            continue
+        unused.remove(candidates[0])
+        pairs.append((idx, candidates[0]))
+
+    # 3. Position — only when the model returned exactly one location per
+    #    failed slot and nothing else matched at all.
+    if still_unresolved and not pairs and len(retry_locations) == len(failed_idx):
+        return list(zip(failed_idx, retry_locations))
+
+    return sorted(pairs, key=lambda pair: pair[0])
 
 
 def _ordered_successful(geocoded) -> list:
@@ -500,12 +598,46 @@ async def weather_enrichment(state: GraphState) -> GraphState:
         return {**state, "weather_data": None}
 
 
+def _mark_route_shape(geocoded, ordered, retry_count: int) -> None:
+    """Record how much of the requested route actually survived, as a Langfuse
+    event on the current trace.
+
+    A dropped transit stop is invisible in production: the response is still
+    success=true, a plausible route renders, and the trace looks healthy. These
+    counts are the only in-trace signal that something the user explicitly
+    asked for did not make it through.
+
+    Deterministic counts ONLY — no prompt text, no location names. Production
+    messages carry personal travel detail, and this event is safe to keep
+    indefinitely precisely because it carries none of it. Best-effort:
+    observability must never fail a request, and get_client() no-ops when
+    Langfuse is unconfigured (local dev, tests)."""
+    try:
+        requested_waypoints = sum(1 for l in geocoded if l.location_type == "waypoint")
+        retained_waypoints = sum(1 for l in ordered if l.location_type == "waypoint")
+        get_client().create_event(
+            name="route_shape",
+            metadata={
+                "requested_stops": len(geocoded),
+                "retained_stops": len(ordered),
+                "requested_waypoints": requested_waypoints,
+                "retained_waypoints": retained_waypoints,
+                "geocode_failures": sum(1 for l in geocoded if l.source == "failed"),
+                "geocode_retry_count": retry_count,
+                "recovered": sum(1 for l in geocoded if l.recovered),
+            },
+        )
+    except Exception:  # pragma: no cover - defensive
+        logger.debug("Could not record route_shape event", exc_info=True)
+
+
 def format_response(state: GraphState) -> GraphState:
     geocoded = state["geocoded"]
     successful = [loc for loc in geocoded if loc.source != "failed"]
     failed = [loc for loc in geocoded if loc.source == "failed"]
 
     ordered = _ordered_successful(geocoded)
+    _mark_route_shape(geocoded, ordered, state.get("retry_count", 0))
 
     waypoints_out = [
         WaypointOut(
@@ -585,7 +717,16 @@ RULES:
    that model and reflect it in makeModel (e.g. "Škoda Octavia A5 1.6 MPI").
 4. consumptionL100km must be between 3.0 and 25.0.
 5. If the description is not identifiably a real car, set unknown=true and
-   leave every other field null. Never guess for non-cars."""
+   leave every other field null. Never guess for non-cars. A bare make with no
+   model ("Toyota", "Тойота") or an invented model is NOT identifiable —
+   return unknown rather than a fabricated estimate.
+6. Ukrainian and Russian Cyrillic spellings of makes and models are ordinary
+   input here and must be recognized, not treated as unidentifiable:
+   "рено логан" -> Renault Logan, "шкода октавія" -> Škoda Octavia,
+   "тойота королла" -> Toyota Corolla, "ніва" -> Lada Niva,
+   "фольксваген транспортер" -> VW Transporter. Set unknown=true only when the
+   text names no real car in ANY spelling — never merely because it is not
+   written in Latin script."""
 
 
 async def estimate_car(description: str, language: str) -> EstimateCarResponse:
