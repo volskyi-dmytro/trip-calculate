@@ -41,13 +41,14 @@ from .scoring import (
     aggregate, score_car_case, score_route_case,
 )
 
-DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_MODEL = "gpt-4o-mini-2024-07-18"
 RESULTS_DIR = Path(__file__).parent / "results"
 
 # USD per token. Verified against Langfuse-reported totalCost on this
 # project's own production generations (543 in / 40 out -> $0.00010545).
 _PRICING = {
     "gpt-4o-mini": (0.15 / 1_000_000, 0.60 / 1_000_000),
+    "gpt-4o-mini-2024-07-18": (0.15 / 1_000_000, 0.60 / 1_000_000),
 }
 
 

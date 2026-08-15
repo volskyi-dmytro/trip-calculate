@@ -64,6 +64,9 @@ async def test_parse_locations_happy_path(mock_client):
     assert result["error"] is None
     assert result["parsed"] is not None
     assert len(result["parsed"].locations) == 2
+    call = mock_client.beta.chat.completions.parse.call_args.kwargs
+    assert call["model"] == "gpt-4o-mini-2024-07-18"
+    assert call["temperature"] == 0
 
 
 @patch("app.nodes._openai_client")
@@ -164,6 +167,17 @@ def test_router_routes_to_format_response():
     assert route_after_geocode(_state(geocoded=geocoded)) == "format_response"
 
 
+def test_router_rejects_duplicate_origin_and_destination():
+    """A failed destination must never be recovered as the already-resolved
+    origin. The live release gate observed Kyiv -> Kyiv for Kyiv -> Liutivka."""
+    geocoded = [
+        _geocoded("Kyiv Ukraine", "origin", "nominatim", lat=50.4501, lon=30.5234),
+        _geocoded("Kyiv Ukraine", "destination", "nominatim", lat=50.4501, lon=30.5234),
+    ]
+
+    assert route_after_geocode(_state(geocoded=geocoded)) == "format_error"
+
+
 def test_router_routes_to_retry_when_budget_remains():
     geocoded = [
         _geocoded("Kyiv", "origin", "nominatim"),
@@ -232,6 +246,9 @@ async def test_retry_recovers_failed_location(mock_client, mock_geocode):
     # may fall back to LLM-provided coordinates
     assert mock_geocode.call_count == 1
     assert mock_geocode.call_args.kwargs["allow_ai_coords"] is True
+    call = mock_client.beta.chat.completions.parse.call_args.kwargs
+    assert call["model"] == "gpt-4o-mini-2024-07-18"
+    assert call["temperature"] == 0
 
 
 @patch("app.nodes.geocode_location", new_callable=AsyncMock)
