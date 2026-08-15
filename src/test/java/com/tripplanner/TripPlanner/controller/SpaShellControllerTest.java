@@ -2,6 +2,9 @@ package com.tripplanner.TripPlanner.controller;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 
@@ -51,16 +54,55 @@ class SpaShellControllerTest {
         assertFalse(html.contains("content=\"https://trip-calculate.online\" />"));
     }
 
-    @Test
-    void marksNonPublicLocaleRoutesNoindexWithoutHomeCanonical() throws Exception {
-        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/en/dashboard");
+    @ParameterizedTest
+    @ValueSource(strings = {"/en/dashboard", "/uk/dashboard", "/en/admin", "/uk/admin"})
+    void keepsKnownPrivateLocaleRoutesRoutableAndNoindex(String path) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
 
         ResponseEntity<String> response = controller.shell(request);
         String html = response.getBody();
 
+        assertEquals(200, response.getStatusCode().value());
         assertEquals("noindex, nofollow", response.getHeaders().getFirst("X-Robots-Tag"));
-        assertTrue(html.contains("<html lang=\"en\">"));
+        String expectedLanguage = path.startsWith("/en/") ? "en" : "uk";
+        assertTrue(html.contains("<html lang=\"" + expectedLanguage + "\">"));
         assertFalse(html.contains("<link rel=\"canonical\""));
         assertFalse(html.contains("hreflang="));
+    }
+
+    @Test
+    void returns404ForUnknownLocalePath() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/uk/does-not-exist");
+
+        ResponseEntity<String> response = controller.shell(request);
+
+        assertEquals(404, response.getStatusCode().value());
+        assertEquals("noindex, nofollow", response.getHeaders().getFirst("X-Robots-Tag"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({
+            "/en,en,https://trip-calculate.online/en,https://trip-calculate.online/",
+            "/uk,uk,https://trip-calculate.online/uk,https://trip-calculate.online/",
+            "/en/route-planner,en,https://trip-calculate.online/en/route-planner,https://trip-calculate.online/route-planner",
+            "/uk/route-planner,uk,https://trip-calculate.online/uk/route-planner,https://trip-calculate.online/route-planner"
+    })
+    void emitsOneConsistentMetadataClusterForEveryPublicRoute(
+            String path, String language, String canonical, String xDefault) throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
+
+        ResponseEntity<String> response = controller.shell(request);
+        String html = response.getBody();
+
+        assertTrue(html.contains("<html lang=\"" + language + "\">"));
+        assertEquals(1, occurrences(html, "<link rel=\"canonical\" href=\"" + canonical + "\" />"));
+        assertEquals(1, occurrences(html, "hreflang=\"x-default\" href=\"" + xDefault + "\""));
+        assertEquals(1, occurrences(html, "property=\"og:url\" content=\"" + canonical + "\""));
+        assertEquals(3, occurrences(html, "hreflang=\""));
+        assertFalse(response.getHeaders().containsKey("X-Robots-Tag"));
+    }
+
+    private int occurrences(String text, String fragment) {
+        return (text.length() - text.replace(fragment, "").length()) / fragment.length();
     }
 }

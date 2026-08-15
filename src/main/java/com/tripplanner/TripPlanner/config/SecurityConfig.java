@@ -275,7 +275,13 @@ public class SecurityConfig {
                         .requestMatchers("/.git/**", "/.env", "/config/**", "/.aws/**",
                                 "/.ssh/**", "/backup/**").denyAll()
 
-                        // Deny everything else by default
+                        // Let unmatched safe reads reach MVC's resource/handler resolution so
+                        // unknown public URLs return a real 404 instead of starting OAuth.
+                        // Protected GET namespaces and dangerous paths already matched above.
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/**").permitAll()
+                        .requestMatchers(org.springframework.http.HttpMethod.HEAD, "/**").permitAll()
+
+                        // Deny every other unmatched method by default
                         .anyRequest().denyAll()
                 );
 

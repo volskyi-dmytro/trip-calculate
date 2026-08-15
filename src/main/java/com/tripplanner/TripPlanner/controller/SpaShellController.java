@@ -3,6 +3,7 @@ package com.tripplanner.TripPlanner.controller;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -25,6 +27,11 @@ import java.util.regex.Pattern;
 public class SpaShellController {
 
     private static final String SITE_ORIGIN = "https://trip-calculate.online";
+    private static final Set<String> NON_PUBLIC_APP_ROUTES = Set.of(
+            "/en/dashboard", "/en/dashboard/",
+            "/uk/dashboard", "/uk/dashboard/",
+            "/en/admin", "/en/admin/",
+            "/uk/admin", "/uk/admin/");
     private static final Pattern HTML_LANG = Pattern.compile("(?i)<html\\s+lang=\"[^\"]*\"");
     private static final Pattern TITLE = Pattern.compile("(?is)(<title>).*?(</title>)");
 
@@ -36,7 +43,8 @@ public class SpaShellController {
         String html = metadata.indexable
                 ? injectMetadata(template(), metadata)
                 : injectLanguage(template(), metadata.locale);
-        ResponseEntity.BodyBuilder response = ResponseEntity.ok()
+        boolean routable = metadata.indexable || NON_PUBLIC_APP_ROUTES.contains(request.getRequestURI());
+        ResponseEntity.BodyBuilder response = ResponseEntity.status(routable ? HttpStatus.OK : HttpStatus.NOT_FOUND)
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache")
                 .contentType(MediaType.TEXT_HTML);
         if (!metadata.indexable) {

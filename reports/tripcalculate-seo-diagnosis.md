@@ -175,6 +175,8 @@ Production HTTP/HTML:
 - All four localized public URLs respond 200.
 - Their initial HTML bodies had the same SHA-256 digest.
 - Every localized response had `lang="uk"`, the same English title/description, no canonical, no hreflang, no JSON-LD, and root `og:url`.
+- The `www` host and trailing-slash variants of localized public routes returned duplicate HTTP 200 responses.
+- A root-level unknown URL redirected to Google OAuth instead of returning 404; unknown locale-prefixed paths received the generic SPA shell with HTTP 200.
 - Production robots and sitemap are fetchable.
 
 Repository:
@@ -196,6 +198,7 @@ Repository:
 | Medium | Search Console has no submitted sitemap | Confirmed, external action pending | High | GSC property | `sitemaps.list` returned empty |
 | Medium | Mobile CTR is 0.67% despite average position 7.19 | Confirmed observation; relevance hypothesis addressed | Medium | Search snippets/mobile SERP | Search Analytics device dimension |
 | Medium | Total visitor decline cannot be measured with current data access | Confirmed measurement gap | High | Analytics stack | No GA integration/credential; only 33 GSC days |
+| Medium | Duplicate host/trailing-slash responses and unknown-path status handling | Confirmed, fixed in repo | High | Public routes; `CanonicalUrlFilter`, `SecurityConfig`, `SpaShellController` | Production HTTP audit + filter/security/controller tests |
 | Low/Medium | Main frontend bundle is 639 KB gzip | Confirmed build risk, impact unmeasured | Medium | Frontend bundle | Vite build; PageSpeed unavailable |
 | Low | No Search Appearance/structured data results | Confirmed absence, not established as a fault | High | Public pages | GSC + HTML inspection |
 
@@ -229,4 +232,4 @@ Not confirmed as causes of a decline:
 4. Add privacy-conscious GA4 or a self-hosted analytics platform only through a separate attribution/privacy decision.
 5. Obtain PageSpeed/Core Web Vitals data, then address bundle splitting only if measured performance justifies it.
 6. Monitor Ukrainian high-impression/zero-click terms and mobile CTR for 28 days before changing visible content.
-7. Audit wildcard SPA routes for soft-404 behavior in a separate change; this investigation did not alter route status codes.
+7. After deployment, verify apex-host/trailing-slash normalization and real 404 responses for both root-level and locale-prefixed unknown paths.
