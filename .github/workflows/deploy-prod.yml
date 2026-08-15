@@ -199,13 +199,19 @@ jobs:
           AGENT_URL: "http://trip-calculate-agent:8001"
         run: |
           ssh -i ~/.ssh/vps_deploy_key $VPS_USER@$VPS_HOST "DOCKER_USERNAME='${DOCKER_USERNAME}' GITHUB_SHA='${GITHUB_SHA}' DATABASE_URL='${DATABASE_URL}' DATABASE_USERNAME='${DATABASE_USERNAME}' DATABASE_PASSWORD='${DATABASE_PASSWORD}' GOOGLE_CLIENT_ID='${GOOGLE_CLIENT_ID}' GOOGLE_CLIENT_SECRET='${GOOGLE_CLIENT_SECRET}' OAUTH_REDIRECT_URI='${OAUTH_REDIRECT_URI}' GMAIL_USERNAME='${GMAIL_USERNAME}' GMAIL_APP_PASSWORD='${GMAIL_APP_PASSWORD}' ADMIN_EMAIL='${ADMIN_EMAIL}' MAPBOX_ACCESS_TOKEN='${MAPBOX_ACCESS_TOKEN}' REDIS_PASSWORD='${REDIS_PASSWORD}' OPENAI_API_KEY='${OPENAI_API_KEY}' LANGFUSE_PUBLIC_KEY='${LANGFUSE_PUBLIC_KEY}' LANGFUSE_SECRET_KEY='${LANGFUSE_SECRET_KEY}' LANGFUSE_HOST='${LANGFUSE_HOST}' AGENT_URL='${AGENT_URL}' bash -s" <<'REMOTE'
+            set -Eeuo pipefail
             echo "🚀 Deploying to Production VPS..."
 
             # Create private Docker network if it doesn't exist
             docker network inspect trip-calculate-network >/dev/null 2>&1 || docker network create trip-calculate-network
 
-            # Connect database to network if not already connected
-            docker network connect trip-calculate-network trip-calculate-db 2>/dev/null || echo "✅ Database already on network"
+            # Connect database to the deployment network idempotently.
+            if [ "$(docker inspect -f '{{if index .NetworkSettings.Networks "trip-calculate-network"}}connected{{end}}' trip-calculate-db)" = "connected" ]; then
+              echo "✅ Database already on deployment network"
+            else
+              docker network connect trip-calculate-network trip-calculate-db
+              echo "✅ Database connected to deployment network"
+            fi
 
             # ==================== SECURITY CHECKS ====================
             echo "🔒 Running security verification..."
@@ -288,8 +294,10 @@ jobs:
 
             docker pull "${DOCKER_USERNAME}/trip-calculate-agent:prod-${GITHUB_SHA}"
 
-            docker stop trip-calculate-agent 2>/dev/null || true
-            docker rm   trip-calculate-agent 2>/dev/null || true
+            if docker ps -a --format '{{.Names}}' | grep -q '^trip-calculate-agent$'; then
+              docker stop trip-calculate-agent
+              docker rm trip-calculate-agent
+            fi
 
             docker run -d \
               --name trip-calculate-agent \
@@ -326,12 +334,15 @@ jobs:
             echo ""
             echo "📦 Deploying application..."
             
-            # Pull latest image
-            docker pull "${DOCKER_USERNAME}/trip-calculate:latest"
+            # Pull the immutable image produced for this exact release.
+            docker pull "${DOCKER_USERNAME}/trip-calculate:prod-${GITHUB_SHA}"
 
-            # Stop and remove old container
-            docker stop trip-calculate-prod || true
-            docker rm trip-calculate-prod || true
+            # Stop and remove the old container only when it exists. Failures
+            # are fatal so a stale exact-SHA container cannot mask this run.
+            if docker ps -a --format '{{.Names}}' | grep -q '^trip-calculate-prod$'; then
+              docker stop trip-calculate-prod
+              docker rm trip-calculate-prod
+            fi
 
             # Run new container with Redis connection
             docker run -d -p 8080:8080 \
@@ -354,7 +365,7 @@ jobs:
               -e REDIS_PASSWORD="${REDIS_PASSWORD}" \
               -e AI_CACHE_TTL_HOURS=24 \
               -e AGENT_URL="${AGENT_URL}" \
-              "${DOCKER_USERNAME}/trip-calculate:latest"
+              "${DOCKER_USERNAME}/trip-calculate:prod-${GITHUB_SHA}"
 
             echo "✅ Application container started"
             docker ps -a | grep trip-calculate
@@ -417,36 +428,142 @@ jobs:
             # Check for connection errors in logs
             echo ""
             echo "🔍 Checking for connection issues..."
-            
-            if docker logs trip-calculate-prod --tail 50 | grep -qi "connection.*refused\|unable to.*database\|authentication.*failed"; then
-              echo "⚠️ Warning: Potential database connection issues"
-              docker logs trip-calculate-prod --tail 50 | grep -i "database\|postgresql\|hikari"
+
+            if ! APP_LOG_TAIL="$(docker logs trip-calculate-prod --tail 50 2>&1)"; then
+              echo "❌ Could not inspect application logs"
+              exit 1
             fi
 
-            if docker logs trip-calculate-prod --tail 50 | grep -qi "redis.*connection.*refused\|unable to.*redis"; then
+            if CONNECTION_ISSUES="$(printf '%s\n' "${APP_LOG_TAIL}" | grep -Ei "connection.*refused|unable to.*database|authentication.*failed")"; then
+              echo "⚠️ Warning: Potential database connection issues"
+              printf '%s\n' "${CONNECTION_ISSUES}"
+            fi
+
+            if REDIS_ISSUES="$(printf '%s\n' "${APP_LOG_TAIL}" | grep -Ei "redis.*connection.*refused|unable to.*redis")"; then
               echo "⚠️ Warning: Potential Redis connection issues"
-              docker logs trip-calculate-prod --tail 50 | grep -i "redis"
+              printf '%s\n' "${REDIS_ISSUES}"
+            fi
+
+            # ==================== FINAL VERIFICATION ====================
+            # Gather fresh evidence after every connectivity and startup check.
+            # Any mismatch exits before the celebratory summary is printed.
+            APP_IMAGE="$(docker inspect -f '{{.Config.Image}}' trip-calculate-prod)"
+            AGENT_IMAGE="$(docker inspect -f '{{.Config.Image}}' trip-calculate-agent)"
+            APP_IMAGE_ID="$(docker inspect -f '{{.Image}}' trip-calculate-prod)"
+            AGENT_IMAGE_ID="$(docker inspect -f '{{.Image}}' trip-calculate-agent)"
+            ARCHITECTURE="$(docker image inspect -f '{{.Architecture}}' "${APP_IMAGE}")"
+            APP_HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' trip-calculate-prod)"
+            AGENT_HEALTH="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' trip-calculate-agent)"
+            if ! APP_RESTARTS="$(docker inspect -f '{{.RestartCount}}' trip-calculate-prod)"; then
+              echo "❌ Could not inspect application restart count"
+              exit 1
+            fi
+            if ! AGENT_RESTARTS="$(docker inspect -f '{{.RestartCount}}' trip-calculate-agent)"; then
+              echo "❌ Could not inspect agent restart count"
+              exit 1
+            fi
+            DB_NETWORK="$(docker inspect -f '{{with index .NetworkSettings.Networks "trip-calculate-network"}}{{.IPAddress}}{{end}}' trip-calculate-db)"
+            REDIS_NETWORK="$(docker inspect -f '{{with index .NetworkSettings.Networks "trip-calculate-network"}}{{.IPAddress}}{{end}}' trip-calculate-redis)"
+            if ! DB_PORTS="$(docker port trip-calculate-db 2>/dev/null)"; then
+              echo "❌ Could not inspect database port publications"
+              exit 1
+            fi
+            if ! REDIS_PORTS="$(docker port trip-calculate-redis 2>/dev/null)"; then
+              echo "❌ Could not inspect Redis port publications"
+              exit 1
+            fi
+            INTERNAL_HEALTH="$(curl -fsS --connect-timeout 5 --max-time 10 http://localhost:8080/actuator/health)"
+            PUBLIC_HEALTH_URL="https://trip-calculate.online/actuator/health"
+            PUBLIC_HEALTH_CODE="$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "${PUBLIC_HEALTH_URL}")"
+            if ! ALL_CONTAINERS="$(docker ps -a --format '{{.Names}}')"; then
+              echo "❌ Could not inspect rollback container retention"
+              exit 1
+            fi
+            ROLLBACK_CONTAINERS=""
+            while IFS= read -r CONTAINER_NAME; do
+              case "${CONTAINER_NAME}" in
+                trip-calculate-*-rollback-*)
+                  if [ -n "${ROLLBACK_CONTAINERS}" ]; then
+                    ROLLBACK_CONTAINERS="${ROLLBACK_CONTAINERS},${CONTAINER_NAME}"
+                  else
+                    ROLLBACK_CONTAINERS="${CONTAINER_NAME}"
+                  fi
+                  ;;
+              esac
+            done <<< "${ALL_CONTAINERS}"
+            [ -n "${ROLLBACK_CONTAINERS}" ] || ROLLBACK_CONTAINERS="none retained"
+
+            EXPECTED_APP_IMAGE="${DOCKER_USERNAME}/trip-calculate:prod-${GITHUB_SHA}"
+            EXPECTED_AGENT_IMAGE="${DOCKER_USERNAME}/trip-calculate-agent:prod-${GITHUB_SHA}"
+
+            if [ "${APP_IMAGE}" != "${EXPECTED_APP_IMAGE}" ] || [ "${AGENT_IMAGE}" != "${EXPECTED_AGENT_IMAGE}" ]; then
+              echo "❌ Deployed image tag does not match release ${GITHUB_SHA}"
+              exit 1
+            fi
+            if [ -z "${APP_IMAGE_ID}" ] || [ -z "${AGENT_IMAGE_ID}" ] || [ -z "${ARCHITECTURE}" ]; then
+              echo "❌ Could not verify deployed image IDs or architecture"
+              exit 1
+            fi
+            if [ "${APP_HEALTH}" != "healthy" ] || [ "${AGENT_HEALTH}" != "healthy" ]; then
+              echo "❌ Containers are not fully healthy (application=${APP_HEALTH}, agent=${AGENT_HEALTH})"
+              exit 1
+            fi
+            if [ -z "${DB_NETWORK}" ] || [ -z "${REDIS_NETWORK}" ]; then
+              echo "❌ Database or Redis is missing from trip-calculate-network"
+              exit 1
+            fi
+            if [ -n "${DB_PORTS}" ] || [ -n "${REDIS_PORTS}" ]; then
+              echo "❌ Database or Redis has a published host port"
+              exit 1
+            fi
+            if ! docker exec trip-calculate-prod ping -c 1 trip-calculate-db >/dev/null 2>&1; then
+              echo "❌ Final application-to-database connectivity check failed"
+              exit 1
+            fi
+            if ! docker exec trip-calculate-prod ping -c 1 trip-calculate-redis >/dev/null 2>&1; then
+              echo "❌ Final application-to-Redis connectivity check failed"
+              exit 1
+            fi
+            if ! printf '%s' "${INTERNAL_HEALTH}" | grep -q '"status":"UP"'; then
+              echo "❌ Internal actuator health is not UP"
+              exit 1
+            fi
+            if [ "${PUBLIC_HEALTH_CODE}" != "200" ]; then
+              echo "❌ Public health endpoint returned HTTP ${PUBLIC_HEALTH_CODE}"
+              exit 1
+            fi
+            if ! FINAL_CONTAINER_STATUS="$(docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' | grep trip-calculate)"; then
+              echo "❌ Could not verify final container status"
+              exit 1
             fi
 
             # ==================== DEPLOYMENT SUMMARY ====================
             echo ""
-            echo "🎉 Deployment Summary:"
+            echo "🎉 Verified Deployment Summary:"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Application: ✅ Running on port 8080"
-            echo "Agent:       ✅ Running on internal port 8001"
-            echo "Database:    ✅ Secured on private network (172.18.0.2)"
-            echo "Redis:       ✅ Secured on private network"
+            echo "Release SHA:             ${GITHUB_SHA}"
+            echo "Architecture:            ${ARCHITECTURE}"
+            echo "Application image:       ${APP_IMAGE}"
+            echo "Application image ID:    ${APP_IMAGE_ID}"
+            echo "Agent image:             ${AGENT_IMAGE}"
+            echo "Agent image ID:          ${AGENT_IMAGE_ID}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Security Checks:"
-            echo "  DB Port:    $(docker port trip-calculate-db >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
-            echo "  Redis Port: $(docker port trip-calculate-redis >/dev/null 2>&1 && echo '❌ EXPOSED!' || echo '✅ NOT exposed')"
-            echo "  Health:     $(curl -sf http://localhost:8080/actuator/health >/dev/null && echo '✅ Healthy' || echo '❌ Unhealthy')"
-            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo ""
-            echo "✅ Production deployment complete!"
+            echo "Application health:      ✅ ${APP_HEALTH} (restarts=${APP_RESTARTS}, host port=8080)"
+            echo "Agent health:            ✅ ${AGENT_HEALTH} (restarts=${AGENT_RESTARTS}, internal port=8001)"
+            echo "Database network:        ✅ trip-calculate-network (${DB_NETWORK})"
+            echo "Redis network:           ✅ trip-calculate-network (${REDIS_NETWORK})"
+            echo "Database host port:      ✅ NOT published"
+            echo "Redis host port:         ✅ NOT published"
+            echo "Database connectivity:   ✅ verified from application"
+            echo "Redis connectivity:      ✅ verified from application"
+            echo "Internal health:         ✅ UP"
+            echo "Public health:           ✅ HTTP ${PUBLIC_HEALTH_CODE} (${PUBLIC_HEALTH_URL})"
+            echo "Rollback containers:     ${ROLLBACK_CONTAINERS}"
             echo ""
             echo "📦 Final container status:"
-            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" | grep trip-calculate
+            printf '%s\n' "${FINAL_CONTAINER_STATUS}"
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "Deployment status: VERIFIED COMPLETE"
           REMOTE
 
       - name: Cleanup SSH Key
@@ -454,6 +571,11 @@ jobs:
         run: rm -f ~/.ssh/vps_deploy_key
 
       - name: Send Deployment Notification
-        if: always()
+        if: success()
         run: |
-          echo "🎉 Production deployment completed for commit ${{ github.sha }}"
+          echo "✅ Production release ${{ github.sha }} was verified and deployed"
+
+      - name: Send Deployment Failure Notification
+        if: failure()
+        run: |
+          echo "❌ Production release pipeline failed for ${{ github.sha }}; deployment verification may not have completed"
