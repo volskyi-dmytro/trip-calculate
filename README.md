@@ -410,6 +410,26 @@ pytest tests/ -m "not integration" -v
 OPENAI_API_KEY=sk-your_key pytest tests/ -m integration -v
 ```
 
+### Route Intelligence Evaluation
+
+Behavioural regression suite for the agent's natural-language contract —
+dropped `via`/`через` stops, wrong supervisor routing, lost current-route
+context, unsafe model coordinates, unreliable car estimates. Full details in
+[`agent/evals/README.md`](agent/evals/README.md).
+
+```bash
+cd agent
+
+# Contract mode — no API key, no network. Runs on every PR and blocks merge.
+python -m evals.runner --mode mock
+
+# Live mode — real model, detects prompt/model regressions (~$0.01 per run).
+OPENAI_API_KEY=sk-your_key python -m evals.runner --mode live
+```
+
+Reports land in `agent/evals/results/` (git-ignored). A real-model run is
+manual only, via the **Live Route Intelligence Evaluation** workflow.
+
 ### Manual Testing
 ```bash
 # Terminal 1 - Backend

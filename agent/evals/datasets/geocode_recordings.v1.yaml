@@ -1,0 +1,176 @@
+version: v1
+kind: geocode_recordings
+description: >
+  Hand-authored, Nominatim-shaped geocoding responses that make route
+  evaluation reproducible. These are NOT verbatim captures of live Nominatim
+  traffic: coordinates are approximate and exist so routes are plausible, not
+  to assert geographic precision. A query matching no entry here fails to
+  geocode, which is exactly what a real miss looks like to the agent.
+
+  Matching is by lowercase substring, longest matched needle wins.
+
+places:
+  # ── Ukraine ──────────────────────────────────────────────────────────────
+  - id: kyiv
+    match_any: ["kyiv", "kiev", "київ", "києв"]
+    name: Kyiv
+    display_name: "Kyiv, Ukraine"
+    lat: 50.4501
+    lon: 30.5234
+    country_code: ua
+    country: Ukraine
+
+  - id: lviv-oblast
+    match_any: ["lviv oblast", "lvivska", "львівськ", "львівщин"]
+    name: Lviv Oblast
+    display_name: "Lviv Oblast, Ukraine"
+    type: administrative
+    class: boundary
+    lat: 49.65
+    lon: 23.90
+    country_code: ua
+    country: Ukraine
+
+  - id: lviv
+    match_any: ["lviv", "lvov", "львів", "львов"]
+    name: Lviv
+    display_name: "Lviv, Lviv Oblast, Ukraine"
+    lat: 49.8397
+    lon: 24.0297
+    country_code: ua
+    country: Ukraine
+
+  - id: zhytomyr
+    match_any: ["zhytomyr", "zhitomir", "житомир"]
+    name: Zhytomyr
+    display_name: "Zhytomyr, Zhytomyr Oblast, Ukraine"
+    lat: 50.2547
+    lon: 28.6587
+    country_code: ua
+    country: Ukraine
+
+  - id: rivne
+    match_any: ["rivne", "rovno", "рівне", "рівн"]
+    name: Rivne
+    display_name: "Rivne, Rivne Oblast, Ukraine"
+    lat: 50.6199
+    lon: 26.2516
+    country_code: ua
+    country: Ukraine
+
+  - id: ternopil
+    match_any: ["ternopil", "тернопіл", "тернопол"]
+    name: Ternopil
+    display_name: "Ternopil, Ternopil Oblast, Ukraine"
+    lat: 49.5535
+    lon: 25.5948
+    country_code: ua
+    country: Ukraine
+
+  - id: odesa
+    match_any: ["odesa", "odessa", "одес"]
+    name: Odesa
+    display_name: "Odesa, Odesa Oblast, Ukraine"
+    lat: 46.4825
+    lon: 30.7233
+    country_code: ua
+    country: Ukraine
+
+  - id: cherkasy-oblast
+    match_any: ["cherkasy oblast", "cherkaska", "черкаськ", "черкащин"]
+    name: Cherkasy Oblast
+    display_name: "Cherkasy Oblast, Ukraine"
+    type: administrative
+    class: boundary
+    lat: 49.4444
+    lon: 31.9992
+    country_code: ua
+    country: Ukraine
+
+  - id: cherkasy
+    match_any: ["cherkasy", "черкаси"]
+    name: Cherkasy
+    display_name: "Cherkasy, Cherkasy Oblast, Ukraine"
+    lat: 49.4444
+    lon: 32.0598
+    country_code: ua
+    country: Ukraine
+
+  - id: kovel
+    match_any: ["kovel", "ковель", "ковел"]
+    name: Kovel
+    display_name: "Kovel, Volyn Oblast, Ukraine"
+    lat: 51.2172
+    lon: 24.7089
+    country_code: ua
+    country: Ukraine
+
+  # Native-script-only on purpose: OSM knows this village by its Ukrainian
+  # spelling, so the transliteration "Solovychi ..." must miss and the
+  # original_name fallback must be what rescues it.
+  - id: solovychi
+    match_any: ["соловичі"]
+    name: Соловичі
+    display_name: "Соловичі, Волинська область, Україна"
+    type: village
+    lat: 51.4333
+    lon: 24.6167
+    country_code: ua
+    country: Ukraine
+
+  # ── Elsewhere in Europe ──────────────────────────────────────────────────
+  - id: nitra
+    match_any: ["nitra", "нітр"]
+    name: Nitra
+    display_name: "Nitra, Nitra Region, Slovakia"
+    lat: 48.3069
+    lon: 18.0864
+    country_code: sk
+    country: Slovakia
+
+  - id: bucharest
+    match_any: ["bucharest", "bucuresti", "bucurești", "букурешт"]
+    name: București
+    display_name: "București, Romania"
+    lat: 44.4268
+    lon: 26.1025
+    country_code: ro
+    country: Romania
+
+  - id: romania
+    match_any: ["romania", "românia", "румун"]
+    name: Romania
+    display_name: "Romania"
+    type: administrative
+    class: boundary
+    lat: 45.9432
+    lon: 24.9668
+    country_code: ro
+    country: Romania
+
+  - id: pomorie
+    match_any: ["pomorie", "поморі", "помор"]
+    name: Pomorie
+    display_name: "Pomorie, Burgas Province, Bulgaria"
+    lat: 42.5561
+    lon: 27.6417
+    country_code: bg
+    country: Bulgaria
+
+  - id: budapest
+    match_any: ["budapest", "будапешт"]
+    name: Budapest
+    display_name: "Budapest, Hungary"
+    lat: 47.4979
+    lon: 19.0402
+    country_code: hu
+    country: Hungary
+
+  - id: krakow
+    match_any: ["krakow", "kraków", "cracow", "краків"]
+    name: Kraków
+    display_name: "Kraków, Lesser Poland, Poland"
+    lat: 50.0647
+    lon: 19.9450
+    country_code: pl
+    country: Poland

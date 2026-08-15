@@ -24,7 +24,22 @@ dev = [
     "pytest-asyncio>=0.24.0",
     "pytest-mock>=3.14.0",
     "respx>=0.21.0",
+    # evals/ reads YAML fixtures. Available transitively today; declared here
+    # so the evaluation suite does not depend on another package's dependency.
+    "pyyaml>=6.0",
 ]
+
+[tool.setuptools.packages.find]
+# Only the service ships. Without this, flat-layout auto-discovery sees both
+# `app` and `evals` and refuses to build at all. `evals` is developer tooling —
+# the Dockerfile copies `app/` alone — and stays importable from the repo root
+# for pytest and `python -m evals.runner`.
+#
+# This must be the `find` directive, not an explicit `packages = ["app"]`:
+# the Dockerfile installs from pyproject.toml *before* copying `app/`, and an
+# explicit list fails with "package directory 'app' does not exist" at that
+# layer. `find` simply matches nothing there, which is what that layer wants.
+include = ["app*"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

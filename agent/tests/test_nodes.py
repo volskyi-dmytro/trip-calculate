@@ -911,3 +911,312 @@ async def test_transit_stop_is_parsed_as_waypoint_live(message, expect_any_of):
     blob = " ".join(f"{l.name} {l.original_name or ''}" for l in waypoints).lower()
     assert any(token in blob for token in expect_any_of), \
         f"no expected transit stop in waypoints: {[l.name for l in waypoints]}"
+
+
+# ── Production route-shape telemetry ───────────────────────────────────────
+
+def _shape_geo(name, type_, source="nominatim", recovered=False):
+    from app.schema import GeocodedLocation
+    return GeocodedLocation(
+        name=name, clean_name=name, location_type=type_,
+        latitude=50.0, longitude=30.0, source=source, recovered=recovered,
+        error=(source == "failed"),
+    )
+
+
+def test_format_response_records_requested_versus_retained_stops():
+    """A dropped transit stop is invisible in production: the response is a
+    success and the trace looks healthy. These deterministic counts are the
+    only in-trace signal that a stop the user asked for did not survive."""
+    from unittest.mock import patch
+    from app.nodes import format_response
+    from app.schema import ParsedRoute, ParsedLocation, TripSettings
+
+    parsed = ParsedRoute(
+        is_route_request=True, settings=TripSettings(),
+        locations=[ParsedLocation(name=n, location_type=t) for n, t in
+                   [("A", "origin"), ("B", "waypoint"), ("C", "destination")]],
+    )
+    state = {
+        "geocoded": [_shape_geo("A", "origin"), _shape_geo("B", "waypoint", source="failed"),
+                     _shape_geo("C", "destination")],
+        "parsed": parsed, "retry_count": 1,
+    }
+
+    with patch("app.nodes.get_client") as get_client:
+        format_response(state)
+
+    kwargs = get_client.return_value.create_event.call_args.kwargs
+    assert kwargs["name"] == "route_shape"
+    meta = kwargs["metadata"]
+    assert meta["requested_stops"] == 3
+    assert meta["retained_stops"] == 2
+    assert meta["requested_waypoints"] == 1
+    assert meta["retained_waypoints"] == 0
+    assert meta["geocode_failures"] == 1
+    assert meta["geocode_retry_count"] == 1
+    # Deterministic counts only — never the user's prompt or their locations
+    assert not any(isinstance(v, str) and v in ("A", "B", "C") for v in meta.values())
+
+
+def test_format_response_survives_broken_langfuse():
+    """Observability must never fail a user's route request."""
+    from unittest.mock import patch
+    from app.nodes import format_response
+    from app.schema import ParsedRoute, TripSettings
+
+    state = {
+        "geocoded": [_shape_geo("A", "origin"), _shape_geo("B", "destination")],
+        "parsed": ParsedRoute(is_route_request=True, settings=TripSettings(), locations=[]),
+        "retry_count": 0,
+    }
+    with patch("app.nodes.get_client", side_effect=RuntimeError("langfuse down")):
+        result = format_response(state)
+    assert result["response"].success is True
+    assert len(result["response"].route.waypoints) == 2
+
+
+# ── Retry slot matching ────────────────────────────────────────────────────
+
+def _retry_llm(parsed_route):
+    from unittest.mock import AsyncMock, MagicMock
+    msg = MagicMock(); msg.parsed = parsed_route
+    choice = MagicMock(); choice.message = msg
+    resp = MagicMock(); resp.choices = [choice]
+    return AsyncMock(return_value=resp)
+
+
+async def test_retry_does_not_merge_the_origin_into_a_failed_destination():
+    """Found by the live evaluation: asked for Kyiv -> <unresolvable village>,
+    the agent returned Kyiv -> Kyiv with success=true.
+
+    The retry prompt asks for only the failed locations, but the model often
+    returns the whole route. Taking the first N locations then merges the
+    ORIGIN into the failed destination's slot and silently corrupts the route.
+    Slots must be matched by location_type, not by position."""
+    from unittest.mock import patch
+    from app.nodes import retry_failed_locations
+    from app.schema import (GeocodedLocation, ParsedLocation, ParsedRoute,
+                            TripSettings)
+
+    geocoded = [
+        GeocodedLocation(name="Kyiv Ukraine", clean_name="Kyiv", location_type="origin",
+                         latitude=50.45, longitude=30.52, source="nominatim"),
+        GeocodedLocation(name="Liutivka Ukraine", clean_name="Liutivka Ukraine",
+                         location_type="destination", source="failed", error=True),
+    ]
+    whole_route = ParsedRoute(
+        is_route_request=True, settings=TripSettings(),
+        locations=[
+            ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+            ParsedLocation(name="Kovel Ukraine", location_type="destination"),
+        ])
+
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+        return GeocodedLocation(
+            name=loc.name, clean_name=loc.name.split()[0],
+            location_type=loc.location_type,
+            latitude=51.2, longitude=24.7, source="nominatim")
+
+    with patch("app.nodes._openai_client") as client, \
+            patch("app.nodes.geocode_location", fake_geocode):
+        client.beta.chat.completions.parse = _retry_llm(whole_route)
+        out = await retry_failed_locations(
+            {"geocoded": geocoded, "retry_count": 0, "message": "з Києва до Лютівки"})
+
+    destination = out["geocoded"][1]
+    assert destination.location_type == "destination"
+    assert destination.clean_name == "Kovel", (
+        "the failed destination must be filled from the retried DESTINATION, "
+        f"not from the origin; got {destination.clean_name!r}")
+    # The already-resolved origin must be untouched
+    assert out["geocoded"][0].clean_name == "Kyiv"
+
+
+async def test_retry_matches_multiple_failed_waypoints_in_order():
+    from unittest.mock import patch
+    from app.nodes import retry_failed_locations
+    from app.schema import (GeocodedLocation, ParsedLocation, ParsedRoute,
+                            TripSettings)
+
+    geocoded = [
+        GeocodedLocation(name="A", clean_name="A", location_type="origin",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="B", clean_name="B", location_type="waypoint",
+                         source="failed", error=True),
+        GeocodedLocation(name="C", clean_name="C", location_type="waypoint",
+                         source="failed", error=True),
+        GeocodedLocation(name="D", clean_name="D", location_type="destination",
+                         latitude=2.0, longitude=2.0, source="nominatim"),
+    ]
+    retried = ParsedRoute(
+        is_route_request=True, settings=TripSettings(),
+        locations=[ParsedLocation(name="B2", location_type="waypoint"),
+                   ParsedLocation(name="C2", location_type="waypoint")])
+
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+        return GeocodedLocation(name=loc.name, clean_name=loc.name,
+                                location_type=loc.location_type,
+                                latitude=1.5, longitude=1.5, source="nominatim")
+
+    with patch("app.nodes._openai_client") as client, \
+            patch("app.nodes.geocode_location", fake_geocode):
+        client.beta.chat.completions.parse = _retry_llm(retried)
+        out = await retry_failed_locations(
+            {"geocoded": geocoded, "retry_count": 0, "message": "A to D via B and C"})
+
+    assert [l.clean_name for l in out["geocoded"]] == ["A", "B2", "C2", "D"]
+
+
+async def test_retry_keeps_the_failure_when_no_slot_matches():
+    """Better a skipped stop the user can see than a wrong one they cannot."""
+    from unittest.mock import patch
+    from app.nodes import retry_failed_locations
+    from app.schema import (GeocodedLocation, ParsedLocation, ParsedRoute,
+                            TripSettings)
+
+    geocoded = [
+        GeocodedLocation(name="A", clean_name="A", location_type="origin",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="B", clean_name="B", location_type="destination",
+                         source="failed", error=True),
+    ]
+    # More locations than failed slots, so the model echoed a route rather than
+    # answering the question — and none of them fits the failed destination.
+    # Positional pairing here is what produced "Kyiv -> Kyiv" in production.
+    mismatched = ParsedRoute(
+        is_route_request=True, settings=TripSettings(),
+        locations=[ParsedLocation(name="Y", location_type="waypoint"),
+                   ParsedLocation(name="Z", location_type="waypoint")])
+
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+        return GeocodedLocation(name=loc.name, clean_name=loc.name,
+                                location_type=loc.location_type,
+                                latitude=9.0, longitude=9.0, source="nominatim")
+
+    with patch("app.nodes._openai_client") as client, \
+            patch("app.nodes.geocode_location", fake_geocode):
+        client.beta.chat.completions.parse = _retry_llm(mismatched)
+        out = await retry_failed_locations(
+            {"geocoded": geocoded, "retry_count": 0, "message": "A to B"})
+
+    assert out["geocoded"][1].source == "failed"
+
+
+async def test_retry_falls_back_to_position_when_counts_match_exactly():
+    """The retry prompt asks for ONLY the failed locations, and the old
+    positional code deliberately tolerated the model mangling location_type.
+    Type matching must not lose that: when the model returns exactly as many
+    locations as there are failed slots it did what was asked, so pair them in
+    order regardless of the type it labelled them with."""
+    from unittest.mock import patch
+    from app.nodes import retry_failed_locations
+    from app.schema import (GeocodedLocation, ParsedLocation, ParsedRoute,
+                            TripSettings)
+
+    geocoded = [
+        GeocodedLocation(name="A", clean_name="A", location_type="origin",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="B", clean_name="B", location_type="waypoint",
+                         source="failed", error=True),
+        GeocodedLocation(name="C", clean_name="C", location_type="destination",
+                         latitude=2.0, longitude=2.0, source="nominatim"),
+    ]
+    # Exactly one location for exactly one failed slot — but mislabelled
+    mangled = ParsedRoute(
+        is_route_request=True, settings=TripSettings(),
+        locations=[ParsedLocation(name="B2", location_type="destination")])
+
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+        return GeocodedLocation(name=loc.name, clean_name=loc.name,
+                                location_type=loc.location_type,
+                                latitude=1.5, longitude=1.5, source="nominatim")
+
+    with patch("app.nodes._openai_client") as client, \
+            patch("app.nodes.geocode_location", fake_geocode):
+        client.beta.chat.completions.parse = _retry_llm(mangled)
+        out = await retry_failed_locations(
+            {"geocoded": geocoded, "retry_count": 0, "message": "A to C via B"})
+
+    assert [l.clean_name for l in out["geocoded"]] == ["A", "B2", "C"]
+    # The slot's own type survives the merge
+    assert out["geocoded"][1].location_type == "waypoint"
+
+
+async def test_retry_pairs_by_identity_not_by_position_when_transposed():
+    """Equal counts do not mean matching order. If the model returns the two
+    fixes transposed, positional pairing swaps origin and destination and the
+    user drives the route backwards — silently, with success=true."""
+    from app.nodes import _pair_retry_slots
+    from app.schema import GeocodedLocation, ParsedLocation
+
+    failed = [
+        GeocodedLocation(name="Kyiv Ukraine", clean_name="Kyiv Ukraine",
+                         location_type="origin", source="failed", error=True),
+        GeocodedLocation(name="Liutivka Ukraine", clean_name="Liutivka Ukraine",
+                         location_type="destination", source="failed", error=True),
+    ]
+    transposed = [
+        ParsedLocation(name="Kovel Ukraine", location_type="destination",
+                       original_name="Лютівки"),
+        ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+    ]
+    pairs = dict(_pair_retry_slots([0, 1], failed, transposed))
+    assert pairs[0].name == "Kyiv Ukraine", "origin slot took the destination's fix"
+    assert pairs[1].name == "Kovel Ukraine", "destination slot took the origin's fix"
+
+
+async def test_retry_does_not_fill_a_failed_waypoint_with_another_waypoints_fix():
+    """Only waypoint C failed, but the model echoed the whole route. Grabbing
+    the first same-type location replaces the stop the user explicitly asked
+    for with a duplicate of a different one — worse than skipping it."""
+    from app.nodes import _pair_retry_slots
+    from app.schema import GeocodedLocation, ParsedLocation
+
+    geocoded = [
+        GeocodedLocation(name="Kyiv Ukraine", clean_name="Kyiv", location_type="origin",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="Zhytomyr Ukraine", clean_name="Zhytomyr",
+                         location_type="waypoint", latitude=1.0, longitude=1.0,
+                         source="nominatim"),
+        GeocodedLocation(name="Soloniv Ukraine", clean_name="Soloniv",
+                         location_type="waypoint", source="failed", error=True),
+        GeocodedLocation(name="Lviv Ukraine", clean_name="Lviv",
+                         location_type="destination", latitude=2.0, longitude=2.0,
+                         source="nominatim"),
+    ]
+    whole_route = [
+        ParsedLocation(name="Kyiv Ukraine", location_type="origin"),
+        ParsedLocation(name="Zhytomyr Ukraine", location_type="waypoint"),
+        ParsedLocation(name="Soloniv Rivne Ukraine", location_type="waypoint",
+                       original_name="Солонів"),
+        ParsedLocation(name="Lviv Ukraine", location_type="destination"),
+    ]
+    pairs = dict(_pair_retry_slots([2], geocoded, whole_route))
+    assert 2 in pairs, "the failed waypoint found no correction at all"
+    assert "Soloniv" in pairs[2].name, (
+        f"failed waypoint was filled from a different stop: {pairs[2].name!r}")
+
+
+async def test_retry_skips_rather_than_guessing_between_same_type_candidates():
+    """When nothing identifies which correction belongs to the failed stop, a
+    visibly skipped stop beats a plausible wrong one."""
+    from app.nodes import _pair_retry_slots
+    from app.schema import GeocodedLocation, ParsedLocation
+
+    geocoded = [
+        GeocodedLocation(name="A Ukraine", clean_name="A", location_type="origin",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="B Ukraine", clean_name="B", location_type="waypoint",
+                         latitude=1.0, longitude=1.0, source="nominatim"),
+        GeocodedLocation(name="C Ukraine", clean_name="C", location_type="waypoint",
+                         source="failed", error=True),
+        GeocodedLocation(name="D Ukraine", clean_name="D", location_type="destination",
+                         latitude=2.0, longitude=2.0, source="nominatim"),
+    ]
+    # Two same-type candidates, neither identifiable as the failed stop's fix
+    unidentifiable = [
+        ParsedLocation(name="Somewhere Else", location_type="waypoint"),
+        ParsedLocation(name="Another Place", location_type="waypoint"),
+    ]
+    assert _pair_retry_slots([2], geocoded, unidentifiable) == []
