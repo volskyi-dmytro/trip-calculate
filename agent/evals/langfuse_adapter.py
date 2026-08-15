@@ -109,7 +109,7 @@ def _safe_trace_url(client, trace_id: Optional[str]) -> Optional[str]:
 
 
 def _publish(report: "RunReport") -> PublishResult:
-    from langfuse import Langfuse
+    from langfuse import Langfuse, propagate_attributes
 
     client = Langfuse(
         public_key=os.getenv("LANGFUSE_PUBLIC_KEY", ""),
@@ -130,7 +130,7 @@ def _publish(report: "RunReport") -> PublishResult:
         tags.append(f"git_sha:{report.git_sha}")
 
     trace_id: Optional[str] = None
-    with client.start_as_current_observation(
+    with propagate_attributes(tags=tags), client.start_as_current_observation(
         name="route_intelligence_eval",
         as_type="evaluator",
         input={
@@ -150,7 +150,6 @@ def _publish(report: "RunReport") -> PublishResult:
         },
     ):
         trace_id = client.get_current_trace_id()
-        client.update_current_span(tags=tags)
 
         # Run-level aggregates
         for name, value in report.metrics.items():
