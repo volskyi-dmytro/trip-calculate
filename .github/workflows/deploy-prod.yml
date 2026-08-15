@@ -246,6 +246,18 @@ jobs:
               echo "✅ Redis container created"
             fi
 
+            # Existing Redis containers may come from a different migration network.
+            # Attach Redis when needed and fail closed on genuine Docker errors.
+            if [ "$(docker inspect -f '{{if index .NetworkSettings.Networks "trip-calculate-network"}}connected{{end}}' trip-calculate-redis)" = "connected" ]; then
+              echo "✅ Redis already on deployment network"
+            else
+              if ! docker network connect trip-calculate-network trip-calculate-redis; then
+                echo "❌ Failed to connect Redis to deployment network"
+                exit 1
+              fi
+              echo "✅ Redis connected to deployment network"
+            fi
+
             # Wait for Redis to be ready
             echo "⏳ Waiting for Redis to be ready..."
             sleep 3

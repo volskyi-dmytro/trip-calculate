@@ -832,6 +832,38 @@ def test_application_runtime_base_supports_arm64_release_platform():
     assert dockerfile.startswith("# Use Amazon Corretto JDK\nFROM amazoncorretto:17-alpine\n")
 
 
+def test_existing_production_redis_is_connected_to_the_deploy_network():
+    workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
+
+    membership_check = (
+        "docker inspect -f '{{if index .NetworkSettings.Networks "
+        '"trip-calculate-network"}}connected{{end}}\' trip-calculate-redis'
+    )
+    connect_redis = (
+        "docker network connect trip-calculate-network trip-calculate-redis"
+    )
+    fail_closed_connect = (
+        "if ! docker network connect trip-calculate-network "
+        "trip-calculate-redis; then"
+    )
+    assert membership_check in workflow
+    assert fail_closed_connect in workflow
+    assert connect_redis in workflow
+    assert f'{connect_redis} 2>/dev/null ||' not in workflow
+    connect_start = workflow.index(fail_closed_connect)
+    connect_end = workflow.index("              fi", connect_start)
+    connect_block = workflow[connect_start:connect_end]
+    assert 'echo "❌ Failed to connect Redis to deployment network"' in connect_block
+    assert "\n                exit 1\n" in connect_block
+    assert workflow.index(membership_check) < connect_start
+    assert connect_start < workflow.index(
+        "# ==================== APPLICATION DEPLOYMENT ===================="
+    )
+    assert workflow.index(fail_closed_connect) < workflow.index(
+        "# Check Redis connectivity"
+    )
+
+
 def test_production_agent_traces_are_separated_and_release_tagged():
     workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
 
