@@ -45,4 +45,24 @@ class PublicNotFoundSecurityTest {
                 .andExpect(status().isPermanentRedirect())
                 .andExpect(header().string(HttpHeaders.LOCATION, "https://trip-calculate.online/en"));
     }
+
+    // GET /api/city-routes/** must be reachable anonymously through the full prod
+    // chain — the dev profile's blanket permitAll would hide a denyAll gap.
+    @Test
+    void anonymousCanListCityRoutes() throws Exception {
+        mockMvc.perform(get("/api/city-routes"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void anonymousCanFetchKnownCityRoute() throws Exception {
+        mockMvc.perform(get("/api/city-routes/kyiv-lviv").param("locale", "uk"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void anonymousGetsPlain404ForUnknownCityRouteSlug() throws Exception {
+        mockMvc.perform(get("/api/city-routes/does-not-exist"))
+                .andExpect(status().isNotFound());
+    }
 }

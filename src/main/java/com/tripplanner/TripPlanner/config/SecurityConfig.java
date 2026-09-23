@@ -241,6 +241,13 @@ public class SecurityConfig {
                         // must work for logged-out users (no AI/auth dependency)
                         .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/fuel-prices").permitAll()
 
+                        // Read-only city-route catalog/facts for the programmatic SEO landing
+                        // pages (crawlers and logged-out visitors). Explicit permitAll here,
+                        // ahead of any broader /api/** rule below — a past incident shipped a
+                        // prod-only denyAll gap masked by the dev profile's blanket permitAll.
+                        .requestMatchers(org.springframework.http.HttpMethod.GET,
+                                "/api/city-routes", "/api/city-routes/**").permitAll()
+
                         // Receipt share links: creation/viewing is anonymous by design (viral loop);
                         // ownership checks for list/delete happen in ReceiptController.
                         // /r/** serves the OG-injected HTML for crawlers and browsers.

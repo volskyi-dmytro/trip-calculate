@@ -1,5 +1,9 @@
 package com.tripplanner.TripPlanner.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.tripplanner.TripPlanner.routing.CityRouteCatalog;
+import com.tripplanner.TripPlanner.routing.CityRouteService;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
@@ -9,19 +13,24 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
  * Serves the SPA shell for locale-prefixed app routes ("/en", "/uk",
- * "/en/route-planner", etc.) so React Router can take over client-side.
- * Indexable routes receive localized, route-specific metadata before the
- * browser executes JavaScript, giving crawlers unambiguous canonical and
- * language-alternate signals.
+ * "/en/route-planner", "/uk/route/kyiv-lviv", etc.) so React Router can take
+ * over client-side. Indexable routes receive localized, route-specific
+ * metadata, JSON-LD structured data, and a crawlable &lt;noscript&gt;
+ * fallback before the browser executes JavaScript.
  */
 @Controller
 public class SpaShellController {
@@ -34,12 +43,21 @@ public class SpaShellController {
             "/uk/admin", "/uk/admin/");
     private static final Pattern HTML_LANG = Pattern.compile("(?i)<html\\s+lang=\"[^\"]*\"");
     private static final Pattern TITLE = Pattern.compile("(?is)(<title>).*?(</title>)");
+    private static final Pattern CITY_ROUTE_PATH = Pattern.compile("^/route/([a-z0-9-]+)$");
+
+    private final CityRouteService cityRouteService;
+    private final ObjectMapper objectMapper;
 
     private volatile String indexTemplate;
 
+    public SpaShellController(CityRouteService cityRouteService, ObjectMapper objectMapper) {
+        this.cityRouteService = cityRouteService;
+        this.objectMapper = objectMapper;
+    }
+
     @GetMapping({"/en", "/en/**", "/uk", "/uk/**"})
     public ResponseEntity<String> shell(HttpServletRequest request) throws IOException {
-        PageMetadata metadata = PageMetadata.forPath(request.getRequestURI());
+        PageMetadata metadata = resolveMetadata(request.getRequestURI());
         String html = metadata.indexable
                 ? injectMetadata(template(), metadata)
                 : injectLanguage(template(), metadata.locale);
@@ -52,6 +70,336 @@ public class SpaShellController {
         }
         return response.body(html);
     }
+
+    private PageMetadata resolveMetadata(String requestPath) {
+        boolean english = requestPath.equals("/en") || requestPath.startsWith("/en/");
+        String locale = english ? "en" : "uk";
+        String localeRoot = "/" + locale;
+        String remainder = requestPath.equals(localeRoot) ? "" : requestPath.substring(localeRoot.length());
+        if (remainder.length() > 1 && remainder.endsWith("/")) {
+            remainder = remainder.substring(0, remainder.length() - 1);
+        }
+
+        if (remainder.isEmpty()) {
+            return buildHomeMetadata(locale);
+        }
+        if (remainder.equals("/route-planner")) {
+            return buildRoutePlannerMetadata(locale);
+        }
+        Matcher cityRouteMatch = CITY_ROUTE_PATH.matcher(remainder);
+        if (cityRouteMatch.matches()) {
+            PageMetadata cityRoute = buildCityRouteMetadata(locale, cityRouteMatch.group(1));
+            if (cityRoute != null) {
+                return cityRoute;
+            }
+        }
+        return PageMetadata.notIndexable(locale);
+    }
+
+    // ------------------------------------------------------------------
+    // Page metadata builders
+    // ------------------------------------------------------------------
+
+    private PageMetadata buildHomeMetadata(String locale) {
+        boolean english = "en".equals(locale);
+        String title = english
+                ? "Road Trip Fuel Cost Calculator for Europe — Split Costs | Trip Calculate"
+                : "Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate";
+        String description = english
+                ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out your European road trip cost in seconds — free, no sign-up."
+                : "Київ → Львів ≈ 2 349 грн на пальне, по 587 грн на пасажира. Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
+        String ogTitle = english
+                ? "Road Trip Fuel Cost Calculator for Europe | Trip Calculate"
+                : "Калькулятор вартості поїздки на авто | Trip Calculate";
+
+        String canonical = SITE_ORIGIN + "/" + locale;
+        String jsonLd = jsonLdWebApplication(canonical, locale, description);
+        String noscript = homeNoscript(english, locale);
+        return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    private PageMetadata buildRoutePlannerMetadata(String locale) {
+        boolean english = "en".equals(locale);
+        String title = english
+                ? "Map Route Planner with Fuel Prices &amp; AI Assistant | Trip Calculate"
+                : "Планувальник маршруту на карті з пальним і погодою — AI-асистент | Trip Calculate";
+        String description = english
+                ? "Plan your route on an interactive map, check live fuel prices by country and weather along the way, and get help from an AI trip assistant — free."
+                : "Плануйте маршрут на карті з кількома зупинками, дізнавайтесь ціни на пальне по країнах і погоду в дорозі. AI-асистент допоможе за секунди — безкоштовно.";
+        String ogTitle = english
+                ? "Route Planner with Fuel Prices &amp; Weather | Trip Calculate"
+                : "Планувальник маршрутів із пальним і погодою | Trip Calculate";
+
+        String canonical = SITE_ORIGIN + "/" + locale + "/route-planner";
+        String jsonLd = jsonLdWebApplication(canonical, locale, description);
+        String noscript = routePlannerNoscript(english, locale);
+        return new PageMetadata(locale, "/route-planner", title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    @SuppressWarnings("unchecked")
+    private PageMetadata buildCityRouteMetadata(String locale, String slug) {
+        Map<String, Object> facts = cityRouteService.get(slug, locale).orElse(null);
+        if (facts == null) {
+            return null;
+        }
+        boolean english = "en".equals(locale);
+        String fromName = (String) facts.get("fromName");
+        String toName = (String) facts.get("toName");
+        double distanceKm = ((Number) facts.get("distanceKm")).doubleValue();
+        double durationMin = ((Number) facts.get("durationMin")).doubleValue();
+        Double totalCost = facts.get("totalCost") != null ? ((Number) facts.get("totalCost")).doubleValue() : null;
+        Double perPassenger = facts.get("perPassenger") != null ? ((Number) facts.get("perPassenger")).doubleValue() : null;
+        List<Map<String, Object>> related = (List<Map<String, Object>>) facts.get("related");
+
+        String title = english
+                ? fromName + " → " + toName + ": Road Trip Cost, Distance &amp; Fuel Price | Trip Calculate"
+                : fromName + " → " + toName + ": вартість поїздки на авто, відстань і пальне | Trip Calculate";
+        String description = cityRouteDescription(english, fromName, toName, distanceKm, durationMin, totalCost, perPassenger);
+        String ogTitle = fromName + " → " + toName + " | Trip Calculate";
+
+        String routePath = "/route/" + slug;
+        String canonical = SITE_ORIGIN + "/" + locale + routePath;
+        String homeUrl = SITE_ORIGIN + "/" + locale;
+        String jsonLd = jsonLdWebApplication(canonical, locale, description)
+                + jsonLdBreadcrumb(homeUrl, "Trip Calculate", canonical, fromName + " → " + toName);
+        String noscript = cityRouteNoscript(english, locale, slug, fromName, toName,
+                distanceKm, durationMin, totalCost, perPassenger, related);
+
+        return new PageMetadata(locale, routePath, title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    private String cityRouteDescription(boolean english, String fromName, String toName,
+                                         double distanceKm, double durationMin,
+                                         Double totalCost, Double perPassenger) {
+        String distance = Math.round(distanceKm) + (english ? " km" : " км");
+        String duration = english ? formatDurationEn(durationMin) : formatDurationUk(durationMin);
+        if (totalCost != null && perPassenger != null) {
+            return english
+                    ? fromName + " → " + toName + " ≈ " + distance + ", " + duration + ". Fuel ≈ "
+                            + formatMoneyEn(totalCost) + ", " + formatMoneyEn(perPassenger) + " per passenger. Free calculator, real driving distance."
+                    : fromName + " → " + toName + " ≈ " + distance + ", " + duration + " у дорозі. Пальне ≈ "
+                            + formatMoneyUk(totalCost) + ", по " + formatMoneyUk(perPassenger) + " на пасажира. Розрахуйте поїздку безкоштовно.";
+        }
+        return english
+                ? fromName + " → " + toName + " ≈ " + distance + ", " + duration + ". Calculate the fuel cost and split it between passengers — free, no sign-up."
+                : fromName + " → " + toName + " ≈ " + distance + ", " + duration + " у дорозі. Розрахуйте вартість пального та поділіть її між пасажирами — безкоштовно.";
+    }
+
+    // ------------------------------------------------------------------
+    // JSON-LD
+    // ------------------------------------------------------------------
+
+    private String jsonLdWebApplication(String url, String locale, String description) {
+        Map<String, Object> offers = new LinkedHashMap<>();
+        offers.put("@type", "Offer");
+        offers.put("price", "0");
+        offers.put("priceCurrency", "UAH");
+
+        Map<String, Object> obj = new LinkedHashMap<>();
+        obj.put("@context", "https://schema.org");
+        obj.put("@type", "WebApplication");
+        obj.put("name", "Trip Calculate");
+        obj.put("url", url);
+        obj.put("applicationCategory", "TravelApplication");
+        obj.put("operatingSystem", "Web");
+        obj.put("inLanguage", locale);
+        obj.put("offers", offers);
+        obj.put("description", description);
+        return toScriptTag(obj);
+    }
+
+    private String jsonLdBreadcrumb(String homeUrl, String homeName, String pageUrl, String pageName) {
+        Map<String, Object> home = new LinkedHashMap<>();
+        home.put("@type", "ListItem");
+        home.put("position", 1);
+        home.put("name", homeName);
+        home.put("item", homeUrl);
+
+        Map<String, Object> page = new LinkedHashMap<>();
+        page.put("@type", "ListItem");
+        page.put("position", 2);
+        page.put("name", pageName);
+        page.put("item", pageUrl);
+
+        Map<String, Object> obj = new LinkedHashMap<>();
+        obj.put("@context", "https://schema.org");
+        obj.put("@type", "BreadcrumbList");
+        obj.put("itemListElement", List.of(home, page));
+        return toScriptTag(obj);
+    }
+
+    private String toScriptTag(Object payload) {
+        try {
+            // Escape "</" so a value can never prematurely close the <script> tag.
+            String json = objectMapper.writeValueAsString(payload).replace("</", "<\\/");
+            return "\n    <script type=\"application/ld+json\">" + json + "</script>";
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize JSON-LD payload", e);
+        }
+    }
+
+    // ------------------------------------------------------------------
+    // Crawlable <noscript> fallback content
+    // ------------------------------------------------------------------
+
+    private record NoscriptLink(String href, String text) {}
+
+    private String noscriptBlock(String h1, List<String> paragraphs, List<NoscriptLink> links) {
+        StringBuilder sb = new StringBuilder("\n    <noscript>\n      <h1>")
+                .append(esc(h1)).append("</h1>\n");
+        for (String paragraph : paragraphs) {
+            sb.append("      <p>").append(esc(paragraph)).append("</p>\n");
+        }
+        sb.append("      <ul>\n");
+        for (NoscriptLink link : links) {
+            sb.append("        <li><a href=\"").append(esc(link.href())).append("\">")
+                    .append(esc(link.text())).append("</a></li>\n");
+        }
+        sb.append("      </ul>\n    </noscript>");
+        return sb.toString();
+    }
+
+    private String homeNoscript(boolean english, String locale) {
+        String h1 = english
+                ? "Road Trip Fuel Cost Calculator for Europe"
+                : "Калькулятор вартості поїздки на авто";
+        List<String> paragraphs = english
+                ? List.of(
+                        "Trip Calculate works out your road trip's fuel cost from real driving distances and live fuel prices by country, then splits the total between passengers.",
+                        "Plan a route on the map, browse a city-to-city fuel cost below, or switch to the Ukrainian version.")
+                : List.of(
+                        "Trip Calculate рахує вартість пального для вашої поїздки за реальною відстанню та актуальними цінами на пальне по країнах, а потім ділить суму між пасажирами.",
+                        "Сплануйте маршрут на карті, перегляньте вартість поїздки між містами нижче або перемкніться на англійську версію.");
+
+        List<NoscriptLink> links = new ArrayList<>();
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + (english ? "uk" : "en"),
+                english ? "Українська версія" : "English version"));
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale + "/route-planner",
+                english ? "Route planner" : "Планувальник маршрутів"));
+        for (CityRouteCatalog.CityRoute route : cityRouteService.all()) {
+            links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale + "/route/" + route.slug(),
+                    cityName(route.from(), english) + " → " + cityName(route.to(), english)));
+        }
+        return noscriptBlock(h1, paragraphs, links);
+    }
+
+    private String routePlannerNoscript(boolean english, String locale) {
+        String h1 = english
+                ? "Map Route Planner with Fuel Prices & Weather"
+                : "Планувальник маршруту з пальним і погодою";
+        List<String> paragraphs = List.of(english
+                ? "Plan a multi-stop road trip on the map, see live fuel prices by country and the weather along your route, and ask the AI trip assistant for help."
+                : "Плануйте маршрут із кількома зупинками на карті, дивіться актуальні ціни на пальне по країнах і погоду в дорозі, а AI-асистент допоможе з деталями.");
+
+        List<NoscriptLink> links = new ArrayList<>();
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + (english ? "uk" : "en") + "/route-planner",
+                english ? "Українська версія" : "English version"));
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale, english ? "Home" : "Головна"));
+        for (CityRouteCatalog.CityRoute route : cityRouteService.all().stream().limit(5).toList()) {
+            links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale + "/route/" + route.slug(),
+                    cityName(route.from(), english) + " → " + cityName(route.to(), english)));
+        }
+        return noscriptBlock(h1, paragraphs, links);
+    }
+
+    private String cityRouteNoscript(boolean english, String locale, String slug,
+                                      String fromName, String toName,
+                                      double distanceKm, double durationMin,
+                                      Double totalCost, Double perPassenger,
+                                      List<Map<String, Object>> related) {
+        String h1 = fromName + " → " + toName;
+        String distance = Math.round(distanceKm) + (english ? " km" : " км");
+        String duration = english ? formatDurationEn(durationMin) : formatDurationUk(durationMin);
+        String facts;
+        if (totalCost != null && perPassenger != null) {
+            facts = english
+                    ? "Distance: " + distance + " (" + duration + "). Estimated fuel cost: " + formatMoneyEn(totalCost)
+                            + ", " + formatMoneyEn(perPassenger) + " per passenger (4 passengers, 7.5 L/100km petrol)."
+                    : "Відстань: " + distance + " (" + duration + "). Орієнтовна вартість пального: " + formatMoneyUk(totalCost)
+                            + ", по " + formatMoneyUk(perPassenger) + " на пасажира (4 пасажири, 7.5 л/100км, бензин).";
+        } else {
+            facts = english
+                    ? "Distance: " + distance + " (" + duration + "). Calculate the exact fuel cost and split it between passengers on the site."
+                    : "Відстань: " + distance + " (" + duration + "). Розрахуйте точну вартість пального та поділіть її між пасажирами на сайті.";
+        }
+        List<String> paragraphs = List.of(
+                english
+                        ? "Free trip cost calculator for the " + fromName + " to " + toName + " road trip: real driving distance, live fuel price, and a per-passenger split."
+                        : "Безкоштовний калькулятор вартості поїздки " + fromName + " – " + toName + ": реальна відстань, актуальна ціна на пальне та поділ витрат між пасажирами.",
+                facts);
+
+        List<NoscriptLink> links = new ArrayList<>();
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + (english ? "uk" : "en") + "/route/" + slug,
+                english ? "Українська версія" : "English version"));
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale, english ? "Home" : "Головна"));
+        links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale + "/route-planner",
+                english ? "Route planner" : "Планувальник маршрутів"));
+        if (related != null) {
+            for (Map<String, Object> other : related) {
+                links.add(new NoscriptLink(SITE_ORIGIN + "/" + locale + "/route/" + other.get("slug"),
+                        other.get("fromName") + " → " + other.get("toName")));
+            }
+        }
+        return noscriptBlock(h1, paragraphs, links);
+    }
+
+    private static String cityName(CityRouteCatalog.City city, boolean english) {
+        return english ? city.en() : city.uk();
+    }
+
+    private static String esc(String value) {
+        return HtmlUtils.htmlEscape(value, "UTF-8");
+    }
+
+    // ------------------------------------------------------------------
+    // Formatting helpers
+    // ------------------------------------------------------------------
+
+    private static String formatDurationUk(double minutesRaw) {
+        long total = Math.round(minutesRaw);
+        long hours = total / 60;
+        long minutes = total % 60;
+        if (hours > 0) {
+            return hours + " год" + (minutes > 0 ? " " + minutes + " хв" : "");
+        }
+        return minutes + " хв";
+    }
+
+    private static String formatDurationEn(double minutesRaw) {
+        long total = Math.round(minutesRaw);
+        long hours = total / 60;
+        long minutes = total % 60;
+        if (hours > 0) {
+            return hours + "h" + (minutes > 0 ? " " + minutes + "m" : "");
+        }
+        return minutes + "m";
+    }
+
+    private static String formatMoneyUk(double value) {
+        return groupThousands(Math.round(value)) + " грн";
+    }
+
+    private static String formatMoneyEn(double value) {
+        return groupThousands(Math.round(value)) + " UAH";
+    }
+
+    private static String groupThousands(long value) {
+        String digits = Long.toString(value);
+        StringBuilder sb = new StringBuilder();
+        int count = 0;
+        for (int i = digits.length() - 1; i >= 0; i--) {
+            sb.append(digits.charAt(i));
+            count++;
+            if (count % 3 == 0 && i != 0) {
+                sb.append(' ');
+            }
+        }
+        return sb.reverse().toString();
+    }
+
+    // ------------------------------------------------------------------
+    // HTML template assembly
+    // ------------------------------------------------------------------
 
     private String injectLanguage(String template, String locale) {
         return HTML_LANG.matcher(template)
@@ -71,7 +419,13 @@ public class SpaShellController {
                 + "\n    <link rel=\"alternate\" hreflang=\"en\" href=\"" + metadata.alternateUrl("en") + "\" />"
                 + "\n    <link rel=\"alternate\" hreflang=\"uk\" href=\"" + metadata.alternateUrl("uk") + "\" />"
                 + "\n    <link rel=\"alternate\" hreflang=\"x-default\" href=\"" + metadata.defaultUrl() + "\" />\n  ";
-        return html.replace("</head>", alternates + "</head>");
+        String jsonLd = metadata.jsonLd != null ? metadata.jsonLd : "";
+        html = html.replace("</head>", alternates + jsonLd + "\n  </head>");
+
+        if (metadata.noscript != null) {
+            html = html.replace("<div id=\"root\"></div>", "<div id=\"root\"></div>" + metadata.noscript);
+        }
+        return html;
     }
 
     private String replaceMeta(String html, String attribute, String key, String content) {
@@ -91,54 +445,12 @@ public class SpaShellController {
             String title,
             String description,
             String ogTitle,
-            boolean indexable) {
+            boolean indexable,
+            String jsonLd,
+            String noscript) {
 
-        private static PageMetadata forPath(String requestPath) {
-            boolean english = requestPath.equals("/en") || requestPath.startsWith("/en/");
-            String locale = english ? "en" : "uk";
-            String localeRoot = "/" + locale;
-            boolean home = requestPath.equals(localeRoot) || requestPath.equals(localeRoot + "/");
-            boolean routePlanner = requestPath.equals(localeRoot + "/route-planner")
-                    || requestPath.equals(localeRoot + "/route-planner/");
-            String routePath = routePlanner ? "/route-planner" : "";
-
-            if (!home && !routePlanner) {
-                return new PageMetadata(locale, "", "", "", "", false);
-            }
-            if (routePlanner && english) {
-                return new PageMetadata(
-                        locale,
-                        routePath,
-                        "Multi-Stop Route Planner &amp; Fuel Cost Calculator | Trip Calculate",
-                        "Plan a multi-stop road trip with real driving distances and times, estimate fuel costs, and export the route to Waze.",
-                        "Multi-Stop Route Planner | Trip Calculate",
-                        true);
-            }
-            if (routePlanner) {
-                return new PageMetadata(
-                        locale,
-                        routePath,
-                        "Планувальник маршрутів і витрат на пальне | Trip Calculate",
-                        "Плануйте автомобільні маршрути з кількома зупинками, розраховуйте відстань, час і витрати на пальне та експортуйте маршрут у Waze.",
-                        "Планувальник маршрутів | Trip Calculate",
-                        true);
-            }
-            if (english) {
-                return new PageMetadata(
-                        locale,
-                        routePath,
-                        "Trip Cost Calculator &amp; Route Planner | Trip Calculate",
-                        "Calculate road-trip fuel costs, split expenses between passengers, and plan routes using real driving distances. Free and easy to use.",
-                        "Trip Cost Calculator | Trip Calculate",
-                        true);
-            }
-            return new PageMetadata(
-                    locale,
-                    routePath,
-                    "Калькулятор вартості поїздки та пального | Trip Calculate",
-                    "Розрахуйте витрати на пальне для автомобільної поїздки, поділіть суму між пасажирами та сплануйте маршрут за реальною відстанню.",
-                    "Калькулятор вартості поїздки | Trip Calculate",
-                    true);
+        private static PageMetadata notIndexable(String locale) {
+            return new PageMetadata(locale, "", "", "", "", false, null, null);
         }
 
         private String canonicalUrl() {
@@ -150,6 +462,12 @@ public class SpaShellController {
         }
 
         private String defaultUrl() {
+            // City routes have no bare locale-resolving URL (LocaleRedirectController
+            // only maps "/" and "/route-planner"), so their x-default is the uk page,
+            // matching sitemap.xml.
+            if (routePath.startsWith("/route/")) {
+                return alternateUrl("uk");
+            }
             return routePath.isEmpty() ? SITE_ORIGIN + "/" : SITE_ORIGIN + routePath;
         }
     }
