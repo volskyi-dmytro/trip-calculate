@@ -1,4 +1,4 @@
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -6,27 +6,22 @@ import { useSeason } from '../../hooks/useSeason';
 import { LoginButton } from '../auth/LoginButton';
 import { UserMenu } from '../auth/UserMenu';
 import { Route, Sun, Moon } from 'lucide-react';
-import { withLocalePrefix } from '../../utils/locale';
+import { withLocalePrefix, otherLocale } from '../../utils/locale';
 
 interface HeaderProps {
   onCalculateClick?: () => void;
 }
 
 export function Header({ onCalculateClick }: HeaderProps) {
-  const navigate = useNavigate();
   const location = useLocation();
   const { user, loading } = useAuth();
   const { theme, toggleTheme } = useTheme();
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
   const season = useSeason();
 
   const isHomePage = location.pathname === withLocalePrefix('/', language);
-
-  const handleCreateTripClick = () => {
-    if (user) {
-      navigate(withLocalePrefix('/route-planner', language));
-    }
-  };
+  const otherLang = otherLocale(language);
+  const otherLangPath = withLocalePrefix(location.pathname, otherLang);
 
   return (
     <header
@@ -36,34 +31,31 @@ export function Header({ onCalculateClick }: HeaderProps) {
       <div className="hero-scrim" aria-hidden="true" />
       <div className="container hero-inner">
         <div className="topbar">
-          <button
-            type="button"
-            className="brand"
-            onClick={() => navigate(withLocalePrefix('/', language))}
-            title={t('header.nav.home')}
-          >
+          <Link to={withLocalePrefix('/', language)} className="brand" title={t('header.nav.home')}>
             <Route size={20} strokeWidth={2.25} aria-hidden="true" />
             <span>Trip Calculate</span>
-          </button>
+          </Link>
 
           <div className="topbar-controls">
             <div className="seg" role="group" aria-label="Language">
-              <button
-                type="button"
+              <Link
+                to={language === 'en' ? location.pathname + location.search : otherLangPath}
+                hrefLang="en"
+                lang="en"
                 className={language === 'en' ? 'seg-on' : ''}
-                onClick={() => setLanguage('en')}
-                aria-pressed={language === 'en'}
+                aria-current={language === 'en' ? 'true' : undefined}
               >
                 EN
-              </button>
-              <button
-                type="button"
+              </Link>
+              <Link
+                to={language === 'uk' ? location.pathname + location.search : otherLangPath}
+                hrefLang="uk"
+                lang="uk"
                 className={language === 'uk' ? 'seg-on' : ''}
-                onClick={() => setLanguage('uk')}
-                aria-pressed={language === 'uk'}
+                aria-current={language === 'uk' ? 'true' : undefined}
               >
                 UA
-              </button>
+              </Link>
             </div>
 
             <button
@@ -84,15 +76,21 @@ export function Header({ onCalculateClick }: HeaderProps) {
             <h1>{t('header.title')}</h1>
             <p className="hero-sub">{t('header.tagline')}</p>
             <div className="hero-actions">
-              <button
-                id="create-trip-btn"
-                className={`btn${!user ? ' inactive' : ''}`}
-                onClick={handleCreateTripClick}
-                disabled={!user}
-                title={!user ? t('header.loginRequired') : undefined}
-              >
-                {t('header.createTrip')}
-              </button>
+              {user ? (
+                <Link id="create-trip-btn" className="btn" to={withLocalePrefix('/route-planner', language)}>
+                  {t('header.createTrip')}
+                </Link>
+              ) : (
+                <button
+                  id="create-trip-btn"
+                  type="button"
+                  className="btn inactive"
+                  disabled
+                  title={t('header.loginRequired')}
+                >
+                  {t('header.createTrip')}
+                </button>
+              )}
               <button className="btn btn-secondary" onClick={onCalculateClick}>
                 {t('header.calculate')}
               </button>

@@ -30,6 +30,26 @@ const translations: Record<Language, Record<string, string>> = {
     'header.nav.admin': 'Admin',
     'header.returnHome': 'Return to Homepage',
 
+    // Popular routes (home page)
+    'home.popularRoutes.title': 'Popular routes',
+    'home.popularRoutes.viewCost': 'View trip cost',
+
+    // City route page
+    'cityRoute.titleSuffix': 'road trip cost',
+    'cityRoute.distance': 'Distance',
+    'cityRoute.duration': 'Drive time',
+    'cityRoute.fuelPrice': 'Fuel price',
+    'cityRoute.totalCost': 'Total cost',
+    'cityRoute.perPassenger': 'Per passenger',
+    'cityRoute.explanation': 'Estimated for a fuel consumption of {consumption} L/100km, {passengers} passengers, and the current average petrol price in Ukraine{priceDate}. Adjust any field below to match your own car and trip.',
+    'cityRoute.priceDateSuffix': ' as of {date}',
+    'cityRoute.plannerCta': 'Plan this route in detail',
+    'cityRoute.related': 'Related routes',
+    'cityRoute.notFound.title': 'Route not found',
+    'cityRoute.notFound.text': "We don't have a ready page for this route yet.",
+    'cityRoute.notFound.cta': 'Back to home',
+    'cityRoute.error.text': 'Failed to load this route. Please try again later.',
+
     // User Menu
     'userMenu.myRoutes': 'My Routes',
 
@@ -284,6 +304,26 @@ const translations: Record<Language, Record<string, string>> = {
     'header.nav.dashboard': 'Панель',
     'header.nav.admin': 'Адмін',
     'header.returnHome': 'Повернутися на Головну',
+
+    // Popular routes (home page)
+    'home.popularRoutes.title': 'Популярні маршрути',
+    'home.popularRoutes.viewCost': 'Переглянути вартість поїздки',
+
+    // City route page
+    'cityRoute.titleSuffix': 'вартість поїздки на авто',
+    'cityRoute.distance': 'Відстань',
+    'cityRoute.duration': 'Час у дорозі',
+    'cityRoute.fuelPrice': 'Ціна пального',
+    'cityRoute.totalCost': 'Загальна вартість',
+    'cityRoute.perPassenger': 'На пасажира',
+    'cityRoute.explanation': 'Розраховано для витрати палива {consumption} л/100км, {passengers} пасажирів та середньої ціни бензину в Україні{priceDate}. Змініть будь-яке поле нижче під своє авто та поїздку.',
+    'cityRoute.priceDateSuffix': ' станом на {date}',
+    'cityRoute.plannerCta': 'Сплануйте маршрут детально',
+    'cityRoute.related': 'Схожі маршрути',
+    'cityRoute.notFound.title': 'Маршрут не знайдено',
+    'cityRoute.notFound.text': 'Для цього маршруту ще немає готової сторінки.',
+    'cityRoute.notFound.cta': 'На головну',
+    'cityRoute.error.text': 'Не вдалося завантажити маршрут. Спробуйте пізніше.',
 
     // User Menu
     'userMenu.myRoutes': 'Мої Маршрути',

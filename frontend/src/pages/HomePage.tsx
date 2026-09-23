@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Calculator, Car, Map, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
@@ -7,10 +7,17 @@ import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { withLocalePrefix } from '../utils/locale';
+import { cityRouteService, type CityRouteSummary } from '../services/cityRouteService';
 
 export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const { t, language } = useLanguage();
+  const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>([]);
+
+  // Best-effort — a failed fetch just hides the section, never breaks the page.
+  useEffect(() => {
+    cityRouteService.list().then(setPopularRoutes).catch(() => {});
+  }, []);
 
   const features = [
     {
@@ -77,6 +84,23 @@ export function HomePage() {
             )}
           </div>
         </section>
+
+        {popularRoutes.length > 0 && (
+          <section className="section">
+            <h2>{t('home.popularRoutes.title')}</h2>
+            <div className="route-chips">
+              {popularRoutes.map((route) => (
+                <Link
+                  className="route-chip"
+                  to={withLocalePrefix(`/route/${route.slug}`, language)}
+                  key={route.slug}
+                >
+                  {route.from[language]} → {route.to[language]}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         <section className="section">
           <h2>{t('faq.title')}</h2>

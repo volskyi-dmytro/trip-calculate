@@ -21,3 +21,9 @@ export function withLocalePrefix(pathname: string, locale: Language): string {
   const normalizedRest = rest === '/' ? '' : rest;
   return `/${locale}${normalizedRest}`;
 }
+
+/** The other supported locale — used for the crawlable language switcher,
+ *  which links to the same page in the alternate language. */
+export function otherLocale(locale: Language): Language {
+  return locale === 'en' ? 'uk' : 'en';
+}

@@ -12,9 +12,21 @@ import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorag
 import { carService } from '../services/carService';
 import type { CarSelection, GarageCar } from '../types/Car';
 
+interface QuickCalculatorPrefill {
+  distance: number;
+  consumption?: number;
+  price?: number;
+  currency?: string;
+  passengers?: number;
+}
+
 interface QuickCalculatorProps {
   /** Prefill with a locale-appropriate worked example (public landing). */
   example?: boolean;
+  /** Prefill from a known route (e.g. a city-route landing page). Takes
+   *  precedence over `example`; unlike the example it isn't swapped away
+   *  when the language changes and doesn't show the "example" badge. */
+  prefill?: QuickCalculatorPrefill;
 }
 
 // Static precomputed examples — zero API calls on the landing page (spec decision)
@@ -23,17 +35,19 @@ const EXAMPLES = {
   en: { from: 'Berlin', to: 'Munich', distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
 } as const;
 
-export function QuickCalculator({ example = false }: QuickCalculatorProps) {
+export function QuickCalculator({ example = false, prefill }: QuickCalculatorProps) {
   const { language } = useLanguage();
   const { user } = useAuth();
-  const initial = example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
+  const initial = !prefill && example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
   const stored = loadStoredCar();
-  const [exampleActive, setExampleActive] = useState(example);
-  const [distance, setDistance] = useState<number>(initial?.distance ?? 0);
-  const [passengers, setPassengers] = useState<number>(initial?.people ?? 1);
-  const [fuelConsumption, setFuelConsumption] = useState<number>(initial?.consumption ?? stored?.consumption ?? 8.5);
-  const [fuelPrice, setFuelPrice] = useState<number>(initial?.price ?? 55);
-  const [currency, setCurrency] = useState<string>(initial?.currency ?? 'UAH');
+  const [exampleActive, setExampleActive] = useState(!prefill && example);
+  const [distance, setDistance] = useState<number>(prefill?.distance ?? initial?.distance ?? 0);
+  const [passengers, setPassengers] = useState<number>(prefill?.passengers ?? initial?.people ?? 1);
+  const [fuelConsumption, setFuelConsumption] = useState<number>(
+    prefill?.consumption ?? initial?.consumption ?? stored?.consumption ?? 8.5,
+  );
+  const [fuelPrice, setFuelPrice] = useState<number>(prefill?.price ?? initial?.price ?? 55);
+  const [currency, setCurrency] = useState<string>(prefill?.currency ?? initial?.currency ?? 'UAH');
   const [totalCost, setTotalCost] = useState<number>(0);
   const [costPerPassenger, setCostPerPassenger] = useState<number>(0);
   const [pickerOpen, setPickerOpen] = useState(false);
