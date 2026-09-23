@@ -46,6 +46,46 @@ class CanonicalUrlFilterTest {
     }
 
     @Test
+    void redirectsIndexHtmlToRootWithMovedPermanently() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/index.html");
+        request.addHeader("Host", "trip-calculate.online");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(HttpStatus.MOVED_PERMANENTLY.value(), response.getStatus());
+        assertEquals("/", response.getHeader("Location"));
+        assertEquals(null, chain.getRequest());
+    }
+
+    @Test
+    void redirectsHeadIndexHtmlToRootPreservingQuery() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("HEAD", "/index.html");
+        request.setQueryString("utm_source=x");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(HttpStatus.MOVED_PERMANENTLY.value(), response.getStatus());
+        assertEquals("/?utm_source=x", response.getHeader("Location"));
+    }
+
+    @Test
+    void redirectsWwwIndexHtmlStraightToApexRootInOneHop() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/index.html");
+        request.setServerName("www.trip-calculate.online");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        MockFilterChain chain = new MockFilterChain();
+
+        filter.doFilter(request, response, chain);
+
+        assertEquals(HttpStatus.MOVED_PERMANENTLY.value(), response.getStatus());
+        assertEquals("https://trip-calculate.online/", response.getHeader("Location"));
+    }
+
+    @Test
     void doesNotRedirectUnsafeMethodsAcrossHosts() throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("POST", "/api/routes");
         request.setServerName("www.trip-calculate.online");

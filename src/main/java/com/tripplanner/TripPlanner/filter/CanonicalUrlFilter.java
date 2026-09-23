@@ -22,6 +22,7 @@ public class CanonicalUrlFilter extends OncePerRequestFilter {
 
     private static final String WWW_HOST = "www.trip-calculate.online";
     private static final String CANONICAL_ORIGIN = "https://trip-calculate.online";
+    private static final String INDEX_HTML_PATH = "/index.html";
     private static final Set<String> PUBLIC_TRAILING_SLASH_PATHS = Set.of(
             "/en/",
             "/uk/",
@@ -34,7 +35,17 @@ public class CanonicalUrlFilter extends OncePerRequestFilter {
                                     FilterChain filterChain) throws ServletException, IOException {
         if (isSafeRedirectMethod(request)) {
             String normalizedPath = normalizedPath(request.getRequestURI());
-            if (isWwwHost(request)) {
+            boolean wwwHost = isWwwHost(request);
+            if (INDEX_HTML_PATH.equals(normalizedPath)) {
+                // /index.html is a byte-identical duplicate of "/" with no canonical tag
+                // of its own (GSC flags it as a competing URL) — collapse it to the
+                // homepage in a single hop, honoring www -> apex at the same time.
+                String origin = wwwHost ? CANONICAL_ORIGIN : "";
+                response.setStatus(HttpStatus.MOVED_PERMANENTLY.value());
+                response.setHeader("Location", origin + requestTarget("/", request));
+                return;
+            }
+            if (wwwHost) {
                 permanentRedirect(response, CANONICAL_ORIGIN + requestTarget(normalizedPath, request));
                 return;
             }

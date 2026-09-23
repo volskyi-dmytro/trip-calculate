@@ -30,7 +30,7 @@ class LocaleRedirectControllerTest {
 
         ResponseEntity<Void> response = controller.redirectToLocale(request);
 
-        assertEquals(302, response.getStatusCode().value());
+        assertEquals(301, response.getStatusCode().value());
         assertEquals("/en", response.getHeaders().getLocation().toString());
     }
 
@@ -63,5 +63,15 @@ class LocaleRedirectControllerTest {
         ResponseEntity<Void> response = controller.redirectToLocale(request);
 
         assertEquals("Accept-Language", response.getHeaders().getFirst(HttpHeaders.VARY));
+    }
+
+    @Test
+    void setsNoStoreCacheControlSoOneVisitorsLocaleIsNeverCached() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/");
+        when(localeResolver.resolve(null)).thenReturn("uk");
+
+        ResponseEntity<Void> response = controller.redirectToLocale(request);
+
+        assertEquals("no-store", response.getHeaders().getCacheControl());
     }
 }

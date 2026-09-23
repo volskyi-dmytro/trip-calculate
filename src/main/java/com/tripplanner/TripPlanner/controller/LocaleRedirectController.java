@@ -12,7 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.net.URI;
 
 /**
- * Bare and pre-migration URLs (no /en or /uk prefix) 302 into the visitor's
+ * Bare and pre-migration URLs (no /en or /uk prefix) 301 into the visitor's
  * resolved locale, preserving path and query string. Covers old
  * bookmarks/backlinks to "/", "/route-planner", "/dashboard", "/admin", and
  * "/profile". Deliberately does not map "/r/{slug}" — see
@@ -31,9 +31,12 @@ public class LocaleRedirectController {
         String path = "/".equals(uri) ? "" : uri;
         String query = request.getQueryString();
         String location = "/" + locale + path + (query != null ? "?" + query : "");
-        return ResponseEntity.status(HttpStatus.FOUND)
+        return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)
                 .location(URI.create(location))
                 .header(HttpHeaders.VARY, HttpHeaders.ACCEPT_LANGUAGE)
+                // The resolved locale depends on this one visitor's Accept-Language header;
+                // caching the redirect would trap a later visitor in a stale locale.
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .build();
     }
 }

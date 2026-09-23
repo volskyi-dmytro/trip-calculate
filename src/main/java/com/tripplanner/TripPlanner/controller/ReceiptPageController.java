@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
@@ -32,6 +33,11 @@ public class ReceiptPageController {
     private final ReceiptService receiptService;
     private final OgMetaInjector ogMetaInjector;
 
+    // Shared trips carry user-written labels — never indexable, but link-preview
+    // crawlers (Telegram/WhatsApp) must still read the OG tags, so noindex only.
+    private static final String X_ROBOTS_TAG = "X-Robots-Tag";
+    private static final String NOINDEX = "noindex";
+
     @Value("${app.public-base-url:https://trip-calculate.online}")
     private String publicBaseUrl;
 
@@ -46,19 +52,30 @@ public class ReceiptPageController {
         } catch (IOException e) {
             // Dev-mode without a built frontend: index.html isn't on the classpath.
             // Redirect to root where the Vite dev server (or error page) takes over.
-            return ResponseEntity.status(302).location(URI.create("/")).build();
+            return ResponseEntity.status(302)
+                    .location(URI.create("/"))
+                    .header(X_ROBOTS_TAG, NOINDEX)
+                    .build();
         }
 
         Optional<TripReceipt> receipt = receiptService.findForPreview(slug);
-        String html = receipt
-                .map(r -> ogMetaInjector.inject(template, ogTitle(r), ogDescription(r),
-                        publicBaseUrl + "/r/" + slug))
-                // Unknown/expired: serve the untouched SPA shell; the React route shows
-                // the friendly "receipt expired" page with its own CTA.
-                .orElse(template);
+        if (receipt.isEmpty()) {
+            // Unknown/expired: still serve the SPA shell so React's ReceiptPage can
+            // render its own "receipt expired" UI, but a real 404 status keeps Google
+            // from indexing a page with no content of its own.
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+                    .header(X_ROBOTS_TAG, NOINDEX)
+                    .contentType(MediaType.TEXT_HTML)
+                    .body(template);
+        }
+
+        String html = ogMetaInjector.inject(template, ogTitle(receipt.get()), ogDescription(receipt.get()),
+                publicBaseUrl + "/r/" + slug);
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache")
+                .header(X_ROBOTS_TAG, NOINDEX)
                 .body(html);
     }
 
