@@ -444,6 +444,32 @@ jobs:
               printf '%s\n' "${REDIS_ISSUES}"
             fi
 
+            # ==================== DOCKER HEALTH SETTLE ====================
+            # Both images use HEALTHCHECK --interval=30s, so Docker reports
+            # "starting" until its first probe ~30s after container start, even
+            # when /actuator/health already answers. Wait for Docker's own
+            # verdict here so the fail-closed summary below reads a settled
+            # state instead of racing the first probe. "unhealthy" fails fast.
+            wait_for_docker_health() {
+              local container="$1" deadline=$((SECONDS + 150)) status
+              while :; do
+                status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}' "${container}")" || status="inspect-failed"
+                case "${status}" in
+                  healthy) echo "✅ Docker health: ${container}=healthy"; return 0 ;;
+                  starting) ;;
+                  *) echo "❌ Docker health: ${container}=${status}"; docker logs "${container}" --tail 30; return 1 ;;
+                esac
+                if [ "${SECONDS}" -ge "${deadline}" ]; then
+                  echo "❌ Docker health: ${container} still starting after 150s"
+                  docker logs "${container}" --tail 30
+                  return 1
+                fi
+                sleep 5
+              done
+            }
+            wait_for_docker_health trip-calculate-agent || exit 1
+            wait_for_docker_health trip-calculate-prod || exit 1
+
             # ==================== FINAL VERIFICATION ====================
             # Gather fresh evidence after every connectivity and startup check.
             # Any mismatch exits before the celebratory summary is printed.
