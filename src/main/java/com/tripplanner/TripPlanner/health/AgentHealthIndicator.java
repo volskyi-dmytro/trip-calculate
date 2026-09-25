@@ -5,13 +5,22 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.actuate.health.Health;
 import org.springframework.boot.actuate.health.HealthIndicator;
+import org.springframework.boot.actuate.health.Status;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestTemplate;
 
+/**
+ * Reports the AI agent as UP or DEGRADED, never DOWN: only the AI chat depends
+ * on it, so an agent outage must not mark the whole site unhealthy (Docker and
+ * Cloudflare would then treat trip calculation and the planner as down too).
+ * DEGRADED is ordered and mapped to HTTP 200 in application.properties.
+ */
 @Component
 public class AgentHealthIndicator implements HealthIndicator {
+
+    static final Status DEGRADED = new Status("DEGRADED", "AI agent unavailable");
 
     private static final Logger logger = LoggerFactory.getLogger(AgentHealthIndicator.class);
 
@@ -30,7 +39,7 @@ public class AgentHealthIndicator implements HealthIndicator {
     @Override
     public Health health() {
         if (agentUrl == null || agentUrl.isEmpty()) {
-            return Health.down()
+            return Health.status(DEGRADED)
                     .withDetail("status", "NOT_CONFIGURED")
                     .withDetail("message", "AGENT_URL environment variable is not set")
                     .build();
@@ -46,12 +55,11 @@ public class AgentHealthIndicator implements HealthIndicator {
             }
         } catch (Exception e) {
             logger.warn("Agent health check failed: {}", e.getMessage());
-            return Health.down()
+            return Health.status(DEGRADED)
                     .withDetail("status", "DOWN")
-                    .withDetail("error", e.getMessage())
                     .build();
         }
 
-        return Health.down().withDetail("status", "UNHEALTHY").build();
+        return Health.status(DEGRADED).withDetail("status", "UNHEALTHY").build();
     }
 }
