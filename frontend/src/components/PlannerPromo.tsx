@@ -31,7 +31,7 @@ export function PlannerPromo() {
           >
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <h3 className="text-xl font-bold text-gray-900 dark:text-white">{t.title}</h3>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
         </div>
       </div>
 

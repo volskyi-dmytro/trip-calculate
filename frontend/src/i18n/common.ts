@@ -41,7 +41,8 @@ export const translations: Record<Language, Record<string, string>> = {
     // Same count after a preposition such as "для" (genitive in Ukrainian).
     'common.passengersGenitive_one': '{count} passenger',
     'common.passengersGenitive_other': '{count} passengers',
-    'cityRoute.explanation': 'Estimated for a fuel consumption of {consumption} L/100km, {passengers}, and the current average petrol price in Ukraine{priceDate}. Adjust any field below to match your own car and trip.',
+    'cityRoute.distanceValue': '{km} km',
+    'cityRoute.explanation': 'Estimated for a fuel consumption of {consumption} L/100 km, {passengers}, and the current average petrol price in Ukraine{priceDate}. Adjust any field below to match your own car and trip.',
     'cityRoute.priceDateSuffix': ' as of {date}',
     'cityRoute.plannerCta': 'Plan this route in detail',
     'cityRoute.related': 'Related routes',
@@ -440,6 +441,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'common.passengersGenitive_few': '{count} пасажирів',
     'common.passengersGenitive_many': '{count} пасажирів',
     'common.passengersGenitive_other': '{count} пасажира',
+    'cityRoute.distanceValue': '{km} км',
     'cityRoute.explanation': 'Розраховано для витрати пального {consumption} л/100 км, {passengers} та середньої ціни бензину в Україні{priceDate}. Змініть будь-яке поле нижче під своє авто та поїздку.',
     'cityRoute.priceDateSuffix': ' станом на {date}',
     'cityRoute.plannerCta': 'Сплануйте маршрут детально',

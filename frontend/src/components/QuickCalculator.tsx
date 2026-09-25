@@ -113,7 +113,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     <Card className="p-6">
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h3>
+          <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h2>
           <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
             {t.guestMode}
           </span>

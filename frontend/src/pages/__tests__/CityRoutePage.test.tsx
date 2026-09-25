@@ -12,7 +12,12 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({ slug: 'kyiv-lviv' }),
 }))
 vi.mock('../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ language: 'en', t: (key: string) => key, tn: (key: string, count: number) => `${key}:${count}` }),
+  useLanguage: () => ({
+    language: 'en',
+    // Templates for the keys whose placeholders the page fills in; other keys echo back.
+    t: (key: string) => ({ 'cityRoute.distanceValue': '{km} km', 'pageTitle.cityRoute': '{from} → {to}' })[key] ?? key,
+    tn: (key: string, count: number) => `${key}:${count}`,
+  }),
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
 vi.mock('../../components/common/Footer', () => ({ Footer: () => <footer>Footer</footer> }))
@@ -149,6 +154,6 @@ describe('CityRoutePage', () => {
     embedIsland('kyiv-lviv', 'en', routeDetail)
     await renderPage()
 
-    expect(document.title).toBe('pageTitle.cityRoute | Trip Calculate')
+    expect(document.title).toBe('Kyiv → Lviv | Trip Calculate')
   })
 })

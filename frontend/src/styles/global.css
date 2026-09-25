@@ -677,7 +677,10 @@ a:hover {
     margin: 36px 0;
 }
 
-.section h2 {
+/* Plain section headings only: a card title with utility classes (QuickCalculator's
+   h2) styles itself. Tailwind's layered utilities lose to unlayered rules, so a
+   lower specificity alone wouldn't do. */
+.section h2:not([class]) {
     margin: 0 0 8px;
     font-size: clamp(1.35rem, 4vw, 1.7rem);
     font-weight: 800;

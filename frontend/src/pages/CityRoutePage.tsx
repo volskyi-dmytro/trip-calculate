@@ -118,7 +118,7 @@ export function CityRoutePage() {
     ? t('cityRoute.priceDateSuffix').replace('{date}', formattedPriceDate)
     : '';
   const explanation = t('cityRoute.explanation')
-    .replace('{consumption}', String(r.consumptionL100))
+    .replace('{consumption}', r.consumptionL100.toLocaleString(language === 'uk' ? 'uk-UA' : 'en-GB'))
     .replace('{passengers}', tn('common.passengersGenitive', r.passengers))
     .replace('{priceDate}', priceDate);
 
@@ -126,7 +126,7 @@ export function CityRoutePage() {
     {
       icon: MapPin,
       label: t('cityRoute.distance'),
-      value: `${Math.round(r.distanceKm)} km`,
+      value: t('cityRoute.distanceValue').replace('{km}', String(Math.round(r.distanceKm))),
     },
     {
       icon: Clock,

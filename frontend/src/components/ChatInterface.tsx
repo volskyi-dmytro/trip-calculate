@@ -126,7 +126,7 @@ export function ChatInterface({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
-          <h3 className="font-bold text-slate-800 dark:text-white">{t.aiAssistant}</h3>
+          <h2 className="font-bold text-slate-800 dark:text-white">{t.aiAssistant}</h2>
         </div>
         {showInsightsButton && onGetInsights && (
           <Button
