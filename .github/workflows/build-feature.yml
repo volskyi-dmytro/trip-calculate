@@ -71,6 +71,8 @@ jobs:
           cd frontend
           npm ci
           npm run audit:ci
+          npm run lint
+          npm test
           npm run build
 
       # Copy React build to Spring Boot static resources
@@ -87,8 +89,8 @@ jobs:
           java-version: '17'
           cache: maven
 
-      # Build and test
-      - name: Build and Test
+      # Build
+      - name: Build
         run: |
           echo "🔨 Building feature branch..."
           mvn clean package -DskipTests
@@ -97,10 +99,9 @@ jobs:
           echo "📦 JAR file:"
           ls -lh target/*.jar
           
-      # Optional: Run tests
+      # Blocking: the same Java tests gate the production deploy
       - name: Run Tests
-        run: mvn test
-        continue-on-error: true  # Don't fail the build if tests fail
+        run: mvn -B test
 
       # Optional: Build Docker image but don't push
       - uses: docker/setup-buildx-action@v3
