@@ -4,6 +4,8 @@ import React, { cloneElement, createContext, isValidElement, useContext, useEffe
 // announced with its name and description without every caller wiring ids.
 const DialogIdsContext = createContext<{ titleId: string; descriptionId: string } | null>(null);
 
+type Clickable = { onClick?: (e: React.MouseEvent) => void };
+
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
@@ -17,7 +19,7 @@ export function DialogTrigger({
   onClick?: () => void;
 }) {
   if (asChild && isValidElement(children)) {
-    const child = children as React.ReactElement<any>;
+    const child = children as React.ReactElement<Clickable>;
     return cloneElement(child, {
       onClick: (e: React.MouseEvent) => {
         e.preventDefault();
@@ -26,7 +28,7 @@ export function DialogTrigger({
         const originalOnClick = child.props.onClick;
         originalOnClick?.(e);
       }
-    } as any);
+    });
   }
 
   return (
@@ -102,9 +104,9 @@ export function Dialog({
 
   // Clone trigger with onClick handler
   const triggerWithHandler = trigger && isValidElement(trigger)
-    ? cloneElement(trigger as React.ReactElement<any>, {
+    ? cloneElement(trigger as React.ReactElement<Clickable>, {
         onClick: () => onOpenChange(true)
-      } as any)
+      })
     : null;
 
   return (
