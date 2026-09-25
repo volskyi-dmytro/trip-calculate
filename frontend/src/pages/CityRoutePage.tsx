@@ -17,14 +17,35 @@ function formatDuration(minutes: number, language: 'en' | 'uk'): string {
   return language === 'uk' ? `${h} год ${m} хв` : `${h}h ${m}m`;
 }
 
+// SpaShellController embeds this page's data in the HTML, so the first render
+// (and search engines, which can't call /api/) needs no API request.
+function embeddedRoute(slug: string | undefined, language: string): CityRouteDetail | null {
+  const island = document.getElementById('city-route-data');
+  if (!slug || !island || island.dataset.slug !== slug || island.dataset.locale !== language) {
+    return null;
+  }
+  try {
+    return JSON.parse(island.textContent ?? '') as CityRouteDetail;
+  } catch {
+    return null;
+  }
+}
+
 export function CityRoutePage() {
   const { slug } = useParams<{ slug: string }>();
   const { language, t, tn } = useLanguage();
-  const [state, setState] = useState<PageState>('loading');
-  const [route, setRoute] = useState<CityRouteDetail | null>(null);
+  const [route, setRoute] = useState<CityRouteDetail | null>(() => embeddedRoute(slug, language));
+  const [state, setState] = useState<PageState>(() => (route ? 'ready' : 'loading'));
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     if (!slug) return;
+    const embedded = embeddedRoute(slug, language);
+    if (embedded) {
+      setRoute(embedded);
+      setState('ready');
+      return;
+    }
     setState('loading');
     cityRouteService
       .get(slug, language)
@@ -35,7 +56,7 @@ export function CityRoutePage() {
       .catch((err: { response?: { status?: number } }) => {
         setState(err.response?.status === 404 ? 'notFound' : 'error');
       });
-  }, [slug, language]);
+  }, [slug, language, attempt]);
 
   if (state === 'loading') {
     return (
@@ -55,13 +76,20 @@ export function CityRoutePage() {
         <Header />
         <main className="container">
           <section className="section text-center">
-            <h1>{t('cityRoute.notFound.title')}</h1>
+            {/* A failed load (e.g. 429) must not read as "route not found" to search engines. */}
+            <h1>{state === 'notFound' ? t('cityRoute.notFound.title') : t('cityRoute.error.title')}</h1>
             <p className="section-lead" style={{ margin: '0 auto 24px' }}>
               {state === 'notFound' ? t('cityRoute.notFound.text') : t('cityRoute.error.text')}
             </p>
-            <Link className="btn" to={withLocalePrefix('/', language)}>
-              {t('cityRoute.notFound.cta')}
-            </Link>
+            {state === 'error' ? (
+              <button type="button" className="btn" onClick={() => setAttempt((n) => n + 1)}>
+                {t('cityRoute.error.retry')}
+              </button>
+            ) : (
+              <Link className="btn" to={withLocalePrefix('/', language)}>
+                {t('cityRoute.notFound.cta')}
+              </Link>
+            )}
           </section>
         </main>
         <Footer />

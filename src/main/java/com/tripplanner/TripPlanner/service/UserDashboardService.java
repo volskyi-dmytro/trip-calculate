@@ -9,6 +9,7 @@ import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
 import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
+import com.tripplanner.TripPlanner.security.UserSessionTerminator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
@@ -33,6 +34,7 @@ public class UserDashboardService {
     private final CarRepository carRepository;
     private final TripReceiptRepository tripReceiptRepository;
     private final AiUsageLogRepository aiUsageLogRepository;
+    private final UserSessionTerminator userSessionTerminator;
 
     /**
      * Get complete dashboard data for a user
@@ -108,6 +110,9 @@ public class UserDashboardService {
      */
     @Transactional
     public void deleteUserAccount(Long userId) {
+        // Remember who to sign out before the user row disappears.
+        String googleId = userRepository.findById(userId).map(User::getGoogleId).orElse(null);
+
         // Delete all user's routes (cascade will delete waypoints)
         List<Route> routes = routeRepository.findByUserIdOrderByUpdatedAtDesc(userId);
         routeRepository.deleteAll(routes);
@@ -125,6 +130,9 @@ public class UserDashboardService {
 
         // Delete user
         userRepository.deleteById(userId);
+
+        // Sign the account out on every device, not only the one that asked.
+        userSessionTerminator.endAllSessions(googleId);
     }
 
     // Helper methods

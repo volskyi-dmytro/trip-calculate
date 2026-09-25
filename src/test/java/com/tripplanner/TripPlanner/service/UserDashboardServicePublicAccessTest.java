@@ -8,6 +8,7 @@ import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
 import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
+import com.tripplanner.TripPlanner.security.UserSessionTerminator;
 import org.junit.jupiter.api.Test;
 
 import java.util.Optional;
@@ -32,7 +33,8 @@ class UserDashboardServicePublicAccessTest {
         when(featureAccess.findByUserId(42L)).thenReturn(Optional.empty());
 
         UserProfileDTO profile = new UserDashboardService(users, routes, featureAccess, mock(CarRepository.class),
-                mock(TripReceiptRepository.class), mock(AiUsageLogRepository.class))
+                mock(TripReceiptRepository.class), mock(AiUsageLogRepository.class),
+                mock(UserSessionTerminator.class))
                 .getUserProfile(42L);
 
         assertTrue(profile.getRoutePlannerAccess());
@@ -46,11 +48,19 @@ class UserDashboardServicePublicAccessTest {
         CarRepository cars = mock(CarRepository.class);
         TripReceiptRepository receipts = mock(TripReceiptRepository.class);
         AiUsageLogRepository aiUsage = mock(AiUsageLogRepository.class);
+        UserSessionTerminator sessions = mock(UserSessionTerminator.class);
+        User user = new User();
+        user.setId(42L);
+        user.setGoogleId("google-sub-42");
+        when(users.findById(42L)).thenReturn(Optional.of(user));
         UserDashboardService service = new UserDashboardService(
                 users, mock(RouteRepository.class), mock(FeatureAccessRepository.class),
-                cars, receipts, aiUsage);
+                cars, receipts, aiUsage, sessions);
 
         service.deleteUserAccount(42L);
+
+        // Every device is signed out, not only the one that asked for deletion.
+        verify(sessions).endAllSessions("google-sub-42");
 
         verify(cars).deleteByUserId(42L);
         verify(receipts).deleteByUserId(42L);

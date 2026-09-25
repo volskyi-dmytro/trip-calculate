@@ -7,6 +7,7 @@ import com.tripplanner.TripPlanner.entity.TripReceipt;
 import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -34,7 +35,8 @@ class ReceiptServiceTest {
         when(repository.existsBySlug(anyString())).thenReturn(false);
         // echo back the entity passed to save()
         when(repository.save(any(TripReceipt.class))).thenAnswer(inv -> inv.getArgument(0));
-        service = new ReceiptService(repository, new SlugGenerator(), new ObjectMapper());
+        service = new ReceiptService(repository, new SlugGenerator(), new ObjectMapper(),
+                new ReceiptGeometry(new ObjectMapper()));
     }
 
     private CreateReceiptRequest validRequest() {
@@ -107,12 +109,39 @@ class ReceiptServiceTest {
     }
 
     @Test
-    void keepsValidGeometry() {
+    void storesValidGeometryOnlyInCoarseForm() {
         CreateReceiptRequest req = validRequest();
-        req.setRouteGeometry("[[50.45,30.52],[49.84,24.03]]");
+        req.setRouteGeometry(PRECISE_ROUTE);
+
         ReceiptDTO dto = service.create(req, null);
-        assertEquals("[[50.45,30.52],[49.84,24.03]]", dto.getRouteGeometry());
+
+        ArgumentCaptor<TripReceipt> saved = ArgumentCaptor.forClass(TripReceipt.class);
+        verify(repository, atLeastOnce()).save(saved.capture());
+        String stored = saved.getValue().getRouteGeometry();
+        assertEquals(stored, dto.getRouteGeometry());
+        // Never stored precisely: no coordinate keeps more than 3 decimals.
+        assertFalse(stored.matches(".*\\d\\.\\d{4,}.*"), stored);
     }
+
+    @Test
+    void receiptsStoredBeforeCoarseningAreCoarsenedWhenRead() {
+        TripReceipt old = new TripReceipt();
+        old.setSlug("old12345");
+        old.setViewCount(0L);
+        old.setRouteGeometry(PRECISE_ROUTE);
+        when(repository.findBySlug("old12345")).thenReturn(Optional.of(old));
+
+        String first = service.getBySlug("old12345").getRouteGeometry();
+        String second = service.getBySlug("old12345").getRouteGeometry();
+
+        assertFalse(first.matches(".*\\d\\.\\d{4,}.*"), first);
+        assertEquals(first, second); // same line on every read
+    }
+
+    // Kyiv -> Lviv with many vertices and full precision, like the frontend sends.
+    private static final String PRECISE_ROUTE = java.util.stream.IntStream.range(0, 500)
+            .mapToObj(i -> "[" + (50.450123 - i * 0.0012235) + "," + (30.523456 - i * 0.0130142) + "]")
+            .collect(java.util.stream.Collectors.joining(",", "[", "]"));
 
     @Test
     void expiredReceiptAnswers410() {

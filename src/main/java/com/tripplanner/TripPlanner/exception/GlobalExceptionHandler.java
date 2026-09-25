@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.exception;
 
+import com.tripplanner.TripPlanner.security.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,6 +17,8 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @ControllerAdvice
 public class GlobalExceptionHandler {
+    // Cloudflare-aware; never trusts client-supplied forwarding headers.
+    private final ClientIpResolver clientIpResolver = new ClientIpResolver();
 
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
     private static final Logger securityLogger = LoggerFactory.getLogger("SECURITY");
@@ -130,20 +133,7 @@ public class GlobalExceptionHandler {
             if (attributes != null) {
                 HttpServletRequest request = attributes.getRequest();
 
-                // Check for X-Forwarded-For header (common in reverse proxy setups)
-                String xForwardedFor = request.getHeader("X-Forwarded-For");
-                if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-                    return xForwardedFor.split(",")[0].trim();
-                }
-
-                // Check for X-Real-IP header
-                String xRealIp = request.getHeader("X-Real-IP");
-                if (xRealIp != null && !xRealIp.isEmpty()) {
-                    return xRealIp;
-                }
-
-                // Fall back to remote address
-                return request.getRemoteAddr();
+                return clientIpResolver.resolve(request);
             }
         } catch (Exception e) {
             logger.debug("Could not determine client IP: {}", e.getMessage());

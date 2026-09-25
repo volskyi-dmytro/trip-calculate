@@ -13,6 +13,7 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.web.DefaultOAuth2AuthorizationRequestResolver;
+import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestCustomizers;
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
@@ -139,8 +140,9 @@ public class SecurityConfig {
         http
                 // Enable CSRF protection (OAuth2 requires it)
                 .csrf(csrf -> csrf
-                        // Disable CSRF only for public API endpoints and AI endpoints
-                        .ignoringRequestMatchers("/calculate", "/api/routing/**", "/api/ai/**")
+                        // Stateless public calculators only. The AI endpoints act on a signed-in
+                        // session, so they need the token (the frontend sends X-XSRF-TOKEN).
+                        .ignoringRequestMatchers("/calculate", "/api/routing/**")
                         // Use cookie-based CSRF tokens with SameSite=Strict (see comment above)
                         .csrfTokenRepository(csrfTokenRepository)
                         // Set token handler to ensure tokens are loaded
@@ -298,8 +300,10 @@ public class SecurityConfig {
     private OAuth2AuthorizationRequestResolver buildAuthorizationRequestResolver() {
         DefaultOAuth2AuthorizationRequestResolver resolver =
                 new DefaultOAuth2AuthorizationRequestResolver(clientRegistrationRepository, "/oauth2/authorization");
-        resolver.setAuthorizationRequestCustomizer(customizer ->
-                customizer.additionalParameters(params -> params.put("prompt", "login")));
+        // PKCE binds the authorization code to this browser's login attempt, so an
+        // intercepted code is useless; prompt=login keeps the account chooser.
+        resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce()
+                .andThen(customizer -> customizer.additionalParameters(params -> params.put("prompt", "login"))));
         return resolver;
     }
 }

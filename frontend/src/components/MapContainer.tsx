@@ -93,10 +93,12 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         : 'mapbox://styles/mapbox/streets-v12',
       center: [30.5234, 50.4501], // [lng, lat] - Kyiv, Ukraine (Mapbox uses lng-first!)
       zoom: 6,
-      projection: 'mercator' as any, // Explicitly set to mercator (not globe)
+      projection: { name: 'mercator' }, // Explicitly set to mercator (not globe)
       pitch: 55,
       bearing: -15,
-      antialias: true
+      antialias: true,
+      // Don't send device/performance telemetry to Mapbox (Privacy Policy: no analytics).
+      performanceMetricsCollection: false
     })
 
     // Add navigation controls

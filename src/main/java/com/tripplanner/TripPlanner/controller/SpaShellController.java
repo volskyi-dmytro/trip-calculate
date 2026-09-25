@@ -110,7 +110,7 @@ public class SpaShellController {
                 : "Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate";
         String description = english
                 ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out your European road trip cost in seconds — free, no sign-up."
-                : "Київ → Львів ≈ 2 349 грн на пальне, по 587 грн на пасажира. Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
+                : ukrainianHomeDescription();
         String ogTitle = english
                 ? "Road Trip Fuel Cost Calculator for Europe | Trip Calculate"
                 : "Калькулятор вартості поїздки на авто | Trip Calculate";
@@ -119,6 +119,20 @@ public class SpaShellController {
         String jsonLd = jsonLdWebApplication(canonical, locale, description);
         String noscript = homeNoscript(english, locale);
         return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    // Quotes today's Kyiv → Lviv estimate (the same cached figures as its city page)
+    // instead of hard-coded numbers that go stale; no prices when none are known.
+    private String ukrainianHomeDescription() {
+        String tail = "Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
+        Map<String, Object> kyivLviv = cityRouteService.get("kyiv-lviv", "uk").orElse(null);
+        if (kyivLviv == null || kyivLviv.get("totalCost") == null || kyivLviv.get("perPassenger") == null) {
+            return "Калькулятор вартості пального для поїздки на авто з поділом витрат між пасажирами. " + tail;
+        }
+        double total = ((Number) kyivLviv.get("totalCost")).doubleValue();
+        double perPassenger = ((Number) kyivLviv.get("perPassenger")).doubleValue();
+        return "Київ → Львів ≈ " + formatMoneyUk(total) + " на пальне, по " + formatMoneyUk(perPassenger)
+                + " на пасажира. " + tail;
     }
 
     private PageMetadata buildRoutePlannerMetadata(String locale) {
@@ -203,8 +217,12 @@ public class SpaShellController {
         String routePath = "/route/" + slug;
         String canonical = SITE_ORIGIN + "/" + locale + routePath;
         String homeUrl = SITE_ORIGIN + "/" + locale;
+        // The page's own data rides along as a JSON island: CityRoutePage reads it
+        // instead of calling /api/city-routes, so crawlers (robots.txt disallows
+        // most of /api/) and first-time visitors get the real content at once.
         String jsonLd = jsonLdWebApplication(canonical, locale, description)
-                + jsonLdBreadcrumb(homeUrl, "Trip Calculate", canonical, fromName + " → " + toName);
+                + jsonLdBreadcrumb(homeUrl, "Trip Calculate", canonical, fromName + " → " + toName)
+                + cityRouteDataIsland(slug, locale, facts);
         String noscript = cityRouteNoscript(english, locale, slug, fromName, toName,
                 distanceKm, durationMin, totalCost, perPassenger, related);
 
@@ -271,10 +289,28 @@ public class SpaShellController {
         return toScriptTag(obj);
     }
 
+    /**
+     * JSON placed inside a script element: every "<" becomes the JSON escape
+     * \\u003c, so no value can close the element ("</script>") or open a
+     * comment ("<!--") that would swallow the rest of the page.
+     */
+    static String escapeForScript(String json) {
+        return json.replace("<", "\\u003c");
+    }
+
+    private String cityRouteDataIsland(String slug, String locale, Map<String, Object> facts) {
+        try {
+            String json = escapeForScript(objectMapper.writeValueAsString(facts));
+            return "\n    <script type=\"application/json\" id=\"city-route-data\" data-slug=\""
+                    + esc(slug) + "\" data-locale=\"" + esc(locale) + "\">" + json + "</script>";
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize city route data", e);
+        }
+    }
+
     private String toScriptTag(Object payload) {
         try {
-            // Escape "</" so a value can never prematurely close the <script> tag.
-            String json = objectMapper.writeValueAsString(payload).replace("</", "<\\/");
+            String json = escapeForScript(objectMapper.writeValueAsString(payload));
             return "\n    <script type=\"application/ld+json\">" + json + "</script>";
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize JSON-LD payload", e);

@@ -1,6 +1,8 @@
 User-agent: *
 Disallow: /dashboard
 Disallow: /admin
+# City pages load their public data from here (Google renders with it)
+Allow: /api/city-routes
 Disallow: /api/
 
 Sitemap: https://trip-calculate.online/sitemap.xml

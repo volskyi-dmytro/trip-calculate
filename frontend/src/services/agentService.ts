@@ -188,8 +188,8 @@ export const parseRouteWithAgent = async (
   }
 
   try {
-    // Get CSRF token from cookie for Spring Security
-    const csrfToken = getCsrfToken();
+    // CSRF token for Spring Security (fetched if the cookie isn't issued yet)
+    const csrfToken = await ensureCsrfToken();
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
     };
@@ -282,6 +282,24 @@ export function getCsrfToken(): string | null {
     }
   }
   return null;
+}
+
+/**
+ * CSRF token for fetch() calls. Spring Security issues the XSRF-TOKEN cookie
+ * lazily, so on a visitor's first state-changing request it may not exist yet:
+ * ask the server for one instead of sending the request without it.
+ */
+export async function ensureCsrfToken(): Promise<string | null> {
+  const fromCookie = getCsrfToken();
+  if (fromCookie) return fromCookie;
+  try {
+    const response = await fetch('/api/user/csrf', { credentials: 'same-origin' });
+    if (!response.ok) return null;
+    const body = (await response.json()) as { token?: string };
+    return getCsrfToken() ?? body.token ?? null;
+  } catch {
+    return null;
+  }
 }
 
 /**

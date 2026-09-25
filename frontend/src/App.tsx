@@ -27,6 +27,9 @@ const AdminDashboard = lazy(() =>
 const LegalPage = lazy(() =>
   import('./pages/LegalPage').then((m) => ({ default: m.LegalPage })),
 );
+const NotFoundPage = lazy(() =>
+  import('./pages/NotFoundPage').then((m) => ({ default: m.NotFoundPage })),
+);
 const CityRoutePage = lazy(() =>
   import('./pages/CityRoutePage').then((m) => ({ default: m.CityRoutePage })),
 );
@@ -126,6 +129,15 @@ function App() {
                       <AdminRoute>
                         <AdminDashboard />
                       </AdminRoute>
+                    </LocaleBoundary>
+                  }
+                />
+                {/* Unknown /en/... or /uk/... paths (the server answers them with 404 + noindex) */}
+                <Route
+                  path="/:locale/*"
+                  element={
+                    <LocaleBoundary>
+                      <NotFoundPage />
                     </LocaleBoundary>
                   }
                 />

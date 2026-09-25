@@ -50,7 +50,7 @@ export function TripDetailsForm({
   }, [routeSettings]);
 
   const handleFuelConsumptionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(',', '.');
+    const value = e.target.value.replace(',', '.');
 
     // Allow empty string or valid decimal numbers
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
@@ -72,7 +72,7 @@ export function TripDetailsForm({
   };
 
   const handleFuelCostChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let value = e.target.value.replace(',', '.');
+    const value = e.target.value.replace(',', '.');
 
     // Allow empty string or valid decimal numbers
     if (value === '' || /^\d*\.?\d*$/.test(value)) {

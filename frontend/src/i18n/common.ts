@@ -46,9 +46,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.plannerCta': 'Plan this route in detail',
     'cityRoute.related': 'Related routes',
     'cityRoute.notFound.title': 'Route not found',
+    'notFound.title': 'Page not found',
+    'notFound.text': "The page you're looking for doesn't exist or has moved.",
+    'notFound.cta': 'Go to the home page',
     'cityRoute.notFound.text': "We don't have a ready page for this route yet.",
     'cityRoute.notFound.cta': 'Back to home',
-    'cityRoute.error.text': 'Failed to load this route. Please try again later.',
+    'cityRoute.error.title': "Couldn't load this route",
+    'cityRoute.error.text': 'Please check your connection and try again.',
+    'cityRoute.error.retry': 'Try again',
 
     // User Menu
     'userMenu.myRoutes': 'My Routes',
@@ -340,9 +345,14 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.plannerCta': 'Сплануйте маршрут детально',
     'cityRoute.related': 'Схожі маршрути',
     'cityRoute.notFound.title': 'Маршрут не знайдено',
+    'notFound.title': 'Сторінку не знайдено',
+    'notFound.text': 'Сторінки, яку ви шукаєте, не існує або її перенесено.',
+    'notFound.cta': 'На головну',
     'cityRoute.notFound.text': 'Для цього маршруту ще немає готової сторінки.',
     'cityRoute.notFound.cta': 'На головну',
-    'cityRoute.error.text': 'Не вдалося завантажити маршрут. Спробуйте пізніше.',
+    'cityRoute.error.title': 'Не вдалося завантажити маршрут',
+    'cityRoute.error.text': 'Перевірте з\'єднання та спробуйте ще раз.',
+    'cityRoute.error.retry': 'Спробувати ще раз',
 
     // User Menu
     'userMenu.myRoutes': 'Мої Маршрути',
