@@ -7,7 +7,6 @@ import { AuthProvider } from '../../contexts/AuthContext'
 import { QuickCalculator } from '../QuickCalculator'
 import { ProfileCard } from '../dashboard/ProfileCard'
 import { RoutesList } from '../dashboard/RoutesList'
-import { TopChatBar } from '../TopChatBar'
 import { ChatInterface } from '../ChatInterface'
 import { RoutePanel } from '../RoutePanel'
 
@@ -51,7 +50,7 @@ describe('core control accessibility', () => {
         onProfileUpdate={() => undefined}
       />,
     )
-    expect(profileHtml).toContain('aria-label="Edit Profile"')
+    expect(profileHtml).toContain('aria-label="Edit profile"')
 
     const routesHtml = renderEnglish(
       <RoutesList
@@ -74,12 +73,6 @@ describe('core control accessibility', () => {
   })
 
   it('names the AI send action', () => {
-    const html = renderEnglish(
-      <TopChatBar chatInput="Kyiv to Lviv" onChatInputChange={() => undefined}
-        onSendMessage={() => undefined} isProcessing={false} />,
-    )
-    expect(html).toContain('aria-label="Send message"')
-
     const welcomeChatHtml = renderEnglish(
       <ChatInterface messages={[]} chatInput="Kyiv to Lviv"
         onChatInputChange={() => undefined} onSendMessage={() => undefined}

@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Language } from '../../../types'
 
 let language: Language = 'en'
-vi.mock('../../../contexts/LanguageContext', () => ({ useLanguage: () => ({ language }) }))
+vi.mock('../../../contexts/LanguageContext', async () => {
+  const { translate } = await import('../../../i18n/common')
+  return { useLanguage: () => ({ language, t: (key: string) => translate(language, key) }) }
+})
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('../../ui/dialog', () => ({
   Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,
@@ -45,5 +48,32 @@ describe('ShareReceiptModal', () => {
     expect(html).toMatch(/<label[^>]*for="receipt-origin"/)
     expect(html).toMatch(/<input[^>]*id="receipt-origin"/)
     expect(html).toMatch(/<label[^>]*for="receipt-destination"/)
+  })
+
+  it('does not pre-fill a street address into the public receipt', () => {
+    const html = render('uk') // payload origin is "вулиця Хрещатик, 1, Київ"
+    expect(html).not.toContain('Хрещатик')
+  })
+
+  it('still pre-fills plain place names', () => {
+    language = 'en'
+    const html = renderToStaticMarkup(
+      <ShareReceiptModal payload={{ ...payload, originLabel: 'Kyiv', destinationLabel: 'Lviv' }} isOpen onClose={() => {}} />,
+    )
+    expect(html).toMatch(/id="receipt-origin"[^>]*value="Kyiv"/)
+    expect(html).toMatch(/id="receipt-destination"[^>]*value="Lviv"/)
+  })
+
+  it('keeps only the place from a geocoder name like "Kyiv, Ukraine"', () => {
+    language = 'en'
+    const html = renderToStaticMarkup(
+      <ShareReceiptModal
+        payload={{ ...payload, originLabel: 'Kyiv, Kyiv Oblast, Ukraine', destinationLabel: 'Lviv, Ukraine' }}
+        isOpen
+        onClose={() => {}}
+      />,
+    )
+    expect(html).toMatch(/id="receipt-origin"[^>]*value="Kyiv"/)
+    expect(html).toMatch(/id="receipt-destination"[^>]*value="Lviv"/)
   })
 })

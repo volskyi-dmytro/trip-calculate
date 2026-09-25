@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
   LEGAL_CONTACT_EMAIL,
   LEGAL_EFFECTIVE_DATE,
@@ -69,6 +70,7 @@ export function LegalPage({ page }: { page: LegalPageId }) {
   const { hash } = useLocation();
   const strings = legalTranslations[language];
   const doc = strings[page];
+  useDocumentTitle(doc.title);
 
   // React Router doesn't scroll to #fragments (e.g. the footer's #cookies link).
   useEffect(() => {

@@ -89,6 +89,12 @@ export const dashboardService = {
     return response.data;
   },
 
+  /** Everything stored about the signed-in user, as a JSON file. */
+  async exportData(): Promise<Blob> {
+    const response = await api.get('/api/user/dashboard/export', { responseType: 'blob' });
+    return response.data;
+  },
+
   /**
    * Delete user account
    */

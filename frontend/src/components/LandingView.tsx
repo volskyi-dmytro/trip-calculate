@@ -3,14 +3,12 @@ import { QuickCalculator } from './QuickCalculator';
 import { PlannerPromo } from './PlannerPromo';
 
 export function LandingView() {
-  const { language } = useLanguage();
+  const { t: tr } = useLanguage();
 
   const t = {
-    heading1: language === 'uk' ? 'Плануйте маршрути' : 'Plan multi-stop road trips',
-    heading2: language === 'uk' ? 'з кількома зупинками.' : 'with real road data.',
-    subtitle: language === 'uk'
-      ? 'Будуйте маршрут на мапі, отримуйте реальні відстані та час у дорозі, розраховуйте вартість пального в реальному часі та експортуйте маршрут у Waze.'
-      : 'Build your route on the map, get real road distances and drive times, estimate fuel costs in real time, and export to Waze for turn-by-turn navigation.',
+    heading1: tr('landing.heading1'),
+    heading2: tr('landing.heading2'),
+    subtitle: tr('landing.subtitle'),
   };
 
   return (

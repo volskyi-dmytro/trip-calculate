@@ -5,6 +5,7 @@ import { LandingView } from '../components/LandingView';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { UserMenu } from '../components/auth/UserMenu';
 import { withLocalePrefix } from '../utils/locale';
 import { Loader2, Navigation, Sun, Moon } from 'lucide-react';
@@ -13,6 +14,7 @@ export function RoutePlannerPage() {
   const { language, setLanguage, t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  useDocumentTitle(t('pageTitle.routePlanner'));
 
   // Google authentication remains the only route-planner access boundary.
   if (!authLoading && !user) {

@@ -12,10 +12,10 @@ interface ShareReceiptButtonProps {
 }
 
 export function ShareReceiptButton({ payload, disabled, className }: ShareReceiptButtonProps) {
-  const { language } = useLanguage();
+  const { t: tr } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
 
-  const label = language === 'uk' ? 'Поділитися квитанцією' : 'Share receipt';
+  const label = tr('shareReceipt.button');
 
   return (
     <>

@@ -302,7 +302,7 @@ export function RoutePanel({
     setDragOverIndex(null)
 
     toast.success(
-      language === 'uk' ? 'Точку маршруту переміщено' : 'Waypoint reordered',
+      t.planner.waypointReordered,
       { duration: 2000 }
     )
   }
@@ -310,9 +310,7 @@ export function RoutePanel({
   const handleDeleteWaypoint = (id: string) => {
     if (waypoints.length <= 2) {
       toast.error(
-        language === 'uk'
-          ? 'Потрібно мінімум 2 точки для маршруту'
-          : 'Minimum 2 waypoints required',
+        t.planner.minTwoWaypoints,
         { duration: 3000 }
       )
       return
@@ -320,9 +318,7 @@ export function RoutePanel({
 
     if (isCalculating) {
       toast.error(
-        language === 'uk'
-          ? 'Зачекайте завершення розрахунку'
-          : 'Wait for calculation to finish',
+        t.planner.waitForCalculation,
         { duration: 3000 }
       )
       return
@@ -360,7 +356,7 @@ export function RoutePanel({
 
         {garageCars && garageCars.length > 0 && onSelectCar && (
           <select
-            aria-label={language === 'uk' ? 'Авто' : 'Car'}
+            aria-label={t.planner.car}
             className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 mb-1"
             value={matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption) ?? 'custom'}
             onChange={(e) => {
@@ -373,7 +369,7 @@ export function RoutePanel({
                 {car.name} · {car.fuelConsumption} L
               </option>
             ))}
-            <option value="custom">{language === 'uk' ? 'Власні значення' : 'Custom'}</option>
+            <option value="custom">{t.planner.customCar}</option>
           </select>
         )}
 
@@ -636,7 +632,7 @@ export function RoutePanel({
                         {index + 1}
                       </div>
                       <Input
-                        aria-label={`${language === 'uk' ? 'Точка маршруту' : 'Waypoint'} ${index + 1}: ${waypoint.name}`}
+                        aria-label={`${t.planner.waypoint} ${index + 1}: ${waypoint.name}`}
                         value={waypoint.name}
                         onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
                         className="h-7 text-xs"
@@ -645,14 +641,14 @@ export function RoutePanel({
                       />
                     </div>
                     <button
-                      aria-label={`${language === 'uk' ? 'Видалити точку маршруту' : 'Delete waypoint'} ${index + 1}: ${waypoint.name}`}
+                      aria-label={`${t.planner.deleteWaypoint} ${index + 1}: ${waypoint.name}`}
                       className="h-7 w-7 flex items-center justify-center rounded flex-shrink-0 transition-colors disabled:opacity-30"
                       onClick={() => handleDeleteWaypoint(waypoint.id)}
                       disabled={isCalculating || waypoints.length <= 2}
                       title={
                         waypoints.length <= 2
-                          ? (language === 'uk' ? 'Потрібно мінімум 2 точки' : 'Minimum 2 waypoints')
-                          : (language === 'uk' ? 'Видалити точку' : 'Delete waypoint')
+                          ? t.planner.minTwoWaypointsShort
+                          : t.planner.deleteWaypoint
                       }
                       style={{ color: 'var(--nav-danger)' }}
                     >
@@ -674,7 +670,7 @@ export function RoutePanel({
             {isCalculating && (
               <div className="flex items-center justify-center gap-2 py-2 text-xs" style={{ color: 'var(--nav-text-secondary)' }}>
                 <Loader2 className="h-3 w-3 animate-spin" style={{ color: 'var(--nav-accent)' }} />
-                {language === 'uk' ? 'Розрахунок маршруту...' : 'Calculating route...'}
+                {t.planner.calculatingRoute}
               </div>
             )}
           </div>

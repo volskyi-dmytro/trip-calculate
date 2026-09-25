@@ -12,7 +12,12 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({ slug: 'kyiv-lviv' }),
 }))
 vi.mock('../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ language: 'en', t: (key: string) => key, tn: (key: string, count: number) => `${key}:${count}` }),
+  useLanguage: () => ({
+    language: 'en',
+    // Templates for the keys whose placeholders the page fills in; other keys echo back.
+    t: (key: string) => ({ 'cityRoute.distanceValue': '{km} km', 'pageTitle.cityRoute': '{from} → {to}' })[key] ?? key,
+    tn: (key: string, count: number) => `${key}:${count}`,
+  }),
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
 vi.mock('../../components/common/Footer', () => ({ Footer: () => <footer>Footer</footer> }))
@@ -131,5 +136,24 @@ describe('CityRoutePage', () => {
 
     expect(container.querySelector('h1')?.textContent).toBe('cityRoute.error.title')
     expect(container.textContent).not.toContain('cityRoute.notFound.title')
+  })
+
+  it('keeps a heading outline without skipped levels', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+    const container = await renderPage()
+
+    const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((h) => Number(h.tagName[1]))
+    expect(levels[0]).toBe(1)
+    levels.forEach((level, i) => {
+      if (i > 0) expect(level - levels[i - 1]).toBeLessThanOrEqual(1)
+    })
+    expect(container.textContent).toContain('540')
+  })
+
+  it('names the browser tab after the route', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+    await renderPage()
+
+    expect(document.title).toBe('Kyiv → Lviv | Trip Calculate')
   })
 })

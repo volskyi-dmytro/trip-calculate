@@ -1,5 +1,6 @@
 import { api, fetchCsrfToken } from './api';
 import type { UserResponse } from '../types';
+import { clearPlannerStorage } from '../utils/plannerStorage';
 
 export const authService = {
   getCurrentUser: async (): Promise<UserResponse> => {
@@ -17,6 +18,8 @@ export const authService = {
   },
 
   logout: async (): Promise<void> => {
+    // Signing out on a shared computer must not leave the last route behind.
+    clearPlannerStorage();
     try {
       // Get CSRF token
       const token = await fetchCsrfToken();

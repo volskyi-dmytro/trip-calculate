@@ -5,6 +5,8 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translate } from '../i18n/common';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
 
@@ -13,8 +15,8 @@ type PageState = 'loading' | 'ready' | 'notFound' | 'error';
 function formatDuration(minutes: number, language: 'en' | 'uk'): string {
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
-  if (h <= 0) return language === 'uk' ? `${m} хв` : `${m} min`;
-  return language === 'uk' ? `${h} год ${m} хв` : `${h}h ${m}m`;
+  const text = translate(language, h <= 0 ? 'cityRoute.durationMinutes' : 'cityRoute.durationHours');
+  return text.replace('{h}', String(h)).replace('{m}', String(m));
 }
 
 // SpaShellController embeds this page's data in the HTML, so the first render
@@ -37,6 +39,13 @@ export function CityRoutePage() {
   const [route, setRoute] = useState<CityRouteDetail | null>(() => embeddedRoute(slug, language));
   const [state, setState] = useState<PageState>(() => (route ? 'ready' : 'loading'));
   const [attempt, setAttempt] = useState(0);
+  useDocumentTitle(
+    state === 'notFound'
+      ? t('cityRoute.notFound.title')
+      : route
+        ? t('pageTitle.cityRoute').replace('{from}', route.fromName).replace('{to}', route.toName)
+        : null,
+  );
 
   useEffect(() => {
     if (!slug) return;
@@ -109,7 +118,7 @@ export function CityRoutePage() {
     ? t('cityRoute.priceDateSuffix').replace('{date}', formattedPriceDate)
     : '';
   const explanation = t('cityRoute.explanation')
-    .replace('{consumption}', String(r.consumptionL100))
+    .replace('{consumption}', r.consumptionL100.toLocaleString(language === 'uk' ? 'uk-UA' : 'en-GB'))
     .replace('{passengers}', tn('common.passengersGenitive', r.passengers))
     .replace('{priceDate}', priceDate);
 
@@ -117,7 +126,7 @@ export function CityRoutePage() {
     {
       icon: MapPin,
       label: t('cityRoute.distance'),
-      value: `${Math.round(r.distanceKm)} km`,
+      value: t('cityRoute.distanceValue').replace('{km}', String(Math.round(r.distanceKm))),
     },
     {
       icon: Clock,
@@ -157,7 +166,8 @@ export function CityRoutePage() {
                 <span className="feature-icon">
                   <Icon size={20} strokeWidth={2} aria-hidden="true" />
                 </span>
-                <h3>{value}</h3>
+                {/* A figure, not a heading: keeps the outline h1 → h2 → h3. */}
+                <p className="feature-value">{value}</p>
                 <p>{label}</p>
               </div>
             ))}

@@ -9,5 +9,7 @@ import java.util.List;
 public interface AccessRequestRepository extends JpaRepository<AccessRequest, Long> {
     List<AccessRequest> findByStatusOrderByRequestedAtDesc(AccessRequest.RequestStatus status);
     boolean existsByUserIdAndFeatureNameAndStatus(Long userId, String featureName, AccessRequest.RequestStatus status);
+    List<AccessRequest> findByUserIdOrderByRequestedAtDesc(Long userId);
+
     List<AccessRequest> findByUserIdAndFeatureNameAndStatus(Long userId, String featureName, AccessRequest.RequestStatus status);
 }

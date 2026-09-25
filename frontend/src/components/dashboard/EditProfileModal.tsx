@@ -126,24 +126,9 @@ export function EditProfileModal({
               </select>
             </div>
 
-            {/* Email Notifications */}
-            <div className="flex items-center space-x-2">
-              <input
-                type="checkbox"
-                id="emailNotifications"
-                checked={formData.emailNotificationsEnabled}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    emailNotificationsEnabled: e.target.checked,
-                  })
-                }
-                className="h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary"
-              />
-              <Label htmlFor="emailNotifications" className="cursor-pointer">
-                {t('dashboard.editProfile.emailNotifications')}
-              </Label>
-            </div>
+            {/* No email-notifications toggle: the app sends no email, so the
+                setting would promise something that doesn't exist. The stored
+                value is kept and still sent back unchanged. */}
           </div>
 
           <DialogFooter>

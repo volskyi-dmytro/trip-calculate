@@ -2,6 +2,9 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translate } from '../i18n/common';
+import type { Language } from '../types';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { receiptService } from '../services/receiptService';
 import type { Receipt } from '../types/Receipt';
 import { withLocalePrefix } from '../utils/locale';
@@ -96,25 +99,30 @@ export function ReceiptPage() {
 
   // Receipt renders in its stored locale for first-time visitors;
   // a saved preference or an explicit toggle wins.
-  const lang = receipt && !hadSavedLanguage && !userSwitchedLanguage ? receipt.locale : language;
+  const lang: Language =
+    receipt && !hadSavedLanguage && !userSwitchedLanguage
+      ? (receipt.locale === 'uk' ? 'uk' : 'en')
+      : language;
 
+  const tl = (key: string) => translate(lang, key);
   const t = {
-    receipt: lang === 'uk' ? 'Квитанція за поїздку' : 'Trip receipt',
-    distance: lang === 'uk' ? 'Відстань' : 'Distance',
-    consumption: lang === 'uk' ? 'Витрата пального' : 'Fuel consumption',
-    fuelPrice: lang === 'uk' ? 'Ціна пального' : 'Fuel price',
-    total: lang === 'uk' ? 'Разом за паливо' : 'Fuel total',
-    people: lang === 'uk' ? 'Осіб' : 'People',
-    perPerson: lang === 'uk' ? 'На особу' : 'Per person',
-    poweredBy: lang === 'uk' ? 'Створено на' : 'Powered by',
-    cta: lang === 'uk' ? 'Розрахувати свою поїздку' : 'Calculate your own trip',
-    expiredTitle: lang === 'uk' ? 'Ця квитанція застаріла' : 'This receipt has expired',
-    expiredText:
-      lang === 'uk'
-        ? 'Посилання діяло 30 днів. Але ваша наступна поїздка — за хвилину звідси.'
-        : 'The link lasted 30 days. Your next trip is a minute away, though.',
-    notFoundTitle: lang === 'uk' ? 'Квитанцію не знайдено' : 'Receipt not found',
+    receipt: tl('receipt.receipt'),
+    distance: tl('receipt.distance'),
+    consumption: tl('receipt.consumption'),
+    fuelPrice: tl('receipt.fuelPrice'),
+    total: tl('receipt.total'),
+    people: tl('receipt.people'),
+    perPerson: tl('receipt.perPerson'),
+    poweredBy: tl('receipt.poweredBy'),
+    cta: tl('receipt.cta'),
+    expiredTitle: tl('receipt.expiredTitle'),
+    expiredText: tl('receipt.expiredText'),
+    notFoundTitle: tl('receipt.notFoundTitle'),
   };
+
+  useDocumentTitle(
+    state === 'expired' ? t.expiredTitle : state === 'notFound' ? t.notFoundTitle : t.receipt,
+  );
 
   const handleCta = () => {
     if (slug) receiptService.registerCta(slug);

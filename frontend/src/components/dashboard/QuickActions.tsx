@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { dashboardService } from '../../services/dashboardService';
+import { clearPlannerStorage } from '../../utils/plannerStorage';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { withLocalePrefix } from '../../utils/locale';
 
@@ -25,8 +26,18 @@ export function QuickActions() {
 
   const handleDownloadData = async () => {
     try {
-      // This would need to be implemented on the backend
-      toast.info(t('dashboard.quickActions.downloadDataInfo'));
+      const blob = await dashboardService.exportData();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `trip-calculate-data-${new Date().toISOString().slice(0, 10)}.json`;
+      // Attached and revoked a tick later: some browsers (Safari, older
+      // Firefox) cancel the download if the URL goes away during click().
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+      toast.success(t('dashboard.quickActions.downloadDataInfo'));
     } catch (error) {
       console.error('Failed to download data:', error);
       toast.error(t('dashboard.quickActions.downloadDataError'));
@@ -37,15 +48,8 @@ export function QuickActions() {
     setDeleting(true);
     try {
       await dashboardService.deleteAccount();
-      // The planner keeps the last route's coordinates and the car in this
-      // browser; a deleted account shouldn't leave them behind.
-      for (const key of ['tripCalculate_currentRoute', 'tripCalculate_routeSettings', 'tc_car_v1']) {
-        try {
-          localStorage.removeItem(key);
-        } catch {
-          // Storage can be blocked (private mode); nothing to clean up then.
-        }
-      }
+      // A deleted account shouldn't leave its route or AI answers in this browser.
+      clearPlannerStorage();
       toast.success(t('dashboard.quickActions.deleteAccountSuccess'));
       // Redirect to home after a short delay
       setTimeout(() => {
@@ -82,9 +86,7 @@ export function QuickActions() {
       description: t('dashboard.quickActions.downloadDataDesc'),
       onClick: handleDownloadData,
       destructive: false,
-      // Hidden until a real export (or a request-by-email process) exists:
-      // a button that only says "coming soon" promises something we don't do.
-      show: false,
+      show: true,
     },
     {
       icon: Trash2,

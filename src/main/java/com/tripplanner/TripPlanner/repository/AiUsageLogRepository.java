@@ -29,6 +29,9 @@ public interface AiUsageLogRepository extends JpaRepository<AiUsageLog, Long> {
     // Count requests by IP address within a time window
     long countByIpAddressAndTimestampAfter(String ipAddress, LocalDateTime after);
 
+    // Every record of one user (data export)
+    List<AiUsageLog> findByUserIdOrderByTimestampDesc(Long userId);
+
     // Get recent usage for a user
     List<AiUsageLog> findByUserIdOrderByTimestampDesc(Long userId, Pageable pageable);
 

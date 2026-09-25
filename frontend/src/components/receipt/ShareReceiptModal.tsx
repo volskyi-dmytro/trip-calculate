@@ -21,10 +21,15 @@ interface ShareReceiptModalProps {
   onClose: () => void;
 }
 
+// Receipts are public, so a label is pre-filled only when it looks like a
+// place name: from "Kyiv, Kyiv Oblast, Ukraine" just "Kyiv". A label with a
+// digit (house number, postcode) is an address, left for the driver to type.
+const safeLabel = (label?: string) => (label && !/\d/.test(label) ? label.split(',')[0].trim() : '');
+
 export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModalProps) {
-  const { language } = useLanguage();
-  const [origin, setOrigin] = useState(payload.originLabel ?? '');
-  const [destination, setDestination] = useState(payload.destinationLabel ?? '');
+  const { t: tr } = useLanguage();
+  const [origin, setOrigin] = useState(safeLabel(payload.originLabel));
+  const [destination, setDestination] = useState(safeLabel(payload.destinationLabel));
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -34,41 +39,25 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
     if (isOpen) {
       setReceipt(null);
       setCopied(false);
-      setOrigin(payload.originLabel ?? '');
-      setDestination(payload.destinationLabel ?? '');
+      setOrigin(safeLabel(payload.originLabel));
+      setDestination(safeLabel(payload.destinationLabel));
     }
   }, [isOpen, payload.originLabel, payload.destinationLabel]);
 
   const t = {
-    title: language === 'uk' ? 'Поділитися квитанцією' : 'Share trip receipt',
-    description:
-      language === 'uk'
-        ? 'Створіть посилання й надішліть його пасажирам у Telegram чи Viber.'
-        : 'Create a link and send it to your passengers on Telegram or WhatsApp.',
-    from: language === 'uk' ? 'Звідки (необов\'язково)' : 'From (optional)',
-    to: language === 'uk' ? 'Куди (необов\'язково)' : 'To (optional)',
-    create: language === 'uk' ? 'Створити посилання' : 'Create link',
-    publicNotice:
-      language === 'uk'
-        ? 'Будь-хто з цим посиланням зможе переглянути квитанцію, зокрема маршрут на мапі.'
-        : 'Anyone with this link can see the receipt, including the route on the map.',
-    addressHint:
-      language === 'uk'
-        ? 'Порада: вкажіть місто чи орієнтир замість домашньої адреси.'
-        : 'Tip: use a city or landmark instead of your home address.',
-    copy: language === 'uk' ? 'Копіювати' : 'Copy',
-    copiedToast: language === 'uk' ? 'Посилання скопійовано' : 'Link copied',
-    share: language === 'uk' ? 'Поділитися' : 'Share',
-    expiresNote:
-      language === 'uk'
-        ? 'Посилання діє 30 днів. Увійдіть, щоб зберігати квитанції довше.'
-        : 'Link lasts 30 days. Sign in to keep receipts longer.',
-    rateLimited:
-      language === 'uk'
-        ? 'Забагато квитанцій за годину. Спробуйте пізніше.'
-        : 'Too many receipts this hour. Try again later.',
-    genericError:
-      language === 'uk' ? 'Не вдалося створити посилання' : 'Could not create the link',
+    title: tr('shareReceipt.title'),
+    description: tr('shareReceipt.description'),
+    from: tr('shareReceipt.from'),
+    to: tr('shareReceipt.to'),
+    create: tr('shareReceipt.create'),
+    publicNotice: tr('shareReceipt.publicNotice'),
+    addressHint: tr('shareReceipt.addressHint'),
+    copy: tr('shareReceipt.copy'),
+    copiedToast: tr('shareReceipt.copiedToast'),
+    share: tr('shareReceipt.share'),
+    expiresNote: tr('shareReceipt.expiresNote'),
+    rateLimited: tr('shareReceipt.rateLimited'),
+    genericError: tr('shareReceipt.genericError'),
   };
 
   const handleCreate = async () => {
@@ -119,7 +108,7 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
                 onChange={(e) => setOrigin(e.target.value)}
                 maxLength={120}
                 className="mt-1"
-                placeholder={language === 'uk' ? 'Київ' : 'Berlin'}
+                placeholder={tr('shareReceipt.fromPlaceholder')}
               />
             </div>
             <div>
@@ -130,7 +119,7 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
                 onChange={(e) => setDestination(e.target.value)}
                 maxLength={120}
                 className="mt-1"
-                placeholder={language === 'uk' ? 'Львів' : 'Munich'}
+                placeholder={tr('shareReceipt.toPlaceholder')}
               />
             </div>
             <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
