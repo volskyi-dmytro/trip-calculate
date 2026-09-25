@@ -10,6 +10,7 @@ import type { CatalogEntry, CatalogVariant } from '../../utils/carCatalog';
 import { CAR_PRESETS } from '../../utils/carPresets';
 import type { CarPreset } from '../../utils/carPresets';
 import { carService } from '../../services/carService';
+import { AiPrivacyNote } from '../AiPrivacyNote';
 import type { CarSelection, FuelType, GarageCar } from '../../types/Car';
 
 interface CarPickerProps {
@@ -343,6 +344,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                 placeholder={t.aiPlaceholder}
                 className="flex w-full rounded-md border border-gray-300/70 dark:border-gray-600/70 bg-[var(--glass-input)] text-gray-900 dark:text-white px-3 py-2 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
+              <AiPrivacyNote kind="car" className="mt-1" />
             </div>
             <Button
               onClick={handleEstimate}

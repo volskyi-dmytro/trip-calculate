@@ -31,8 +31,12 @@ export function QuickActions() {
       const link = document.createElement('a');
       link.href = url;
       link.download = `trip-calculate-data-${new Date().toISOString().slice(0, 10)}.json`;
+      // Attached and revoked a tick later: some browsers (Safari, older
+      // Firefox) cancel the download if the URL goes away during click().
+      document.body.appendChild(link);
       link.click();
-      URL.revokeObjectURL(url);
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
       toast.success(t('dashboard.quickActions.downloadDataInfo'));
     } catch (error) {
       console.error('Failed to download data:', error);

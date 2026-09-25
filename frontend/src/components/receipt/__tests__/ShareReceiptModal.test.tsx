@@ -63,4 +63,17 @@ describe('ShareReceiptModal', () => {
     expect(html).toMatch(/id="receipt-origin"[^>]*value="Kyiv"/)
     expect(html).toMatch(/id="receipt-destination"[^>]*value="Lviv"/)
   })
+
+  it('keeps only the place from a geocoder name like "Kyiv, Ukraine"', () => {
+    language = 'en'
+    const html = renderToStaticMarkup(
+      <ShareReceiptModal
+        payload={{ ...payload, originLabel: 'Kyiv, Kyiv Oblast, Ukraine', destinationLabel: 'Lviv, Ukraine' }}
+        isOpen
+        onClose={() => {}}
+      />,
+    )
+    expect(html).toMatch(/id="receipt-origin"[^>]*value="Kyiv"/)
+    expect(html).toMatch(/id="receipt-destination"[^>]*value="Lviv"/)
+  })
 })

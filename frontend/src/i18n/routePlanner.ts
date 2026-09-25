@@ -124,6 +124,7 @@ export const routePlannerTranslations = {
       askPlaceholder: 'Ask AI to change route...',
       inputLabel: 'Message to the trip assistant',
       privacyNote: 'Your messages and route points are sent to OpenAI to plan the trip.',
+      carPrivacyNote: 'Your car description is sent to OpenAI to estimate its fuel consumption.',
       privacyLink: 'Privacy Policy',
     },
     planner: {
@@ -346,6 +347,7 @@ export const routePlannerTranslations = {
       askPlaceholder: 'Попросіть AI змінити маршрут...',
       inputLabel: 'Повідомлення для помічника з поїздок',
       privacyNote: 'Ваші повідомлення та точки маршруту надсилаються до OpenAI, щоб спланувати поїздку.',
+      carPrivacyNote: 'Опис авто надсилається до OpenAI, щоб оцінити витрату пального.',
       privacyLink: 'Політика конфіденційності',
     },
     planner: {

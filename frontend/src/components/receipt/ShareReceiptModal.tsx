@@ -22,9 +22,9 @@ interface ShareReceiptModalProps {
 }
 
 // Receipts are public, so a label is pre-filled only when it looks like a
-// place name. Anything with digits or commas (street, house number) is left
-// for the driver to type on purpose.
-const safeLabel = (label?: string) => (label && !/[\d,]/.test(label) ? label : '');
+// place name: from "Kyiv, Kyiv Oblast, Ukraine" just "Kyiv". A label with a
+// digit (house number, postcode) is an address, left for the driver to type.
+const safeLabel = (label?: string) => (label && !/\d/.test(label) ? label.split(',')[0].trim() : '');
 
 export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModalProps) {
   const { t: tr } = useLanguage();

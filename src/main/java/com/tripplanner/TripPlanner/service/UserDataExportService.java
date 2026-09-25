@@ -1,8 +1,10 @@
 package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.entity.User;
+import com.tripplanner.TripPlanner.repository.AccessRequestRepository;
 import com.tripplanner.TripPlanner.repository.AiUsageLogRepository;
 import com.tripplanner.TripPlanner.repository.CarRepository;
+import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
 import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
@@ -18,8 +20,8 @@ import java.util.NoSuchElementException;
 
 /**
  * "Download my data": everything the app stores about one user, as plain JSON.
- * Mirrors what account deletion erases (profile, routes, cars, receipts, AI
- * usage records), so the Privacy Policy's list and the export stay in step.
+ * Covers what account deletion erases (profile, routes, cars, receipts, AI
+ * usage records, feature access) plus the user's access requests.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,6 +32,8 @@ public class UserDataExportService {
     private final CarRepository carRepository;
     private final TripReceiptRepository tripReceiptRepository;
     private final AiUsageLogRepository aiUsageLogRepository;
+    private final FeatureAccessRepository featureAccessRepository;
+    private final AccessRequestRepository accessRequestRepository;
 
     @Transactional(readOnly = true)
     public Map<String, Object> export(Long userId) {
@@ -99,6 +103,23 @@ public class UserDataExportService {
                         "language", log.getLanguage(),
                         "ipAddress", log.getIpAddress(),
                         "status", log.getResponseStatus()))
+                .toList());
+        export.put("featureAccess", featureAccessRepository.findByUserId(userId)
+                .map(access -> row(
+                        "routePlannerEnabled", access.getRoutePlannerEnabled(),
+                        "grantedAt", access.getGrantedAt(),
+                        "grantedBy", access.getGrantedBy(),
+                        "notes", access.getNotes()))
+                .orElse(null));
+        export.put("accessRequests", accessRequestRepository.findByUserIdOrderByRequestedAtDesc(userId).stream()
+                .map(request -> row(
+                        "featureName", request.getFeatureName(),
+                        "status", request.getStatus(),
+                        "requestedAt", request.getRequestedAt(),
+                        "processedAt", request.getProcessedAt(),
+                        "processedBy", request.getProcessedBy(),
+                        "email", request.getUserEmail(),
+                        "name", request.getUserName()))
                 .toList());
         return export;
     }

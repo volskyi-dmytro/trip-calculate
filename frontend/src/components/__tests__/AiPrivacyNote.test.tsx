@@ -26,4 +26,11 @@ describe('AiPrivacyNote', () => {
     expect(html).toContain('href="/en/privacy#what-we-collect"')
     expect(html).toContain('Privacy Policy')
   })
+
+  it('explains where a car description goes on the car picker', () => {
+    language = 'uk'
+    const html = renderToStaticMarkup(<AiPrivacyNote kind="car" />)
+    expect(html).toContain('Опис авто надсилається до OpenAI')
+    expect(html).toContain('href="/uk/privacy#what-we-collect"')
+  })
 })
