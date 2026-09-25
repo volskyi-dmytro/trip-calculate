@@ -55,10 +55,10 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
         // Log every request to see if filter is running
         if (requestUri.startsWith("/api/")) {
             log.debug("=== AuthorityRestoreFilter === Processing: {} {}", request.getMethod(), requestUri);
-            log.info("Authentication type: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
-            log.info("Is authenticated: {}", authentication != null && authentication.isAuthenticated());
+            log.debug("Authentication type: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
+            log.debug("Is authenticated: {}", authentication != null && authentication.isAuthenticated());
             if (authentication != null) {
-                log.info("Authorities: {}", authentication.getAuthorities());
+                log.debug("Authorities: {}", authentication.getAuthorities());
                 log.debug("Principal type: {}", authentication.getPrincipal().getClass().getName());
             }
         }
@@ -125,7 +125,7 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                             // Update the security context with the new authentication
                             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
-                            log.info("Successfully updated SecurityContext with restored authorities for request: {} {}",
+                            log.debug("Successfully updated SecurityContext with restored authorities for request: {} {}",
                                     request.getMethod(), request.getRequestURI());
 
                         } else {
