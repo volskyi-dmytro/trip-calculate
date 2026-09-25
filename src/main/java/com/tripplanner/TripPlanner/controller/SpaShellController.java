@@ -492,6 +492,13 @@ public class SpaShellController {
         html = replaceMeta(html, "property", "og:title", metadata.ogTitle);
         html = replaceMeta(html, "property", "og:description", metadata.description);
         html = replaceMeta(html, "property", "og:url", metadata.canonicalUrl());
+        boolean english = "en".equals(metadata.locale);
+        html = replaceMeta(html, "property", "og:locale", english ? "en_GB" : "uk_UA");
+        html = replaceMeta(html, "property", "og:locale:alternate", english ? "uk_UA" : "en_GB");
+        html = replaceMeta(html, "property", "og:site_name", "Trip Calculate");
+        html = replaceMeta(html, "property", "og:image:alt", english
+                ? "Trip Calculate: fuel costs for any road trip, split fairly."
+                : "Trip Calculate: витрати на пальне для будь-якої поїздки, поділені чесно.");
 
         html = html.replaceAll("(?is)\\s*<link\\s+rel=\"(?:canonical|alternate)\"[^>]*>", "");
         String alternates = "\n    <link rel=\"canonical\" href=\"" + metadata.canonicalUrl() + "\" />"

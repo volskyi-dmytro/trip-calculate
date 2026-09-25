@@ -150,6 +150,26 @@ class SpaShellControllerTest {
         assertFalse(response.getHeaders().containsKey("X-Robots-Tag"));
     }
 
+    @ParameterizedTest
+    @CsvSource({
+            "/en,en_GB,uk_UA,fuel costs for any road trip",
+            "/uk,uk_UA,en_GB,витрати на пальне",
+            "/en/privacy,en_GB,uk_UA,fuel costs for any road trip",
+            "/uk/route/kyiv-lviv,uk_UA,en_GB,витрати на пальне"
+    })
+    void emitsLocalizedOpenGraphLocaleSiteNameAndImageAlt(
+            String path, String ogLocale, String alternate, String altFragment) throws Exception {
+        String html = controller.shell(new MockHttpServletRequest("GET", path)).getBody();
+
+        assertEquals(1, occurrences(html, "<meta property=\"og:locale\" content=\"" + ogLocale + "\" />"));
+        assertEquals(1, occurrences(html, "<meta property=\"og:locale:alternate\" content=\"" + alternate + "\" />"));
+        assertEquals(1, occurrences(html, "<meta property=\"og:site_name\" content=\"Trip Calculate\" />"));
+        Matcher alt = Pattern.compile("<meta property=\"og:image:alt\" content=\"([^\"]*)\" />").matcher(html);
+        assertTrue(alt.find());
+        assertTrue(alt.group(1).contains(altFragment), alt.group(1));
+        assertFalse(alt.find());
+    }
+
     @Test
     void cityRoutePageEmbedsItsDataSoCrawlersDontNeedTheApi() throws Exception {
         String html = controller.shell(new MockHttpServletRequest("GET", "/uk/route/kyiv-lviv")).getBody();
