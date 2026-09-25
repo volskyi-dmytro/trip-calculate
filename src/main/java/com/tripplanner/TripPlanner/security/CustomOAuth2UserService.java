@@ -42,13 +42,13 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
         // Get Google ID from the OAuth2 user
         String googleId = oauth2User.getAttribute("sub");
-        log.info("OAuth2 user loaded - Google ID: {}", googleId);
+        log.debug("OAuth2 user loaded");
 
         // Find or create user in database
         User user = userService.findByGoogleId(googleId).orElse(null);
 
         if (user == null) {
-            log.warn("User not found in database for Google ID: {}. Assigning default ROLE_USER", googleId);
+            log.warn("User not found in database. Assigning default ROLE_USER");
             // New user - will be created by processOAuth2User in success handler
             // For now, assign USER role as default
             Set<GrantedAuthority> authorities = new HashSet<>();
@@ -57,7 +57,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             return new DefaultOAuth2User(authorities, oauth2User.getAttributes(), "sub");
         }
 
-        log.info("Found user in database - ID: {}, email: {}, role: {}", user.getId(), user.getEmail(), user.getRole());
+        log.info("Found user in database - ID: {}, role: {}", user.getId(), user.getRole());
 
         // Update last login timestamp
         user.setLastLogin(LocalDateTime.now());
