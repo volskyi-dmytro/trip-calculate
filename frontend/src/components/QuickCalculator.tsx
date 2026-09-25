@@ -29,14 +29,15 @@ interface QuickCalculatorProps {
   prefill?: QuickCalculatorPrefill;
 }
 
-// Static precomputed examples — zero API calls on the landing page (spec decision)
+// Static precomputed examples — zero API calls on the landing page (spec decision).
+// The route names are quickCalc.exampleFrom/To in src/i18n/common.ts.
 const EXAMPLES = {
-  uk: { from: 'Київ', to: 'Львів', distance: 540, consumption: 7.5, price: 58, people: 4, currency: 'UAH' },
-  en: { from: 'Berlin', to: 'Munich', distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
+  uk: { distance: 540, consumption: 7.5, price: 58, people: 4, currency: 'UAH' },
+  en: { distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
 } as const;
 
 export function QuickCalculator({ example = false, prefill }: QuickCalculatorProps) {
-  const { language } = useLanguage();
+  const { language, t: tr } = useLanguage();
   const { user } = useAuth();
   const initial = !prefill && example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
   const stored = loadStoredCar();
@@ -91,23 +92,20 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   };
 
   const t = {
-    title: language === 'uk' ? 'Швидкий Розрахунок' : 'Quick Estimate',
-    guestMode: language === 'uk' ? 'ГОСТЬОВИЙ РЕЖИМ' : 'GUEST MODE',
-    distance: language === 'uk' ? 'Відстань (км)' : 'Distance (km)',
-    passengers: language === 'uk' ? 'Пасажири' : 'Passengers',
-    consumption: language === 'uk' ? 'Л/100км' : 'L/100km',
-    fuelPrice: language === 'uk' ? 'Ціна палива' : 'Fuel Price',
-    currency: language === 'uk' ? 'Валюта' : 'Currency',
-    decreasePassengers: language === 'uk' ? 'Зменшити кількість пасажирів' : 'Decrease passengers',
-    increasePassengers: language === 'uk' ? 'Збільшити кількість пасажирів' : 'Increase passengers',
-    totalCost: language === 'uk' ? 'Загальна вартість' : 'Total Cost',
-    perPassenger: language === 'uk' ? 'На пасажира' : 'Per Passenger',
-    exampleBadge:
-      language === 'uk'
-        ? 'Приклад — змініть будь-яке поле, щоб зробити його своїм'
-        : 'Example — edit any field to make it yours',
+    title: tr('quickCalc.title'),
+    guestMode: tr('quickCalc.guestMode'),
+    distance: tr('quickCalc.distance'),
+    passengers: tr('quickCalc.passengers'),
+    consumption: tr('quickCalc.consumption'),
+    fuelPrice: tr('quickCalc.fuelPrice'),
+    currency: tr('quickCalc.currency'),
+    decreasePassengers: tr('quickCalc.decreasePassengers'),
+    increasePassengers: tr('quickCalc.increasePassengers'),
+    totalCost: tr('quickCalc.totalCost'),
+    perPassenger: tr('quickCalc.perPassenger'),
+    exampleBadge: tr('quickCalc.exampleBadge'),
     exampleRoute: exampleActive
-      ? `${EXAMPLES[language === 'uk' ? 'uk' : 'en'].from} → ${EXAMPLES[language === 'uk' ? 'uk' : 'en'].to}`
+      ? `${tr('quickCalc.exampleFrom')} → ${tr('quickCalc.exampleTo')}`
       : '',
   };
 
@@ -204,7 +202,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               </button>
               <button
                 type="button"
-                aria-label={language === 'uk' ? 'Прибрати збережене авто' : 'Clear saved car'}
+                aria-label={tr('quickCalc.clearSavedCar')}
                 className="opacity-60 hover:opacity-100"
                 onClick={() => { clearStoredCar(); setStoredCar(null); }}
               >
@@ -217,7 +215,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               onClick={() => setPickerOpen(true)}
               className="mt-1 text-xs text-primary hover:underline"
             >
-              🚗 {language === 'uk' ? 'Не знаєте витрату пального?' : "Don't know your fuel consumption?"}
+              🚗 {tr('quickCalc.unknownConsumption')}
             </button>
           )}
         </div>

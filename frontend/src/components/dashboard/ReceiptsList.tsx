@@ -9,27 +9,20 @@ import type { Receipt } from '../../types/Receipt';
 
 /** Owned receipts never expire; this list is where users manage the links they shared. */
 export function ReceiptsList() {
-  const { language } = useLanguage();
+  const { t: tr, tn } = useLanguage();
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const t = {
-    title: language === 'uk' ? 'Мої квитанції' : 'My receipts',
-    empty:
-      language === 'uk'
-        ? 'Ще немає квитанцій. Поділіться розрахунком — посилання з’явиться тут.'
-        : 'No receipts yet. Share a calculation and its link will appear here.',
-    views: language === 'uk' ? 'переглядів' : 'views',
-    copied: language === 'uk' ? 'Посилання скопійовано' : 'Link copied',
-    deleted: language === 'uk' ? 'Квитанцію видалено' : 'Receipt deleted',
-    copyLabel: language === 'uk' ? 'Копіювати посилання' : 'Copy link',
-    deleteLabel: language === 'uk' ? 'Видалити квитанцію' : 'Delete receipt',
-    deleteFailed: language === 'uk' ? 'Не вдалося видалити' : 'Delete failed',
-    confirmDelete:
-      language === 'uk'
-        ? 'Видалити квитанцію? Посилання перестане працювати.'
-        : 'Delete this receipt? The link will stop working.',
-    unnamed: language === 'uk' ? 'Поїздка' : 'Trip',
+    title: tr('receiptsList.title'),
+    empty: tr('receiptsList.empty'),
+    copied: tr('receiptsList.copied'),
+    deleted: tr('receiptsList.deleted'),
+    copyLabel: tr('receiptsList.copyLabel'),
+    deleteLabel: tr('receiptsList.deleteLabel'),
+    deleteFailed: tr('receiptsList.deleteFailed'),
+    confirmDelete: tr('receiptsList.confirmDelete'),
+    unnamed: tr('receiptsList.unnamed'),
   };
 
   useEffect(() => {
@@ -84,11 +77,11 @@ export function ReceiptsList() {
                   <div className="text-sm font-medium truncate">
                     {r.originLabel && r.destinationLabel
                       ? `${r.originLabel} → ${r.destinationLabel}`
-                      : `${t.unnamed} · ${r.distanceKm.toFixed(0)} km`}
+                      : `${t.unnamed} · ${tr('receiptsList.distance').replace('{km}', r.distanceKm.toFixed(0))}`}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
-                    {r.viewCount} {t.views} · {r.costPerPerson.toFixed(2)} {r.currency}
+                    {tn('receiptsList.views', r.viewCount)} · {r.costPerPerson.toFixed(2)} {r.currency}
                   </div>
                 </div>
                 <Button

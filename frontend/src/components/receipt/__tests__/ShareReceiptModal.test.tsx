@@ -4,7 +4,10 @@ import { describe, expect, it, vi } from 'vitest'
 import type { Language } from '../../../types'
 
 let language: Language = 'en'
-vi.mock('../../../contexts/LanguageContext', () => ({ useLanguage: () => ({ language }) }))
+vi.mock('../../../contexts/LanguageContext', async () => {
+  const { translate } = await import('../../../i18n/common')
+  return { useLanguage: () => ({ language, t: (key: string) => translate(language, key) }) }
+})
 vi.mock('sonner', () => ({ toast: { success: vi.fn(), error: vi.fn() } }))
 vi.mock('../../ui/dialog', () => ({
   Dialog: ({ children }: { children: ReactNode }) => <div>{children}</div>,

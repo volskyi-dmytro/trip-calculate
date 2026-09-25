@@ -5,6 +5,7 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { translate } from '../i18n/common';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
@@ -14,8 +15,8 @@ type PageState = 'loading' | 'ready' | 'notFound' | 'error';
 function formatDuration(minutes: number, language: 'en' | 'uk'): string {
   const h = Math.floor(minutes / 60);
   const m = Math.round(minutes % 60);
-  if (h <= 0) return language === 'uk' ? `${m} хв` : `${m} min`;
-  return language === 'uk' ? `${h} год ${m} хв` : `${h}h ${m}m`;
+  const text = translate(language, h <= 0 ? 'cityRoute.durationMinutes' : 'cityRoute.durationHours');
+  return text.replace('{h}', String(h)).replace('{m}', String(m));
 }
 
 // SpaShellController embeds this page's data in the HTML, so the first render

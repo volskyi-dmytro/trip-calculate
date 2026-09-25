@@ -498,7 +498,7 @@ export function RoutePlanner() {
     }
     setWaypoints(prev => prev.filter(wp => wp.id !== id))
     toast.success(t.toasts.waypointRemoved)
-  }, [waypoints.length, t, language])
+  }, [waypoints.length, t])
 
   const reorderWaypoints = useCallback((reorderedWaypoints: Waypoint[]) => {
     setWaypoints(reorderedWaypoints)
@@ -830,7 +830,7 @@ export function RoutePlanner() {
     } finally {
       setIsSearchingDestination(false)
     }
-  }, [destinationInput, waypoints, t, language])
+  }, [destinationInput, waypoints, t])
 
   // Geocode both start and destination atomically, then trigger auto-calculation via waypoints update
   const handleCalculateRoute = useCallback(async () => {

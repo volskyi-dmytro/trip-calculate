@@ -30,7 +30,7 @@ interface AiEstimateResult {
 }
 
 export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPickerProps) {
-  const { language } = useLanguage();
+  const { language, t: tr } = useLanguage();
   const { user } = useAuth();
   const [tab, setTab] = useState<Tab>('search');
 
@@ -88,34 +88,29 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   const results = searchCatalog(query, catalog);
 
   const t = {
-    title: language === 'uk' ? 'Обрати автомобіль' : 'Choose a car',
-    tabSearch: language === 'uk' ? 'Пошук' : 'Search',
-    tabPresets: language === 'uk' ? 'Шаблони' : 'Presets',
-    tabAi: language === 'uk' ? 'AI-опис' : 'AI describe',
-    searchPlaceholder:
-      language === 'uk' ? 'Марка і модель, напр. Skoda Octavia' : 'Make and model, e.g. Skoda Octavia',
-    searchLoading: language === 'uk' ? 'Завантаження каталогу…' : 'Loading catalog…',
-    searchEmpty: language === 'uk' ? 'Нічого не знайдено' : 'No matches found',
-    garageTitle: language === 'uk' ? 'Ваш гараж' : 'Your garage',
-    presetsHint: language === 'uk' ? 'Тип пального' : 'Fuel type',
-    fuelPetrol: language === 'uk' ? 'Бензин' : 'Petrol',
-    fuelDiesel: language === 'uk' ? 'Дизель' : 'Diesel',
-    fuelLpg: language === 'uk' ? 'Газ' : 'LPG',
-    consumptionUnit: language === 'uk' ? 'л/100км' : 'L/100km',
-    consumptionShort: language === 'uk' ? 'л' : 'L',
-    aiPlaceholder:
-      language === 'uk'
-        ? 'Опишіть авто, напр. «Toyota Camry 2015, бензин»'
-        : 'Describe the car, e.g. "Toyota Camry 2015, petrol"',
-    aiDescLabel: language === 'uk' ? 'Опис авто' : 'Car description',
-    aiEstimate: language === 'uk' ? 'Оцінити' : 'Estimate',
-    aiEstimating: language === 'uk' ? 'Оцінюємо…' : 'Estimating…',
-    aiUse: language === 'uk' ? 'Використати' : 'Use',
-    aiRateLimited:
-      language === 'uk' ? 'Забагато запитів — спробуйте за хвилину' : 'Too many requests — try again in a minute',
-    aiRecognizeFailed: language === 'uk' ? 'Не вдалося розпізнати авто' : "Couldn't recognize that car",
-    aiTryPresets: language === 'uk' ? 'Спробувати шаблони' : 'Try presets instead',
-    aiConsumptionLabel: language === 'uk' ? 'Витрата (л/100км)' : 'Consumption (L/100km)',
+    title: tr('carPicker.title'),
+    tabSearch: tr('carPicker.tabSearch'),
+    tabPresets: tr('carPicker.tabPresets'),
+    tabAi: tr('carPicker.tabAi'),
+    searchPlaceholder: tr('carPicker.searchPlaceholder'),
+    searchLoading: tr('carPicker.searchLoading'),
+    searchEmpty: tr('carPicker.searchEmpty'),
+    garageTitle: tr('carPicker.garageTitle'),
+    presetsHint: tr('carPicker.presetsHint'),
+    fuelPetrol: tr('carPicker.fuelPetrol'),
+    fuelDiesel: tr('carPicker.fuelDiesel'),
+    fuelLpg: tr('carPicker.fuelLpg'),
+    consumptionUnit: tr('carPicker.consumptionUnit'),
+    consumptionShort: tr('carPicker.consumptionShort'),
+    aiPlaceholder: tr('carPicker.aiPlaceholder'),
+    aiDescLabel: tr('carPicker.aiDescLabel'),
+    aiEstimate: tr('carPicker.aiEstimate'),
+    aiEstimating: tr('carPicker.aiEstimating'),
+    aiUse: tr('carPicker.aiUse'),
+    aiRateLimited: tr('carPicker.aiRateLimited'),
+    aiRecognizeFailed: tr('carPicker.aiRecognizeFailed'),
+    aiTryPresets: tr('carPicker.aiTryPresets'),
+    aiConsumptionLabel: tr('carPicker.aiConsumptionLabel'),
   };
 
   const handleGarageSelect = (car: GarageCar) => {
@@ -141,7 +136,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   };
 
   const handlePresetSelect = (preset: CarPreset) => {
-    const label = language === 'uk' ? preset.labelUk : preset.labelEn;
+    const label = tr(`carPreset.${preset.id}`);
     onSelect({
       name: label,
       makeModel: null,
@@ -322,7 +317,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                   className="text-left px-3 py-2 rounded-md border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
                 >
                   <span className="font-medium text-sm">
-                    {language === 'uk' ? preset.labelUk : preset.labelEn}
+                    {tr(`carPreset.${preset.id}`)}
                   </span>
                   <span className="block text-xs text-gray-500 dark:text-gray-400">
                     {preset.consumption[presetFuelType]} {t.consumptionUnit}

@@ -5,22 +5,20 @@ import { Button } from '@/components/ui/button';
 import { MapPin, Save, Navigation, Sparkles, Chrome, Car } from 'lucide-react';
 
 export function PlannerPromo() {
-  const { language } = useLanguage();
+  const { t: tr } = useLanguage();
   const { login } = useAuth();
 
   const t = {
-    title: language === 'uk' ? 'Безкоштовно з акаунтом Google' : 'Free with Google sign-in',
+    title: tr('plannerPromo.title'),
     features: {
-      visualRoute: language === 'uk' ? 'Візуальне планування маршруту' : 'Visual route planning',
-      saveHistory: language === 'uk' ? 'Збереження історії поїздок' : 'Save your trip history',
-      carGarage: language === 'uk' ? 'Гараж авто зі збереженою витратою пального' : 'Car garage with saved fuel consumption',
-      wazeIntegration: language === 'uk' ? 'Інтеграція з Waze' : 'Direct Waze integration',
-      aiInsights: language === 'uk' ? 'AI-планування природною мовою' : 'AI trip planning in plain language',
+      visualRoute: tr('plannerPromo.visualRoute'),
+      saveHistory: tr('plannerPromo.saveHistory'),
+      carGarage: tr('plannerPromo.carGarage'),
+      wazeIntegration: tr('plannerPromo.wazeIntegration'),
+      aiInsights: tr('plannerPromo.aiInsights'),
     },
-    signInButton: language === 'uk' ? 'Увійти через Google' : 'Sign In with Google',
-    freeNote: language === 'uk'
-      ? 'Повністю безкоштовно — без карток і підписок'
-      : 'Completely free — no card, no subscription',
+    signInButton: tr('plannerPromo.signInButton'),
+    freeNote: tr('plannerPromo.freeNote'),
   };
 
   return (
