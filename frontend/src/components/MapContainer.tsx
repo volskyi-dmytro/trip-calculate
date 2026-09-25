@@ -96,7 +96,9 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       projection: { name: 'mercator' }, // Explicitly set to mercator (not globe)
       pitch: 55,
       bearing: -15,
-      antialias: true
+      antialias: true,
+      // Don't send device/performance telemetry to Mapbox (Privacy Policy: no analytics).
+      performanceMetricsCollection: false
     })
 
     // Add navigation controls
