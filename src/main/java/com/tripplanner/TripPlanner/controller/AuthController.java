@@ -2,7 +2,6 @@ package com.tripplanner.TripPlanner.controller;
 
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.service.UserService;
-import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -32,7 +31,7 @@ public class AuthController {
      * Returns user details if authenticated, null otherwise
      */
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
+    public ResponseEntity<Map<String, Object>> getCurrentUser() {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         if (authentication == null || !authentication.isAuthenticated() ||

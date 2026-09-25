@@ -4,10 +4,14 @@ import com.tripplanner.TripPlanner.dto.*;
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.service.UserDashboardService;
 import com.tripplanner.TripPlanner.service.UserService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -81,9 +85,15 @@ public class UserDashboardController {
      * Delete user account
      */
     @DeleteMapping("/account")
-    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal OAuth2User principal) {
+    public ResponseEntity<Void> deleteAccount(@AuthenticationPrincipal OAuth2User principal,
+                                              HttpServletRequest request,
+                                              HttpServletResponse response) {
         Long userId = getUserIdFromPrincipal(principal);
         dashboardService.deleteUserAccount(userId);
+        // Sign out right away: a session that outlives its account could keep
+        // calling authenticated endpoints (e.g. AI) for up to the 24h timeout.
+        new SecurityContextLogoutHandler().logout(request, response,
+                SecurityContextHolder.getContext().getAuthentication());
         return ResponseEntity.noContent().build();
     }
 

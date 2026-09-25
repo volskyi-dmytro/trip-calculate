@@ -186,7 +186,7 @@ public class SecurityConfig {
                         .logoutUrl("/logout")
                         .logoutSuccessHandler(oAuth2LogoutSuccessHandler)  // Custom handler for OAuth2 logout
                         .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
+                        .deleteCookies("SESSIONID")  // name set in SessionConfig
                         .clearAuthentication(true)
                 )
 
