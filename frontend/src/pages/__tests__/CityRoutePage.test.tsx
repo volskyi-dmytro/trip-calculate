@@ -132,4 +132,23 @@ describe('CityRoutePage', () => {
     expect(container.querySelector('h1')?.textContent).toBe('cityRoute.error.title')
     expect(container.textContent).not.toContain('cityRoute.notFound.title')
   })
+
+  it('keeps a heading outline without skipped levels', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+    const container = await renderPage()
+
+    const levels = [...container.querySelectorAll('h1, h2, h3, h4, h5, h6')].map((h) => Number(h.tagName[1]))
+    expect(levels[0]).toBe(1)
+    levels.forEach((level, i) => {
+      if (i > 0) expect(level - levels[i - 1]).toBeLessThanOrEqual(1)
+    })
+    expect(container.textContent).toContain('540')
+  })
+
+  it('names the browser tab after the route', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+    await renderPage()
+
+    expect(document.title).toBe('pageTitle.cityRoute | Trip Calculate')
+  })
 })

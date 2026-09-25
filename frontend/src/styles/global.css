@@ -722,7 +722,8 @@ a:hover {
     color: var(--accent);
 }
 
-.feature h3 {
+.feature h3,
+.feature .feature-value {
     margin: 14px 0 6px;
     font-size: 1.05rem;
     font-weight: 700;
@@ -734,6 +735,11 @@ a:hover {
     font-size: 0.92rem;
     line-height: 1.55;
     color: var(--text-2);
+}
+
+.feature .feature-value {
+    color: var(--text);
+    line-height: 1.2;
 }
 
 @media (min-width: 768px) {

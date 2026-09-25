@@ -165,7 +165,8 @@ export function CityRoutePage() {
                 <span className="feature-icon">
                   <Icon size={20} strokeWidth={2} aria-hidden="true" />
                 </span>
-                <h3>{value}</h3>
+                {/* A figure, not a heading: keeps the outline h1 → h2 → h3. */}
+                <p className="feature-value">{value}</p>
                 <p>{label}</p>
               </div>
             ))}
