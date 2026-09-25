@@ -5,6 +5,7 @@ import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { ChatInterface } from '../ChatInterface'
 
+vi.mock('../AiPrivacyNote', () => ({ AiPrivacyNote: () => null }))
 vi.mock('../../contexts/LanguageContext', () => ({
   useLanguage: () => ({ language: 'uk' }),
 }))

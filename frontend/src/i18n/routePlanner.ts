@@ -122,6 +122,9 @@ export const routePlannerTranslations = {
       aiFailedTitle: 'Failed to process request',
       aiFailedDescription: 'AI could not process your request. Please try again with more details.',
       askPlaceholder: 'Ask AI to change route...',
+      inputLabel: 'Message to the trip assistant',
+      privacyNote: 'Your messages and route points are sent to OpenAI to plan the trip.',
+      privacyLink: 'Privacy Policy',
     },
     bottomSheet: {
       expand: 'Route Details',
@@ -280,6 +283,9 @@ export const routePlannerTranslations = {
       aiFailedTitle: 'Не вдалося обробити запит',
       aiFailedDescription: 'AI не зміг обробити ваш запит. Спробуйте ще раз з більш детальним описом.',
       askPlaceholder: 'Попросіть AI змінити маршрут...',
+      inputLabel: 'Повідомлення для помічника з поїздок',
+      privacyNote: 'Ваші повідомлення та точки маршруту надсилаються до OpenAI, щоб спланувати поїздку.',
+      privacyLink: 'Політика конфіденційності',
     },
     bottomSheet: {
       expand: 'Маршрут',

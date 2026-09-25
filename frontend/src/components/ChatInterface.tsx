@@ -4,6 +4,7 @@ import { Bot, Send, Loader2, Sparkles, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '../contexts/LanguageContext';
+import { AiPrivacyNote } from './AiPrivacyNote';
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -199,6 +200,7 @@ export function ChatInterface({
           <Send className="w-4 h-4" />
         </Button>
       </form>
+      <AiPrivacyNote className="mt-2" />
     </div>
   );
 }

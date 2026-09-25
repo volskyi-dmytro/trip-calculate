@@ -16,6 +16,7 @@ import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
+import { AiPrivacyNote } from './AiPrivacyNote'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
@@ -1638,6 +1639,7 @@ export function RoutePlanner() {
                 type="text"
                 name="aiPrompt"
                 placeholder={t.chat.askPlaceholder}
+                aria-label={t.chat.inputLabel}
                 value={chatInput}
                 onChange={(e) => setChatInput(e.target.value)}
                 disabled={isProcessingAi}
@@ -1665,6 +1667,7 @@ export function RoutePlanner() {
                 )}
               </button>
             </form>
+            <AiPrivacyNote className="mt-1" />
           </div>
         </div>
       )}
@@ -2172,6 +2175,7 @@ export function RoutePlanner() {
                     type="text"
                     name="aiPrompt"
                     placeholder={t.chat.askPlaceholder}
+                aria-label={t.chat.inputLabel}
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     disabled={isProcessingAi}
@@ -2199,6 +2203,7 @@ export function RoutePlanner() {
                     )}
                   </button>
                 </form>
+                <AiPrivacyNote className="mt-1" />
               </div>
             </>
           )}
