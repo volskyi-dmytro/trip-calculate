@@ -38,6 +38,7 @@ public class ReceiptService {
     private final TripReceiptRepository repository;
     private final SlugGenerator slugGenerator;
     private final ObjectMapper objectMapper;
+    private final ReceiptGeometry receiptGeometry;
 
     @Transactional
     public ReceiptDTO create(CreateReceiptRequest req, Long userIdOrNull) {
@@ -61,7 +62,9 @@ public class ReceiptService {
         receipt.setCurrency(req.getCurrency());
         receipt.setPeople(req.getPeople());
         receipt.setLocale("uk".equalsIgnoreCase(req.getLocale()) ? "uk" : "en");
-        receipt.setRouteGeometry(validGeometryOrNull(req.getRouteGeometry()));
+        // Stored coarse: a public receipt must not pinpoint where the trip starts or ends.
+        String geometry = validGeometryOrNull(req.getRouteGeometry());
+        receipt.setRouteGeometry(geometry == null ? null : receiptGeometry.coarsen(geometry));
         receipt.setUserId(userIdOrNull);
         receipt.setExpiresAt(userIdOrNull == null
                 ? LocalDateTime.now().plusDays(ANONYMOUS_EXPIRY_DAYS)
@@ -96,6 +99,8 @@ public class ReceiptService {
         // values, silently overwriting concurrent atomic counter increments.
         ReceiptDTO dto = ReceiptDTO.from(receipt);
         dto.setViewCount(receipt.getViewCount() + 1);
+        // Receipts shared before coarsening existed still hold precise geometry.
+        dto.setRouteGeometry(receiptGeometry.coarsenIfPrecise(receipt.getRouteGeometry()));
         return dto;
     }
 

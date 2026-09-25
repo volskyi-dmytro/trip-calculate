@@ -7,6 +7,7 @@ import com.tripplanner.TripPlanner.entity.TripReceipt;
 import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -34,7 +35,8 @@ class ReceiptServiceTest {
         when(repository.existsBySlug(anyString())).thenReturn(false);
         // echo back the entity passed to save()
         when(repository.save(any(TripReceipt.class))).thenAnswer(inv -> inv.getArgument(0));
-        service = new ReceiptService(repository, new SlugGenerator(), new ObjectMapper());
+        service = new ReceiptService(repository, new SlugGenerator(), new ObjectMapper(),
+                new ReceiptGeometry(new ObjectMapper()));
     }
 
     private CreateReceiptRequest validRequest() {
@@ -107,11 +109,31 @@ class ReceiptServiceTest {
     }
 
     @Test
-    void keepsValidGeometry() {
+    void storesValidGeometryOnlyInCoarseForm() {
         CreateReceiptRequest req = validRequest();
-        req.setRouteGeometry("[[50.45,30.52],[49.84,24.03]]");
+        String precise = "[[50.450123,30.523456],[49.839683,24.029717]]";
+        req.setRouteGeometry(precise);
+
         ReceiptDTO dto = service.create(req, null);
-        assertEquals("[[50.45,30.52],[49.84,24.03]]", dto.getRouteGeometry());
+
+        String expected = new ReceiptGeometry(new ObjectMapper()).coarsen(precise);
+        assertEquals(expected, dto.getRouteGeometry());
+        ArgumentCaptor<TripReceipt> saved = ArgumentCaptor.forClass(TripReceipt.class);
+        verify(repository, atLeastOnce()).save(saved.capture());
+        assertEquals(expected, saved.getValue().getRouteGeometry()); // never stored precisely
+    }
+
+    @Test
+    void receiptsStoredBeforeCoarseningAreCoarsenedWhenRead() {
+        TripReceipt old = new TripReceipt();
+        old.setSlug("old12345");
+        old.setViewCount(0L);
+        old.setRouteGeometry("[[50.450123,30.523456],[49.839683,24.029717]]");
+        when(repository.findBySlug("old12345")).thenReturn(Optional.of(old));
+
+        ReceiptDTO dto = service.getBySlug("old12345");
+
+        assertEquals(new ReceiptGeometry(new ObjectMapper()).coarsen(old.getRouteGeometry()), dto.getRouteGeometry());
     }
 
     @Test
