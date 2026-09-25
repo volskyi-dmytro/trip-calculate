@@ -100,7 +100,7 @@ public class ReceiptService {
         ReceiptDTO dto = ReceiptDTO.from(receipt);
         dto.setViewCount(receipt.getViewCount() + 1);
         // Receipts shared before coarsening existed still hold precise geometry.
-        dto.setRouteGeometry(receiptGeometry.coarsenIfPrecise(receipt.getRouteGeometry()));
+        dto.setRouteGeometry(receiptGeometry.coarsenIfPrecise(receipt.getRouteGeometry(), slugSalt(slug)));
         return dto;
     }
 
@@ -164,6 +164,10 @@ public class ReceiptService {
         return cleaned.length() > MAX_LABEL_LENGTH
                 ? cleaned.substring(0, MAX_LABEL_LENGTH)
                 : cleaned;
+    }
+
+    private static long slugSalt(String slug) {
+        return slug == null ? 0 : slug.hashCode();
     }
 
     /** Geometry is decorative — invalid input is dropped, never a share-blocking error. */

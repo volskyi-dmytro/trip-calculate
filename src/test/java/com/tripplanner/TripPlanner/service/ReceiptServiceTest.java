@@ -111,16 +111,16 @@ class ReceiptServiceTest {
     @Test
     void storesValidGeometryOnlyInCoarseForm() {
         CreateReceiptRequest req = validRequest();
-        String precise = "[[50.450123,30.523456],[49.839683,24.029717]]";
-        req.setRouteGeometry(precise);
+        req.setRouteGeometry(PRECISE_ROUTE);
 
         ReceiptDTO dto = service.create(req, null);
 
-        String expected = new ReceiptGeometry(new ObjectMapper()).coarsen(precise);
-        assertEquals(expected, dto.getRouteGeometry());
         ArgumentCaptor<TripReceipt> saved = ArgumentCaptor.forClass(TripReceipt.class);
         verify(repository, atLeastOnce()).save(saved.capture());
-        assertEquals(expected, saved.getValue().getRouteGeometry()); // never stored precisely
+        String stored = saved.getValue().getRouteGeometry();
+        assertEquals(stored, dto.getRouteGeometry());
+        // Never stored precisely: no coordinate keeps more than 3 decimals.
+        assertFalse(stored.matches(".*\\d\\.\\d{4,}.*"), stored);
     }
 
     @Test
@@ -128,13 +128,20 @@ class ReceiptServiceTest {
         TripReceipt old = new TripReceipt();
         old.setSlug("old12345");
         old.setViewCount(0L);
-        old.setRouteGeometry("[[50.450123,30.523456],[49.839683,24.029717]]");
+        old.setRouteGeometry(PRECISE_ROUTE);
         when(repository.findBySlug("old12345")).thenReturn(Optional.of(old));
 
-        ReceiptDTO dto = service.getBySlug("old12345");
+        String first = service.getBySlug("old12345").getRouteGeometry();
+        String second = service.getBySlug("old12345").getRouteGeometry();
 
-        assertEquals(new ReceiptGeometry(new ObjectMapper()).coarsen(old.getRouteGeometry()), dto.getRouteGeometry());
+        assertFalse(first.matches(".*\\d\\.\\d{4,}.*"), first);
+        assertEquals(first, second); // same line on every read
     }
+
+    // Kyiv -> Lviv with many vertices and full precision, like the frontend sends.
+    private static final String PRECISE_ROUTE = java.util.stream.IntStream.range(0, 500)
+            .mapToObj(i -> "[" + (50.450123 - i * 0.0012235) + "," + (30.523456 - i * 0.0130142) + "]")
+            .collect(java.util.stream.Collectors.joining(",", "[", "]"));
 
     @Test
     void expiredReceiptAnswers410() {
