@@ -395,7 +395,7 @@ public class SpaShellController {
                     ? "Distance: " + distance + " (" + duration + "). Estimated fuel cost: " + formatMoneyEn(totalCost)
                             + ", " + formatMoneyEn(perPassenger) + " per passenger (4 passengers, 7.5 L/100km petrol)."
                     : "Відстань: " + distance + " (" + duration + "). Орієнтовна вартість пального: " + formatMoneyUk(totalCost)
-                            + ", по " + formatMoneyUk(perPassenger) + " на пасажира (4 пасажири, 7.5 л/100км, бензин).";
+                            + ", по " + formatMoneyUk(perPassenger) + " на пасажира (4 пасажири, 7,5 л/100 км, бензин).";
         } else {
             facts = english
                     ? "Distance: " + distance + " (" + duration + "). Calculate the exact fuel cost and split it between passengers on the site."

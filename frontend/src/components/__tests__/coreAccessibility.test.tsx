@@ -50,7 +50,7 @@ describe('core control accessibility', () => {
         onProfileUpdate={() => undefined}
       />,
     )
-    expect(profileHtml).toContain('aria-label="Edit Profile"')
+    expect(profileHtml).toContain('aria-label="Edit profile"')
 
     const routesHtml = renderEnglish(
       <RoutesList
