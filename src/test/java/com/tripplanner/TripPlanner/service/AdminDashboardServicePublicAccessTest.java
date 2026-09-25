@@ -12,6 +12,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -32,10 +33,23 @@ class AdminDashboardServicePublicAccessTest {
         when(routes.countByUserId(7L)).thenReturn(0L);
 
         AdminDashboardService service = new AdminDashboardService(
-                users, routes, featureAccess, requests, usage, cache);
+                users, routes, featureAccess, requests, usage, cache, mock(UserDashboardService.class));
         UserManagementDTO result = service.getAllUsers().get(0);
 
         assertTrue(result.getRoutePlannerAccess());
         verifyNoInteractions(featureAccess);
+    }
+
+    @Test
+    void adminDeletionErasesTheSameDataAsSelfDeletion() {
+        UserDashboardService userDashboard = mock(UserDashboardService.class);
+        AdminDashboardService service = new AdminDashboardService(
+                mock(UserRepository.class), mock(RouteRepository.class), mock(FeatureAccessRepository.class),
+                mock(AccessRequestRepository.class), mock(AiUsageService.class), mock(AiCacheService.class),
+                userDashboard);
+
+        service.deleteUser(7L);
+
+        verify(userDashboard).deleteUserAccount(7L);
     }
 }

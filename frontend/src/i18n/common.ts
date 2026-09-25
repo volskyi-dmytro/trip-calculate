@@ -158,8 +158,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.quickActions.deleteAccountError': 'Failed to delete account',
     'dashboard.quickActions.deleteAccountTitle': 'Delete account',
     'dashboard.quickActions.deleteAccountWarning': 'This action is permanent and cannot be undone!',
-    'dashboard.quickActions.deleteAccountWarning1': 'Your profile, saved routes and cars will be deleted',
-    'dashboard.quickActions.deleteAccountWarning2': 'Receipt links you shared will stay available to anyone who has them',
+    'dashboard.quickActions.deleteAccountWarning1': 'Your profile, saved routes, cars and AI request history will be deleted',
+    'dashboard.quickActions.deleteAccountWarning2': 'Receipt links you shared will stop working',
     'dashboard.quickActions.deleteAccountWarning3': 'You\'ll be signed out right away',
     'dashboard.quickActions.deleteAccountConfirm': 'Are you absolutely sure?',
     'dashboard.quickActions.deleting': 'Deleting...',
@@ -290,6 +290,10 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Footer
     'footer.connectWith': 'Connect with me on:',
+    'footer.legal': 'Legal',
+    'footer.privacy': 'Privacy Policy',
+    'footer.terms': 'Terms of Use',
+    'footer.cookies': 'Cookies',
   },
   uk: {
     // Header
@@ -450,8 +454,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.quickActions.deleteAccountError': 'Не вдалося видалити обліковий запис',
     'dashboard.quickActions.deleteAccountTitle': 'Видалити обліковий запис',
     'dashboard.quickActions.deleteAccountWarning': 'Цю дію неможливо скасувати!',
-    'dashboard.quickActions.deleteAccountWarning1': 'Ваш профіль, збережені маршрути й автомобілі буде видалено',
-    'dashboard.quickActions.deleteAccountWarning2': 'Посилання на квитанції, якими ви поділилися, і далі будуть доступні всім, хто їх має',
+    'dashboard.quickActions.deleteAccountWarning1': 'Ваш профіль, збережені маршрути, автомобілі та історію запитів до ШІ буде видалено',
+    'dashboard.quickActions.deleteAccountWarning2': 'Посилання на квитанції, якими ви поділилися, перестануть працювати',
     'dashboard.quickActions.deleteAccountWarning3': 'Ви одразу вийдете з облікового запису',
     'dashboard.quickActions.deleteAccountConfirm': 'Ви впевнені?',
     'dashboard.quickActions.deleting': 'Видалення...',
@@ -582,6 +586,10 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Footer
     'footer.connectWith': 'Зв\'яжіться зі мною:',
+    'footer.legal': 'Правова інформація',
+    'footer.privacy': 'Політика конфіденційності',
+    'footer.terms': 'Умови користування',
+    'footer.cookies': 'Файли cookie',
   },
 };
 

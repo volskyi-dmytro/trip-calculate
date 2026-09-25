@@ -27,7 +27,11 @@ public class CanonicalUrlFilter extends OncePerRequestFilter {
             "/en/",
             "/uk/",
             "/en/route-planner/",
-            "/uk/route-planner/");
+            "/uk/route-planner/",
+            "/en/privacy/",
+            "/uk/privacy/",
+            "/en/terms/",
+            "/uk/terms/");
 
     @Override
     protected void doFilterInternal(HttpServletRequest request,

@@ -812,6 +812,132 @@ a:hover {
 }
 
 /* ============================================
+   Legal pages (privacy policy, terms of use)
+   ============================================ */
+.legal {
+    max-width: 72ch;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.65;
+}
+
+.legal h1 {
+    margin: 0 0 6px;
+    font-size: clamp(1.8rem, 5vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+}
+
+.legal-meta {
+    margin: 0 0 24px;
+    color: var(--text-2);
+    font-size: 0.9rem;
+}
+
+.legal-toc {
+    margin: 0 0 32px;
+    padding: 16px 20px;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    box-shadow: inset 0 1px 0 var(--glass-highlight),
+        0 0 0 1px var(--glass-edge), var(--glass-shadow);
+    border-radius: var(--radius-md);
+}
+
+.legal .legal-toc h2 {
+    margin: 0 0 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-2);
+}
+
+.legal-toc ol {
+    margin: 0;
+    padding-left: 1.4em;
+    font-size: 0.92rem;
+}
+
+.legal section {
+    scroll-margin-top: 24px;
+}
+
+.legal h2 {
+    margin: 32px 0 8px;
+    font-size: 1.2rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+
+.legal p,
+.legal li {
+    color: var(--text-2);
+    text-wrap: pretty;
+}
+
+.legal strong {
+    color: var(--text);
+}
+
+.legal a {
+    color: var(--accent);
+    overflow-wrap: anywhere;
+}
+
+.legal ul {
+    padding-left: 1.3em;
+}
+
+.legal li + li {
+    margin-top: 6px;
+}
+
+/* Wide tables scroll inside their own box, never the whole page. */
+.legal-table-wrap {
+    margin: 12px 0 16px;
+    overflow-x: auto;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: var(--glass-bg);
+}
+
+.legal table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.88rem;
+}
+
+.legal th,
+.legal td {
+    padding: 10px 12px;
+    text-align: left;
+    vertical-align: top;
+    border-bottom: 1px solid var(--border);
+}
+
+.legal tr:last-child td {
+    border-bottom: 0;
+}
+
+.legal th {
+    font-weight: 700;
+    color: var(--text);
+    white-space: nowrap;
+}
+
+.legal td {
+    color: var(--text-2);
+    min-width: 8rem;
+}
+
+.footer-inner nav.footer-links {
+    flex-wrap: wrap;
+}
+
+/* ============================================
    Footer
    ============================================ */
 footer {

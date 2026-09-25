@@ -86,6 +86,9 @@ public class SpaShellController {
         if (remainder.equals("/route-planner")) {
             return buildRoutePlannerMetadata(locale);
         }
+        if (remainder.equals("/privacy") || remainder.equals("/terms")) {
+            return buildLegalMetadata(locale, remainder.substring(1));
+        }
         Matcher cityRouteMatch = CITY_ROUTE_PATH.matcher(remainder);
         if (cityRouteMatch.matches()) {
             PageMetadata cityRoute = buildCityRouteMetadata(locale, cityRouteMatch.group(1));
@@ -134,6 +137,46 @@ public class SpaShellController {
         String jsonLd = jsonLdWebApplication(canonical, locale, description);
         String noscript = routePlannerNoscript(english, locale);
         return new PageMetadata(locale, "/route-planner", title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    // Titles and descriptions must match frontend/src/i18n/legal.ts.
+    private PageMetadata buildLegalMetadata(String locale, String page) {
+        boolean english = "en".equals(locale);
+        boolean privacy = "privacy".equals(page);
+        String name = privacy
+                ? (english ? "Privacy Policy" : "Політика конфіденційності")
+                : (english ? "Terms of Use" : "Умови користування");
+        String description = privacy
+                ? (english
+                        ? "What data Trip Calculate collects, why, who it is shared with, how long it is kept, which cookies it uses and how to exercise your rights."
+                        : "Які дані збирає Trip Calculate, навіщо, кому передає, скільки зберігає, які файли cookie використовує і як скористатися своїми правами.")
+                : (english
+                        ? "The rules for using Trip Calculate, the free trip cost calculator and route planner: accounts, acceptable use, estimates and liability."
+                        : "Правила користування Trip Calculate — безкоштовним калькулятором вартості поїздки та планувальником маршрутів: обліковий запис, допустиме використання, розрахунки й відповідальність.");
+        String title = name + " | Trip Calculate";
+        String routePath = "/" + page;
+        String canonical = SITE_ORIGIN + "/" + locale + routePath;
+
+        Map<String, Object> webPage = new LinkedHashMap<>();
+        webPage.put("@context", "https://schema.org");
+        webPage.put("@type", "WebPage");
+        webPage.put("name", name);
+        webPage.put("url", canonical);
+        webPage.put("inLanguage", locale);
+        webPage.put("description", description);
+
+        String otherPage = privacy ? "/terms" : "/privacy";
+        List<NoscriptLink> links = List.of(
+                new NoscriptLink(SITE_ORIGIN + "/" + (english ? "uk" : "en") + routePath,
+                        english ? "Українська версія" : "English version"),
+                new NoscriptLink(SITE_ORIGIN + "/" + locale + otherPage,
+                        privacy ? (english ? "Terms of Use" : "Умови користування")
+                                : (english ? "Privacy Policy" : "Політика конфіденційності")),
+                new NoscriptLink(SITE_ORIGIN + "/" + locale, english ? "Home" : "Головна"));
+        String noscript = noscriptBlock(name, List.of(description), links);
+
+        return new PageMetadata(locale, routePath, esc(title), esc(description), esc(title), true,
+                toScriptTag(webPage), noscript);
     }
 
     @SuppressWarnings("unchecked")
@@ -467,6 +510,10 @@ public class SpaShellController {
             // matching sitemap.xml.
             if (routePath.startsWith("/route/")) {
                 return alternateUrl("uk");
+            }
+            // Legal pages: English is the version for everyone else (owner decision).
+            if (routePath.equals("/privacy") || routePath.equals("/terms")) {
+                return alternateUrl("en");
             }
             return routePath.isEmpty() ? SITE_ORIGIN + "/" : SITE_ORIGIN + routePath;
         }

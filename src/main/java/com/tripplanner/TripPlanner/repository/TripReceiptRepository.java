@@ -29,6 +29,10 @@ public interface TripReceiptRepository extends JpaRepository<TripReceipt, Long> 
     int incrementCtaClickCount(@Param("slug") String slug);
 
     @Modifying
+    @Query("DELETE FROM TripReceipt r WHERE r.userId = :userId")
+    int deleteByUserId(@Param("userId") Long userId);
+
+    @Modifying
     @Query("DELETE FROM TripReceipt r WHERE r.expiresAt IS NOT NULL AND r.expiresAt < :now")
     int deleteExpired(@Param("now") LocalDateTime now);
 }

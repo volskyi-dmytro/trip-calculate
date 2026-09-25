@@ -127,7 +127,11 @@ class SpaShellControllerTest {
             "/en,en,https://trip-calculate.online/en,https://trip-calculate.online/",
             "/uk,uk,https://trip-calculate.online/uk,https://trip-calculate.online/",
             "/en/route-planner,en,https://trip-calculate.online/en/route-planner,https://trip-calculate.online/route-planner",
-            "/uk/route-planner,uk,https://trip-calculate.online/uk/route-planner,https://trip-calculate.online/route-planner"
+            "/uk/route-planner,uk,https://trip-calculate.online/uk/route-planner,https://trip-calculate.online/route-planner",
+            "/en/privacy,en,https://trip-calculate.online/en/privacy,https://trip-calculate.online/en/privacy",
+            "/uk/privacy,uk,https://trip-calculate.online/uk/privacy,https://trip-calculate.online/en/privacy",
+            "/en/terms,en,https://trip-calculate.online/en/terms,https://trip-calculate.online/en/terms",
+            "/uk/terms,uk,https://trip-calculate.online/uk/terms,https://trip-calculate.online/en/terms"
     })
     void emitsOneConsistentMetadataClusterForEveryPublicRoute(
             String path, String language, String canonical, String xDefault) throws Exception {
@@ -142,6 +146,19 @@ class SpaShellControllerTest {
         assertEquals(1, occurrences(html, "property=\"og:url\" content=\"" + canonical + "\""));
         assertEquals(3, occurrences(html, "hreflang=\""));
         assertFalse(response.getHeaders().containsKey("X-Robots-Tag"));
+    }
+
+    @Test
+    void legalPagesServeLocalizedTitleAndCrawlableNoscript() throws Exception {
+        String uk = controller.shell(new MockHttpServletRequest("GET", "/uk/privacy")).getBody();
+        assertTrue(uk.contains("<title>Політика конфіденційності | Trip Calculate</title>"));
+        assertTrue(uk.contains("<h1>Політика конфіденційності</h1>"));
+        assertTrue(uk.contains("href=\"https://trip-calculate.online/uk/terms\""));
+
+        String en = controller.shell(new MockHttpServletRequest("GET", "/en/terms")).getBody();
+        assertTrue(en.contains("<title>Terms of Use | Trip Calculate</title>"));
+        assertTrue(en.contains("\"@type\":\"WebPage\""));
+        assertTrue(en.contains("href=\"https://trip-calculate.online/en/privacy\""));
     }
 
     @Test
