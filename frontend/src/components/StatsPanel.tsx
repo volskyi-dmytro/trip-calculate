@@ -126,13 +126,13 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
               >
                 <div className="flex justify-between items-center">
                   <span style={labelStyle}>
-                    {language === 'uk' ? 'Кількість пасажирів' : 'Number of passengers'}
+                    {t.planner.passengerCount}
                   </span>
                   <span style={monoValue}>{routeSettings.passengerCount}</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--nav-accent)' }}>
-                    {language === 'uk' ? 'Вартість на особу' : 'Cost per person'}
+                    {t.planner.costPerPerson}
                   </span>
                   <span style={{ ...monoValue, color: 'var(--nav-accent)', fontSize: '0.9rem' }}>
                     {stats.costPerPerson.toFixed(2)} {routeSettings.currency}

@@ -4,6 +4,7 @@ import { Bot, Send, Loader2, Sparkles, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useLanguage } from '../contexts/LanguageContext';
+import { getTranslation } from '../i18n/routePlanner';
 import { AiPrivacyNote } from './AiPrivacyNote';
 
 interface ChatInterfaceProps {
@@ -32,11 +33,12 @@ interface SuggestedStopCardProps {
 
 const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, onDismiss, isApplying }) => {
   const { language } = useLanguage();
+  const t = getTranslation(language).agent;
 
   return (
     <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 mt-2 mb-2 animate-in fade-in slide-in-from-bottom-2">
       <p className="text-xs font-bold text-primary mb-2 uppercase flex items-center gap-1">
-        <Sparkles className="w-3 h-3" /> {language === 'uk' ? 'Рекомендовані зупинки' : 'Suggested Stops'}
+        <Sparkles className="w-3 h-3" /> {t.suggestedStops}
       </p>
       <div className="flex flex-wrap gap-2 mb-3">
         {stops.map((stop, idx) => (
@@ -60,7 +62,7 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
           ) : (
             <Plus className="w-3 h-3 mr-1" />
           )}
-          {language === 'uk' ? 'Додати до маршруту' : 'Add to Route'}
+          {t.addToRoute}
         </Button>
         <Button
           size="sm"
@@ -68,7 +70,7 @@ const SuggestedStopCard: React.FC<SuggestedStopCardProps> = ({ stops, onApply, o
           onClick={onDismiss}
           className="text-primary text-xs"
         >
-          {language === 'uk' ? 'Закрити' : 'Dismiss'}
+          {t.dismiss}
         </Button>
       </div>
     </div>
@@ -105,15 +107,14 @@ export function ChatInterface({
     onSendMessage(typeof message === 'string' ? message : '');
   };
 
+  const tr = getTranslation(language);
   const t = {
-    aiAssistant: language === 'uk' ? 'AI Асистент' : 'AI Assistant',
-    insights: language === 'uk' ? 'Інсайти' : 'Insights',
-    chatPlaceholder: language === 'uk'
-      ? 'Опишіть ваш маршрут (наприклад, "Подорож із Києва до Львова на двох пасажирів")...'
-      : 'Describe your trip (e.g., "Trip from Kyiv to Lviv for 2 passengers")...',
-    chatPlaceholderShort: language === 'uk' ? 'Запитайте AI...' : 'Ask AI...',
-    send: language === 'uk' ? 'Надіслати повідомлення' : 'Send message',
-    inputLabel: language === 'uk' ? 'Повідомлення для помічника з поїздок' : 'Message to the trip assistant',
+    aiAssistant: tr.agent.assistant,
+    insights: tr.agent.insights,
+    chatPlaceholder: tr.agent.describeTrip,
+    chatPlaceholderShort: tr.agent.askShort,
+    send: tr.planner.sendMessage,
+    inputLabel: tr.chat.inputLabel,
   };
 
   return (

@@ -1,4 +1,5 @@
 import { useLanguage } from '../contexts/LanguageContext';
+import { getTranslation } from '../i18n/routePlanner';
 import { useAuth } from '../contexts/AuthContext';
 import { ChatInterface } from './ChatInterface';
 import { Bot, ArrowRight } from 'lucide-react';
@@ -32,21 +33,14 @@ export function WelcomeScreen({
   const { language } = useLanguage();
   const { user } = useAuth();
 
-  const firstName = user?.name.split(' ')[0] || 'there';
+  const firstName = user?.name.split(' ')[0];
+  const tr = getTranslation(language).agent;
 
   const t = {
-    greeting: language === 'uk'
-      ? `Куди далі, ${firstName}?`
-      : `Where to next, ${firstName}?`,
-    subtitle: language === 'uk'
-      ? 'Просто скажіть мені, куди ви хочете поїхати.'
-      : 'Just tell me where you want to go.',
-    example: language === 'uk'
-      ? '(наприклад, "Поїздка з Києва до Львова на 3 пасажирів")'
-      : '(e.g., "Drive from Kyiv to Lviv with 3 people")',
-    manualLink: language === 'uk'
-      ? 'Або налаштувати вручну'
-      : 'Or configure manually',
+    greeting: firstName ? tr.greeting.replace('{name}', firstName) : tr.greetingNoName,
+    subtitle: tr.greetingSubtitle,
+    example: tr.greetingExample,
+    manualLink: tr.configureManually,
   };
 
   return (

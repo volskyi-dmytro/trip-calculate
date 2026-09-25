@@ -2,7 +2,6 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
-// TopChatBar is replaced by inline AI input in the sidebar
 import { StatsPanel } from './StatsPanel'
 import { RoutePanel } from './RoutePanel'
 import { Button } from '@/components/ui/button'
@@ -203,9 +202,7 @@ export function RoutePlanner() {
 
   // Initialize welcome message
   useEffect(() => {
-    const welcomeMessage = language === 'uk'
-      ? 'Привіт! Я можу допомогти вам спланувати маршрут. Просто опишіть вашу подорож, наприклад: "Поїздка з Києва до Львова на двох пасажирів".'
-      : 'Hello! I can help you plan your route. Just describe your trip, for example: "Trip from Kyiv to Lviv for 2 passengers".';
+    const welcomeMessage = getTranslation(language as Language).agent.welcome;
 
     setChatMessages([{
       id: 'init',
@@ -354,12 +351,11 @@ export function RoutePlanner() {
           console.warn('⚠️ [PLANNER] Using straight-line fallback (routing failed)');
           console.warn('⚠️ [PLANNER] Geometry:', route.geometry);
           // Notify user that routing service failed
+          const tr = getTranslation(languageRef.current as Language).planner
           toast.warning(
-            languageRef.current === 'uk' ? 'Маршрутизація недоступна' : 'Routing unavailable',
+            tr.routingUnavailable,
             {
-              description: languageRef.current === 'uk'
-                ? 'Не вдалося розрахувати маршрут по дорогам. Показано прямі лінії.'
-                : 'Could not calculate road-based route. Showing straight lines.',
+              description: tr.routingUnavailableDescription,
               duration: 5000
             }
           )
@@ -379,12 +375,11 @@ export function RoutePlanner() {
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
         }
+        const tr = getTranslation(languageRef.current as Language).planner
         toast.error(
-          languageRef.current === 'uk' ? 'Помилка маршрутизації' : 'Routing error',
+          tr.routingError,
           {
-            description: languageRef.current === 'uk'
-              ? 'Виникла помилка при розрахунку маршруту.'
-              : 'An error occurred while calculating the route.',
+            description: tr.routingErrorDescription,
             duration: 5000
           }
         )
@@ -498,11 +493,7 @@ export function RoutePlanner() {
 
   const removeWaypoint = useCallback((id: string) => {
     if (waypoints.length <= 2) {
-      toast.error(
-        language === 'uk'
-          ? 'Потрібно мінімум 2 точки для маршруту'
-          : 'Minimum 2 waypoints required'
-      )
+      toast.error(t.planner.minTwoWaypoints)
       return
     }
     setWaypoints(prev => prev.filter(wp => wp.id !== id))
@@ -826,7 +817,7 @@ export function RoutePlanner() {
         setWaypoints(prev => [...prev, newWaypoint])
       } else {
         // No waypoints exist, can't add destination without start
-        toast.error(language === 'uk' ? 'Спочатку додайте початкову локацію' : 'Add start location first')
+        toast.error(t.planner.addStartFirst)
         setIsSearchingDestination(false)
         return
       }
@@ -961,7 +952,7 @@ export function RoutePlanner() {
         // Update fuel type without changing the selected currency
         if (agentData.fuelType) {
           setRouteSettings(prev => ({ ...prev, fuelType: agentData.fuelType! }));
-          updates.push(`${language === 'uk' ? 'Тип палива' : 'Fuel type'}: ${agentData.fuelType}`);
+          updates.push(`${t.fuel.typeLabel}: ${t.fuel[agentData.fuelType as keyof typeof t.fuel] ?? agentData.fuelType}`);
         }
 
         // Update currency
@@ -972,7 +963,7 @@ export function RoutePlanner() {
         // Update passenger count
         if (agentData.passengers) {
           setRouteSettings(prev => ({ ...prev, passengerCount: agentData.passengers! }));
-          updates.push(`${language === 'uk' ? 'Пасажири' : 'Passengers'}: ${agentData.passengers}`);
+          updates.push(`${t.routeSettings.passengers}: ${agentData.passengers}`);
         }
 
         // Live fuel price advisory from the agent's fuel tool — routed
@@ -1007,7 +998,7 @@ export function RoutePlanner() {
             lng: agentData.originLocation.lon,
             name: agentData.originLocation.display_name
           });
-          updates.push(`Start: ${agentData.originLocation.display_name.split(',')[0]}`);
+          updates.push(`${t.planner.start}: ${agentData.originLocation.display_name.split(',')[0]}`);
         } else if (agentData.originName) {
           const locs = await geocodingService.forwardGeocode(agentData.originName);
           if (locs) {
@@ -1018,7 +1009,7 @@ export function RoutePlanner() {
               lng: locs.lng,
               name: locationName
             });
-            updates.push(`Start: ${locationName.split(',')[0]}`);
+            updates.push(`${t.planner.start}: ${locationName.split(',')[0]}`);
           }
         }
 
@@ -1032,7 +1023,7 @@ export function RoutePlanner() {
               name: wp.display_name
             });
           }
-          updates.push(`+${agentData.waypoints.length} stop(s)`);
+          updates.push(t.agent.stopsAdded.replace('{count}', String(agentData.waypoints.length)));
         }
 
         // Destination
@@ -1043,7 +1034,7 @@ export function RoutePlanner() {
             lng: agentData.destinationLocation.lon,
             name: agentData.destinationLocation.display_name
           });
-          updates.push(`Destination: ${agentData.destinationLocation.display_name.split(',')[0]}`);
+          updates.push(`${t.planner.destination}: ${agentData.destinationLocation.display_name.split(',')[0]}`);
         } else if (agentData.destinationName) {
           const locs = await geocodingService.forwardGeocode(agentData.destinationName);
           if (locs) {
@@ -1054,7 +1045,7 @@ export function RoutePlanner() {
               lng: locs.lng,
               name: locationName
             });
-            updates.push(`Destination: ${locationName.split(',')[0]}`);
+            updates.push(`${t.planner.destination}: ${locationName.split(',')[0]}`);
           }
         }
 
@@ -1070,17 +1061,15 @@ export function RoutePlanner() {
         // Tell the user about locations the agent could not geocode
         const skippedNames = agentData.skippedLocations?.map(s => s.name) ?? [];
         const skippedNote = skippedNames.length > 0
-          ? (language === 'uk'
-              ? ` Не вдалося знайти: ${skippedNames.join(', ')}.`
-              : ` Could not find: ${skippedNames.join(', ')}.`)
+          ? ` ${t.agent.couldNotFind.replace('{places}', skippedNames.join(', '))}`
           : '';
 
         const responseMsg: ChatMessage = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: updates.length > 0
-            ? `✓ Updated: ${updates.join(', ')}.${skippedNote}`
-            : 'No changes made. Please provide more details.',
+            ? `${t.agent.updated.replace('{changes}', updates.join(', '))}${skippedNote}`
+            : t.agent.noChanges,
           timestamp: Date.now(),
           kind: 'result',
         };
@@ -1089,11 +1078,9 @@ export function RoutePlanner() {
         // Success toast notification
         if (updates.length > 0) {
           toast.success(
-            language === 'uk' ? 'Маршрут оновлено!' : 'Route updated!',
+            t.agent.routeUpdated,
             {
-              description: language === 'uk'
-                ? 'AI успішно обробив ваш запит'
-                : 'AI assistant processed your request successfully',
+              description: t.agent.routeUpdatedDescription,
               duration: 3000
             }
           );
@@ -1123,17 +1110,15 @@ export function RoutePlanner() {
       setChatMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: 'An error occurred while processing your request.',
+        content: t.agent.genericError,
         timestamp: Date.now()
       }]);
 
       // Error toast - exception occurred
       toast.error(
-        language === 'uk' ? 'Помилка обробки' : 'Processing error',
+        t.agent.processingError,
         {
-          description: language === 'uk'
-            ? `Виникла помилка: ${errorMessage}`
-            : `An error occurred: ${errorMessage}`,
+          description: t.agent.processingErrorDescription.replace('{error}', errorMessage),
           duration: 5000
         }
       );
@@ -1272,7 +1257,7 @@ export function RoutePlanner() {
                   {isEditMode && (
                     <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
                   )}
-                  <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
+                  <span className="truncate">{routeName || t.planner.editingRoute}</span>
                 </div>
               )}
 
@@ -1282,12 +1267,12 @@ export function RoutePlanner() {
                   className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                   style={{ color: 'var(--nav-text-secondary)' }}
                 >
-                  {language === 'uk' ? 'Початок' : 'Start'}
+                  {t.planner.start}
                 </Label>
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
+                    placeholder={t.planner.searchStart}
                     value={startLocationInput}
                     onChange={(e) => setStartLocationInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1329,9 +1314,9 @@ export function RoutePlanner() {
                       border: '1px solid var(--nav-border)',
                       color: 'var(--nav-text-secondary)',
                     }}
-                    title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
+                    title={t.planner.swapTitle}
                   >
-                    ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
+                    ↕ {t.planner.swap}
                   </button>
                 </div>
               )}
@@ -1342,12 +1327,12 @@ export function RoutePlanner() {
                   className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                   style={{ color: 'var(--nav-text-secondary)' }}
                 >
-                  {language === 'uk' ? 'Призначення' : 'Destination'}
+                  {t.planner.destination}
                 </Label>
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
+                    placeholder={t.planner.searchDestination}
                     value={destinationInput}
                     onChange={(e) => setDestinationInput(e.target.value)}
                     onKeyDown={(e) => {
@@ -1450,7 +1435,7 @@ export function RoutePlanner() {
                     }}
                   >
                     <FilePlus className="h-4 w-4" />
-                    {language === 'uk' ? 'Новий маршрут' : 'New Route'}
+                    {t.planner.newRoute}
                   </button>
                 )}
 
@@ -1526,14 +1511,14 @@ export function RoutePlanner() {
                       }}
                     >
                       <Save className="h-4 w-4" />
-                      {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
+                      {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
                     </button>
                   </DialogTrigger>
                   <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
+                      <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
                       <DialogDescription>
-                        {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
+                        {isEditMode ? t.planner.updateDescription : t.dialogs.save.description}
                       </DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
@@ -1550,7 +1535,7 @@ export function RoutePlanner() {
                         />
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
+                        <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
                         <ul className="list-disc list-inside mt-2 space-y-1">
                           <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
                           <li>{t.dialogs.save.fuelSettings}</li>
@@ -1565,9 +1550,9 @@ export function RoutePlanner() {
                       {isEditMode && (
                         <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
                           {savingRoute ? (
-                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                           ) : (
-                            <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                            <><FilePlus className="h-4 w-4 mr-2" />{t.planner.saveAsNew}</>
                           )}
                         </Button>
                       )}
@@ -1575,7 +1560,7 @@ export function RoutePlanner() {
                         {savingRoute ? (
                           <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                         ) : (
-                          <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
+                          <><Save className="h-4 w-4 mr-2" />{isEditMode ? t.planner.update : t.buttons.save}</>
                         )}
                       </Button>
                     </DialogFooter>
@@ -1652,7 +1637,7 @@ export function RoutePlanner() {
               />
               <button
                 type="submit"
-                aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
+                aria-label={t.planner.sendMessage}
                 disabled={isProcessingAi}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                 style={{
@@ -1694,10 +1679,10 @@ export function RoutePlanner() {
             <div className="flex flex-col gap-1 text-sm">
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4" style={{ color: 'var(--nav-accent)' }} />
-                <span>{language === 'uk' ? 'Клікніть на карту, щоб додати точку' : 'Click map to add waypoint'}</span>
+                <span>{t.planner.clickMapHint}</span>
               </div>
               <div className="text-xs ml-6" style={{ color: 'var(--nav-text-secondary)' }}>
-                {language === 'uk' ? 'ПКМ на маркері — видалити' : 'Right-click marker to delete'}
+                {t.planner.rightClickHint}
               </div>
             </div>
           </div>
@@ -1743,7 +1728,7 @@ export function RoutePlanner() {
               <div className="relative flex-1">
                 <Input
                   type="text"
-                  placeholder={language === 'uk' ? 'Початок...' : 'Start...'}
+                  placeholder={t.planner.startShort}
                   value={startLocationInput}
                   onChange={(e) => setStartLocationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
@@ -1762,7 +1747,7 @@ export function RoutePlanner() {
               <div className="relative flex-1">
                 <Input
                   type="text"
-                  placeholder={language === 'uk' ? 'Кінець...' : 'Destination...'}
+                  placeholder={t.planner.destinationShort}
                   value={destinationInput}
                   onChange={(e) => setDestinationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
@@ -1782,7 +1767,7 @@ export function RoutePlanner() {
                 onClick={() => { if (startLocationInput.trim()) handleStartLocationSearch(); if (destinationInput.trim()) handleDestinationSearch() }}
                 className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0"
                 style={{ background: 'var(--nav-accent)', color: '#0f1117' }}
-                aria-label={language === 'uk' ? 'Пошук' : 'Search'}
+                aria-label={t.planner.search}
               >
                 <Search className="h-4 w-4" />
               </button>
@@ -1808,7 +1793,7 @@ export function RoutePlanner() {
                       {isEditMode && (
                         <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
                       )}
-                      <span className="truncate">{routeName || (language === 'uk' ? 'Редагування маршруту' : 'Editing route')}</span>
+                      <span className="truncate">{routeName || t.planner.editingRoute}</span>
                     </div>
                   )}
 
@@ -1818,12 +1803,12 @@ export function RoutePlanner() {
                       className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                       style={{ color: 'var(--nav-text-secondary)' }}
                     >
-                      {language === 'uk' ? 'Початок' : 'Start'}
+                      {t.planner.start}
                     </Label>
                     <div className="relative">
                       <Input
                         type="text"
-                        placeholder={language === 'uk' ? 'Шукати початкову локацію...' : 'Search start location...'}
+                        placeholder={t.planner.searchStart}
                         value={startLocationInput}
                         onChange={(e) => setStartLocationInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -1865,9 +1850,9 @@ export function RoutePlanner() {
                           border: '1px solid var(--nav-border)',
                           color: 'var(--nav-text-secondary)',
                         }}
-                        title={language === 'uk' ? 'Поміняти місцями' : 'Swap start/destination'}
+                        title={t.planner.swapTitle}
                       >
-                        ↕ {language === 'uk' ? 'Поміняти' : 'Swap'}
+                        ↕ {t.planner.swap}
                       </button>
                     </div>
                   )}
@@ -1878,12 +1863,12 @@ export function RoutePlanner() {
                       className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
                       style={{ color: 'var(--nav-text-secondary)' }}
                     >
-                      {language === 'uk' ? 'Призначення' : 'Destination'}
+                      {t.planner.destination}
                     </Label>
                     <div className="relative">
                       <Input
                         type="text"
-                        placeholder={language === 'uk' ? 'Шукати призначення...' : 'Search destination...'}
+                        placeholder={t.planner.searchDestination}
                         value={destinationInput}
                         onChange={(e) => setDestinationInput(e.target.value)}
                         onKeyDown={(e) => {
@@ -1986,7 +1971,7 @@ export function RoutePlanner() {
                         }}
                       >
                         <FilePlus className="h-4 w-4" />
-                        {language === 'uk' ? 'Новий маршрут' : 'New Route'}
+                        {t.planner.newRoute}
                       </button>
                     )}
 
@@ -2062,14 +2047,14 @@ export function RoutePlanner() {
                           }}
                         >
                           <Save className="h-4 w-4" />
-                          {isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.buttons.saveRoute}
+                          {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
                         </button>
                       </DialogTrigger>
                       <DialogContent>
                         <DialogHeader>
-                          <DialogTitle>{isEditMode ? (language === 'uk' ? 'Оновити маршрут' : 'Update Route') : t.dialogs.save.title}</DialogTitle>
+                          <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
                           <DialogDescription>
-                            {isEditMode ? (language === 'uk' ? 'Оновіть існуючий маршрут або збережіть як новий' : 'Update the existing route or save as a new one') : t.dialogs.save.description}
+                            {isEditMode ? t.planner.updateDescription : t.dialogs.save.description}
                           </DialogDescription>
                         </DialogHeader>
                         <div className="space-y-4">
@@ -2086,7 +2071,7 @@ export function RoutePlanner() {
                             />
                           </div>
                           <div className="text-sm text-muted-foreground">
-                            <p>{isEditMode ? (language === 'uk' ? 'Буде оновлено:' : 'This will update:') : t.dialogs.save.willSave}</p>
+                            <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
                             <ul className="list-disc list-inside mt-2 space-y-1">
                               <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
                               <li>{t.dialogs.save.fuelSettings}</li>
@@ -2101,9 +2086,9 @@ export function RoutePlanner() {
                           {isEditMode && (
                             <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
                               {savingRoute ? (
-                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{language === 'uk' ? 'Збереження...' : 'Saving...'}</>
+                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                               ) : (
-                                <><FilePlus className="h-4 w-4 mr-2" />{language === 'uk' ? 'Зберегти як новий' : 'Save as New'}</>
+                                <><FilePlus className="h-4 w-4 mr-2" />{t.planner.saveAsNew}</>
                               )}
                             </Button>
                           )}
@@ -2111,7 +2096,7 @@ export function RoutePlanner() {
                             {savingRoute ? (
                               <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                             ) : (
-                              <><Save className="h-4 w-4 mr-2" />{isEditMode ? (language === 'uk' ? 'Оновити' : 'Update') : t.buttons.save}</>
+                              <><Save className="h-4 w-4 mr-2" />{isEditMode ? t.planner.update : t.buttons.save}</>
                             )}
                           </Button>
                         </DialogFooter>
@@ -2188,7 +2173,7 @@ export function RoutePlanner() {
                   />
                   <button
                     type="submit"
-                    aria-label={language === 'uk' ? 'Надіслати повідомлення' : 'Send message'}
+                    aria-label={t.planner.sendMessage}
                     disabled={isProcessingAi}
                     className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
                     style={{
