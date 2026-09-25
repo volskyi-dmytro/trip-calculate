@@ -1,4 +1,4 @@
-import { formatDistanceToNow, format } from 'date-fns';
+import { format } from 'date-fns';
 import { User, Mail, Calendar, Shield, Navigation, CheckCircle, XCircle } from 'lucide-react';
 import {
   Dialog,
@@ -10,6 +10,7 @@ import {
 import { Button } from '../ui/button';
 import type { UserManagement } from '../../services/adminService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { timeAgo } from '../../i18n/dates';
 
 interface UserDetailsModalProps {
   user: UserManagement;
@@ -23,7 +24,7 @@ export function UserDetailsModal({
   isOpen,
   onClose,
 }: UserDetailsModalProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -115,7 +116,7 @@ export function UserDetailsModal({
                   <span className="ml-2 text-gray-900 dark:text-white">
                     {format(new Date(user.createdAt), 'PPpp')}
                     <span className="text-gray-500 dark:text-gray-400 text-xs ml-2">
-                      ({formatDistanceToNow(new Date(user.createdAt), { addSuffix: true })})
+                      ({timeAgo(user.createdAt, language)})
                     </span>
                   </span>
                 </div>
@@ -128,7 +129,7 @@ export function UserDetailsModal({
                     {t('admin.userDetails.lastLogin')}:
                   </span>
                   <span className="ml-2 text-gray-900 dark:text-white">
-                    {formatDistanceToNow(new Date(user.lastLogin), { addSuffix: true })}
+                    {timeAgo(user.lastLogin, language)}
                   </span>
                 </div>
               </div>

@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import {
   Search,
   MoreVertical,
@@ -26,9 +25,10 @@ import {
 import { adminService, type UserManagement } from '../../services/adminService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { UserDetailsModal } from './UserDetailsModal';
+import { timeAgo } from '../../i18n/dates';
 
 export function UsersTable() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [users, setUsers] = useState<UserManagement[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<UserManagement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -221,7 +221,7 @@ export function UsersTable() {
                     </td>
                     <td className="py-3 px-4">
                       <span className="text-sm text-gray-600 dark:text-gray-400">
-                        {formatDistanceToNow(new Date(user.lastLogin), { addSuffix: true })}
+                        {timeAgo(user.lastLogin, language)}
                       </span>
                     </td>
                     <td className="py-3 px-4">

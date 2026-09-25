@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { formatDistanceToNow } from 'date-fns';
 import { MapPin, Edit2, Trash2, Navigation, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -18,6 +17,7 @@ import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { withLocalePrefix } from '../../utils/locale';
 import { routeEditPath } from '../../utils/routePaths';
+import { timeAgo } from '../../i18n/dates';
 
 interface RoutesListProps {
   routes: RouteListItem[];
@@ -141,7 +141,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                       {route.currency}{route.totalCost.toFixed(2)}
                     </span>
                     <span className="text-xs">
-                      {formatDistanceToNow(new Date(route.createdAt), { addSuffix: true })}
+                      {timeAgo(route.createdAt, language)}
                     </span>
                   </div>
                 </div>
