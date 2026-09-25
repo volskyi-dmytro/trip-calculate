@@ -25,8 +25,14 @@ export function QuickActions() {
 
   const handleDownloadData = async () => {
     try {
-      // This would need to be implemented on the backend
-      toast.info(t('dashboard.quickActions.downloadDataInfo'));
+      const blob = await dashboardService.exportData();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `trip-calculate-data-${new Date().toISOString().slice(0, 10)}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      toast.success(t('dashboard.quickActions.downloadDataInfo'));
     } catch (error) {
       console.error('Failed to download data:', error);
       toast.error(t('dashboard.quickActions.downloadDataError'));
@@ -82,9 +88,7 @@ export function QuickActions() {
       description: t('dashboard.quickActions.downloadDataDesc'),
       onClick: handleDownloadData,
       destructive: false,
-      // Hidden until a real export (or a request-by-email process) exists:
-      // a button that only says "coming soon" promises something we don't do.
-      show: false,
+      show: true,
     },
     {
       icon: Trash2,
