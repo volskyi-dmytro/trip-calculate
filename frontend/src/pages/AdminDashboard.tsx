@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Header } from '../components/common/Header';
 import { SystemOverview } from '../components/admin/SystemOverview';
 import { UsersTable } from '../components/admin/UsersTable';
@@ -9,6 +10,7 @@ type TabType = 'overview' | 'users';
 
 export function AdminDashboard() {
   const { t } = useLanguage();
+  useDocumentTitle(t('admin.title'));
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   const tabs = [

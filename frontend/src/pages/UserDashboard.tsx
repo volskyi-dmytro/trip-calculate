@@ -3,6 +3,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { dashboardService, type UserDashboard as UserDashboardData } from '../services/dashboardService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { Header } from '../components/common/Header';
 import { ProfileCard } from '../components/dashboard/ProfileCard';
 import { StatsCard } from '../components/dashboard/StatsCard';
@@ -14,6 +15,7 @@ import { SecuritySection } from '../components/dashboard/SecuritySection';
 
 export function UserDashboard() {
   const { t } = useLanguage();
+  useDocumentTitle(t('dashboard.title'));
   const [dashboardData, setDashboardData] = useState<UserDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 

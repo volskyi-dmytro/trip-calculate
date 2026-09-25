@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { receiptService } from '../services/receiptService';
 import type { Receipt } from '../types/Receipt';
 import { withLocalePrefix } from '../utils/locale';
@@ -115,6 +116,10 @@ export function ReceiptPage() {
         : 'The link lasted 30 days. Your next trip is a minute away, though.',
     notFoundTitle: lang === 'uk' ? 'Квитанцію не знайдено' : 'Receipt not found',
   };
+
+  useDocumentTitle(
+    state === 'expired' ? t.expiredTitle : state === 'notFound' ? t.notFoundTitle : t.receipt,
+  );
 
   const handleCta = () => {
     if (slug) receiptService.registerCta(slug);

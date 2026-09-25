@@ -5,6 +5,7 @@ import { Header } from '../components/common/Header';
 import { Footer } from '../components/common/Footer';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
 
@@ -37,6 +38,13 @@ export function CityRoutePage() {
   const [route, setRoute] = useState<CityRouteDetail | null>(() => embeddedRoute(slug, language));
   const [state, setState] = useState<PageState>(() => (route ? 'ready' : 'loading'));
   const [attempt, setAttempt] = useState(0);
+  useDocumentTitle(
+    state === 'notFound'
+      ? t('cityRoute.notFound.title')
+      : route
+        ? t('pageTitle.cityRoute').replace('{from}', route.fromName).replace('{to}', route.toName)
+        : null,
+  );
 
   useEffect(() => {
     if (!slug) return;

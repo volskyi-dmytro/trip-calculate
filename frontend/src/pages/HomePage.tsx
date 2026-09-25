@@ -6,6 +6,7 @@ import { Footer } from '../components/common/Footer';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteSummary } from '../services/cityRouteService';
 
@@ -13,6 +14,7 @@ export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const { t, language } = useLanguage();
   const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>([]);
+  useDocumentTitle(t('pageTitle.home'));
 
   // Best-effort — a failed fetch just hides the section, never breaks the page.
   useEffect(() => {
