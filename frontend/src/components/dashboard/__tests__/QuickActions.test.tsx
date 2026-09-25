@@ -30,4 +30,10 @@ describe('QuickActions public route-planner access', () => {
     expect(html).toContain('dashboard.quickActions.createRoute')
     expect(html).not.toContain('dashboard.quickActions.requestAccess')
   })
+
+  it('hides the data export stub until a real export exists', () => {
+    const html = renderToStaticMarkup(<QuickActions />)
+
+    expect(html).not.toContain('dashboard.quickActions.downloadData')
+  })
 })
