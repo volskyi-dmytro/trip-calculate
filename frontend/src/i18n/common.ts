@@ -48,7 +48,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.notFound.title': 'Route not found',
     'cityRoute.notFound.text': "We don't have a ready page for this route yet.",
     'cityRoute.notFound.cta': 'Back to home',
-    'cityRoute.error.text': 'Failed to load this route. Please try again later.',
+    'cityRoute.error.title': "Couldn't load this route",
+    'cityRoute.error.text': 'Please check your connection and try again.',
+    'cityRoute.error.retry': 'Try again',
 
     // User Menu
     'userMenu.myRoutes': 'My Routes',
@@ -342,7 +344,9 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.notFound.title': 'Маршрут не знайдено',
     'cityRoute.notFound.text': 'Для цього маршруту ще немає готової сторінки.',
     'cityRoute.notFound.cta': 'На головну',
-    'cityRoute.error.text': 'Не вдалося завантажити маршрут. Спробуйте пізніше.',
+    'cityRoute.error.title': 'Не вдалося завантажити маршрут',
+    'cityRoute.error.text': 'Перевірте з\'єднання та спробуйте ще раз.',
+    'cityRoute.error.retry': 'Спробувати ще раз',
 
     // User Menu
     'userMenu.myRoutes': 'Мої Маршрути',

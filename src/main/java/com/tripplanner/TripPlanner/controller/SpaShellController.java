@@ -203,8 +203,12 @@ public class SpaShellController {
         String routePath = "/route/" + slug;
         String canonical = SITE_ORIGIN + "/" + locale + routePath;
         String homeUrl = SITE_ORIGIN + "/" + locale;
+        // The page's own data rides along as a JSON island: CityRoutePage reads it
+        // instead of calling /api/city-routes, so crawlers (robots.txt disallows
+        // most of /api/) and first-time visitors get the real content at once.
         String jsonLd = jsonLdWebApplication(canonical, locale, description)
-                + jsonLdBreadcrumb(homeUrl, "Trip Calculate", canonical, fromName + " → " + toName);
+                + jsonLdBreadcrumb(homeUrl, "Trip Calculate", canonical, fromName + " → " + toName)
+                + cityRouteDataIsland(slug, locale, facts);
         String noscript = cityRouteNoscript(english, locale, slug, fromName, toName,
                 distanceKm, durationMin, totalCost, perPassenger, related);
 
@@ -269,6 +273,17 @@ public class SpaShellController {
         obj.put("@type", "BreadcrumbList");
         obj.put("itemListElement", List.of(home, page));
         return toScriptTag(obj);
+    }
+
+    private String cityRouteDataIsland(String slug, String locale, Map<String, Object> facts) {
+        try {
+            // "</" is escaped so a value can never close the <script> element early.
+            String json = objectMapper.writeValueAsString(facts).replace("</", "<\\/");
+            return "\n    <script type=\"application/json\" id=\"city-route-data\" data-slug=\""
+                    + esc(slug) + "\" data-locale=\"" + esc(locale) + "\">" + json + "</script>";
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize city route data", e);
+        }
     }
 
     private String toScriptTag(Object payload) {

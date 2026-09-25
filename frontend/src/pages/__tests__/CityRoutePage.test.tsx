@@ -30,7 +30,18 @@ const mounted: Array<() => void> = []
 afterEach(() => {
   for (const cleanup of mounted.splice(0)) cleanup()
   vi.mocked(cityRouteService.get).mockReset()
+  document.getElementById('city-route-data')?.remove()
 })
+
+function embedIsland(slug: string, locale: string, data: object) {
+  const script = document.createElement('script')
+  script.type = 'application/json'
+  script.id = 'city-route-data'
+  script.dataset.slug = slug
+  script.dataset.locale = locale
+  script.textContent = JSON.stringify(data)
+  document.head.appendChild(script)
+}
 
 async function renderPage() {
   const container = document.createElement('div')
@@ -90,5 +101,35 @@ describe('CityRoutePage', () => {
 
     expect(container.textContent).toContain('cityRoute.notFound.title')
     expect(container.querySelector('a[href="/en"]')).not.toBeNull()
+  })
+
+  it('renders from the server-embedded data without calling the API', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+
+    const container = await renderPage()
+
+    expect(cityRouteService.get).not.toHaveBeenCalled()
+    expect(container.querySelector('h1')?.textContent).toContain('Kyiv → Lviv')
+    expect(container.textContent).toContain('540 km')
+  })
+
+  it('ignores embedded data that belongs to another route or language', async () => {
+    embedIsland('kyiv-odesa', 'en', { ...routeDetail, slug: 'kyiv-odesa', toName: 'Odesa' })
+    vi.mocked(cityRouteService.get).mockResolvedValue(routeDetail)
+
+    const container = await renderPage()
+
+    expect(cityRouteService.get).toHaveBeenCalledOnce()
+    expect(container.querySelector('h1')?.textContent).toContain('Kyiv → Lviv')
+  })
+
+  it('does not claim the route is missing when loading merely failed', async () => {
+    // e.g. a 429 from rate limiting: search engines must not read this as "not found"
+    vi.mocked(cityRouteService.get).mockRejectedValue({ response: { status: 429 } })
+
+    const container = await renderPage()
+
+    expect(container.querySelector('h1')?.textContent).toBe('cityRoute.error.title')
+    expect(container.textContent).not.toContain('cityRoute.notFound.title')
   })
 })

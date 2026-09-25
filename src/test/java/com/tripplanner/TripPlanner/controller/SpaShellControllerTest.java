@@ -19,6 +19,8 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -146,6 +148,28 @@ class SpaShellControllerTest {
         assertEquals(1, occurrences(html, "property=\"og:url\" content=\"" + canonical + "\""));
         assertEquals(3, occurrences(html, "hreflang=\""));
         assertFalse(response.getHeaders().containsKey("X-Robots-Tag"));
+    }
+
+    @Test
+    void cityRoutePageEmbedsItsDataSoCrawlersDontNeedTheApi() throws Exception {
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk/route/kyiv-lviv")).getBody();
+
+        Matcher island = Pattern.compile(
+                "<script type=\"application/json\" id=\"city-route-data\" data-slug=\"kyiv-lviv\" data-locale=\"uk\">(.*?)</script>",
+                Pattern.DOTALL).matcher(html);
+        assertTrue(island.find(), "missing JSON island");
+        Map<?, ?> data = new ObjectMapper().readValue(island.group(1), Map.class);
+        assertEquals("kyiv-lviv", data.get("slug"));
+        assertEquals("Київ", data.get("fromName"));
+        assertNotNull(data.get("distanceKm"));
+    }
+
+    @Test
+    void homeAndLegalPagesCarryNoCityData() throws Exception {
+        for (String path : List.of("/en", "/uk/privacy")) {
+            String html = controller.shell(new MockHttpServletRequest("GET", path)).getBody();
+            assertFalse(html.contains("city-route-data"), path);
+        }
     }
 
     @Test
