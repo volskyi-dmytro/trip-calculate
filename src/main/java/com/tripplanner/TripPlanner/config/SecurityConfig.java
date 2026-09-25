@@ -139,8 +139,9 @@ public class SecurityConfig {
         http
                 // Enable CSRF protection (OAuth2 requires it)
                 .csrf(csrf -> csrf
-                        // Disable CSRF only for public API endpoints and AI endpoints
-                        .ignoringRequestMatchers("/calculate", "/api/routing/**", "/api/ai/**")
+                        // Stateless public calculators only. The AI endpoints act on a signed-in
+                        // session, so they need the token (the frontend sends X-XSRF-TOKEN).
+                        .ignoringRequestMatchers("/calculate", "/api/routing/**")
                         // Use cookie-based CSRF tokens with SameSite=Strict (see comment above)
                         .csrfTokenRepository(csrfTokenRepository)
                         // Set token handler to ensure tokens are loaded

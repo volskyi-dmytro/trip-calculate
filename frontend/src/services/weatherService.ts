@@ -1,4 +1,4 @@
-import { getCsrfToken } from './agentService'
+import { ensureCsrfToken } from './agentService'
 import type { WeatherData } from '../types/weather'
 
 // Spring proxy in front of the agent's deterministic corridor endpoint
@@ -14,7 +14,7 @@ export async function fetchCorridorWeather(
   date: string,
 ): Promise<WeatherData | null> {
   try {
-    const csrfToken = getCsrfToken()
+    const csrfToken = await ensureCsrfToken()
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (csrfToken) headers['X-XSRF-TOKEN'] = csrfToken
     const response = await fetch(WEATHER_ENDPOINT, {

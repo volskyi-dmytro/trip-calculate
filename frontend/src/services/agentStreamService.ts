@@ -1,7 +1,7 @@
 import * as agentService from './agentService'
 import {
   mapAgentRouteResponse,
-  getCsrfToken,
+  ensureCsrfToken,
   type AgentParseResult,
   type AgentRouteResponse,
   type CurrentRouteWaypoint,
@@ -81,7 +81,7 @@ export const streamRouteWithAgent = async (
   const controller = new AbortController()
   const timeout = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS)
   try {
-    const csrfToken = getCsrfToken()
+    const csrfToken = await ensureCsrfToken()
     const headers: HeadersInit = { 'Content-Type': 'application/json' }
     if (csrfToken) headers['X-XSRF-TOKEN'] = csrfToken
 

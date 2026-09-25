@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { createSseParser } from '../agentStreamService'
-import { getCsrfToken } from '../agentService'
+import { ensureCsrfToken, getCsrfToken } from '../agentService'
 import * as agentService from '../agentService'
 
 describe('getCsrfToken', () => {
@@ -9,6 +9,37 @@ describe('getCsrfToken', () => {
 
     expect(getCsrfToken()).toBe('csrf token')
 
+    vi.unstubAllGlobals()
+  })
+})
+
+describe('ensureCsrfToken', () => {
+  it('uses the XSRF-TOKEN cookie when it exists', async () => {
+    vi.stubGlobal('document', { cookie: 'XSRF-TOKEN=from-cookie' })
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await ensureCsrfToken()).toBe('from-cookie')
+    expect(fetchMock).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+
+  it('asks the server for a token when the cookie was never issued', async () => {
+    // Spring Security issues the cookie lazily, so a first AI request can find none.
+    vi.stubGlobal('document', { cookie: '' })
+    const fetchMock = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ token: 'from-server' }) })
+    vi.stubGlobal('fetch', fetchMock)
+
+    expect(await ensureCsrfToken()).toBe('from-server')
+    expect(fetchMock).toHaveBeenCalledWith('/api/user/csrf', { credentials: 'same-origin' })
+    vi.unstubAllGlobals()
+  })
+
+  it('returns null instead of throwing when the token request fails', async () => {
+    vi.stubGlobal('document', { cookie: '' })
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('offline')))
+
+    expect(await ensureCsrfToken()).toBeNull()
     vi.unstubAllGlobals()
   })
 })
@@ -62,7 +93,8 @@ describe('streamRouteWithAgent fallback discipline', () => {
     const onDegraded = vi.fn()
     const { streamRouteWithAgent } = await import('../agentStreamService')
     const result = await streamRouteWithAgent('Kyiv to Lviv', 'en', [], undefined, () => {}, onDegraded)
-    expect(fetchMock).toHaveBeenCalledTimes(1)   // failure genuinely came from transport
+    // failure genuinely came from the stream transport (the token lookup may also try fetch)
+    expect(fetchMock.mock.calls.filter(([url]) => url === '/api/ai/insights/stream')).toHaveLength(1)
     expect(onDegraded).toHaveBeenCalledTimes(1)
     expect(fallback).toHaveBeenCalledTimes(1)
     expect(result.error).toBe('sync answered')
@@ -77,7 +109,7 @@ describe('streamRouteWithAgent caller-callback bugs', () => {
     const sse =
       'event: stage\ndata: {"stage":"route","status":"done"}\n\n' +
       'event: result\ndata: {"success":true,"route":{"waypoints":[],"settings":{}}}\n\n'
-    vi.stubGlobal('document', { cookie: '' })
+    vi.stubGlobal('document', { cookie: 'XSRF-TOKEN=t' })
     const fetchMock = vi.fn().mockResolvedValue(new Response(sse, { status: 200 }))
     vi.stubGlobal('fetch', fetchMock)
     const fallback = vi.spyOn(agentService, 'parseRouteWithAgent')
@@ -116,7 +148,7 @@ describe('weather stage (SP3)', () => {
     const sse =
       'event: stage\ndata: {"stage":"weather","status":"done"}\n\n' +
       'event: result\ndata: {"success":true,"route":{"waypoints":[],"settings":{}}}\n\n'
-    vi.stubGlobal('document', { cookie: '' })
+    vi.stubGlobal('document', { cookie: 'XSRF-TOKEN=t' })
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(sse, { status: 200 })))
     const { streamRouteWithAgent } = await import('../agentStreamService')
     const stages: string[] = []
