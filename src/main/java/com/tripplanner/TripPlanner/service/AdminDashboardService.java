@@ -9,6 +9,7 @@ import com.tripplanner.TripPlanner.repository.AccessRequestRepository;
 import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
+import com.tripplanner.TripPlanner.security.UserSessionTerminator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class AdminDashboardService {
     private final AiUsageService aiUsageService;
     private final AiCacheService aiCacheService;
     private final UserDashboardService userDashboardService;
+    private final UserSessionTerminator userSessionTerminator;
 
     /**
      * Get system-wide statistics for admin dashboard
@@ -112,6 +114,9 @@ public class AdminDashboardService {
 
         user.setRole(newRole);
         user = userRepository.save(user);
+
+        // Sessions carry the old role for up to 24h; end them so it applies now.
+        userSessionTerminator.endAllSessions(user.getGoogleId());
 
         return convertToUserManagementDTO(user);
     }
