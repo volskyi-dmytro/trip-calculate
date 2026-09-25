@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.filter;
 
+import com.tripplanner.TripPlanner.security.ClientIpResolver;
 import jakarta.servlet.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -21,6 +22,8 @@ import java.util.concurrent.atomic.AtomicLong;
  * to ensure it runs AFTER authentication is loaded into SecurityContext
  */
 public class RateLimitingFilter implements Filter {
+    // Cloudflare-aware; never trusts client-supplied forwarding headers.
+    private final ClientIpResolver clientIpResolver = new ClientIpResolver();
 
     private static final Logger logger = LoggerFactory.getLogger(RateLimitingFilter.class);
 
@@ -37,7 +40,7 @@ public class RateLimitingFilter implements Filter {
         HttpServletRequest httpRequest = (HttpServletRequest) request;
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
-        String clientIp = getClientIp(httpRequest);
+        String clientIp = clientIpResolver.resolve(httpRequest);
         String requestUri = httpRequest.getRequestURI();
 
         // CRITICAL: Bypass static resources FIRST to avoid blocking frontend assets
@@ -47,8 +50,8 @@ public class RateLimitingFilter implements Filter {
             return;
         }
 
-        // Allow localhost to bypass rate limiting
-        if (isLocalhost(clientIp)) {
+        // Only a connection that really comes from this machine (health checks) bypasses
+        if (clientIpResolver.isLocalRequest(httpRequest)) {
             chain.doFilter(request, response);
             return;
         }
@@ -92,20 +95,6 @@ public class RateLimitingFilter implements Filter {
                 currentTime - entry.getValue().windowStart.get() > TIME_WINDOW_MS * 2);
     }
 
-    private String getClientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
-    }
-
-    // Helper to check if IP is localhost
-    private boolean isLocalhost(String clientIp) {
-        return "127.0.0.1".equals(clientIp)
-                || "0:0:0:0:0:0:0:1".equals(clientIp)
-                || "localhost".equals(clientIp);
-    }
 
     /**
      * Check if the request is for a static resource that should bypass rate limiting

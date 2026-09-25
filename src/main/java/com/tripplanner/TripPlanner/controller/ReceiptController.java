@@ -4,6 +4,7 @@ import com.tripplanner.TripPlanner.dto.CreateReceiptRequest;
 import com.tripplanner.TripPlanner.dto.ReceiptDTO;
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.filter.ReceiptCreationRateLimiter;
+import com.tripplanner.TripPlanner.security.ClientIpResolver;
 import com.tripplanner.TripPlanner.service.ReceiptService;
 import com.tripplanner.TripPlanner.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -24,6 +25,8 @@ import java.util.Map;
 @RequestMapping("/api/receipts")
 @RequiredArgsConstructor
 public class ReceiptController {
+    // Cloudflare-aware; never trusts client-supplied forwarding headers.
+    private final ClientIpResolver clientIpResolver = new ClientIpResolver();
 
     private final ReceiptService receiptService;
     private final ReceiptCreationRateLimiter rateLimiter;
@@ -80,12 +83,7 @@ public class ReceiptController {
         return userService.findByGoogleId(googleId).map(User::getId).orElse(null);
     }
 
-    // Same X-Forwarded-For handling as RateLimitingFilter (app runs behind Cloudflare + proxy)
     private String clientIp(HttpServletRequest request) {
-        String xForwardedFor = request.getHeader("X-Forwarded-For");
-        if (xForwardedFor != null && !xForwardedFor.isEmpty()) {
-            return xForwardedFor.split(",")[0].trim();
-        }
-        return request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }

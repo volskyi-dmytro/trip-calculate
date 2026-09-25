@@ -2,6 +2,7 @@ package com.tripplanner.TripPlanner.controller;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tripplanner.TripPlanner.dto.AgentResponse;
+import com.tripplanner.TripPlanner.security.ClientIpResolver;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,6 +43,8 @@ import java.util.stream.Stream;
 @RestController
 @RequestMapping("/api/ai")
 public class AiStreamController {
+    // Cloudflare-aware; never trusts client-supplied forwarding headers.
+    private final ClientIpResolver clientIpResolver = new ClientIpResolver();
 
     private static final Logger logger = LoggerFactory.getLogger(AiStreamController.class);
     private static final int MAX_MESSAGE_LENGTH = 500;
@@ -325,7 +328,6 @@ public class AiStreamController {
     }
 
     private String getClientIp(HttpServletRequest request) {
-        String xff = request.getHeader("X-Forwarded-For");
-        return (xff != null && !xff.isEmpty()) ? xff.split(",")[0].trim() : request.getRemoteAddr();
+        return clientIpResolver.resolve(request);
     }
 }
