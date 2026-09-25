@@ -54,6 +54,15 @@ describe('route planner dictionary', () => {
   it('has the same keys in English and Ukrainian', () => {
     expect(leafPaths(routePlannerTranslations.uk).sort()).toEqual(leafPaths(routePlannerTranslations.en).sort())
   })
+
+  it('uses the same placeholders in both languages', () => {
+    const leaf = (obj: object, path: string) =>
+      path.split('.').reduce<unknown>((node, key) => (node as Record<string, unknown>)[key], obj) as string
+    for (const path of leafPaths(routePlannerTranslations.en)) {
+      expect(placeholders(leaf(routePlannerTranslations.uk, path)), path)
+        .toEqual(placeholders(leaf(routePlannerTranslations.en, path)))
+    }
+  })
 })
 
 describe('translate', () => {
