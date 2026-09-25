@@ -82,7 +82,7 @@ export function CityRoutePage() {
     : '';
   const explanation = t('cityRoute.explanation')
     .replace('{consumption}', String(r.consumptionL100))
-    .replace('{passengers}', tn('common.passengers', r.passengers))
+    .replace('{passengers}', tn('common.passengersGenitive', r.passengers))
     .replace('{priceDate}', priceDate);
 
   const facts = [

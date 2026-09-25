@@ -62,7 +62,9 @@ export function RoutePlannerPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setLanguage(language === 'en' ? 'uk' : 'en')}
-            aria-label={t('common.switchLanguage')}
+            // Accessible name starts with the visible text (WCAG 2.5.3), so
+            // voice users can say "click UA".
+            aria-label={`${language === 'en' ? 'UA' : 'EN'}: ${t('common.switchLanguage')}`}
             className="text-xs font-semibold px-2 py-1 rounded transition-colors"
             style={{
               color: 'var(--nav-text-secondary)',

@@ -36,7 +36,7 @@ describe('RoutePlannerPage public beta access', () => {
   it('gives the language and theme buttons localized accessible names', () => {
     const html = renderToStaticMarkup(<RoutePlannerPage />)
 
-    expect(html).toContain('aria-label="common.switchLanguage"')
+    expect(html).toContain('aria-label="UA: common.switchLanguage"')
     expect(html).toMatch(/aria-label="common\.theme\.to(Light|Dark)"/)
   })
 })

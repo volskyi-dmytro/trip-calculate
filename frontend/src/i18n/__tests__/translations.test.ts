@@ -25,6 +25,16 @@ describe('shared dictionary', () => {
     }
   })
 
+  it('uses the same placeholders in every plural form', () => {
+    for (const lang of ['en', 'uk'] as const) {
+      for (const [key, value] of Object.entries(translations[lang])) {
+        if (!PLURAL_SUFFIX.test(key)) continue
+        const reference = translations.en[key.replace(PLURAL_SUFFIX, '_other')]
+        expect(placeholders(value), `${lang}:${key}`).toEqual(placeholders(reference))
+      }
+    }
+  })
+
   it('has every plural form each language needs', () => {
     const plurals = [...baseKeys(translations.en)].filter((k) => !(k in translations.en))
     for (const key of plurals) {
@@ -101,6 +111,9 @@ describe('translatePlural', () => {
     expect(translatePlural('uk', 'dashboard.stats.days', 3)).toBe('3 дні')
     expect(translatePlural('uk', 'dashboard.stats.days', 25)).toBe('25 днів')
     expect(translatePlural('uk', 'common.passengers', 4)).toBe('4 пасажири')
+    expect(translatePlural('uk', 'common.passengersGenitive', 1)).toBe('1 пасажира')
+    expect(translatePlural('uk', 'common.passengersGenitive', 4)).toBe('4 пасажирів')
+    expect(translatePlural('uk', 'common.passengersGenitive', 21)).toBe('21 пасажира')
     expect(translatePlural('en', 'common.passengers', 1)).toBe('1 passenger')
   })
 })
