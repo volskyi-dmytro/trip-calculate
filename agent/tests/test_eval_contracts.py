@@ -9,6 +9,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 import pytest
+import yaml
 from pydantic import ValidationError
 
 from evals.models import CarCase, RouteCase
@@ -805,8 +806,13 @@ def test_fail_under_relaxes_the_pass_bar_but_never_the_safety_invariant():
 def test_production_deploy_is_gated_by_live_evaluation():
     workflow = (REPO_ROOT / ".github/workflows/deploy-prod.yml").read_text()
 
-    assert "  evaluate:\n" in workflow
-    assert "  build:\n    needs: evaluate\n" in workflow
+    jobs = yaml.safe_load(workflow)["jobs"]
+    needs = jobs["build"]["needs"]
+    needs = [needs] if isinstance(needs, str) else needs
+    assert "evaluate" in jobs
+    # The image build waits for the live evaluation (and, since then, the test suites too).
+    assert "evaluate" in needs
+    assert "tests" in needs
     assert "OPENAI_API_KEY: ${{ secrets.PROD_OPENAI_API_KEY }}" in workflow
     assert "LANGFUSE_PUBLIC_KEY: ${{ secrets.PROD_LANGFUSE_PUBLIC_KEY }}" in workflow
     assert "LANGFUSE_SECRET_KEY: ${{ secrets.PROD_LANGFUSE_SECRET_KEY }}" in workflow
