@@ -390,8 +390,12 @@ jobs:
               docker rm trip-calculate-prod
             fi
 
-            # Run new container with Redis connection
-            docker run -d -p 8080:8080 \
+            # Run new container with Redis connection.
+            # Published on loopback only: Cloudflare reaches the app through the
+            # cloudflared tunnel on this host (localhost:8080), and so do the health
+            # checks below. Docker's own iptables rules bypass UFW, so 0.0.0.0 would
+            # leave the origin one cloud-firewall change away from being public.
+            docker run -d -p 127.0.0.1:8080:8080 \
               --name trip-calculate-prod \
               --restart unless-stopped \
               --network trip-calculate-network \
@@ -544,6 +548,10 @@ jobs:
               echo "❌ Could not inspect Redis port publications"
               exit 1
             fi
+            if ! APP_PORTS="$(docker port trip-calculate-prod 2>/dev/null)"; then
+              echo "❌ Could not inspect application port publications"
+              exit 1
+            fi
             INTERNAL_HEALTH="$(curl -fsS --connect-timeout 5 --max-time 10 http://localhost:8080/actuator/health)"
             PUBLIC_HEALTH_URL="https://trip-calculate.online/actuator/health"
             PUBLIC_HEALTH_CODE="$(curl -sS --connect-timeout 10 --max-time 30 -o /dev/null -w '%{http_code}' "${PUBLIC_HEALTH_URL}")"
@@ -588,6 +596,11 @@ jobs:
               echo "❌ Database or Redis has a published host port"
               exit 1
             fi
+            # Every application port publication must be bound to 127.0.0.1.
+            if [ -z "${APP_PORTS}" ] || printf '%s\n' "${APP_PORTS}" | grep -qv -- '-> 127\.0\.0\.1:'; then
+              echo "❌ Application port must be published on 127.0.0.1 only, found: ${APP_PORTS}"
+              exit 1
+            fi
             if ! docker exec trip-calculate-prod ping -c 1 trip-calculate-db >/dev/null 2>&1; then
               echo "❌ Final application-to-database connectivity check failed"
               exit 1
@@ -620,7 +633,7 @@ jobs:
             echo "Agent image:             ${AGENT_IMAGE}"
             echo "Agent image ID:          ${AGENT_IMAGE_ID}"
             echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-            echo "Application health:      ✅ ${APP_HEALTH} (restarts=${APP_RESTARTS}, host port=8080)"
+            echo "Application health:      ✅ ${APP_HEALTH} (restarts=${APP_RESTARTS}, host port=127.0.0.1:8080)"
             echo "Agent health:            ✅ ${AGENT_HEALTH} (restarts=${AGENT_RESTARTS}, internal port=8001)"
             echo "Database network:        ✅ trip-calculate-network (${DB_NETWORK})"
             echo "Redis network:           ✅ trip-calculate-network (${REDIS_NETWORK})"
