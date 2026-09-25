@@ -46,4 +46,18 @@ describe('ShareReceiptModal', () => {
     expect(html).toMatch(/<input[^>]*id="receipt-origin"/)
     expect(html).toMatch(/<label[^>]*for="receipt-destination"/)
   })
+
+  it('does not pre-fill a street address into the public receipt', () => {
+    const html = render('uk') // payload origin is "вулиця Хрещатик, 1, Київ"
+    expect(html).not.toContain('Хрещатик')
+  })
+
+  it('still pre-fills plain place names', () => {
+    language = 'en'
+    const html = renderToStaticMarkup(
+      <ShareReceiptModal payload={{ ...payload, originLabel: 'Kyiv', destinationLabel: 'Lviv' }} isOpen onClose={() => {}} />,
+    )
+    expect(html).toMatch(/id="receipt-origin"[^>]*value="Kyiv"/)
+    expect(html).toMatch(/id="receipt-destination"[^>]*value="Lviv"/)
+  })
 })

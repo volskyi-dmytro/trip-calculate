@@ -21,10 +21,15 @@ interface ShareReceiptModalProps {
   onClose: () => void;
 }
 
+// Receipts are public, so a label is pre-filled only when it looks like a
+// place name. Anything with digits or commas (street, house number) is left
+// for the driver to type on purpose.
+const safeLabel = (label?: string) => (label && !/[\d,]/.test(label) ? label : '');
+
 export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModalProps) {
   const { language } = useLanguage();
-  const [origin, setOrigin] = useState(payload.originLabel ?? '');
-  const [destination, setDestination] = useState(payload.destinationLabel ?? '');
+  const [origin, setOrigin] = useState(safeLabel(payload.originLabel));
+  const [destination, setDestination] = useState(safeLabel(payload.destinationLabel));
   const [receipt, setReceipt] = useState<Receipt | null>(null);
   const [creating, setCreating] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -34,8 +39,8 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
     if (isOpen) {
       setReceipt(null);
       setCopied(false);
-      setOrigin(payload.originLabel ?? '');
-      setDestination(payload.destinationLabel ?? '');
+      setOrigin(safeLabel(payload.originLabel));
+      setDestination(safeLabel(payload.destinationLabel));
     }
   }, [isOpen, payload.originLabel, payload.destinationLabel]);
 
