@@ -1,6 +1,8 @@
 import asyncio
 import logging
 import os
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import date, datetime, timedelta, timezone
 from langfuse import get_client
 from langfuse.openai import AsyncOpenAI
@@ -14,6 +16,23 @@ from .tools.fuel import compute_fuel_data
 from .tools.weather import compute_weather_data, FORECAST_WINDOW_DAYS
 
 logger = logging.getLogger(__name__)
+
+# The date the nodes treat as "today". Evaluations pin it so recorded cases
+# with fixed dates stay valid on any calendar day; production never sets it.
+_today_override: ContextVar["date | None"] = ContextVar("today_override", default=None)
+
+
+def today_utc() -> date:
+    return _today_override.get() or datetime.now(timezone.utc).date()
+
+
+@contextmanager
+def pinned_today(day: date):
+    token = _today_override.set(day)
+    try:
+        yield
+    finally:
+        _today_override.reset(token)
 
 # Pin the model snapshot used by production and release evaluation. A moving
 # alias can change route behavior without a source-code change and make the
@@ -174,7 +193,7 @@ def _valid_departure_date(raw) -> "str | None":
         parsed = date.fromisoformat(raw)
     except ValueError:
         return None
-    today = datetime.now(timezone.utc).date()
+    today = today_utc()
     if parsed < today or parsed > today + timedelta(days=FORECAST_WINDOW_DAYS):
         return None
     return raw
@@ -315,9 +334,12 @@ def route_after_supervisor(state: GraphState) -> str:
     return "parse_locations"
 
 
+def _system_prompt() -> str:
+    return _SYSTEM_PROMPT.format(today=today_utc().isoformat())
+
+
 async def parse_locations(state: GraphState) -> GraphState:
-    today = datetime.now(timezone.utc).date().isoformat()
-    messages = [{"role": "system", "content": _SYSTEM_PROMPT.format(today=today)}]
+    messages = [{"role": "system", "content": _system_prompt()}]
     current_route = state.get("current_route") or []
     if current_route:
         route_lines = "\n".join(
@@ -637,7 +659,7 @@ async def weather_enrichment(state: GraphState) -> GraphState:
         raw = getattr(state.get("parsed"), "departure_date", None)
         valid = _valid_departure_date(raw)
         day = date.fromisoformat(valid) if valid \
-            else datetime.now(timezone.utc).date()
+            else today_utc()
         points = [
             (loc.latitude, loc.longitude, loc.clean_name)
             for loc in _ordered_successful(state.get("geocoded", []))
