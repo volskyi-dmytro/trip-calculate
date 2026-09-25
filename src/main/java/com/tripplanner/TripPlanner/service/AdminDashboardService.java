@@ -3,7 +3,6 @@ package com.tripplanner.TripPlanner.service;
 import com.tripplanner.TripPlanner.dto.*;
 import com.tripplanner.TripPlanner.entity.AccessRequest;
 
-import com.tripplanner.TripPlanner.entity.Route;
 import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.entity.UserRole;
 import com.tripplanner.TripPlanner.repository.AccessRequestRepository;
@@ -31,6 +30,7 @@ public class AdminDashboardService {
     private final AccessRequestRepository accessRequestRepository;
     private final AiUsageService aiUsageService;
     private final AiCacheService aiCacheService;
+    private final UserDashboardService userDashboardService;
 
     /**
      * Get system-wide statistics for admin dashboard
@@ -147,15 +147,8 @@ public class AdminDashboardService {
      */
     @Transactional
     public void deleteUser(Long userId) {
-        // Delete all user's routes
-        List<Route> routes = routeRepository.findByUserIdOrderByUpdatedAtDesc(userId);
-        routeRepository.deleteAll(routes);
-
-        // Delete feature access
-        featureAccessRepository.findByUserId(userId).ifPresent(featureAccessRepository::delete);
-
-        // Delete user
-        userRepository.deleteById(userId);
+        // Same erasure as self-service deletion, so the two paths can't drift.
+        userDashboardService.deleteUserAccount(userId);
     }
 
     // Helper methods

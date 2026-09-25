@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,8 +25,20 @@ public class AiUsageService {
 
     private static final Logger logger = LoggerFactory.getLogger(AiUsageService.class);
 
+    // Usage logs keep the prompt, email and IP: delete them after 90 days.
+    static final int RETENTION_DAYS = 90;
+
     private final AiUsageLogRepository aiUsageLogRepository;
     private final UserRepository userRepository;
+
+    @Scheduled(cron = "0 45 3 * * *")
+    @Transactional
+    public void deleteExpiredLogs() {
+        int deleted = aiUsageLogRepository.deleteOlderThan(LocalDateTime.now().minusDays(RETENTION_DAYS));
+        if (deleted > 0) {
+            logger.info("Deleted {} AI usage log rows older than {} days", deleted, RETENTION_DAYS);
+        }
+    }
 
     /**
      * Log an AI request

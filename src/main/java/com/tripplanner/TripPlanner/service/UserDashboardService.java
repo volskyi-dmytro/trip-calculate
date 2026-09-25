@@ -3,9 +3,11 @@ package com.tripplanner.TripPlanner.service;
 import com.tripplanner.TripPlanner.dto.*;
 import com.tripplanner.TripPlanner.entity.Route;
 import com.tripplanner.TripPlanner.entity.User;
+import com.tripplanner.TripPlanner.repository.AiUsageLogRepository;
 import com.tripplanner.TripPlanner.repository.CarRepository;
 import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
+import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +31,8 @@ public class UserDashboardService {
     private final RouteRepository routeRepository;
     private final FeatureAccessRepository featureAccessRepository;
     private final CarRepository carRepository;
+    private final TripReceiptRepository tripReceiptRepository;
+    private final AiUsageLogRepository aiUsageLogRepository;
 
     /**
      * Get complete dashboard data for a user
@@ -111,9 +115,13 @@ public class UserDashboardService {
         // Delete feature access
         featureAccessRepository.findByUserId(userId).ifPresent(featureAccessRepository::delete);
 
-        // Delete cars explicitly: Car.userId has no JPA relation, so the DB
-        // cascade from V6 is the only other thing that would remove them.
+        // Cars, receipts and AI usage logs hold user_id as a plain column
+        // (no JPA relation), so delete them explicitly instead of relying on
+        // hand-applied DB cascades. Receipts go too: their public links stop
+        // working, and their route geometry can reveal where someone lives.
         carRepository.deleteByUserId(userId);
+        tripReceiptRepository.deleteByUserId(userId);
+        aiUsageLogRepository.deleteByUserId(userId);
 
         // Delete user
         userRepository.deleteById(userId);

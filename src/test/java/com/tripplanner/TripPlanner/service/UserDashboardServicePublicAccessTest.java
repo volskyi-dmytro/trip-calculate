@@ -2,9 +2,11 @@ package com.tripplanner.TripPlanner.service;
 
 import com.tripplanner.TripPlanner.dto.UserProfileDTO;
 import com.tripplanner.TripPlanner.entity.User;
+import com.tripplanner.TripPlanner.repository.AiUsageLogRepository;
 import com.tripplanner.TripPlanner.repository.CarRepository;
 import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
+import com.tripplanner.TripPlanner.repository.TripReceiptRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
 import org.junit.jupiter.api.Test;
 
@@ -29,24 +31,30 @@ class UserDashboardServicePublicAccessTest {
         when(users.findById(42L)).thenReturn(Optional.of(user));
         when(featureAccess.findByUserId(42L)).thenReturn(Optional.empty());
 
-        UserProfileDTO profile = new UserDashboardService(users, routes, featureAccess, mock(CarRepository.class))
+        UserProfileDTO profile = new UserDashboardService(users, routes, featureAccess, mock(CarRepository.class),
+                mock(TripReceiptRepository.class), mock(AiUsageLogRepository.class))
                 .getUserProfile(42L);
 
         assertTrue(profile.getRoutePlannerAccess());
     }
 
     @Test
-    void deletingTheAccountDeletesTheUsersCarsExplicitly() {
-        // Car.userId is a plain column: without an explicit delete, cars
-        // survive in any database where the V6 cascade was never applied.
+    void deletingTheAccountErasesEverythingTiedToTheUser() {
+        // These tables hold user_id as a plain column (no JPA relation), so
+        // each one is deleted explicitly rather than trusting DB cascades.
         UserRepository users = mock(UserRepository.class);
         CarRepository cars = mock(CarRepository.class);
+        TripReceiptRepository receipts = mock(TripReceiptRepository.class);
+        AiUsageLogRepository aiUsage = mock(AiUsageLogRepository.class);
         UserDashboardService service = new UserDashboardService(
-                users, mock(RouteRepository.class), mock(FeatureAccessRepository.class), cars);
+                users, mock(RouteRepository.class), mock(FeatureAccessRepository.class),
+                cars, receipts, aiUsage);
 
         service.deleteUserAccount(42L);
 
         verify(cars).deleteByUserId(42L);
+        verify(receipts).deleteByUserId(42L);
+        verify(aiUsage).deleteByUserId(42L);
         verify(users).deleteById(42L);
     }
 }
