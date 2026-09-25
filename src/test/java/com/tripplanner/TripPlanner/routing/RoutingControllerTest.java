@@ -24,20 +24,19 @@ class RoutingControllerTest {
     }
 
     @Test
-    void acceptsUpToTwentyFiveWaypoints() {
+    void acceptsLongRoutesThatGoToOsrmInsteadOfMapbox() {
         when(routingService.calculateRoute(anyList())).thenReturn(Map.of("totalDistance", 1));
 
         ResponseEntity<Map<String, Object>> response = controller.calculateRoute(
-                new RoutingController.RouteRequest(points(25)));
+                new RoutingController.RouteRequest(points(100)));
 
         assertEquals(200, response.getStatusCode().value());
     }
 
     @Test
-    void rejectsMoreWaypointsThanMapboxAcceptsBeforeCallingIt() {
-        // One request per page load, not a bill-inflating batch job.
+    void rejectsAbsurdlyLongRoutesBeforeCallingAnyProvider() {
         ResponseEntity<Map<String, Object>> response = controller.calculateRoute(
-                new RoutingController.RouteRequest(points(26)));
+                new RoutingController.RouteRequest(points(101)));
 
         assertEquals(400, response.getStatusCode().value());
         verify(routingService, never()).calculateRoute(anyList());

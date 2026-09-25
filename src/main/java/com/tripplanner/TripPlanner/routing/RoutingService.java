@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 @Service
 public class RoutingService {
 
+    static final int MAPBOX_MAX_COORDINATES = 25;
+
     private static final String DEFAULT_MAPBOX_REQUEST_ORIGIN = "https://trip-calculate.online";
 
     private final RestTemplate restTemplate;
@@ -89,8 +91,10 @@ public class RoutingService {
             .map(w -> w.lng() + "," + w.lat())
             .collect(Collectors.joining(";"));
 
-        // Try Mapbox first (if token is available)
-        if (mapboxAccessToken != null && !mapboxAccessToken.isBlank()) {
+        // Try Mapbox first (if token is available). Its Directions API takes at most
+        // 25 coordinates; longer routes go straight to OSRM instead of failing there.
+        if (mapboxAccessToken != null && !mapboxAccessToken.isBlank()
+                && waypoints.size() <= MAPBOX_MAX_COORDINATES) {
             Map<String, Object> mapboxResult = tryMapbox(coordinates);
             if (mapboxResult != null) {
                 return mapboxResult;

@@ -16,9 +16,9 @@ public class RoutingController {
 
     private final RoutingService routingService;
 
-    // Mapbox Directions accepts at most 25 coordinates per request. This endpoint
-    // is public, so the cap also keeps one call from costing more than one route.
-    static final int MAX_WAYPOINTS = 25;
+    // This endpoint is public: cap the work one request can cause. Routes over
+    // Mapbox's 25-coordinate limit go to OSRM (see RoutingService).
+    static final int MAX_WAYPOINTS = 100;
 
     @PostMapping("/calculate")
     public ResponseEntity<Map<String, Object>> calculateRoute(@RequestBody RouteRequest request) {
