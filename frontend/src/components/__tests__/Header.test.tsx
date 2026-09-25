@@ -7,13 +7,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Header } from '../common/Header'
 
 let currentPathname = '/uk/route-planner'
+let currentSearch = ''
 let currentLanguage: 'en' | 'uk' = 'uk'
 
 vi.mock('react-router-dom', () => ({
   Link: ({ children, to, ...rest }: { children: ReactNode; to: string } & Record<string, unknown>) => (
     <a href={to} {...rest}>{children}</a>
   ),
-  useLocation: () => ({ pathname: currentPathname, search: '' }),
+  useLocation: () => ({ pathname: currentPathname, search: currentSearch, hash: '' }),
 }))
 vi.mock('../../contexts/AuthContext', () => ({
   useAuth: () => ({ user: null, loading: false }),
@@ -33,6 +34,7 @@ vi.mock('../auth/UserMenu', () => ({ UserMenu: () => <div>User menu</div> }))
 const mounted: Array<() => void> = []
 afterEach(() => {
   for (const cleanup of mounted.splice(0)) cleanup()
+  currentSearch = ''
 })
 
 function renderWithLocale(pathname: string, language: 'en' | 'uk') {
@@ -73,5 +75,12 @@ describe('Header language switcher', () => {
     const container = renderWithLocale('/en/route-planner', 'en')
 
     expect(container.querySelector('a.brand[href="/en"]')).not.toBeNull()
+  })
+
+  it('keeps the query string, so a loaded route survives switching language', () => {
+    currentSearch = '?routeId=42'
+    const container = renderWithLocale('/uk/route-planner', 'uk')
+
+    expect(container.querySelector('a[href="/en/route-planner?routeId=42"]')).not.toBeNull()
   })
 })

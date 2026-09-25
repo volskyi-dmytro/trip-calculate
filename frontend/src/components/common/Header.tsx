@@ -21,7 +21,8 @@ export function Header({ onCalculateClick }: HeaderProps) {
 
   const isHomePage = location.pathname === withLocalePrefix('/', language);
   const otherLang = otherLocale(language);
-  const otherLangPath = withLocalePrefix(location.pathname, otherLang);
+  // Keep ?routeId=… and #anchors: switching language must not lose the loaded route.
+  const otherLangPath = withLocalePrefix(location.pathname, otherLang) + location.search + location.hash;
 
   return (
     <header

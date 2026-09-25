@@ -173,6 +173,26 @@ class SpaShellControllerTest {
     }
 
     @Test
+    void ukrainianHomeDescriptionUsesTheLiveKyivLvivCost() throws Exception {
+        mockFuelPrice(60.0, Instant.now());
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+
+        Matcher description = Pattern.compile("<meta name=\"description\" content=\"([^\"]*)\"").matcher(html);
+        assertTrue(description.find());
+        assertTrue(description.group(1).startsWith("Київ → Львів ≈ "), description.group(1));
+        assertFalse(description.group(1).contains("2 349"), "stale hard-coded price");
+    }
+
+    @Test
+    void ukrainianHomeDescriptionHasNoPricesWhenNoneAreKnown() throws Exception {
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+
+        Matcher description = Pattern.compile("<meta name=\"description\" content=\"([^\"]*)\"").matcher(html);
+        assertTrue(description.find());
+        assertFalse(description.group(1).contains("грн"), description.group(1));
+    }
+
+    @Test
     void legalPagesServeLocalizedTitleAndCrawlableNoscript() throws Exception {
         String uk = controller.shell(new MockHttpServletRequest("GET", "/uk/privacy")).getBody();
         assertTrue(uk.contains("<title>Політика конфіденційності | Trip Calculate</title>"));

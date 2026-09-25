@@ -42,7 +42,8 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
-    navigate(withLocalePrefix(location.pathname, lang));
+    // Keep ?routeId=… and #anchors: switching language must not lose the loaded route.
+    navigate(withLocalePrefix(location.pathname, lang) + location.search + location.hash);
   };
 
   const t = (key: string): string => translate(language, key);

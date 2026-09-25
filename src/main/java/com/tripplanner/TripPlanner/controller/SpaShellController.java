@@ -110,7 +110,7 @@ public class SpaShellController {
                 : "Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate";
         String description = english
                 ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out your European road trip cost in seconds — free, no sign-up."
-                : "Київ → Львів ≈ 2 349 грн на пальне, по 587 грн на пасажира. Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
+                : ukrainianHomeDescription();
         String ogTitle = english
                 ? "Road Trip Fuel Cost Calculator for Europe | Trip Calculate"
                 : "Калькулятор вартості поїздки на авто | Trip Calculate";
@@ -119,6 +119,20 @@ public class SpaShellController {
         String jsonLd = jsonLdWebApplication(canonical, locale, description);
         String noscript = homeNoscript(english, locale);
         return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
+    }
+
+    // Quotes today's Kyiv → Lviv estimate (the same cached figures as its city page)
+    // instead of hard-coded numbers that go stale; no prices when none are known.
+    private String ukrainianHomeDescription() {
+        String tail = "Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
+        Map<String, Object> kyivLviv = cityRouteService.get("kyiv-lviv", "uk").orElse(null);
+        if (kyivLviv == null || kyivLviv.get("totalCost") == null || kyivLviv.get("perPassenger") == null) {
+            return "Калькулятор вартості пального для поїздки на авто з поділом витрат між пасажирами. " + tail;
+        }
+        double total = ((Number) kyivLviv.get("totalCost")).doubleValue();
+        double perPassenger = ((Number) kyivLviv.get("perPassenger")).doubleValue();
+        return "Київ → Львів ≈ " + formatMoneyUk(total) + " на пальне, по " + formatMoneyUk(perPassenger)
+                + " на пасажира. " + tail;
     }
 
     private PageMetadata buildRoutePlannerMetadata(String locale) {
