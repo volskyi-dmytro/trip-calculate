@@ -8,6 +8,7 @@ from app.nodes import (
     parse_locations, geocode_locations, retry_failed_locations,
     fuel_enrichment, _ordered_successful,
     format_response, format_error, route_after_geocode,
+    _PARSE_FAILED_ERRORS,
 )
 
 
@@ -72,12 +73,24 @@ async def test_parse_locations_happy_path(mock_client):
 @patch("app.nodes._openai_client")
 @pytest.mark.asyncio
 async def test_parse_locations_sets_error_on_exception(mock_client):
-    mock_client.beta.chat.completions.parse = AsyncMock(side_effect=Exception("OpenAI down"))
+    mock_client.beta.chat.completions.parse = AsyncMock(
+        side_effect=Exception("OpenAI down: http://agent:8001/internal"))
 
     result = await parse_locations(_state())
 
-    assert "Failed to parse" in result["error"]
+    assert result["error"] == _PARSE_FAILED_ERRORS["en"]
+    assert "OpenAI down" not in result["error"]  # internals never reach the user
     assert result["parsed"] is None
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_error_follows_request_language(mock_client):
+    mock_client.beta.chat.completions.parse = AsyncMock(side_effect=Exception("boom"))
+
+    result = await parse_locations(_state(language="uk"))
+
+    assert result["error"] == _PARSE_FAILED_ERRORS["uk"]
 
 
 @patch("app.nodes._openai_client")
@@ -1237,3 +1250,23 @@ async def test_retry_skips_rather_than_guessing_between_same_type_candidates():
         ParsedLocation(name="Another Place", location_type="waypoint"),
     ]
     assert _pair_retry_slots([2], geocoded, unidentifiable) == []
+
+
+# ── Pinned clock (evaluations replay recorded dates on any calendar day) ──
+
+def test_pinned_today_drives_departure_date_validation():
+    from datetime import date
+    from app.nodes import pinned_today, today_utc
+
+    with pinned_today(date(2026, 8, 15)):
+        assert today_utc() == date(2026, 8, 15)
+        assert _valid_departure_date("2026-08-16") == "2026-08-16"
+        assert _valid_departure_date("2026-08-14") is None
+
+
+def test_system_prompt_uses_the_pinned_date():
+    from datetime import date
+    from app.nodes import pinned_today, _system_prompt
+
+    with pinned_today(date(2026, 8, 15)):
+        assert "2026-08-15" in _system_prompt()

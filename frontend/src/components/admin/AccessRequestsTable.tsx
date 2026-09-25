@@ -1,16 +1,16 @@
 import { useEffect, useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { CheckCircle, XCircle, Loader2, Clock, Filter } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 import { adminService, type AccessRequest } from '../../services/adminService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { timeAgo } from '../../i18n/dates';
 
 type FilterType = 'all' | 'pending' | 'approved' | 'rejected';
 
 export function AccessRequestsTable() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [requests, setRequests] = useState<AccessRequest[]>([]);
   const [filteredRequests, setFilteredRequests] = useState<AccessRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -159,9 +159,7 @@ export function AccessRequestsTable() {
                       <td className="py-3 px-4">{getStatusBadge(request.status)}</td>
                       <td className="py-3 px-4">
                         <span className="text-sm text-gray-600 dark:text-gray-400">
-                          {formatDistanceToNow(new Date(request.requestedAt), {
-                            addSuffix: true,
-                          })}
+                          {timeAgo(request.requestedAt, language)}
                         </span>
                       </td>
 
@@ -201,9 +199,7 @@ export function AccessRequestsTable() {
                         {t('admin.requests.table.requestedAt')}:
                       </span>
                       <span>
-                        {formatDistanceToNow(new Date(request.requestedAt), {
-                          addSuffix: true,
-                        })}
+                        {timeAgo(request.requestedAt, language)}
                       </span>
                     </div>
                   </div>

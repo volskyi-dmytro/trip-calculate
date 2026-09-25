@@ -3,6 +3,7 @@ import respx
 import httpx
 from unittest.mock import AsyncMock, MagicMock, patch
 from app.graph import build_graph
+from app.nodes import _PARSE_FAILED_ERRORS
 from app.schema import ParsedRoute, ParsedLocation, TripSettings, SupervisorDecision
 
 
@@ -97,7 +98,8 @@ async def test_graph_routes_to_error_on_parse_failure(mock_client):
     result = await graph.ainvoke(_initial_state("Trip to somewhere"))
 
     assert result["response"].success is False
-    assert "Failed to parse" in result["response"].error
+    assert result["response"].error == _PARSE_FAILED_ERRORS["en"]
+    assert "API timeout" not in result["response"].error
 
 
 @respx.mock

@@ -48,18 +48,18 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
         String requestUri = request.getRequestURI();
 
         // Log EVERY request to see if filter is even being called
-        log.info(">>> AuthorityRestoreFilter START >>> {} {}", request.getMethod(), requestUri);
+        log.debug(">>> AuthorityRestoreFilter START >>> {} {}", request.getMethod(), requestUri);
 
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
 
         // Log every request to see if filter is running
         if (requestUri.startsWith("/api/")) {
-            log.info("=== AuthorityRestoreFilter === Processing: {} {}", request.getMethod(), requestUri);
-            log.info("Authentication type: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
-            log.info("Is authenticated: {}", authentication != null && authentication.isAuthenticated());
+            log.debug("=== AuthorityRestoreFilter === Processing: {} {}", request.getMethod(), requestUri);
+            log.debug("Authentication type: {}", authentication != null ? authentication.getClass().getSimpleName() : "NULL");
+            log.debug("Is authenticated: {}", authentication != null && authentication.isAuthenticated());
             if (authentication != null) {
-                log.info("Authorities: {}", authentication.getAuthorities());
-                log.info("Principal type: {}", authentication.getPrincipal().getClass().getName());
+                log.debug("Authorities: {}", authentication.getAuthorities());
+                log.debug("Principal type: {}", authentication.getPrincipal().getClass().getName());
             }
         }
 
@@ -106,8 +106,7 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                             String roleAuthority = "ROLE_" + user.getRole().name();
                             authorities.add(new SimpleGrantedAuthority(roleAuthority));
 
-                            log.info("Restored authority '{}' for user ID: {} (email: {})",
-                                    roleAuthority, user.getId(), user.getEmail());
+                            log.debug("Restored authority '{}' for user ID: {}", roleAuthority, user.getId());
 
                             // Create new OidcUser with restored authorities
                             DefaultOidcUser newOidcUser = new DefaultOidcUser(
@@ -126,11 +125,11 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
                             // Update the security context with the new authentication
                             SecurityContextHolder.getContext().setAuthentication(newAuth);
 
-                            log.info("Successfully updated SecurityContext with restored authorities for request: {} {}",
+                            log.debug("Successfully updated SecurityContext with restored authorities for request: {} {}",
                                     request.getMethod(), request.getRequestURI());
 
                         } else {
-                            log.warn("User not found in database for Google ID: {} - cannot restore authorities", googleId);
+                            log.warn("Authenticated user not found in database - cannot restore authorities");
                         }
                     } else {
                         log.warn("Google ID (sub claim) not found in OIDC user attributes - cannot restore authorities");
@@ -159,7 +158,7 @@ public class AuthorityRestoreFilter extends OncePerRequestFilter {
         }
 
         // Continue with the filter chain
-        log.info("<<< AuthorityRestoreFilter END <<< {} {}", request.getMethod(), requestUri);
+        log.debug("<<< AuthorityRestoreFilter END <<< {} {}", request.getMethod(), requestUri);
         filterChain.doFilter(request, response);
     }
 

@@ -19,7 +19,7 @@ function formatDuration(minutes: number, language: 'en' | 'uk'): string {
 
 export function CityRoutePage() {
   const { slug } = useParams<{ slug: string }>();
-  const { language, t } = useLanguage();
+  const { language, t, tn } = useLanguage();
   const [state, setState] = useState<PageState>('loading');
   const [route, setRoute] = useState<CityRouteDetail | null>(null);
 
@@ -82,7 +82,7 @@ export function CityRoutePage() {
     : '';
   const explanation = t('cityRoute.explanation')
     .replace('{consumption}', String(r.consumptionL100))
-    .replace('{passengers}', String(r.passengers))
+    .replace('{passengers}', tn('common.passengersGenitive', r.passengers))
     .replace('{priceDate}', priceDate);
 
   const facts = [

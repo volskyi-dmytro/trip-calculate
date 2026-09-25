@@ -101,15 +101,15 @@ public class SecurityConfig {
             "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com",
 
             // Styles: 'unsafe-inline' required by Mapbox GL (applies styles to DOM elements at runtime)
-            // and React inline style props. Google Fonts CSS loaded via <link> in index.html.
-            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+            // and React inline style props. Fonts are self-hosted (bundled by Vite).
+            "style-src 'self' 'unsafe-inline'",
 
             // Images: data: for SVG/icon data URIs; blob: for canvas exports;
             // *.mapbox.com for map sprites, glyphs, and tile previews
             "img-src 'self' data: blob: https://*.mapbox.com",
 
-            // Fonts: Google Fonts serves actual font files from fonts.gstatic.com
-            "font-src 'self' https://fonts.gstatic.com",
+            // Fonts: self-hosted woff2 files under /assets (no third-party font CDN)
+            "font-src 'self'",
 
             // Connections (XHR/fetch/WebSocket):
             // - api.mapbox.com: Mapbox styles, sprites, glyphs, geocoding
@@ -186,7 +186,7 @@ public class SecurityConfig {
                         .logoutUrl("/logout")
                         .logoutSuccessHandler(oAuth2LogoutSuccessHandler)  // Custom handler for OAuth2 logout
                         .invalidateHttpSession(true)
-                        .deleteCookies("JSESSIONID")
+                        .deleteCookies("SESSIONID")  // name set in SessionConfig
                         .clearAuthentication(true)
                 )
 

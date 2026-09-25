@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { formatDistanceToNow } from 'date-fns';
 import { User, Calendar, Mail, Shield, CheckCircle, Clock, Edit } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -7,6 +6,7 @@ import type { UserProfile } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { EditProfileModal } from './EditProfileModal';
 import { avatarProxyUrl } from '../../utils/avatar';
+import { timeAgo } from '../../i18n/dates';
 
 interface ProfileCardProps {
   profile: UserProfile;
@@ -14,7 +14,7 @@ interface ProfileCardProps {
 }
 
 export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
 
@@ -96,14 +96,14 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <Calendar className="h-4 w-4 mr-2 text-gray-400" />
                 <span>
-                  {t('dashboard.profile.joined')} {formatDistanceToNow(new Date(profile.createdAt), { addSuffix: true })}
+                  {t('dashboard.profile.joined')} {timeAgo(profile.createdAt, language)}
                 </span>
               </div>
 
               <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
                 <User className="h-4 w-4 mr-2 text-gray-400" />
                 <span>
-                  {t('dashboard.profile.lastLogin')} {formatDistanceToNow(new Date(profile.lastLogin), { addSuffix: true })}
+                  {t('dashboard.profile.lastLogin')} {timeAgo(profile.lastLogin, language)}
                 </span>
               </div>
 

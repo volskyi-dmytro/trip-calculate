@@ -50,11 +50,10 @@ public class RoutingService {
         } else {
             // Validate token format (Mapbox tokens start with 'pk.' or 'sk.')
             if (!mapboxAccessToken.startsWith("pk.") && !mapboxAccessToken.startsWith("sk.")) {
-                log.error("Invalid Mapbox token format! Token should start with 'pk.' or 'sk.'. Current: {}...",
-                    mapboxAccessToken.length() > 10 ? mapboxAccessToken.substring(0, 10) : mapboxAccessToken);
+                log.error("Invalid Mapbox token format! Token should start with 'pk.' or 'sk.'");
             } else {
-                log.info("Mapbox routing enabled with token: {}...",
-                    mapboxAccessToken.substring(0, Math.min(15, mapboxAccessToken.length())));
+                // Never log any part of the token.
+                log.info("Mapbox routing enabled");
             }
         }
     }

@@ -7,7 +7,7 @@
 
 TripCalculate uses two separate translation files for different feature areas:
 
-1. **Main Application** (`frontend/src/contexts/LanguageContext.tsx`) - Core app sections
+1. **Main Application** (`frontend/src/i18n/common.ts`, read through `t()`/`tn()` from `LanguageContext.tsx`) - Core app sections
 2. **Route Planner Feature** (`frontend/src/i18n/routePlanner.ts`) - Dedicated route planning UI
 
 Both files support two languages:
@@ -16,7 +16,16 @@ Both files support two languages:
 
 ## Translation Files
 
-### 1. LanguageContext.tsx
+### 1. common.ts
+
+**Guarded by tests:** `src/i18n/__tests__/translations.test.ts` fails the build of the test suite when
+EN and UK keys, placeholders or plural forms drift apart. A missing UK value falls back to English, never
+to the raw key.
+
+**Plurals:** use `tn(key, count)` with CLDR suffixes: `key_one`/`key_other` in EN, and
+`key_one`/`key_few`/`key_many`/`key_other` in UK (1 день · 3 дні · 5 днів · 1,5 дня). `{count}` is filled in.
+
+**Relative dates:** use `timeAgo(date, language)` from `src/i18n/dates.ts`, never bare `formatDistanceToNow`.
 
 **Purpose:** Flat key-value translations for header, navigation, dashboard, admin, FAQ, calculator, and footer sections.
 

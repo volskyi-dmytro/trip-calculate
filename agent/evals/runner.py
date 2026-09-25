@@ -478,6 +478,7 @@ async def run(
     # Module-level country cache in app.geocoding would otherwise carry
     # attributions between runs and make results order-dependent.
     from app.geocoding import _country_cache
+    from app.nodes import pinned_today
 
     _country_cache.clear()
 
@@ -493,35 +494,38 @@ async def run(
     # instrumented client is not reused here.
     live_client = _build_live_client() if mode == "live" else None
 
-    for path in discover():
-        if dataset_filter and dataset_filter not in path.name:
-            continue
-        dataset = load_dataset(path)
-        refs.append(DatasetRef(
-            name=path.name, version=dataset.version, kind=dataset.kind,
-            sha256=file_sha256(path), cases=len(dataset.cases),
-        ))
-        dataset_results: list[CaseResult] = []
-        for case in dataset.cases:
-            if case_filter and case_filter != case.id:
+    # The graph reads "today" from the run, so recorded dates stay valid on
+    # any calendar day (live mode passes the real date, so nothing changes).
+    with pinned_today(today):
+        for path in discover():
+            if dataset_filter and dataset_filter not in path.name:
                 continue
-            if mode == "mock" and case.mock is None:
-                # Contract mode can only exercise a case that declares the
-                # model output it stands in for. Silently passing it would
-                # overstate coverage.
-                skipped.append(f"{path.name}:{case.id} (no mock block)")
-                continue
-            if isinstance(dataset, RouteDataset):
-                obs = await run_route_case(
-                    case, mode, geocoder, today, live_client)  # type: ignore[arg-type]
-                dataset_results.append(score_route_case(case, obs, today))  # type: ignore[arg-type]
-            elif isinstance(dataset, CarDataset):
-                obs_car = await run_car_case(
-                    case, mode, today, live_client)  # type: ignore[arg-type]
-                dataset_results.append(score_car_case(case, obs_car))  # type: ignore[arg-type]
-        if dataset_results:
-            per_dataset[path.name] = aggregate(dataset_results)
-        results.extend(dataset_results)
+            dataset = load_dataset(path)
+            refs.append(DatasetRef(
+                name=path.name, version=dataset.version, kind=dataset.kind,
+                sha256=file_sha256(path), cases=len(dataset.cases),
+            ))
+            dataset_results: list[CaseResult] = []
+            for case in dataset.cases:
+                if case_filter and case_filter != case.id:
+                    continue
+                if mode == "mock" and case.mock is None:
+                    # Contract mode can only exercise a case that declares the
+                    # model output it stands in for. Silently passing it would
+                    # overstate coverage.
+                    skipped.append(f"{path.name}:{case.id} (no mock block)")
+                    continue
+                if isinstance(dataset, RouteDataset):
+                    obs = await run_route_case(
+                        case, mode, geocoder, today, live_client)  # type: ignore[arg-type]
+                    dataset_results.append(score_route_case(case, obs, today))  # type: ignore[arg-type]
+                elif isinstance(dataset, CarDataset):
+                    obs_car = await run_car_case(
+                        case, mode, today, live_client)  # type: ignore[arg-type]
+                    dataset_results.append(score_car_case(case, obs_car))  # type: ignore[arg-type]
+            if dataset_results:
+                per_dataset[path.name] = aggregate(dataset_results)
+            results.extend(dataset_results)
 
     finished_at = datetime.now(timezone.utc)
     total_cost = sum(

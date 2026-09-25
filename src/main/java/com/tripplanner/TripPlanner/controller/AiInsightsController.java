@@ -180,7 +180,7 @@ public class AiInsightsController {
             logger.error("Failed to call agent", e);
             usageService.logResponse(logId, "error", e.getMessage(), duration);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(Map.of("error", "Failed to generate route", "message", e.getMessage()));
+                    .body(Map.of("error", "Failed to generate route"));
         }
     }
 

@@ -3,6 +3,7 @@ package com.tripplanner.TripPlanner.service;
 import com.tripplanner.TripPlanner.dto.*;
 import com.tripplanner.TripPlanner.entity.Route;
 import com.tripplanner.TripPlanner.entity.User;
+import com.tripplanner.TripPlanner.repository.CarRepository;
 import com.tripplanner.TripPlanner.repository.FeatureAccessRepository;
 import com.tripplanner.TripPlanner.repository.RouteRepository;
 import com.tripplanner.TripPlanner.repository.UserRepository;
@@ -27,6 +28,7 @@ public class UserDashboardService {
     private final UserRepository userRepository;
     private final RouteRepository routeRepository;
     private final FeatureAccessRepository featureAccessRepository;
+    private final CarRepository carRepository;
 
     /**
      * Get complete dashboard data for a user
@@ -108,6 +110,10 @@ public class UserDashboardService {
 
         // Delete feature access
         featureAccessRepository.findByUserId(userId).ifPresent(featureAccessRepository::delete);
+
+        // Delete cars explicitly: Car.userId has no JPA relation, so the DB
+        // cascade from V6 is the only other thing that would remove them.
+        carRepository.deleteByUserId(userId);
 
         // Delete user
         userRepository.deleteById(userId);

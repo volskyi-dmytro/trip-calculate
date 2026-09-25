@@ -1,6 +1,5 @@
 package com.tripplanner.TripPlanner.controller;
 
-import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
@@ -26,7 +25,7 @@ public class DevAuthController {
      * Returns a mock authenticated user for development
      */
     @GetMapping("/me")
-    public ResponseEntity<Map<String, Object>> getCurrentUser(HttpSession session) {
+    public ResponseEntity<Map<String, Object>> getCurrentUser() {
         log.info("DEV MODE: Returning mock user");
 
         Map<String, Object> response = new HashMap<>();

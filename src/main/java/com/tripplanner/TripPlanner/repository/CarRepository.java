@@ -13,4 +13,6 @@ public interface CarRepository extends JpaRepository<Car, Long> {
     Optional<Car> findByUserIdAndIsDefaultTrue(Long userId);
     Optional<Car> findFirstByUserIdOrderByUpdatedAtDesc(Long userId);
     long countByUserId(Long userId);
+
+    void deleteByUserId(Long userId);
 }

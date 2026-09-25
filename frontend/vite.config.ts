@@ -6,6 +6,12 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  build: {
+    // Keep font files as real files: the CSP allows fonts from 'self' only,
+    // so a font inlined as a data: URI would be blocked.
+    assetsInlineLimit: (filePath: string) =>
+      /\.(woff2?|ttf|otf)$/.test(filePath) ? false : undefined,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')

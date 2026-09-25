@@ -37,6 +37,15 @@ export function QuickActions() {
     setDeleting(true);
     try {
       await dashboardService.deleteAccount();
+      // The planner keeps the last route's coordinates and the car in this
+      // browser; a deleted account shouldn't leave them behind.
+      for (const key of ['tripCalculate_currentRoute', 'tripCalculate_routeSettings', 'tc_car_v1']) {
+        try {
+          localStorage.removeItem(key);
+        } catch {
+          // Storage can be blocked (private mode); nothing to clean up then.
+        }
+      }
       toast.success(t('dashboard.quickActions.deleteAccountSuccess'));
       // Redirect to home after a short delay
       setTimeout(() => {
@@ -73,7 +82,9 @@ export function QuickActions() {
       description: t('dashboard.quickActions.downloadDataDesc'),
       onClick: handleDownloadData,
       destructive: false,
-      show: true,
+      // Hidden until a real export (or a request-by-email process) exists:
+      // a button that only says "coming soon" promises something we don't do.
+      show: false,
     },
     {
       icon: Trash2,

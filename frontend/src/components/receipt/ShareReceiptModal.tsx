@@ -48,13 +48,21 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
     from: language === 'uk' ? 'Звідки (необов\'язково)' : 'From (optional)',
     to: language === 'uk' ? 'Куди (необов\'язково)' : 'To (optional)',
     create: language === 'uk' ? 'Створити посилання' : 'Create link',
+    publicNotice:
+      language === 'uk'
+        ? 'Будь-хто з цим посиланням зможе переглянути квитанцію, зокрема маршрут на мапі.'
+        : 'Anyone with this link can see the receipt, including the route on the map.',
+    addressHint:
+      language === 'uk'
+        ? 'Порада: вкажіть місто чи орієнтир замість домашньої адреси.'
+        : 'Tip: use a city or landmark instead of your home address.',
     copy: language === 'uk' ? 'Копіювати' : 'Copy',
     copiedToast: language === 'uk' ? 'Посилання скопійовано' : 'Link copied',
     share: language === 'uk' ? 'Поділитися' : 'Share',
     expiresNote:
       language === 'uk'
-        ? 'Посилання діє 30 днів. Увійдіть, щоб зберігати квитанції без обмежень.'
-        : 'Link lasts 30 days. Sign in to keep receipts forever.',
+        ? 'Посилання діє 30 днів. Увійдіть, щоб зберігати квитанції довше.'
+        : 'Link lasts 30 days. Sign in to keep receipts longer.',
     rateLimited:
       language === 'uk'
         ? 'Забагато квитанцій за годину. Спробуйте пізніше.'
@@ -104,8 +112,9 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
         {!receipt ? (
           <div className="space-y-4">
             <div>
-              <Label className="text-xs font-semibold uppercase">{t.from}</Label>
+              <Label htmlFor="receipt-origin" className="text-xs font-semibold uppercase">{t.from}</Label>
               <Input
+                id="receipt-origin"
                 value={origin}
                 onChange={(e) => setOrigin(e.target.value)}
                 maxLength={120}
@@ -114,14 +123,19 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
               />
             </div>
             <div>
-              <Label className="text-xs font-semibold uppercase">{t.to}</Label>
+              <Label htmlFor="receipt-destination" className="text-xs font-semibold uppercase">{t.to}</Label>
               <Input
+                id="receipt-destination"
                 value={destination}
                 onChange={(e) => setDestination(e.target.value)}
                 maxLength={120}
                 className="mt-1"
                 placeholder={language === 'uk' ? 'Львів' : 'Munich'}
               />
+            </div>
+            <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+              <p>{t.publicNotice}</p>
+              <p>{t.addressHint}</p>
             </div>
             <Button onClick={handleCreate} disabled={creating} className="w-full">
               {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : t.create}

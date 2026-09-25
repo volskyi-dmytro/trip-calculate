@@ -8,7 +8,7 @@ interface StatsCardProps {
 }
 
 export function StatsCard({ stats }: StatsCardProps) {
-  const { t } = useLanguage();
+  const { t, tn } = useLanguage();
 
   const statItems = [
     {
@@ -28,7 +28,7 @@ export function StatsCard({ stats }: StatsCardProps) {
     },
     {
       label: t('dashboard.stats.accountAge'),
-      value: `${stats.accountAgeDays} ${t('dashboard.stats.days')}`,
+      value: tn('dashboard.stats.days', stats.accountAgeDays),
       icon: Calendar,
     },
   ];

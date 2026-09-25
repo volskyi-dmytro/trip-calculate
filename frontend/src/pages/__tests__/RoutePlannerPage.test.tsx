@@ -16,7 +16,7 @@ vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }),
 }))
 vi.mock('../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ language: 'en', setLanguage: vi.fn() }),
+  useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), t: (key: string) => key }),
 }))
 vi.mock('../../components/RoutePlanner', () => ({
   RoutePlanner: () => <div data-testid="route-planner">Route planner ready</div>,
@@ -31,5 +31,12 @@ describe('RoutePlannerPage public beta access', () => {
 
     expect(html).toContain('Route planner ready')
     expect(html).not.toContain('Request')
+  })
+
+  it('gives the language and theme buttons localized accessible names', () => {
+    const html = renderToStaticMarkup(<RoutePlannerPage />)
+
+    expect(html).toContain('aria-label="UA: common.switchLanguage"')
+    expect(html).toMatch(/aria-label="common\.theme\.to(Light|Dark)"/)
   })
 })

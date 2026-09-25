@@ -12,7 +12,7 @@ vi.mock('react-router-dom', () => ({
   useParams: () => ({ slug: 'kyiv-lviv' }),
 }))
 vi.mock('../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ language: 'en', t: (key: string) => key }),
+  useLanguage: () => ({ language: 'en', t: (key: string) => key, tn: (key: string, count: number) => `${key}:${count}` }),
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
 vi.mock('../../components/common/Footer', () => ({ Footer: () => <footer>Footer</footer> }))

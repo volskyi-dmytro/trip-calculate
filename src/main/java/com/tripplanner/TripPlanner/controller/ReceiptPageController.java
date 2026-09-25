@@ -93,13 +93,24 @@ public class ReceiptPageController {
     }
 
     private String ogDescription(TripReceipt r) {
+        int people = r.getPeople();
         if ("uk".equals(r.getLocale())) {
             return "Паливо: " + r.getTotalCost() + " " + r.getCurrency()
-                    + " на " + r.getPeople() + " осіб. Розрахуйте свою поїздку на Trip Calculate.";
+                    + " на " + people + " " + ukPersonsAccusative(people)
+                    + ". Розрахуйте свою поїздку на Trip Calculate.";
         }
         return "Fuel total " + r.getTotalCost() + " " + r.getCurrency()
-                + ", split between " + r.getPeople()
-                + " people. Calculate your own trip on Trip Calculate.";
+                + (people == 1 ? ", for 1 person." : ", split between " + people + " people.")
+                + " Calculate your own trip on Trip Calculate.";
+    }
+
+    // "на N особу/особи/осіб": Ukrainian CLDR plural rules (one/few/many).
+    private static String ukPersonsAccusative(int n) {
+        int mod10 = n % 10;
+        int mod100 = n % 100;
+        if (mod10 == 1 && mod100 != 11) return "особу";
+        if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return "особи";
+        return "осіб";
     }
 
     private String template() throws IOException {

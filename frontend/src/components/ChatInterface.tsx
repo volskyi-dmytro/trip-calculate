@@ -112,6 +112,7 @@ export function ChatInterface({
       : 'Describe your trip (e.g., "Trip from Kyiv to Lviv for 2 passengers")...',
     chatPlaceholderShort: language === 'uk' ? 'Запитайте AI...' : 'Ask AI...',
     send: language === 'uk' ? 'Надіслати повідомлення' : 'Send message',
+    inputLabel: language === 'uk' ? 'Повідомлення для помічника з поїздок' : 'Message to the trip assistant',
   };
 
   return (
@@ -186,6 +187,7 @@ export function ChatInterface({
         <Input
           type="text"
           name="aiPrompt"
+          aria-label={t.inputLabel}
           value={chatInput}
           onChange={(e) => onChatInputChange(e.target.value)}
           placeholder={isCentered ? t.chatPlaceholder : t.chatPlaceholderShort}

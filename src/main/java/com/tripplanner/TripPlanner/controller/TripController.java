@@ -1,5 +1,6 @@
 package com.tripplanner.TripPlanner.controller;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.Map;
 
 @Controller
+@Slf4j
 public class TripController {
 
     // @GetMapping("/")
@@ -60,7 +62,9 @@ public class TripController {
             ));
 
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Invalid input data: " + e.getMessage()));
+            // Exception text can describe internals; keep it in the server log only.
+            log.warn("Trip calculation failed: {}", e.toString());
+            return ResponseEntity.badRequest().body(Map.of("error", "Invalid input data"));
         }
     }
 

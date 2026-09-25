@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.Mockito.anyString;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -104,5 +105,20 @@ class AiInsightsControllerTest {
                 new MockHttpServletRequest());
 
         assertEquals(500, response.getStatusCode().value());
+    }
+
+    @Test
+    void agentFailureDoesNotLeakInternalDetails() {
+        AiInsightsController controller = controller();
+        // Nothing listens on port 1: the RestTemplate error names this URL.
+        ReflectionTestUtils.setField(controller, "agentUrl", "http://127.0.0.1:1/internal-agent");
+
+        ResponseEntity<?> response = controller.generateInsights(
+                Map.of("message", "Kyiv to Lviv"), new MockHttpServletRequest());
+
+        assertEquals(500, response.getStatusCode().value());
+        String body = String.valueOf(response.getBody());
+        assertFalse(body.contains("127.0.0.1"), body);
+        assertFalse(body.contains("internal-agent"), body);
     }
 }
