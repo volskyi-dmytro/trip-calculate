@@ -24,9 +24,11 @@ public class ClientIpResolver {
 
     private static final String CF_CONNECTING_IP = "CF-Connecting-IP";
 
-    // Declared before TRUSTED_PROXIES, which parses with it.
-    // Literal IPv4/IPv6 only, so InetAddress never does a DNS lookup.
-    private static final Pattern IP_LITERAL = Pattern.compile("^[0-9a-fA-F:.]{2,45}$");
+    // Declared before TRUSTED_PROXIES, which parses with them.
+    // Literal addresses only, so InetAddress never does a DNS lookup:
+    // dotted-decimal IPv4, or IPv6 (hex groups with at least one colon).
+    private static final Pattern IPV4_LITERAL = Pattern.compile("^\\d{1,3}(\\.\\d{1,3}){3}$");
+    private static final Pattern IPV6_LITERAL = Pattern.compile("^[0-9a-fA-F:.]*:[0-9a-fA-F:.]*$");
 
     // Cloudflare edge ranges (https://www.cloudflare.com/ips/) plus loopback and
     // private networks (Docker bridge gateway, same-host callers).
@@ -57,8 +59,15 @@ public class ClientIpResolver {
         return peer;
     }
 
-    /** True only when the TCP connection itself comes from this machine (health checks). */
+    /**
+     * True only for a request made on this machine itself (health checks): a
+     * loopback connection that carries no proxy headers. A reverse proxy on the
+     * same host would forward every visitor over loopback, with those headers.
+     */
     public boolean isLocalRequest(HttpServletRequest request) {
+        if (request.getHeader(CF_CONNECTING_IP) != null || request.getHeader("X-Forwarded-For") != null) {
+            return false;
+        }
         InetAddress peer = parse(socketPeer(request));
         return peer != null && peer.isLoopbackAddress();
     }
@@ -79,10 +88,8 @@ public class ClientIpResolver {
     }
 
     private static InetAddress parse(String value) {
-        if (value == null || !IP_LITERAL.matcher(value).matches()) {
-            return null;
-        }
-        if (!value.contains(":") && value.chars().filter(c -> c == '.').count() != 3) {
+        if (value == null || value.length() > 45
+                || !(IPV4_LITERAL.matcher(value).matches() || IPV6_LITERAL.matcher(value).matches())) {
             return null;
         }
         try {

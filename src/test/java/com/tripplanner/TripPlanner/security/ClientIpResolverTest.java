@@ -89,4 +89,25 @@ class ClientIpResolverTest {
         viaDocker.addHeader("CF-Connecting-IP", "127.0.0.1");
         assertFalse(resolver.isLocalRequest(viaDocker));
     }
+
+    @Test
+    void hexWordHostnamesAreNotResolvedThroughDns() {
+        // "cafe.babe.dead.beef" looks like hex; it must be rejected, not looked up.
+        MockHttpServletRequest request = from("162.158.1.20");
+        request.addHeader("CF-Connecting-IP", "cafe.babe.dead.beef");
+
+        assertEquals("162.158.1.20", resolver.resolve(request));
+    }
+
+    @Test
+    void aLoopbackConnectionCarryingProxyHeadersIsNotLocal() {
+        // A reverse proxy on the same host would forward every visitor over loopback.
+        MockHttpServletRequest proxied = from("127.0.0.1");
+        proxied.addHeader("CF-Connecting-IP", "203.0.113.7");
+        assertFalse(resolver.isLocalRequest(proxied));
+
+        MockHttpServletRequest forwarded = from("127.0.0.1");
+        forwarded.addHeader("X-Forwarded-For", "203.0.113.7");
+        assertFalse(resolver.isLocalRequest(forwarded));
+    }
 }
