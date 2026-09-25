@@ -13,6 +13,7 @@ import {
   DialogTitle,
 } from '../ui/dialog';
 import { dashboardService } from '../../services/dashboardService';
+import { clearPlannerStorage } from '../../utils/plannerStorage';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { withLocalePrefix } from '../../utils/locale';
 
@@ -43,15 +44,8 @@ export function QuickActions() {
     setDeleting(true);
     try {
       await dashboardService.deleteAccount();
-      // The planner keeps the last route's coordinates and the car in this
-      // browser; a deleted account shouldn't leave them behind.
-      for (const key of ['tripCalculate_currentRoute', 'tripCalculate_routeSettings', 'tc_car_v1']) {
-        try {
-          localStorage.removeItem(key);
-        } catch {
-          // Storage can be blocked (private mode); nothing to clean up then.
-        }
-      }
+      // A deleted account shouldn't leave its route or AI answers in this browser.
+      clearPlannerStorage();
       toast.success(t('dashboard.quickActions.deleteAccountSuccess'));
       // Redirect to home after a short delay
       setTimeout(() => {
