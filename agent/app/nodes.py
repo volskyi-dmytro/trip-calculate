@@ -143,6 +143,14 @@ _NOT_A_ROUTE_ERRORS = {
 }
 
 
+# Shown when parsing fails for an internal reason (LLM outage, bad output).
+# The exception itself is logged, never sent: it can carry internal URLs.
+_PARSE_FAILED_ERRORS = {
+    "en": "Sorry, I couldn't process that request. Please try again in a moment.",
+    "uk": "Не вдалося обробити запит. Спробуйте ще раз за хвилину.",
+}
+
+
 def _not_a_route_error(language: str) -> str:
     return _NOT_A_ROUTE_ERRORS.get(language, _NOT_A_ROUTE_ERRORS["en"])
 
@@ -348,8 +356,10 @@ async def parse_locations(state: GraphState) -> GraphState:
                 return {**state, "parsed": result}
             return {**state, "error": _not_a_route_error(state.get("language", "en"))}
         return {**state, "parsed": result}
-    except Exception as exc:
-        return {**state, "error": f"Failed to parse route request: {exc}"}
+    except Exception:
+        logger.exception("Failed to parse route request")
+        language = state.get("language", "en")
+        return {**state, "error": _PARSE_FAILED_ERRORS.get(language, _PARSE_FAILED_ERRORS["en"])}
 
 
 def _is_kept_current_waypoint(loc, current_route) -> bool:

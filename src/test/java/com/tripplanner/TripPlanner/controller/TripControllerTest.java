@@ -45,4 +45,14 @@ class TripControllerTest {
         assertEquals(400, response.getStatusCode().value());
         assertTrue(((String) body.get("error")).contains("positive"));
     }
+
+    @Test
+    void unexpectedFailureGetsAGenericError() {
+        // A null body throws inside the handler; the exception text
+        // ("Cannot invoke java.util.Map.get...") must not reach the client.
+        ResponseEntity<?> response = controller.calculateTrip(null);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals(Map.of("error", "Invalid input data"), response.getBody());
+    }
 }
