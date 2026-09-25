@@ -24,6 +24,9 @@ const UserDashboard = lazy(() =>
 const AdminDashboard = lazy(() =>
   import('./pages/AdminDashboard').then((m) => ({ default: m.AdminDashboard })),
 );
+const LegalPage = lazy(() =>
+  import('./pages/LegalPage').then((m) => ({ default: m.LegalPage })),
+);
 const CityRoutePage = lazy(() =>
   import('./pages/CityRoutePage').then((m) => ({ default: m.CityRoutePage })),
 );
@@ -89,6 +92,22 @@ function App() {
                   element={
                     <LocaleBoundary>
                       <CityRoutePage />
+                    </LocaleBoundary>
+                  }
+                />
+                <Route
+                  path="/:locale/privacy"
+                  element={
+                    <LocaleBoundary>
+                      <LegalPage page="privacy" />
+                    </LocaleBoundary>
+                  }
+                />
+                <Route
+                  path="/:locale/terms"
+                  element={
+                    <LocaleBoundary>
+                      <LegalPage page="terms" />
                     </LocaleBoundary>
                   }
                 />
