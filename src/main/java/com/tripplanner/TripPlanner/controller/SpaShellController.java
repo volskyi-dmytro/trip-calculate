@@ -289,10 +289,18 @@ public class SpaShellController {
         return toScriptTag(obj);
     }
 
+    /**
+     * JSON placed inside a script element: every "<" becomes the JSON escape
+     * \\u003c, so no value can close the element ("</script>") or open a
+     * comment ("<!--") that would swallow the rest of the page.
+     */
+    static String escapeForScript(String json) {
+        return json.replace("<", "\\u003c");
+    }
+
     private String cityRouteDataIsland(String slug, String locale, Map<String, Object> facts) {
         try {
-            // "</" is escaped so a value can never close the <script> element early.
-            String json = objectMapper.writeValueAsString(facts).replace("</", "<\\/");
+            String json = escapeForScript(objectMapper.writeValueAsString(facts));
             return "\n    <script type=\"application/json\" id=\"city-route-data\" data-slug=\""
                     + esc(slug) + "\" data-locale=\"" + esc(locale) + "\">" + json + "</script>";
         } catch (JsonProcessingException e) {
@@ -302,8 +310,7 @@ public class SpaShellController {
 
     private String toScriptTag(Object payload) {
         try {
-            // Escape "</" so a value can never prematurely close the <script> tag.
-            String json = objectMapper.writeValueAsString(payload).replace("</", "<\\/");
+            String json = escapeForScript(objectMapper.writeValueAsString(payload));
             return "\n    <script type=\"application/ld+json\">" + json + "</script>";
         } catch (JsonProcessingException e) {
             throw new IllegalStateException("Failed to serialize JSON-LD payload", e);

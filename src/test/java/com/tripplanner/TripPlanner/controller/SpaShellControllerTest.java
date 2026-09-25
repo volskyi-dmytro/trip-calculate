@@ -165,6 +165,13 @@ class SpaShellControllerTest {
     }
 
     @Test
+    void jsonInsideScriptElementsCannotBreakOutOrOpenComments() {
+        String escaped = SpaShellController.escapeForScript("{\"name\":\"<!--<script></script>\"}");
+        assertFalse(escaped.contains("<"), escaped);
+        assertEquals("{\"name\":\"\\u003c!--\\u003cscript>\\u003c/script>\"}", escaped);
+    }
+
+    @Test
     void homeAndLegalPagesCarryNoCityData() throws Exception {
         for (String path : List.of("/en", "/uk/privacy")) {
             String html = controller.shell(new MockHttpServletRequest("GET", path)).getBody();
