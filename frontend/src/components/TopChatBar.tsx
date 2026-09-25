@@ -26,6 +26,7 @@ export function TopChatBar({
       ? 'Обробка...'
       : 'Processing...',
     send: language === 'uk' ? 'Надіслати повідомлення' : 'Send message',
+    inputLabel: language === 'uk' ? 'Повідомлення для помічника з поїздок' : 'Message to the trip assistant',
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -47,6 +48,7 @@ export function TopChatBar({
             <Input
               type="text"
               placeholder={t.placeholder}
+              aria-label={t.inputLabel}
               value={chatInput}
               onChange={(e) => onChatInputChange(e.target.value)}
               onKeyDown={handleKeyDown}

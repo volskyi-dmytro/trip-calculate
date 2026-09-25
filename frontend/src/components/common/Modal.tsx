@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useLanguage } from '../../contexts/LanguageContext';
 
 interface ModalProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface ModalProps {
 }
 
 export function Modal({ isOpen, onClose, title, children }: ModalProps) {
+  const { t } = useLanguage();
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
@@ -36,7 +38,7 @@ export function Modal({ isOpen, onClose, title, children }: ModalProps) {
       >
         <div className="modal-head">
           <h2>{title}</h2>
-          <button type="button" className="icon-btn" onClick={onClose} aria-label="Close">
+          <button type="button" className="icon-btn" onClick={onClose} aria-label={t('common.close')}>
             <X size={18} />
           </button>
         </div>

@@ -40,7 +40,7 @@ export function AdminDashboard() {
         {/* Tabs */}
         <div className="mb-4 sm:mb-6">
           <div className="border-b border-gray-200 dark:border-gray-700">
-            <nav className="flex flex-col sm:flex-row sm:space-x-8 -mb-px" aria-label="Tabs">
+            <nav className="flex flex-col sm:flex-row sm:space-x-8 -mb-px" aria-label={t('admin.tabs.label')}>
               {tabs.map((tab) => (
                 <button
                   key={tab.id}

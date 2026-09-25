@@ -37,7 +37,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
           </Link>
 
           <div className="topbar-controls">
-            <div className="seg" role="group" aria-label="Language">
+            <div className="seg" role="group" aria-label={t('common.language')}>
               <Link
                 to={language === 'en' ? location.pathname + location.search : otherLangPath}
                 hrefLang="en"
@@ -62,7 +62,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
               type="button"
               className="icon-btn"
               onClick={toggleTheme}
-              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-label={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
             >
               {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
             </button>

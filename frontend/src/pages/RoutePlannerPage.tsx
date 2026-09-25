@@ -10,7 +10,7 @@ import { withLocalePrefix } from '../utils/locale';
 import { Loader2, Navigation, Sun, Moon } from 'lucide-react';
 
 export function RoutePlannerPage() {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
@@ -62,6 +62,7 @@ export function RoutePlannerPage() {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setLanguage(language === 'en' ? 'uk' : 'en')}
+            aria-label={t('common.switchLanguage')}
             className="text-xs font-semibold px-2 py-1 rounded transition-colors"
             style={{
               color: 'var(--nav-text-secondary)',
@@ -80,8 +81,8 @@ export function RoutePlannerPage() {
               border: '1px solid var(--nav-border)',
               background: 'var(--nav-bg-input)',
             }}
-            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
-            aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            title={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
+            aria-label={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
           >
             {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
           </button>
