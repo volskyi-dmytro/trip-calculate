@@ -8,7 +8,7 @@ layer and carries a sentinel, never exception text (no internals leakage).
 """
 import json
 import logging
-from typing import AsyncIterator
+from typing import AsyncIterator, Callable, Optional
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +31,8 @@ def sse_frame(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data, ensure_ascii=False)}\n\n"
 
 
-async def stream_route(graph, initial_state: dict) -> AsyncIterator[str]:
+async def stream_route(graph, initial_state: dict,
+                       on_result: Optional[Callable[[dict], None]] = None) -> AsyncIterator[str]:
     yield sse_frame("stage", {"stage": "supervisor", "status": "running"})
     last_stage = None
     response = None
@@ -46,7 +47,10 @@ async def stream_route(graph, initial_state: dict) -> AsyncIterator[str]:
                     response = delta["response"]
         if response is None:
             raise ValueError("graph produced no response")
-        yield sse_frame("result", response.model_dump(mode="json"))
+        result = response.model_dump(mode="json")
+        if on_result is not None:
+            on_result(result)
+        yield sse_frame("result", result)
     except Exception:
         logger.exception("route stream failed")
         yield sse_frame("error", {"error": "stream_failed"})

@@ -126,3 +126,11 @@ def test_endpoint_streams_and_sets_headers():
 def test_endpoint_validates_request():
     client = TestClient(app)
     assert client.post("/parse-route/stream", json={"message": ""}).status_code == 422
+
+
+@patch("app.main._langfuse")
+@patch("app.main.route_graph", new=_FakeGraph([{"format_response": {"response": _OK_RESPONSE}}]))
+def test_stream_endpoint_sets_root_observation_output(mock_langfuse):
+    root = mock_langfuse.start_as_current_observation.return_value.__enter__.return_value
+    TestClient(app).post("/parse-route/stream", json={"message": "Kyiv to Lviv", "language": "en", "user_id": "u"})
+    root.update.assert_called_once_with(output=_OK_RESPONSE.model_dump(mode="json"))

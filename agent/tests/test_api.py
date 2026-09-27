@@ -234,3 +234,19 @@ def test_weather_corridor_validates_payload():
     too_many = {"waypoints": [_CORRIDOR_BODY["waypoints"][0]] * 26,
                 "date": _CORRIDOR_BODY["date"]}
     assert client.post("/weather-corridor", json=too_many).status_code == 422
+
+
+# Langfuse v4 is observations-first: the response must land on the root
+# observation's output, not only its input.
+@patch("app.main._langfuse")
+@patch("app.main.route_graph")
+def test_parse_route_sets_root_observation_output(mock_graph, mock_langfuse):
+    mock_graph.ainvoke = AsyncMock(return_value={"response": _success_response()})
+    root = mock_langfuse.start_as_current_observation.return_value.__enter__.return_value
+
+    from app.main import app
+    TestClient(app).post("/parse-route", json={"message": "Kyiv to Lviv", "language": "en", "user_id": "u"})
+
+    output = root.update.call_args.kwargs["output"]
+    assert output["success"] is True
+    assert output["route"]["waypoints"][0]["name"] == "Kyiv"
