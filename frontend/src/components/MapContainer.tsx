@@ -30,6 +30,20 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const onDeleteWaypointRef = useRef(onDeleteWaypoint)
   const isMapLoadedRef = useRef(false)
   const isDraggingMarkerRef = useRef(false) // Track marker drag state to prevent click event
+  // Latest geometry, read when the 'route' source is (re)created. A geometry
+  // that arrives before the style finishes loading (first load or a theme
+  // switch) finds no source to update, so the source must seed itself from
+  // here — otherwise the line stays missing until the next recalculation.
+  const routeGeometryRef = useRef(routeGeometry)
+  routeGeometryRef.current = routeGeometry
+  const routeLineData = (): GeoJSON.Feature<GeoJSON.LineString> => ({
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: routeGeometryRef.current.map(([lat, lng]) => [lng, lat]),
+    },
+  })
   const { theme } = useTheme()
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -137,14 +151,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       if (!map.getSource('route')) {
         map.addSource('route', {
           type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: []
-            }
-          }
+          data: routeLineData()
         })
 
         // Add layer for route line
@@ -200,10 +207,6 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
       console.log('🎨 [MAP] Switching theme to:', theme)
 
-      const routeData = map.getSource('route')
-        ? (map.getSource('route') as mapboxgl.GeoJSONSource)._data
-        : null
-
       isMapLoadedRef.current = false
       map.setStyle(desiredStyle)
 
@@ -214,14 +217,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         if (!map.getSource('route')) {
           map.addSource('route', {
             type: 'geojson',
-            data: routeData || {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: []
-              }
-            }
+            data: routeLineData()
           })
 
           map.addLayer({

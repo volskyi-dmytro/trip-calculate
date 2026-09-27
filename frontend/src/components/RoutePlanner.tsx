@@ -840,6 +840,14 @@ export function RoutePlanner() {
   const handleCalculateRoute = useCallback(async () => {
     if (!startLocationInput.trim() || !destinationInput.trim()) return
 
+    // Inputs still showing the current endpoints (e.g. right after an AI
+    // result) must not be re-geocoded: text → point → street address lands
+    // on different coordinates and the same trip gets a second, different
+    // distance and cost.
+    const first = waypoints[0]
+    const last = waypoints.length >= 2 ? waypoints[waypoints.length - 1] : undefined
+    if (first && last && startLocationInput === first.name && destinationInput === last.name) return
+
     setIsSearchingStart(true)
     setIsSearchingDestination(true)
 
