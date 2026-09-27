@@ -1,38 +1,38 @@
 import { describe, it, expect } from 'vitest'
-import { matchingCarId } from '../carSelection'
+import { matchingCarId, carMentionedInText, preferredCarForAiResult } from '../carSelection'
 import type { GarageCar } from '../../types/Car'
 
-describe('matchingCarId', () => {
-  const cars: GarageCar[] = [
-    {
-      id: 1,
-      name: 'Peugeot 307',
-      makeModel: 'Peugeot 307 2003-2008',
-      fuelType: 'diesel',
-      fuelConsumption: 7.2,
-      isDefault: false,
-      source: 'catalog',
-    },
-    {
-      id: 2,
-      name: 'Volkswagen Golf',
-      makeModel: 'Volkswagen Golf 2.0 TDI',
-      fuelType: 'diesel',
-      fuelConsumption: 6.5,
-      isDefault: true,
-      source: 'catalog',
-    },
-    {
-      id: 3,
-      name: 'Ford Focus',
-      makeModel: 'Ford Focus Petrol',
-      fuelType: 'petrol',
-      fuelConsumption: 8.9,
-      isDefault: false,
-      source: 'catalog',
-    },
-  ]
+const cars: GarageCar[] = [
+  {
+    id: 1,
+    name: 'Peugeot 307',
+    makeModel: 'Peugeot 307 2003-2008',
+    fuelType: 'diesel',
+    fuelConsumption: 7.2,
+    isDefault: false,
+    source: 'catalog',
+  },
+  {
+    id: 2,
+    name: 'Volkswagen Golf',
+    makeModel: 'Volkswagen Golf 2.0 TDI',
+    fuelType: 'diesel',
+    fuelConsumption: 6.5,
+    isDefault: true,
+    source: 'catalog',
+  },
+  {
+    id: 3,
+    name: 'Ford Focus',
+    makeModel: 'Ford Focus Petrol',
+    fuelType: 'petrol',
+    fuelConsumption: 8.9,
+    isDefault: false,
+    source: 'catalog',
+  },
+]
 
+describe('matchingCarId', () => {
   it('returns the id when fuel type and consumption match exactly', () => {
     expect(matchingCarId(cars, 'diesel', 7.2)).toBe(1)
   })
@@ -73,5 +73,34 @@ describe('matchingCarId', () => {
 
   it('returns null when garage is empty', () => {
     expect(matchingCarId([], 'diesel', 7.2)).toBeNull()
+  })
+})
+
+describe('carMentionedInText', () => {
+  it('matches on make/model mentioned in free text, case-insensitive', () => {
+    expect(carMentionedInText(cars, 'diesel Skoda Superb next Saturday')).toBeNull()
+    expect(carMentionedInText(cars, 'take my VOLKSWAGEN GOLF to Lviv')?.id).toBe(2)
+  })
+
+  it('matches on the car nickname', () => {
+    expect(carMentionedInText(cars, 'trip in the ford focus')?.id).toBe(3)
+  })
+
+  it('returns null when nothing in the garage is mentioned', () => {
+    expect(carMentionedInText(cars, 'Lutsk to Krakow, 3 people')).toBeNull()
+  })
+})
+
+describe('preferredCarForAiResult', () => {
+  it('prefers a car named in the message over the AI guess', () => {
+    expect(preferredCarForAiResult(cars, 'diesel Peugeot 307 roadtrip', true)?.id).toBe(1)
+  })
+
+  it('falls back to the default garage car when the AI gave no car-specific guess', () => {
+    expect(preferredCarForAiResult(cars, 'trip to Lviv for 2 people', false)?.id).toBe(2)
+  })
+
+  it('leaves the AI guess in place when it gave one and no car is named', () => {
+    expect(preferredCarForAiResult(cars, 'trip to Lviv for 2 people', true)).toBeNull()
   })
 })
