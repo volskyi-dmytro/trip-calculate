@@ -825,7 +825,7 @@ def _flat(text: str) -> str:
 
 
 def test_system_prompt_forbids_dropping_transit_stops():
-    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27"))
+    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27", today_weekday="Monday", next_7_days=""))
     assert "через" in prompt and "via" in prompt
     assert "waypoint" in prompt
     assert "never drop" in prompt.lower()
@@ -836,7 +836,7 @@ def test_system_prompt_covers_country_and_same_country_region_transit():
     and regions inside the trip's own country ("через Черкаську область")
     must both be named in the prompt, or the model has no template for them
     and omits them — which is exactly how the original bug presented."""
-    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27"))
+    prompt = _flat(_SYSTEM_PROMPT.format(today="2026-07-27", today_weekday="Monday", next_7_days=""))
     assert "Румунію" in prompt and "Romania" in prompt
     assert "Cherkasy Oblast Ukraine" in prompt
     assert "-щина" in prompt  # colloquial oblast forms (Полтавщина, Львівщина)
@@ -1042,7 +1042,7 @@ async def test_retry_does_not_merge_the_origin_into_a_failed_destination():
             ParsedLocation(name="Kovel Ukraine", location_type="destination"),
         ])
 
-    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True, language="en"):
         return GeocodedLocation(
             name=loc.name, clean_name=loc.name.split()[0],
             location_type=loc.location_type,
@@ -1084,7 +1084,7 @@ async def test_retry_matches_multiple_failed_waypoints_in_order():
         locations=[ParsedLocation(name="B2", location_type="waypoint"),
                    ParsedLocation(name="C2", location_type="waypoint")])
 
-    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True, language="en"):
         return GeocodedLocation(name=loc.name, clean_name=loc.name,
                                 location_type=loc.location_type,
                                 latitude=1.5, longitude=1.5, source="nominatim")
@@ -1119,7 +1119,7 @@ async def test_retry_keeps_the_failure_when_no_slot_matches():
         locations=[ParsedLocation(name="Y", location_type="waypoint"),
                    ParsedLocation(name="Z", location_type="waypoint")])
 
-    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True, language="en"):
         return GeocodedLocation(name=loc.name, clean_name=loc.name,
                                 location_type=loc.location_type,
                                 latitude=9.0, longitude=9.0, source="nominatim")
@@ -1157,7 +1157,7 @@ async def test_retry_falls_back_to_position_when_counts_match_exactly():
         is_route_request=True, settings=TripSettings(),
         locations=[ParsedLocation(name="B2", location_type="destination")])
 
-    async def fake_geocode(loc, _ua="x", allow_ai_coords=True):
+    async def fake_geocode(loc, _ua="x", allow_ai_coords=True, language="en"):
         return GeocodedLocation(name=loc.name, clean_name=loc.name,
                                 location_type=loc.location_type,
                                 latitude=1.5, longitude=1.5, source="nominatim")
@@ -1270,3 +1270,160 @@ def test_system_prompt_uses_the_pinned_date():
 
     with pinned_today(date(2026, 8, 15)):
         assert "2026-08-15" in _system_prompt()
+
+
+# ── Relative weekday resolution (audit: "next Saturday" → Wed instead of Sat) ──
+
+def test_resolve_relative_weekday_next_saturday_from_sunday():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    # 2026-09-27 is a Sunday; the first Saturday strictly after it is 10-03.
+    assert resolve_relative_weekday(
+        "Lutsk to Krakow next Saturday, 3 people", date(2026, 9, 27)
+    ) == "2026-10-03"
+
+
+def test_resolve_relative_weekday_this_means_the_same_as_next():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    assert resolve_relative_weekday(
+        "trip this Saturday", date(2026, 9, 27)
+    ) == "2026-10-03"
+
+
+def test_resolve_relative_weekday_rolls_over_when_today_is_that_weekday():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    # 2026-09-27 is itself a Sunday: "next Sunday" must be 7 days out, not today.
+    assert resolve_relative_weekday(
+        "on Sunday we leave", date(2026, 9, 27)
+    ) == "2026-10-04"
+
+
+def test_resolve_relative_weekday_ukrainian_forms():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    today = date(2026, 9, 27)
+    assert resolve_relative_weekday("наступної суботи", today) == "2026-10-03"
+    assert resolve_relative_weekday("у суботу", today) == "2026-10-03"
+    assert resolve_relative_weekday("в неділю", today) == "2026-10-04"
+
+
+def test_resolve_relative_weekday_ignores_past_markers():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    assert resolve_relative_weekday("минулої суботи", date(2026, 9, 27)) is None
+
+
+def test_resolve_relative_weekday_returns_none_without_a_weekday_phrase():
+    from datetime import date
+    from app.nodes import resolve_relative_weekday
+
+    assert resolve_relative_weekday("Kyiv to Lviv tomorrow", date(2026, 9, 27)) is None
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_overrides_llm_miscounted_weekday(mock_client):
+    """Regression for the audit finding: the LLM resolved "next Saturday"
+    from Sunday 2026-09-27 to 2026-10-07 (a Wednesday) instead of 2026-10-03
+    (the actual next Saturday) — deterministic code must win."""
+    from datetime import date
+    from app.nodes import pinned_today
+
+    parsed = ParsedRoute(
+        is_route_request=True,
+        locations=[
+            ParsedLocation(name="Lutsk Ukraine", location_type="origin"),
+            ParsedLocation(name="Krakow Poland", location_type="destination"),
+        ],
+        settings=TripSettings(),
+        departure_date="2026-10-07",  # wrong: LLM miscounted
+    )
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+
+    with pinned_today(date(2026, 9, 27)):
+        result = await parse_locations(_state(message="Lutsk to Krakow next Saturday"))
+
+    assert result["parsed"].departure_date == "2026-10-03"
+
+
+# ── Fuel-type keyword safety net (audit: diesel car ignored, petrol priced) ──
+
+def test_detect_fuel_type_keyword():
+    from app.nodes import _detect_fuel_type_keyword
+
+    assert _detect_fuel_type_keyword("diesel Skoda Superb") == "diesel"
+    assert _detect_fuel_type_keyword("дизель Шкода Суперб") == "diesel"
+    assert _detect_fuel_type_keyword("petrol Toyota Corolla") == "petrol"
+    assert _detect_fuel_type_keyword("бензин Тойота Королла") == "petrol"
+    assert _detect_fuel_type_keyword("LPG Volkswagen Transporter") == "lpg"
+    assert _detect_fuel_type_keyword("Kyiv to Lviv, 3 people") is None
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_fills_fuel_type_the_llm_left_null(mock_client):
+    """Regression for the audit finding: "diesel Skoda Superb" priced the
+    trip with petrol because the LLM read the fuel word as naming the car,
+    not as a settings statement, and left fuelType null."""
+    parsed = ParsedRoute(
+        is_route_request=True,
+        locations=[
+            ParsedLocation(name="Lutsk Ukraine", location_type="origin"),
+            ParsedLocation(name="Krakow Poland", location_type="destination"),
+        ],
+        settings=TripSettings(passengers=3),  # fuelType left null by the LLM
+    )
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+
+    result = await parse_locations(
+        _state(message="Lutsk to Krakow, 3 people, diesel Skoda Superb")
+    )
+
+    assert result["parsed"].settings.fuelType == "diesel"
+
+
+@patch("app.nodes._openai_client")
+@pytest.mark.asyncio
+async def test_parse_locations_never_overrides_an_explicit_fuel_type(mock_client):
+    """The safety net only fills a gap — it must never overrule a fuelType
+    the LLM actually extracted, even if another fuel word also appears."""
+    parsed = ParsedRoute(
+        is_route_request=True,
+        locations=[
+            ParsedLocation(name="Lutsk Ukraine", location_type="origin"),
+            ParsedLocation(name="Krakow Poland", location_type="destination"),
+        ],
+        settings=TripSettings(fuelType="lpg"),
+    )
+    mock_message = MagicMock()
+    mock_message.parsed = parsed
+    mock_choice = MagicMock()
+    mock_choice.message = mock_message
+    mock_response = MagicMock()
+    mock_response.choices = [mock_choice]
+    mock_client.beta.chat.completions.parse = AsyncMock(return_value=mock_response)
+
+    result = await parse_locations(
+        _state(message="Lutsk to Krakow, diesel Skoda Superb but use my LPG car")
+    )
+
+    assert result["parsed"].settings.fuelType == "lpg"

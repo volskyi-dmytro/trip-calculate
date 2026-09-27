@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import re
 from contextlib import contextmanager
 from contextvars import ContextVar
 from datetime import date, datetime, timedelta, timezone
@@ -79,13 +80,19 @@ RULES:
 10. Fuel type words map ONLY to fuelType: petrol/gasoline/бензин → "petrol",
     diesel/дизель → "diesel", LPG/autogas/газ → "lpg". Never put a fuel
     type word in currency; currency is only UAH, USD, EUR, etc.
-11. If the message mentions a departure date ("tomorrow", "this Saturday",
+11. TODAY is {today}, a {today_weekday}. The next 7 days, with weekday names:
+{next_7_days}
+    If the message mentions a departure date ("tomorrow", "this Saturday",
     "20 July", "у суботу"), set departure_date to that date in ISO format
     (YYYY-MM-DD), resolved relative to today: {today}. Count the days
     explicitly: "today"/"сьогодні" is {today} itself, "tomorrow"/"завтра" is
     the day AFTER {today}, "the day after tomorrow"/"післязавтра" is two days
-    after {today}. If no date is mentioned, leave departure_date null. Never
-    invent a date.
+    after {today}. "next <weekday>" and "this <weekday>" ("наступної суботи",
+    "у суботу", "в неділю") BOTH mean the first date in the table above whose
+    weekday name matches — never the same weekday number of days out
+    regardless of what today's weekday is; look it up in the table, don't
+    count days by hand. If no date is mentioned, leave departure_date null.
+    Never invent a date.
 12. TRANSIT STOPS — never drop one. A transit phrase ("через X", "via X",
     "through X", "по дорозі через X", "із заїздом у X", "stopping in X")
     ALWAYS adds X to locations with location_type "waypoint", positioned
@@ -172,6 +179,27 @@ _PARSE_FAILED_ERRORS = {
 
 def _not_a_route_error(language: str) -> str:
     return _NOT_A_ROUTE_ERRORS.get(language, _NOT_A_ROUTE_ERRORS["en"])
+
+
+# Deterministic safety net mirroring the parser prompt's own fuel-word rule
+# (rule 10): a fuel word attached to a car description ("diesel Skoda
+# Superb") can read to the LLM as merely naming the car rather than a
+# settings statement, and it sometimes leaves fuelType null in exactly that
+# phrasing — silently pricing the trip with whatever fuel type was already
+# selected instead of the one the user just named. Order matters: check the
+# more specific words first so "diesel" never falls through to "lpg"/"petrol".
+_FUEL_TYPE_WORDS = (
+    ("diesel", re.compile(r"\bdiesel\b|дизел", re.IGNORECASE)),
+    ("lpg", re.compile(r"\blpg\b|autogas|автогаз|\bгаз\b", re.IGNORECASE)),
+    ("petrol", re.compile(r"\bpetrol\b|\bgasoline\b|бензин", re.IGNORECASE)),
+)
+
+
+def _detect_fuel_type_keyword(message: str) -> "str | None":
+    for fuel_type, pattern in _FUEL_TYPE_WORDS:
+        if pattern.search(message):
+            return fuel_type
+    return None
 
 
 def _settings_present(settings) -> bool:
@@ -334,8 +362,80 @@ def route_after_supervisor(state: GraphState) -> str:
     return "parse_locations"
 
 
+_WEEKDAY_NAMES = ("Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday")
+
+
+def _next_7_days_table(today: date) -> str:
+    return "\n".join(
+        f"    {(today + timedelta(days=i)).isoformat()} = {_WEEKDAY_NAMES[(today + timedelta(days=i)).weekday()]}"
+        for i in range(7)
+    )
+
+
 def _system_prompt() -> str:
-    return _SYSTEM_PROMPT.format(today=today_utc().isoformat())
+    today = today_utc()
+    return _SYSTEM_PROMPT.format(
+        today=today.isoformat(),
+        today_weekday=_WEEKDAY_NAMES[today.weekday()],
+        next_7_days=_next_7_days_table(today),
+    )
+
+
+# English weekday names the LLM might miscount without knowing today's own
+# weekday (it only ever sees the date, not the day name, unless told).
+_EN_WEEKDAY_INDEX = {
+    "monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3,
+    "friday": 4, "saturday": 5, "sunday": 6,
+}
+_RELATIVE_WEEKDAY_EN_RE = re.compile(
+    r"\b(?:next|this|on|coming)\s+(" + "|".join(_EN_WEEKDAY_INDEX) + r")\b",
+    re.IGNORECASE,
+)
+
+# Ukrainian weekday nouns as they appear after "наступн-" (genitive, "next")
+# or a bare "у/в/цю" (locative/accusative, "on/this") — the forms the audit's
+# own examples use ("наступної суботи", "у суботу", "в неділю").
+_UK_WEEKDAY_INDEX = {
+    "понеділок": 0, "понеділка": 0,
+    "вівторок": 1, "вівторка": 1,
+    "середу": 2, "середи": 2,
+    "четвер": 3, "четверга": 3,
+    "п'ятницю": 4, "п'ятниці": 4, "пятницю": 4, "пятниці": 4,
+    "суботу": 5, "суботи": 5,
+    "неділю": 6, "неділі": 6,
+}
+_RELATIVE_WEEKDAY_UK_RE = re.compile(
+    r"\b(?:наступн\w*|цю|у|в|на)\s+(" + "|".join(_UK_WEEKDAY_INDEX) + r")\b",
+    re.IGNORECASE,
+)
+# "минулої суботи" / "вчора" mean a PAST weekday — never resolve those forward
+_UK_PAST_MARKER_RE = re.compile(r"минул\w*|вчора|позавчора", re.IGNORECASE)
+
+
+def resolve_relative_weekday(message: str, today: date) -> "str | None":
+    """Deterministic safety net for weekday phrases: the LLM only ever sees
+    today's DATE in the prompt, so "next Saturday" requires it to count
+    weekdays by hand from a bare number — exactly the step that produced the
+    audit's Wed-instead-of-Sat bug. This resolves the same phrase in code.
+
+    Policy: "next <weekday>" and "this <weekday>" both mean the first
+    occurrence of that weekday strictly after today (never today itself,
+    even if today already is that weekday).
+    """
+    target = None
+    m = _RELATIVE_WEEKDAY_EN_RE.search(message)
+    if m:
+        target = _EN_WEEKDAY_INDEX[m.group(1).lower()]
+    else:
+        m = _RELATIVE_WEEKDAY_UK_RE.search(message)
+        if m and not _UK_PAST_MARKER_RE.search(message):
+            target = _UK_WEEKDAY_INDEX[m.group(1).lower()]
+    if target is None:
+        return None
+    offset = (target - today.weekday()) % 7
+    if offset == 0:
+        offset = 7
+    return (today + timedelta(days=offset)).isoformat()
 
 
 async def parse_locations(state: GraphState) -> GraphState:
@@ -362,6 +462,21 @@ async def parse_locations(state: GraphState) -> GraphState:
         result = response.choices[0].message.parsed
         if result is None:
             raise ValueError("Structured output parsing returned None")
+        # Deterministic override: a bare weekday phrase is unambiguous once
+        # today's weekday is known, so code wins over the LLM's date here
+        # even when it already produced one — this is exactly the class of
+        # date the LLM gets wrong by miscounting (see resolve_relative_weekday).
+        weekday_date = resolve_relative_weekday(state["message"], today_utc())
+        if weekday_date is not None:
+            result = result.model_copy(update={"departure_date": weekday_date})
+        # Same idea for fuel type: only fills a gap the LLM left null, never
+        # overrides an explicit (possibly different) fuelType it did extract.
+        if result.settings.fuelType is None:
+            detected_fuel = _detect_fuel_type_keyword(state["message"])
+            if detected_fuel is not None:
+                result = result.model_copy(update={
+                    "settings": result.settings.model_copy(update={"fuelType": detected_fuel}),
+                })
         # Off-topic guard: an explicit false classification or an empty
         # locations list both mean there is no route to build — fail fast
         # with a friendly message instead of a geocode-count error
@@ -405,6 +520,7 @@ async def geocode_locations(state: GraphState) -> GraphState:
 
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
     current_route = state.get("current_route") or []
+    language = state.get("language", "en")
 
     async def resolve(loc) -> GeocodedLocation:
         if _is_kept_current_waypoint(loc, current_route):
@@ -418,7 +534,7 @@ async def geocode_locations(state: GraphState) -> GraphState:
             )
         # First pass never trusts LLM coordinates: a hallucinated lat/lon
         # would mask the geocoding failure and bypass the retry loop entirely
-        return await geocode_location(loc, user_agent, allow_ai_coords=False)
+        return await geocode_location(loc, user_agent, allow_ai_coords=False, language=language)
 
     tasks = [resolve(loc) for loc in state["parsed"].locations]
     results: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
@@ -509,6 +625,7 @@ async def retry_failed_locations(state: GraphState) -> GraphState:
         return {**state, "retry_count": next_count}
 
     user_agent = os.getenv("NOMINATIM_USER_AGENT", "tripcalculate-agent/1.0")
+    language = state.get("language", "en")
     # Match each failed slot to a retried location of the SAME location_type.
     # Taking the first N in order looks equivalent but is not: the prompt asks
     # for only the failed locations, yet the model frequently returns the whole
@@ -522,7 +639,7 @@ async def retry_failed_locations(state: GraphState) -> GraphState:
     # Only the retry pass may fall back to LLM-provided coordinates —
     # by now Nominatim has rejected both normalized and original names twice
     tasks = [
-        geocode_location(loc, user_agent, allow_ai_coords=True)
+        geocode_location(loc, user_agent, allow_ai_coords=True, language=language)
         for _, loc in pairs
     ]
     retried: list[GeocodedLocation] = list(await asyncio.gather(*tasks))
