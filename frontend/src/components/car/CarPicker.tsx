@@ -10,6 +10,7 @@ import type { CatalogEntry, CatalogVariant } from '../../utils/carCatalog';
 import { CAR_PRESETS } from '../../utils/carPresets';
 import type { CarPreset } from '../../utils/carPresets';
 import { carService } from '../../services/carService';
+import { useNumericField } from '../../hooks/useNumericField';
 import { AiPrivacyNote } from '../AiPrivacyNote';
 import type { CarSelection, FuelType, GarageCar } from '../../types/Car';
 
@@ -87,6 +88,12 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   }, [open, catalogLoaded]);
 
   const results = searchCatalog(query, catalog);
+
+  const aiConsumptionField = useNumericField(
+    aiResult?.consumption ?? 0,
+    (v) => setAiResult((prev) => (prev ? { ...prev, consumption: v } : prev)),
+    { min: 3, max: 25, fallback: 3 },
+  );
 
   const t = {
     title: tr('carPicker.title'),
@@ -386,13 +393,10 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                   </label>
                   <Input
                     id="car-picker-ai-consumption"
-                    type="number"
-                    step="0.1"
-                    min="3"
-                    max="25"
-                    value={aiResult.consumption}
-                    onChange={(e) => setAiResult({ ...aiResult, consumption: Number(e.target.value) })}
+                    type="text"
+                    inputMode="decimal"
                     className="mt-1"
+                    {...aiConsumptionField}
                   />
                 </div>
                 <Button

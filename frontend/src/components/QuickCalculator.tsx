@@ -10,6 +10,8 @@ import { ShareReceiptButton } from './receipt/ShareReceiptButton';
 import { CarPicker } from './car/CarPicker';
 import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorage';
 import { carService } from '../services/carService';
+import { convertFuelPrice, suggestFuelPrice } from '../utils/currencyFuelPrice';
+import { useNumericField } from '../hooks/useNumericField';
 import type { CarSelection, GarageCar } from '../types/Car';
 
 interface QuickCalculatorPrefill {
@@ -54,6 +56,9 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   const [pickerOpen, setPickerOpen] = useState(false);
   const [storedCar, setStoredCar] = useState<CarSelection | null>(stored);
   const [garageCars, setGarageCars] = useState<GarageCar[]>([]);
+  // Once the user deliberately types a fuel price, currency switches stop
+  // overwriting it (see fuelPriceService.applyLiveFuelPrice for the same rule).
+  const [fuelPriceTouched, setFuelPriceTouched] = useState(false);
 
   useEffect(() => {
     if (user) carService.list().then(setGarageCars).catch(() => {});
@@ -91,6 +96,29 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     setPickerOpen(false);
   };
 
+  /** Switching currency must not leave the old price sitting under the new
+   * currency (e.g. "1.75" surviving an EUR→UAH switch). Prefers a live price
+   * for the new currency; falls back to converting what's there. Never
+   * touches a price the user deliberately typed. */
+  const handleCurrencyChange = (nextCurrency: string) => {
+    const prevCurrency = currency;
+    edited(setCurrency)(nextCurrency);
+    if (fuelPriceTouched || nextCurrency === prevCurrency) return;
+    suggestFuelPrice(nextCurrency).then((live) => {
+      setFuelPrice(live ?? convertFuelPrice(fuelPrice, prevCurrency, nextCurrency));
+    });
+  };
+
+  const handleFuelPriceChange = (v: number) => {
+    setFuelPriceTouched(true);
+    edited(setFuelPrice)(v);
+  };
+
+  const distanceField = useNumericField(distance, edited(setDistance), { min: 0 });
+  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1 });
+  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1 });
+  const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0 });
+
   const t = {
     title: tr('quickCalc.title'),
     guestMode: tr('quickCalc.guestMode'),
@@ -114,9 +142,11 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
       <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h2>
-          <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
-            {t.guestMode}
-          </span>
+          {!user && (
+            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
+              {t.guestMode}
+            </span>
+          )}
         </div>
         {exampleActive && (
           <div className="mt-2 text-xs px-2 py-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">
@@ -133,12 +163,11 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
           </Label>
           <Input
             id="quick-distance"
-            type="number"
-            min="0"
-            value={distance}
-            onChange={(e) => edited(setDistance)(Number(e.target.value))}
+            type="text"
+            inputMode="decimal"
             className="mt-1"
             placeholder="0"
+            {...distanceField}
           />
         </div>
 
@@ -159,11 +188,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             </Button>
             <Input
               id="quick-passengers"
-              type="number"
-              min="1"
-              value={passengers}
-              onChange={(e) => edited(setPassengers)(Math.max(1, Number(e.target.value)))}
+              type="text"
+              inputMode="numeric"
               className="text-center"
+              {...passengersField}
             />
             <Button
               aria-label={t.increasePassengers}
@@ -184,12 +212,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
           </Label>
           <Input
             id="quick-consumption"
-            type="number"
-            min="0"
-            step="0.1"
-            value={fuelConsumption}
-            onChange={(e) => edited(setFuelConsumption)(Number(e.target.value))}
+            type="text"
+            inputMode="decimal"
             className="mt-1"
+            {...consumptionField}
           />
           {storedCar ? (
             <div className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
@@ -213,7 +239,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             <button
               type="button"
               onClick={() => setPickerOpen(true)}
-              className="mt-1 text-xs text-primary hover:underline"
+              className="mt-1 inline-flex items-center min-h-11 text-xs text-primary hover:underline"
             >
               🚗 {tr('quickCalc.unknownConsumption')}
             </button>
@@ -228,18 +254,17 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
           <div className="flex gap-2 mt-1">
             <Input
               id="quick-fuel-price"
-              type="number"
-              min="0"
-              value={fuelPrice}
-              onChange={(e) => edited(setFuelPrice)(Number(e.target.value))}
+              type="text"
+              inputMode="decimal"
               className="flex-1"
+              {...fuelPriceField}
             />
             <div>
               <Label htmlFor="quick-currency" className="sr-only">{t.currency}</Label>
               <select
                 id="quick-currency"
                 value={currency}
-                onChange={(e) => edited(setCurrency)(e.target.value)}
+                onChange={(e) => handleCurrencyChange(e.target.value)}
                 className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="UAH">UAH</option>
