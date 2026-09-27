@@ -15,6 +15,7 @@ import {
 import { CarPicker } from '../car/CarPicker';
 import { carService } from '../../services/carService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useNumericField } from '../../hooks/useNumericField';
 import type { CarSelection, GarageCar } from '../../types/Car';
 
 const MAX_CARS = 10;
@@ -44,6 +45,11 @@ export function CarsCard() {
   const [pickerOpen, setPickerOpen] = useState(false);
   const [pending, setPending] = useState<PendingCar | null>(null);
   const [saving, setSaving] = useState(false);
+  const consumptionField = useNumericField(
+    pending?.consumption ?? MIN_CONSUMPTION,
+    (v) => setPending((prev) => (prev ? { ...prev, consumption: v } : prev)),
+    { min: MIN_CONSUMPTION, max: MAX_CONSUMPTION },
+  );
 
   const [carToDelete, setCarToDelete] = useState<GarageCar | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -307,12 +313,9 @@ export function CarsCard() {
                 </label>
                 <Input
                   id="car-card-consumption"
-                  type="number"
-                  step="0.1"
-                  min={MIN_CONSUMPTION}
-                  max={MAX_CONSUMPTION}
-                  value={pending.consumption}
-                  onChange={(e) => setPending({ ...pending, consumption: Number(e.target.value) })}
+                  type="text"
+                  inputMode="decimal"
+                  {...consumptionField}
                   className="mt-1"
                 />
               </div>
