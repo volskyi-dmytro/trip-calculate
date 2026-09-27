@@ -16,8 +16,9 @@ vi.mock('react-router-dom', () => ({
   ),
   useLocation: () => ({ pathname: currentPathname, search: currentSearch, hash: '' }),
 }))
+const login = vi.fn()
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({ user: null, loading: false }),
+  useAuth: () => ({ user: null, loading: false, login }),
 }))
 vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }),
@@ -82,5 +83,22 @@ describe('Header language switcher', () => {
     const container = renderWithLocale('/uk/route-planner', 'uk')
 
     expect(container.querySelector('a[href="/en/route-planner?routeId=42"]')).not.toBeNull()
+  })
+})
+
+describe('Header guest create-trip CTA', () => {
+  it('renders an always-enabled button that starts Google sign-in', () => {
+    const container = renderWithLocale('/en', 'en')
+    const cta = container.querySelector<HTMLButtonElement>('#create-trip-btn')
+
+    expect(cta).not.toBeNull()
+    expect(cta?.disabled).toBe(false)
+    expect(cta?.title).toBe('')
+
+    login.mockClear()
+    act(() => {
+      cta?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(login).toHaveBeenCalledTimes(1)
   })
 })

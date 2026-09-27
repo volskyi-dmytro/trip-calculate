@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Copy, Share2, Loader2, Check } from 'lucide-react';
+import { Copy, Send, MessageCircle, Share2, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   Dialog,
@@ -55,6 +55,8 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
     copy: tr('shareReceipt.copy'),
     copiedToast: tr('shareReceipt.copiedToast'),
     share: tr('shareReceipt.share'),
+    telegram: tr('shareReceipt.telegram'),
+    whatsapp: tr('shareReceipt.whatsapp'),
     expiresNote: tr('shareReceipt.expiresNote'),
     rateLimited: tr('shareReceipt.rateLimited'),
     genericError: tr('shareReceipt.genericError'),
@@ -78,6 +80,9 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
   };
 
   const link = receipt ? receiptUrl(receipt.slug) : '';
+  const routeLabel = receipt?.originLabel && receipt?.destinationLabel
+    ? `${receipt.originLabel} → ${receipt.destinationLabel}`
+    : t.title;
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(link);
@@ -87,7 +92,17 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
   };
 
   const handleNativeShare = () => {
-    navigator.share({ url: link }).catch(() => {});
+    navigator.share({ url: link, text: routeLabel }).catch(() => {});
+  };
+
+  const handleTelegramShare = () => {
+    const url = `https://t.me/share/url?url=${encodeURIComponent(link)}&text=${encodeURIComponent(routeLabel)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleWhatsAppShare = () => {
+    const url = `https://wa.me/?text=${encodeURIComponent(`${routeLabel} ${link}`)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -138,9 +153,19 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
                 {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               </Button>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="outline" onClick={handleTelegramShare}>
+                <Send className="h-4 w-4 mr-2" aria-hidden="true" />
+                {t.telegram}
+              </Button>
+              <Button variant="outline" onClick={handleWhatsAppShare}>
+                <MessageCircle className="h-4 w-4 mr-2" aria-hidden="true" />
+                {t.whatsapp}
+              </Button>
+            </div>
             {typeof navigator.share === 'function' && (
               <Button onClick={handleNativeShare} className="w-full">
-                <Share2 className="h-4 w-4 mr-2" />
+                <Share2 className="h-4 w-4 mr-2" aria-hidden="true" />
                 {t.share}
               </Button>
             )}
