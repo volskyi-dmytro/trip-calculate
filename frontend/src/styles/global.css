@@ -376,14 +376,12 @@ a:hover {
     transform: translateY(1px);
 }
 
-.btn:disabled,
-.btn.inactive {
+.btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
 }
 
-.btn:disabled:hover,
-.btn.inactive:hover {
+.btn:disabled:hover {
     background: var(--accent);
 }
 
@@ -437,6 +435,21 @@ a:hover {
     color: #1f2a35;
     text-decoration: none;
     box-shadow: var(--shadow-md);
+}
+
+/* Icon-only under ~480px so the label can't push the language switch
+   off-screen (see .topbar-controls below); aria-label on the anchor keeps
+   it accessible when the visible label is hidden. */
+@media (max-width: 480px) {
+    .btn-google {
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
+    }
+
+    .btn-google-label {
+        display: none;
+    }
 }
 
 .icon-btn {
@@ -543,6 +556,13 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .topbar-controls {
+        gap: 6px;
+    }
 }
 
 /* Controls that sit on the photo get a dark frosted base */

@@ -14,7 +14,7 @@ interface HeaderProps {
 
 export function Header({ onCalculateClick }: HeaderProps) {
   const location = useLocation();
-  const { user, loading } = useAuth();
+  const { user, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, t } = useLanguage();
   const season = useSeason();
@@ -82,13 +82,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
                   {t('header.createTrip')}
                 </Link>
               ) : (
-                <button
-                  id="create-trip-btn"
-                  type="button"
-                  className="btn inactive"
-                  disabled
-                  title={t('header.loginRequired')}
-                >
+                <button id="create-trip-btn" type="button" className="btn" onClick={login}>
                   {t('header.createTrip')}
                 </button>
               )}
