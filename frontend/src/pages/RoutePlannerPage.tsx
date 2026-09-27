@@ -1,7 +1,7 @@
 import { Link } from 'react-router-dom';
 import { RoutePlanner } from '../components/RoutePlanner';
 import { Header } from '../components/common/Header';
-import { LandingView } from '../components/LandingView';
+import { PlannerGuestPreview } from '../components/PlannerGuestPreview';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -16,12 +16,14 @@ export function RoutePlannerPage() {
   const { theme, toggleTheme } = useTheme();
   useDocumentTitle(t('pageTitle.routePlanner'));
 
-  // Google authentication remains the only route-planner access boundary.
+  // Guests get a finished sample trip (not the real AI endpoint — that
+  // stays authenticated-only) instead of a sales pitch next to an empty
+  // 0 km / 0.00 calculator.
   if (!authLoading && !user) {
     return (
       <>
         <Header />
-        <LandingView />
+        <PlannerGuestPreview />
       </>
     );
   }

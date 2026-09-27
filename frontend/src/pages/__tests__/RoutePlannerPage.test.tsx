@@ -6,11 +6,12 @@ import { RoutePlannerPage } from '../RoutePlannerPage'
 vi.mock('react-router-dom', () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
 }))
+const mockUseAuth = vi.fn(() => ({
+  user: { id: '1', name: 'Dmytro', email: 'user@example.com', authenticated: true },
+  loading: false,
+}))
 vi.mock('../../contexts/AuthContext', () => ({
-  useAuth: () => ({
-    user: { id: '1', name: 'Dmytro', email: 'user@example.com', authenticated: true },
-    loading: false,
-  }),
+  useAuth: () => mockUseAuth(),
 }))
 vi.mock('../../contexts/ThemeContext', () => ({
   useTheme: () => ({ theme: 'light', toggleTheme: vi.fn() }),
@@ -22,7 +23,9 @@ vi.mock('../../components/RoutePlanner', () => ({
   RoutePlanner: () => <div data-testid="route-planner">Route planner ready</div>,
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
-vi.mock('../../components/LandingView', () => ({ LandingView: () => <main>Landing</main> }))
+vi.mock('../../components/PlannerGuestPreview', () => ({
+  PlannerGuestPreview: () => <main>Guest preview</main>,
+}))
 vi.mock('../../components/auth/UserMenu', () => ({ UserMenu: () => <div>User menu</div> }))
 
 describe('RoutePlannerPage public beta access', () => {
@@ -38,5 +41,14 @@ describe('RoutePlannerPage public beta access', () => {
 
     expect(html).toContain('aria-label="UA: common.switchLanguage"')
     expect(html).toMatch(/aria-label="common\.theme\.to(Light|Dark)"/)
+  })
+
+  it('shows the guest sample-trip preview instead of the planner for a logged-out visitor', () => {
+    mockUseAuth.mockReturnValueOnce({ user: null, loading: false } as unknown as ReturnType<typeof mockUseAuth>)
+
+    const html = renderToStaticMarkup(<RoutePlannerPage />)
+
+    expect(html).toContain('Guest preview')
+    expect(html).not.toContain('Route planner ready')
   })
 })

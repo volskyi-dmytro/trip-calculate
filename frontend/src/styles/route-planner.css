@@ -707,6 +707,13 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
   margin-top: 0.15rem;
 }
 
+/* "Use live price" offer inside the result card's dt — same chip look as
+   the sidebar's fuel-price offer, but on its own line under the label. */
+.trip-result-live-action {
+  display: flex;
+  margin-top: 0.3rem;
+}
+
 .trip-result-waze {
   display: flex;
   flex-direction: column;

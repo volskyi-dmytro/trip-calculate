@@ -7,6 +7,7 @@ import type { FuelSuggestion } from '../services/fuelPriceService'
 import type { RouteSettings, Waypoint } from './RoutePlanner'
 import { WeatherStrip } from './WeatherStrip'
 import type { WeatherData } from '../types/weather'
+import { displayWaypointName } from '../utils/waypointName'
 
 interface TripResultCardProps {
   waypoints: Waypoint[]
@@ -17,24 +18,37 @@ interface TripResultCardProps {
   weather: WeatherData | null
   onSaveRoute: () => void
   onShareReceipt: () => void
+  /** Applies the live suggestion — offered only while the price used in the
+   * calculation isn't already the live one (see routeSettings.fuelPriceTouched). */
+  onApplyLivePrice?: () => void
 }
 
 export function TripResultCard({
   waypoints, routeSettings, routeDistance, routeDuration,
-  fuelSuggestion, weather, onSaveRoute, onShareReceipt,
+  fuelSuggestion, weather, onSaveRoute, onShareReceipt, onApplyLivePrice,
 }: TripResultCardProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
   const stats = computeTripStats(waypoints, routeSettings, routeDistance, routeDuration)
-  const legs = wazeLegLinks(waypoints)
+  // A geocoder (ours or the AI's) can fall back to raw coordinates as a
+  // waypoint's name — swap in a "Waypoint N" label everywhere a name is
+  // shown, including inside the Waze leg labels built below.
+  const displayWaypoints = waypoints.map((wp, i) => ({
+    ...wp,
+    name: displayWaypointName(wp.name, `${t.planner.waypoint} ${i + 1}`),
+  }))
+  const legs = wazeLegLinks(displayWaypoints)
   const pending = routeDistance === 0   // road distance not resolved yet
+  // The "live price" badge must only claim the price used IS the live one —
+  // routeSettings.fuelPriceTouched means it was overridden (chat/manual/car).
+  const usingLivePrice = Boolean(fuelSuggestion) && !routeSettings.fuelPriceTouched
 
   return (
     <div className="trip-result-card glass-panel">
       <div className="trip-result-title">✨ {t.resultCard.title}</div>
 
       <div className="trip-result-stops" aria-label={t.resultCard.stops}>
-        {waypoints.map((wp, i) => (
+        {displayWaypoints.map((wp, i) => (
           <span key={wp.id} className="trip-result-stop">
             {i > 0 && <span aria-hidden="true"> → </span>}
             {wp.name.split(',')[0]}
@@ -54,7 +68,18 @@ export function TripResultCard({
         <div>
           <dt>
             {t.resultCard.fuelCost}
-            {fuelSuggestion && <span className="trip-result-live"> · ⛽ {t.resultCard.livePrice}</span>}
+            {usingLivePrice && (
+              <span className="trip-result-live"> · ⛽ {t.resultCard.livePrice}</span>
+            )}
+            {!usingLivePrice && fuelSuggestion && onApplyLivePrice && (
+              <button
+                type="button"
+                className="fuel-chip fuel-chip-action trip-result-live-action"
+                onClick={onApplyLivePrice}
+              >
+                ⛽ {t.fuel.applyLive}
+              </button>
+            )}
           </dt>
           <dd>{stats.fuelCost.toFixed(2)} {routeSettings.currency}</dd>
         </div>

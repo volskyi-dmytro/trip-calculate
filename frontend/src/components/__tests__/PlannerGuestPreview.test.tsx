@@ -4,14 +4,10 @@ import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { describe, expect, it, vi } from 'vitest'
 
-const created: Array<Record<string, unknown>> = []
-
 vi.mock('mapbox-gl', () => {
-  // Any method call on the fake map (on, addControl, getStyle, ...) is a no-op.
   const inert = (): unknown => new Proxy(function () {}, { get: () => inert(), apply: () => inert() })
   class FakeMap {
-    constructor(options: Record<string, unknown>) {
-      created.push(options)
+    constructor() {
       return new Proxy(this, { get: () => inert() })
     }
   }
@@ -21,21 +17,23 @@ vi.mock('mapbox-gl/dist/mapbox-gl.css', () => ({}))
 vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }))
 vi.mock('../../contexts/LanguageContext', () => ({ useLanguage: () => ({ language: 'en' }) }))
 
-;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
+const login = vi.fn()
+vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ login }) }))
 
-describe('MapContainer', () => {
-  it('turns off Mapbox performance metrics collection', async () => {
-    vi.stubEnv('VITE_MAPBOX_TOKEN', 'pk.test')
-    const { MapContainer } = await import('../MapContainer')
+describe('PlannerGuestPreview', () => {
+  it('shows a finished sample trip and a sign-in call to action, without hitting the AI endpoint', async () => {
+    const { PlannerGuestPreview } = await import('../PlannerGuestPreview')
     const container = document.createElement('div')
     document.body.appendChild(container)
     const root = createRoot(container)
 
-    act(() => root.render(<MapContainer waypoints={[]} routeGeometry={[]} onAddWaypoint={() => {}} onUpdateWaypoint={() => {}} onDeleteWaypoint={() => {}} />))
+    act(() => root.render(<PlannerGuestPreview />))
 
-    expect(created).toHaveLength(1)
-    expect(created[0].performanceMetricsCollection).toBe(false)
+    const html = container.innerHTML
+    expect(html).toContain('362 km')
+    expect(html).toContain('Sign in with Google to plan your own trip')
+    expect(html).not.toContain('0.00')
+
     act(() => root.unmount())
-    vi.unstubAllEnvs()
   })
 })
