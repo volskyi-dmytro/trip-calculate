@@ -96,7 +96,7 @@ async def parse_route(request: ParseRouteRequest):
             name="parse_route",
             as_type="agent",
             input={"message": request.message, "language": request.language},
-        ):
+        ) as root:
             with propagate_attributes(
                 user_id=request.user_id,
                 session_id=session_id,
@@ -104,6 +104,10 @@ async def parse_route(request: ParseRouteRequest):
                 trace_name="parse_route",
             ):
                 result = await route_graph.ainvoke(_initial_state(request))
+            # v4 is observations-first: overall I/O lives on the root
+            # observation, not on the trace.
+            response = result["response"]
+            root.update(output=response.model_dump(mode="json") if response else None)
     finally:
         # Flush ensures spans are exported before the HTTP response is returned,
         # even if ainvoke raises an unhandled exception.
@@ -124,14 +128,16 @@ async def parse_route_stream(request: ParseRouteRequest):
                 name="parse_route_stream",
                 as_type="agent",
                 input={"message": request.message, "language": request.language},
-            ):
+            ) as root:
                 with propagate_attributes(
                     user_id=request.user_id,
                     session_id=session_id,
                     tags=[request.language],
                     trace_name="parse_route_stream",
                 ):
-                    async for frame in stream_route(route_graph, _initial_state(request)):
+                    async for frame in stream_route(
+                            route_graph, _initial_state(request),
+                            on_result=lambda out: root.update(output=out)):
                         yield frame
         finally:
             _langfuse.flush()
