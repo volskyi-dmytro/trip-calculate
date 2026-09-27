@@ -47,7 +47,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.related': 'Related routes',
     'cityRoute.notFound.title': 'Route not found',
     'notFound.title': 'Page not found',
-    'pageTitle.home': 'Road Trip Fuel Cost Calculator for Europe — Split Costs',
+    'pageTitle.home': 'Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs',
     'pageTitle.routePlanner': 'Map Route Planner with Fuel Prices & AI Assistant',
     'pageTitle.cityRoute': '{from} → {to}: Road Trip Cost, Distance & Fuel Price',
     'notFound.text': "The page you're looking for doesn't exist or has moved.",

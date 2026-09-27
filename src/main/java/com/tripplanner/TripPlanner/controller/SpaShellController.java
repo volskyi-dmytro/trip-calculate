@@ -106,13 +106,13 @@ public class SpaShellController {
     private PageMetadata buildHomeMetadata(String locale) {
         boolean english = "en".equals(locale);
         String title = english
-                ? "Road Trip Fuel Cost Calculator for Europe — Split Costs | Trip Calculate"
+                ? "Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs | Trip Calculate"
                 : "Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate";
         String description = english
-                ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out your European road trip cost in seconds — free, no sign-up."
+                ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out the cost of a trip across Ukraine or on to Europe in seconds — free, no sign-up."
                 : ukrainianHomeDescription();
         String ogTitle = english
-                ? "Road Trip Fuel Cost Calculator for Europe | Trip Calculate"
+                ? "Road Trip Fuel Cost Calculator for Ukraine and Europe | Trip Calculate"
                 : "Калькулятор вартості поїздки на авто | Trip Calculate";
 
         String canonical = SITE_ORIGIN + "/" + locale;
@@ -340,7 +340,7 @@ public class SpaShellController {
 
     private String homeNoscript(boolean english, String locale) {
         String h1 = english
-                ? "Road Trip Fuel Cost Calculator for Europe"
+                ? "Road Trip Fuel Cost Calculator for Ukraine and Europe"
                 : "Калькулятор вартості поїздки на авто";
         List<String> paragraphs = english
                 ? List.of(
