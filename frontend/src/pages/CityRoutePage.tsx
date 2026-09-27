@@ -159,21 +159,10 @@ export function CityRoutePage() {
             {r.fromName} → {r.toName}: {t('cityRoute.titleSuffix')}
           </h1>
           <p className="section-lead">{explanation}</p>
-
-          <div className="features">
-            {facts.map(({ icon: Icon, label, value }) => (
-              <div className="feature" key={label}>
-                <span className="feature-icon">
-                  <Icon size={20} strokeWidth={2} aria-hidden="true" />
-                </span>
-                {/* A figure, not a heading: keeps the outline h1 → h2 → h3. */}
-                <p className="feature-value">{value}</p>
-                <p>{label}</p>
-              </div>
-            ))}
-          </div>
         </section>
 
+        {/* Calculator before the stats: on mobile this was five tall cards
+            deep before any actionable content. */}
         <section className="section">
           <div style={{ maxWidth: '26rem', margin: '0 auto' }}>
             <QuickCalculator
@@ -185,6 +174,21 @@ export function CityRoutePage() {
                 passengers: r.passengers,
               }}
             />
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="features city-stats">
+            {facts.map(({ icon: Icon, label, value }) => (
+              <div className="feature" key={label}>
+                <span className="feature-icon">
+                  <Icon size={20} strokeWidth={2} aria-hidden="true" />
+                </span>
+                {/* A figure, not a heading: keeps the outline h1 → h2 → h3. */}
+                <p className="feature-value">{value}</p>
+                <p>{label}</p>
+              </div>
+            ))}
           </div>
         </section>
 

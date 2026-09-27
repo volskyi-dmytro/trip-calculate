@@ -376,14 +376,12 @@ a:hover {
     transform: translateY(1px);
 }
 
-.btn:disabled,
-.btn.inactive {
+.btn:disabled {
     opacity: 0.55;
     cursor: not-allowed;
 }
 
-.btn:disabled:hover,
-.btn.inactive:hover {
+.btn:disabled:hover {
     background: var(--accent);
 }
 
@@ -437,6 +435,21 @@ a:hover {
     color: #1f2a35;
     text-decoration: none;
     box-shadow: var(--shadow-md);
+}
+
+/* Icon-only under ~480px so the label can't push the language switch
+   off-screen (see .topbar-controls below); aria-label on the anchor keeps
+   it accessible when the visible label is hidden. */
+@media (max-width: 480px) {
+    .btn-google {
+        width: 40px;
+        min-width: 40px;
+        padding: 0;
+    }
+
+    .btn-google-label {
+        display: none;
+    }
 }
 
 .icon-btn {
@@ -543,6 +556,13 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 8px;
+    flex-shrink: 0;
+}
+
+@media (max-width: 480px) {
+    .topbar-controls {
+        gap: 6px;
+    }
 }
 
 /* Controls that sit on the photo get a dark frosted base */
@@ -688,6 +708,16 @@ a:hover {
     text-align: left;
 }
 
+/* A page's own h1 (e.g. CityRoutePage) — otherwise Tailwind's preflight
+   resets it to inherit the body's font-size and it reads as plain text. */
+.section h1:not([class]) {
+    margin: 0 0 8px;
+    font-size: clamp(1.6rem, 5.5vw, 2.4rem);
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    text-align: left;
+}
+
 .section-lead {
     margin: 0 0 24px;
     color: var(--text-2);
@@ -752,6 +782,44 @@ a:hover {
 
     .features {
         grid-template-columns: repeat(3, 1fr);
+        gap: 16px;
+    }
+}
+
+/* CityRoutePage stat cards: single facts (a number + a label), so a compact
+   2-column grid reads better than one tall card per row on mobile. */
+.city-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+}
+
+.city-stats .feature {
+    padding: 14px;
+}
+
+.city-stats .feature-icon {
+    width: 32px;
+    height: 32px;
+}
+
+.city-stats .feature .feature-value {
+    margin: 10px 0 2px;
+    font-size: 0.98rem;
+}
+
+.city-stats .feature p {
+    font-size: 0.82rem;
+}
+
+@media (min-width: 640px) {
+    .city-stats {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (min-width: 768px) {
+    .city-stats {
+        grid-template-columns: repeat(5, 1fr);
         gap: 16px;
     }
 }

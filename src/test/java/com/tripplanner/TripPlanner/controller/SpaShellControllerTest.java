@@ -73,7 +73,7 @@ class SpaShellControllerTest {
         String html = response.getBody();
 
         assertTrue(html.contains("<html lang=\"en\">"));
-        assertTrue(html.contains("<title>Road Trip Fuel Cost Calculator for Europe — Split Costs | Trip Calculate</title>"));
+        assertTrue(html.contains("<title>Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs | Trip Calculate</title>"));
         assertTrue(html.contains("<link rel=\"canonical\" href=\"https://trip-calculate.online/en\" />"));
         assertTrue(html.contains("hreflang=\"en\" href=\"https://trip-calculate.online/en\""));
         assertTrue(html.contains("hreflang=\"uk\" href=\"https://trip-calculate.online/uk\""));

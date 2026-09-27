@@ -14,7 +14,7 @@ describe('formatDocumentTitle', () => {
   // The server renders these titles for crawlers (SpaShellController); after
   // client navigation the tab must show the same text.
   it.each([
-    ['en', 'pageTitle.home', 'Road Trip Fuel Cost Calculator for Europe — Split Costs | Trip Calculate'],
+    ['en', 'pageTitle.home', 'Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs | Trip Calculate'],
     ['uk', 'pageTitle.home', 'Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate'],
     ['en', 'pageTitle.routePlanner', 'Map Route Planner with Fuel Prices & AI Assistant | Trip Calculate'],
     ['uk', 'pageTitle.routePlanner', 'Планувальник маршруту на карті з пальним і погодою — AI-асистент | Trip Calculate'],

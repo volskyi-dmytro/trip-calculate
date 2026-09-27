@@ -3,6 +3,9 @@ import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Waypoint } from './RoutePlanner'
 import { useTheme } from '../contexts/ThemeContext'
+import { useLanguage } from '../contexts/LanguageContext'
+import { getTranslation, type Language } from '../i18n/routePlanner'
+import { displayWaypointName } from '../utils/waypointName'
 
 interface MapContainerProps {
   waypoints: Waypoint[]
@@ -10,9 +13,16 @@ interface MapContainerProps {
   onAddWaypoint: (lat: number, lng: number) => void
   onUpdateWaypoint: (id: string, lat: number, lng: number) => void
   onDeleteWaypoint?: (id: string) => void
+  /** Extra fit-bounds bottom padding (px), for whatever the caller overlays
+   * on the map's bottom edge — the mobile bottom sheet here. Without it,
+   * fitBounds centers on the full map area and markers/route end up hidden
+   * underneath the sheet. */
+  bottomPadding?: number
 }
 
-export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint, onDeleteWaypoint }: MapContainerProps) {
+const DEFAULT_PADDING = 50
+
+export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint, onDeleteWaypoint, bottomPadding }: MapContainerProps) {
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
@@ -20,7 +30,23 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   const onDeleteWaypointRef = useRef(onDeleteWaypoint)
   const isMapLoadedRef = useRef(false)
   const isDraggingMarkerRef = useRef(false) // Track marker drag state to prevent click event
+  // Latest geometry, read when the 'route' source is (re)created. A geometry
+  // that arrives before the style finishes loading (first load or a theme
+  // switch) finds no source to update, so the source must seed itself from
+  // here — otherwise the line stays missing until the next recalculation.
+  const routeGeometryRef = useRef(routeGeometry)
+  routeGeometryRef.current = routeGeometry
+  const routeLineData = (): GeoJSON.Feature<GeoJSON.LineString> => ({
+    type: 'Feature',
+    properties: {},
+    geometry: {
+      type: 'LineString',
+      coordinates: routeGeometryRef.current.map(([lat, lng]) => [lng, lat]),
+    },
+  })
   const { theme } = useTheme()
+  const { language } = useLanguage()
+  const t = getTranslation(language as Language)
 
   const add3DBuildingsLayer = (map: mapboxgl.Map) => {
     if (map.getLayer('3d-buildings')) return
@@ -125,14 +151,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       if (!map.getSource('route')) {
         map.addSource('route', {
           type: 'geojson',
-          data: {
-            type: 'Feature',
-            properties: {},
-            geometry: {
-              type: 'LineString',
-              coordinates: []
-            }
-          }
+          data: routeLineData()
         })
 
         // Add layer for route line
@@ -188,10 +207,6 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
       console.log('🎨 [MAP] Switching theme to:', theme)
 
-      const routeData = map.getSource('route')
-        ? (map.getSource('route') as mapboxgl.GeoJSONSource)._data
-        : null
-
       isMapLoadedRef.current = false
       map.setStyle(desiredStyle)
 
@@ -202,14 +217,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         if (!map.getSource('route')) {
           map.addSource('route', {
             type: 'geojson',
-            data: routeData || {
-              type: 'Feature',
-              properties: {},
-              geometry: {
-                type: 'LineString',
-                coordinates: []
-              }
-            }
+            data: routeLineData()
           })
 
           map.addLayer({
@@ -245,6 +253,13 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   // Update markers and route line when waypoints or geometry change
   useEffect(() => {
     console.log('🟣 [MAP] Effect triggered - waypoints:', waypoints.length, 'geometry points:', routeGeometry.length)
+
+    const fitBoundsPadding = {
+      top: DEFAULT_PADDING,
+      left: DEFAULT_PADDING,
+      right: DEFAULT_PADDING,
+      bottom: bottomPadding ?? DEFAULT_PADDING,
+    }
 
     if (!mapRef.current) {
       console.warn('⚠️ [MAP] Map not initialized yet')
@@ -327,7 +342,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           anchor: 'center'
         })
           .setLngLat([waypoint.lng, waypoint.lat])
-          .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
+          .setPopup(new mapboxgl.Popup({ offset: 25 }).setText(displayWaypointName(waypoint.name, `${t.planner.waypoint} ${index + 1}`)))
           .addTo(map)
 
         // Handle marker drag start
@@ -361,7 +376,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           inner.textContent = (index + 1).toString()
         }
 
-        marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setText(waypoint.name))
+        marker.setPopup(new mapboxgl.Popup({ offset: 25 }).setText(displayWaypointName(waypoint.name, `${t.planner.waypoint} ${index + 1}`)))
         console.log('🟣 [MAP] Updated existing marker', index + 1)
       }
     })
@@ -396,7 +411,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
           )
 
           map.fitBounds(bounds, {
-            padding: 50,
+            padding: fitBoundsPadding,
             duration: 300
           })
         }
@@ -433,7 +448,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       )
 
       map.fitBounds(bounds, {
-        padding: 50,
+        padding: fitBoundsPadding,
         duration: 300
       })
 
@@ -464,7 +479,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         })
       }
     }
-  }, [waypoints, routeGeometry, onUpdateWaypoint])
+  }, [waypoints, routeGeometry, onUpdateWaypoint, bottomPadding, t])
 
   return <div id="map" ref={mapContainerRef} className="w-full h-full" />
 }

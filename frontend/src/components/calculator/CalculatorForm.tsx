@@ -2,16 +2,19 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { calculatorService } from '../../services/calculatorService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { useNumericField } from '../../hooks/useNumericField';
 import type { Trip, TripResult } from '../../types';
+
+const EMPTY_FORM: Trip = {
+  customFuelConsumption: 0,
+  numberOfPassengers: 0,
+  distance: 0,
+  fuelCost: 0,
+};
 
 export function CalculatorForm() {
   const { t } = useLanguage();
-  const [formData, setFormData] = useState<Trip>({
-    customFuelConsumption: 0,
-    numberOfPassengers: 0,
-    distance: 0,
-    fuelCost: 0,
-  });
+  const [formData, setFormData] = useState<Trip>(EMPTY_FORM);
   const [result, setResult] = useState<TripResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,22 +33,20 @@ export function CalculatorForm() {
   };
 
   const handleReset = () => {
-    setFormData({
-      customFuelConsumption: 0,
-      numberOfPassengers: 0,
-      distance: 0,
-      fuelCost: 0,
-    });
+    setFormData(EMPTY_FORM);
     setResult(null);
     setError(null);
   };
 
-  const handleChange = (field: keyof Trip, value: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      [field]: parseFloat(value) || 0,
-    }));
-  };
+  const setField = (field: keyof Trip) => (value: number) =>
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
+  // emptyEquals: 0 keeps the original convention of a blank field for the
+  // form's zero-valued initial/reset state, instead of a literal "0".
+  const consumptionField = useNumericField(formData.customFuelConsumption, setField('customFuelConsumption'), { min: 0, emptyEquals: 0 });
+  const passengersField = useNumericField(formData.numberOfPassengers, setField('numberOfPassengers'), { min: 1, fallback: 1, emptyEquals: 0 });
+  const distanceField = useNumericField(formData.distance, setField('distance'), { min: 0, emptyEquals: 0 });
+  const fuelCostField = useNumericField(formData.fuelCost, setField('fuelCost'), { min: 0, emptyEquals: 0 });
 
   return (
     <form id="calculator-form" onSubmit={handleSubmit}>
@@ -54,14 +55,12 @@ export function CalculatorForm() {
           {t('calculator.fuelConsumption')}
         </label>
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           id="customFuelConsumption"
           name="customFuelConsumption"
-          value={formData.customFuelConsumption || ''}
-          onChange={(e) => handleChange('customFuelConsumption', e.target.value)}
-          step="0.01"
-          min="0"
           required
+          {...consumptionField}
         />
       </div>
 
@@ -70,13 +69,12 @@ export function CalculatorForm() {
           {t('calculator.passengers')}
         </label>
         <input
-          type="number"
+          type="text"
+          inputMode="numeric"
           id="numberOfPassengers"
           name="numberOfPassengers"
-          value={formData.numberOfPassengers || ''}
-          onChange={(e) => handleChange('numberOfPassengers', e.target.value)}
-          min="1"
           required
+          {...passengersField}
         />
       </div>
 
@@ -85,13 +83,12 @@ export function CalculatorForm() {
           {t('calculator.distance')}
         </label>
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           id="distance"
           name="distance"
-          value={formData.distance || ''}
-          onChange={(e) => handleChange('distance', e.target.value)}
-          min="0"
           required
+          {...distanceField}
         />
       </div>
 
@@ -100,14 +97,12 @@ export function CalculatorForm() {
           {t('calculator.fuelCost')}
         </label>
         <input
-          type="number"
+          type="text"
+          inputMode="decimal"
           id="fuelCost"
           name="fuelCost"
-          value={formData.fuelCost || ''}
-          onChange={(e) => handleChange('fuelCost', e.target.value)}
-          step="0.01"
-          min="0"
           required
+          {...fuelCostField}
         />
       </div>
 

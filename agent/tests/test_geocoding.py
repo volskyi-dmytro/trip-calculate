@@ -161,3 +161,70 @@ async def test_reverse_country_failure_returns_none():
     _country_cache.clear()
     respx.get(REVERSE_URL).mock(return_value=httpx.Response(500))
     assert await reverse_country(1.0, 1.0, "test-agent") is None
+
+
+# ── Labels must match the request language, not the geocoded place's own ──
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_passes_accept_language_to_nominatim(nominatim_kyiv):
+    route = respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=nominatim_kyiv)
+    )
+    await geocode_location(_loc("Kyiv Ukraine"), language="uk")
+    assert route.calls.last.request.url.params["accept-language"] == "uk"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_defaults_to_english_for_unknown_language(nominatim_kyiv):
+    route = respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=nominatim_kyiv)
+    )
+    await geocode_location(_loc("Kyiv Ukraine"), language="fr")
+    assert route.calls.last.request.url.params["accept-language"] == "en"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_plain_city_search_prefers_settlement_name_over_district_name():
+    """Regression for the audit finding ("Krakow, Старий город"): Nominatim
+    can rank a district/suburb above the city itself for a plain city query.
+    Its own "name" field is then the district ("Old Town"), which must never
+    replace the city label the user actually asked for."""
+    district = [{
+        "place_id": 9,
+        "lat": "50.0614",
+        "lon": "19.9366",
+        "display_name": "Old Town, Kraków, Poland",
+        "name": "Old Town",
+        "type": "suburb",
+        "class": "place",
+        "importance": 0.5,
+        "address": {"city": "Kraków", "suburb": "Old Town", "country_code": "pl"},
+    }]
+    respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=district)
+    )
+    result = await geocode_location(_loc("Krakow Poland", "destination"))
+    assert result.clean_name == "Kraków"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_poi_search_still_prefers_the_matched_feature_name():
+    poi = [{
+        "place_id": 10,
+        "lat": "50.0", "lon": "19.9",
+        "display_name": "Wawel Castle, Kraków, Poland",
+        "name": "Wawel Castle",
+        "type": "castle",
+        "class": "historic",
+        "importance": 0.7,
+        "address": {"city": "Kraków", "country_code": "pl"},
+    }]
+    respx.get("https://nominatim.openstreetmap.org/search").mock(
+        return_value=httpx.Response(200, json=poi)
+    )
+    result = await geocode_location(_loc("Wawel Castle Krakow Poland", "waypoint"))
+    assert result.clean_name == "Wawel Castle"

@@ -19,6 +19,7 @@ async def geocode_location(
     location: ParsedLocation,
     user_agent: str = "tripcalculate-agent/1.0",
     allow_ai_coords: bool = True,
+    language: str = "en",
 ) -> GeocodedLocation:
     """
     Geocode one location. Strategy:
@@ -29,6 +30,11 @@ async def geocode_location(
        The LLM can hallucinate plausible-looking coordinates for obscure
        places, so callers should keep this as a genuine last resort.
     4. Return source="failed" if everything fails.
+
+    `language` sets Nominatim's accept-language: without it, OSM returns each
+    result's local-language name (e.g. "Луцьк" for a Ukrainian city) even on
+    an English-language request — the display label must match the request's
+    language, not the geocoded place's own country.
     """
     queries = [location.name]
     original = (location.original_name or "").strip()
@@ -37,16 +43,26 @@ async def geocode_location(
 
     async with httpx.AsyncClient() as client:
         for query in queries:
-            best = await _query_nominatim(client, query, user_agent)
+            best = await _query_nominatim(client, query, user_agent, language)
             if best:
                 addr = best.get("address", {})
-                clean = (
-                    best.get("name")
-                    or addr.get("city")
-                    or addr.get("town")
-                    or addr.get("village")
-                    or best["display_name"].split(",")[0].strip()
-                )
+                settlement = addr.get("city") or addr.get("town") or addr.get("village")
+                if _is_specific_place(query):
+                    # POI search: the matched feature's own name IS the point
+                    # of the query (e.g. a castle, a café) — keep it first.
+                    clean = (
+                        best.get("name") or settlement
+                        or best["display_name"].split(",")[0].strip()
+                    )
+                else:
+                    # Plain city/region search: a district, suburb or other
+                    # sub-unit can outrank the settlement in Nominatim's own
+                    # results (importance-ranked), so its bare "name" must
+                    # never replace the city the user actually named.
+                    clean = (
+                        settlement or best.get("name")
+                        or best["display_name"].split(",")[0].strip()
+                    )
                 country = str(addr.get("country_code") or "").strip().upper() or None
                 return GeocodedLocation(
                     name=location.name,
@@ -87,10 +103,18 @@ async def geocode_location(
     )
 
 
+# Nominatim's own docs param is a full noun ("settlement"), not "city" — kept
+# case-correct here after finding the previous lowercase "featuretype: city"
+# was a silently-ignored no-op (Nominatim drops unrecognized query params
+# rather than erroring), so the settlement restriction was never applied.
+_NOMINATIM_LANGUAGES = {"en", "uk"}
+
+
 async def _query_nominatim(
     client: httpx.AsyncClient,
     query: str,
     user_agent: str,
+    language: str = "en",
 ) -> Optional[dict]:
     """Run one Nominatim search (with 418/429 backoff retries) and return the
     best valid result, or None when nothing acceptable is found."""
@@ -100,9 +124,10 @@ async def _query_nominatim(
         "format": "json",
         "limit": 10,
         "addressdetails": 1,
+        "accept-language": language if language in _NOMINATIM_LANGUAGES else "en",
     }
     if not is_poi:
-        params["featuretype"] = "city"
+        params["featureType"] = "settlement"
 
     max_retries = len(_BACKOFF)
     for attempt in range(max_retries + 1):

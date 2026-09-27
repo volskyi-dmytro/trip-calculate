@@ -49,8 +49,9 @@ const press = (key: string, shiftKey = false) =>
 
 describe('Dialog', () => {
   it('is a labelled modal dialog', () => {
-    const container = mount()
-    const dialog = container.querySelector('[role="dialog"]')!
+    mount()
+    // Portaled to document.body (see dialog.tsx), not a child of the mount container.
+    const dialog = document.querySelector('[role="dialog"]')!
     expect(dialog.getAttribute('aria-modal')).toBe('true')
     const title = document.getElementById(dialog.getAttribute('aria-labelledby')!)
     expect(title?.textContent).toBe('Delete account')
@@ -66,7 +67,7 @@ describe('Dialog', () => {
     expect(document.activeElement?.id).toBe('first')
 
     press('Escape')
-    expect(container.querySelector('[role="dialog"]')).toBeNull()
+    expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(document.activeElement).toBe(opener)
   })
 
