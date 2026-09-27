@@ -1,4 +1,5 @@
 import React, { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 // Title/description ids flow from Dialog to its parts, so the dialog is
 // announced with its name and description without every caller wiring ids.
@@ -114,8 +115,11 @@ export function Dialog({
       {/* Always render the trigger */}
       {triggerWithHandler}
 
-      {/* Only render dialog content when open */}
-      {open && (
+      {/* Only render dialog content when open. Portaled to <body> so a
+          "fixed" overlay isn't confined to an ancestor with a transform or
+          backdrop-filter (our .glass-panel cards set one), which would
+          otherwise clip the dialog to the card instead of the viewport. */}
+      {open && createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center">
           <div
             className="fixed inset-0 bg-black/50 backdrop-blur-sm"
@@ -134,7 +138,8 @@ export function Dialog({
               {content}
             </DialogIdsContext.Provider>
           </div>
-        </div>
+        </div>,
+        document.body,
       )}
     </>
   );
