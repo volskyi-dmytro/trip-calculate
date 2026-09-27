@@ -951,9 +951,11 @@ export function RoutePlanner() {
         // Garage car precedence: a car the user actually named in their
         // message (e.g. "diesel Skoda Superb") always wins over the AI's
         // generic fuel-category guess; the garage default fills in only
-        // when the AI gave no car-specific guess of its own. Only once
-        // neither applies do we fall through to the AI's own numbers.
-        const agentGaveCarDetails = Boolean(agentData.consumption || agentData.fuelType);
+        // when the AI gave no car-specific guess of its own AND this is a
+        // fresh trip — an edit like "add a stop" must not reset a car the
+        // user already chose. Only once neither applies do we fall through
+        // to the AI's own numbers.
+        const agentGaveCarDetails = Boolean(agentData.consumption || agentData.fuelType) || waypoints.length >= 2;
         const preferredCar = preferredCarForAiResult(garageCars, message, agentGaveCarDetails);
 
         if (preferredCar) {

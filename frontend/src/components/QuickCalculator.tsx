@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -59,6 +59,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   // Once the user deliberately types a fuel price, currency switches stop
   // overwriting it (see fuelPriceService.applyLiveFuelPrice for the same rule).
   const [fuelPriceTouched, setFuelPriceTouched] = useState(false);
+  // Read when a currency-switch price lookup resolves: the user may have
+  // typed a price or switched again while it was in flight.
+  const priceGuard = useRef({ touched: false, currency });
+  priceGuard.current = { touched: fuelPriceTouched, currency };
 
   useEffect(() => {
     if (user) carService.list().then(setGarageCars).catch(() => {});
@@ -105,6 +109,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     edited(setCurrency)(nextCurrency);
     if (fuelPriceTouched || nextCurrency === prevCurrency) return;
     suggestFuelPrice(nextCurrency).then((live) => {
+      if (priceGuard.current.touched || priceGuard.current.currency !== nextCurrency) return;
       setFuelPrice(live ?? convertFuelPrice(fuelPrice, prevCurrency, nextCurrency));
     });
   };

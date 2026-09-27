@@ -388,7 +388,7 @@ _EN_WEEKDAY_INDEX = {
     "friday": 4, "saturday": 5, "sunday": 6,
 }
 _RELATIVE_WEEKDAY_EN_RE = re.compile(
-    r"\b(?:next|this|on|coming)\s+(" + "|".join(_EN_WEEKDAY_INDEX) + r")\b",
+    r"\b(next|this|on|coming)\s+(" + "|".join(_EN_WEEKDAY_INDEX) + r")\b",
     re.IGNORECASE,
 )
 
@@ -405,7 +405,7 @@ _UK_WEEKDAY_INDEX = {
     "неділю": 6, "неділі": 6,
 }
 _RELATIVE_WEEKDAY_UK_RE = re.compile(
-    r"\b(?:наступн\w*|цю|у|в|на)\s+(" + "|".join(_UK_WEEKDAY_INDEX) + r")\b",
+    r"\b(наступн\w*|цю|у|в|на)\s+(" + "|".join(_UK_WEEKDAY_INDEX) + r")\b",
     re.IGNORECASE,
 )
 # "минулої суботи" / "вчора" mean a PAST weekday — never resolve those forward
@@ -418,22 +418,26 @@ def resolve_relative_weekday(message: str, today: date) -> "str | None":
     weekdays by hand from a bare number — exactly the step that produced the
     audit's Wed-instead-of-Sat bug. This resolves the same phrase in code.
 
-    Policy: "next <weekday>" and "this <weekday>" both mean the first
-    occurrence of that weekday strictly after today (never today itself,
-    even if today already is that weekday).
+    Policy: the first occurrence of that weekday from today on. Said on
+    that same weekday, "this/on <weekday>" means today and only "next
+    <weekday>" (наступн-) skips to a week later — matching the prompt's
+    next-7-days table, which starts at today.
     """
     target = None
+    skip_today = False
     m = _RELATIVE_WEEKDAY_EN_RE.search(message)
     if m:
-        target = _EN_WEEKDAY_INDEX[m.group(1).lower()]
+        target = _EN_WEEKDAY_INDEX[m.group(2).lower()]
+        skip_today = m.group(1).lower() == "next"
     else:
         m = _RELATIVE_WEEKDAY_UK_RE.search(message)
         if m and not _UK_PAST_MARKER_RE.search(message):
-            target = _UK_WEEKDAY_INDEX[m.group(1).lower()]
+            target = _UK_WEEKDAY_INDEX[m.group(2).lower()]
+            skip_today = m.group(1).lower().startswith("наступн")
     if target is None:
         return None
     offset = (target - today.weekday()) % 7
-    if offset == 0:
+    if offset == 0 and skip_today:
         offset = 7
     return (today + timedelta(days=offset)).isoformat()
 

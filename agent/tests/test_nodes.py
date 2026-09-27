@@ -1297,10 +1297,14 @@ def test_resolve_relative_weekday_rolls_over_when_today_is_that_weekday():
     from datetime import date
     from app.nodes import resolve_relative_weekday
 
-    # 2026-09-27 is itself a Sunday: "next Sunday" must be 7 days out, not today.
-    assert resolve_relative_weekday(
-        "on Sunday we leave", date(2026, 9, 27)
-    ) == "2026-10-04"
+    # 2026-09-27 is itself a Sunday: "next Sunday" is 7 days out, while
+    # "this/on Sunday" is today.
+    sunday = date(2026, 9, 27)
+    assert resolve_relative_weekday("next Sunday we leave", sunday) == "2026-10-04"
+    assert resolve_relative_weekday("наступної неділі", sunday) == "2026-10-04"
+    assert resolve_relative_weekday("on Sunday we leave", sunday) == "2026-09-27"
+    assert resolve_relative_weekday("this Sunday", sunday) == "2026-09-27"
+    assert resolve_relative_weekday("у неділю", sunday) == "2026-09-27"
 
 
 def test_resolve_relative_weekday_ukrainian_forms():
@@ -1310,7 +1314,7 @@ def test_resolve_relative_weekday_ukrainian_forms():
     today = date(2026, 9, 27)
     assert resolve_relative_weekday("наступної суботи", today) == "2026-10-03"
     assert resolve_relative_weekday("у суботу", today) == "2026-10-03"
-    assert resolve_relative_weekday("в неділю", today) == "2026-10-04"
+    assert resolve_relative_weekday("в понеділок", today) == "2026-09-28"
 
 
 def test_resolve_relative_weekday_ignores_past_markers():
