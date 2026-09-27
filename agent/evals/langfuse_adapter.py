@@ -19,6 +19,7 @@ import logging
 import os
 import time
 from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from typing import TYPE_CHECKING, Literal, Optional
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -78,13 +79,21 @@ def _trace_was_ingested(client, trace_id: str) -> bool:
     basis for saying the trace was published. Ingestion is eventually
     consistent, so retry briefly without making observability a release gate.
     """
+    # GET /traces/{id} is deprecated in Langfuse v4 (Cloud removes it
+    # 2026-11-16); Observations v2 filtered by traceId replaces it. v2 wants
+    # a start-time window — the trace was created seconds ago, so an hour
+    # back plus a little skew margin forward is ample.
+    now = datetime.now(timezone.utc)
+    window = {"from_start_time": now - timedelta(hours=1),
+              "to_start_time": now + timedelta(minutes=5)}
     delays = (0.0, 0.5, 1.0, 2.0, 4.0)
     for attempt, delay in enumerate(delays):
         if delay:
             time.sleep(delay)
         try:
-            trace = client.api.trace.get(trace_id)
-            if getattr(trace, "id", None) == trace_id:
+            rows = client.api.observations.get_many(
+                trace_id=trace_id, fields="core", limit=1, **window).data
+            if any(getattr(row, "trace_id", None) == trace_id for row in rows):
                 return True
         except Exception:
             if attempt == len(delays) - 1:

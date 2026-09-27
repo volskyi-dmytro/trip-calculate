@@ -532,14 +532,14 @@ def test_langfuse_trace_verification_is_bounded_when_ingestion_is_not_visible(
 
     calls: list[str] = []
 
-    class TraceApi:
+    class ObservationsApi:
         @staticmethod
-        def get(trace_id):
+        def get_many(*, trace_id, **_kw):
             calls.append(trace_id)
             raise RuntimeError("not visible yet")
 
     client = type(
-        "Client", (), {"api": type("Api", (), {"trace": TraceApi()})()}
+        "Client", (), {"api": type("Api", (), {"observations": ObservationsApi()})()}
     )()
     monkeypatch.setattr(langfuse_adapter.time, "sleep", lambda _seconds: None)
 
@@ -665,13 +665,16 @@ async def test_langfuse_publish_emits_the_expected_scores(monkeypatch):
 
     class FakeClient:
         def __init__(self, **_kw):
-            class TraceApi:
+            class ObservationsApi:
                 @staticmethod
-                def get(trace_id):
+                def get_many(*, trace_id, from_start_time, to_start_time, **_kw):
+                    # v2 requires the start-time window; fail loudly without it
+                    assert from_start_time < to_start_time
                     verified_trace_calls.append(trace_id)
-                    return type("Trace", (), {"id": trace_id})()
+                    row = type("Observation", (), {"trace_id": trace_id})()
+                    return type("Page", (), {"data": [row]})()
 
-            self.api = type("Api", (), {"trace": TraceApi()})()
+            self.api = type("Api", (), {"observations": ObservationsApi()})()
 
         @contextmanager
         def start_as_current_observation(self, **kw):
