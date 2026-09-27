@@ -24,6 +24,7 @@ interface AgentActivitySlotProps {
   weather: WeatherData | null
   onSaveRoute: () => void
   onShareReceipt: () => void
+  onApplyLivePrice?: () => void
 }
 
 /**
@@ -47,6 +48,7 @@ export function AgentActivitySlot({
   weather,
   onSaveRoute,
   onShareReceipt,
+  onApplyLivePrice,
 }: AgentActivitySlotProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -81,6 +83,7 @@ export function AgentActivitySlot({
         weather={weather}
         onSaveRoute={onSaveRoute}
         onShareReceipt={onShareReceipt}
+        onApplyLivePrice={onApplyLivePrice}
       />
     </div>
   )

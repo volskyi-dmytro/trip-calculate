@@ -30,6 +30,7 @@ import { getTranslation, type Language } from '../i18n/routePlanner'
 import { withLocalePrefix } from '../utils/locale'
 import { routeEditPath } from '../utils/routePaths'
 import { routeCalculationKey, resolveRouteCalculation } from '../utils/aiResultCard'
+import { preferredCarForAiResult } from '../utils/carSelection'
 import type { ChatMessage } from '../types'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
@@ -554,8 +555,8 @@ export function RoutePlanner() {
     setCurrentRouteId(null)
     setIsEditMode(false)
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
-    toast.success('Ready to create new route')
-  }, [navigate, language])
+    toast.success(t.toasts.newRouteReady)
+  }, [navigate, language, t])
 
   const saveRouteToServer = useCallback(async (saveAsNew = false) => {
     if (waypoints.length < 2) {
@@ -587,7 +588,10 @@ export function RoutePlanner() {
       if (isEditMode && currentRouteId && !saveAsNew) {
         // Update existing route
         await routeService.updateRoute(currentRouteId, routeData)
-        toast.success('Route updated successfully!')
+        // Bottom-center + a bounded duration: top-right (the default) sits
+        // right over the map's zoom controls and the account menu, and a
+        // stacked run of these toasts must not linger and block either.
+        toast.success(t.toasts.routeUpdated, { duration: 4000, position: 'bottom-center' })
       } else {
         // Create new route
         const newRoute = await routeService.createRoute(routeData)
@@ -936,10 +940,33 @@ export function RoutePlanner() {
       if (agentData) {
         const updates: string[] = [];
 
-        // Update fuel consumption
-        if (agentData.consumption) {
-          setRouteSettings(prev => ({ ...prev, fuelConsumption: agentData.consumption! }));
-          updates.push(`${t.routeSettings.fuelConsumption}: ${agentData.consumption}`);
+        // Garage car precedence: a car the user actually named in their
+        // message (e.g. "diesel Skoda Superb") always wins over the AI's
+        // generic fuel-category guess; the garage default fills in only
+        // when the AI gave no car-specific guess of its own. Only once
+        // neither applies do we fall through to the AI's own numbers.
+        const agentGaveCarDetails = Boolean(agentData.consumption || agentData.fuelType);
+        const preferredCar = preferredCarForAiResult(garageCars, message, agentGaveCarDetails);
+
+        if (preferredCar) {
+          setRouteSettings(prev => ({
+            ...prev,
+            fuelConsumption: preferredCar.fuelConsumption,
+            fuelType: preferredCar.fuelType,
+          }));
+          updates.push(`${t.planner.car}: ${preferredCar.name}`);
+        } else {
+          // Update fuel consumption
+          if (agentData.consumption) {
+            setRouteSettings(prev => ({ ...prev, fuelConsumption: agentData.consumption! }));
+            updates.push(`${t.routeSettings.fuelConsumption}: ${agentData.consumption}`);
+          }
+
+          // Update fuel type without changing the selected currency
+          if (agentData.fuelType) {
+            setRouteSettings(prev => ({ ...prev, fuelType: agentData.fuelType! }));
+            updates.push(`${t.fuel.typeLabel}: ${t.fuel[agentData.fuelType as keyof typeof t.fuel] ?? agentData.fuelType}`);
+          }
         }
 
         // Update fuel cost — a chat-dictated price is user-chosen, so mark it
@@ -947,12 +974,6 @@ export function RoutePlanner() {
         if (agentData.price) {
           setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: true }));
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
-        }
-
-        // Update fuel type without changing the selected currency
-        if (agentData.fuelType) {
-          setRouteSettings(prev => ({ ...prev, fuelType: agentData.fuelType! }));
-          updates.push(`${t.fuel.typeLabel}: ${t.fuel[agentData.fuelType as keyof typeof t.fuel] ?? agentData.fuelType}`);
         }
 
         // Update currency
@@ -1075,13 +1096,16 @@ export function RoutePlanner() {
         };
         setChatMessages(prev => [...prev, responseMsg]);
 
-        // Success toast notification
+        // Success toast notification. Bottom-center + a bounded duration:
+        // the default top-right position sits over the map's zoom controls
+        // and the account menu, blocking both while it's visible.
         if (updates.length > 0) {
           toast.success(
             t.agent.routeUpdated,
             {
               description: t.agent.routeUpdatedDescription,
-              duration: 3000
+              duration: 4000,
+              position: 'bottom-center',
             }
           );
         }
@@ -1127,7 +1151,7 @@ export function RoutePlanner() {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars]);
 
   const handleChatFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1618,6 +1642,7 @@ export function RoutePlanner() {
               weather={weatherData}
               onSaveRoute={() => setShowSaveDialog(true)}
               onShareReceipt={() => setShowResultShareDialog(true)}
+              onApplyLivePrice={handleApplyFuelSuggestion}
             />
             <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
               <Input
@@ -1668,6 +1693,11 @@ export function RoutePlanner() {
           onAddWaypoint={addWaypoint}
           onUpdateWaypoint={updateWaypoint}
           onDeleteWaypoint={removeWaypoint}
+          // The bottom sheet is a visual overlay, not a resized container —
+          // the map canvas underneath still spans the full height, so
+          // fitBounds must reserve that same space itself or markers end up
+          // geometrically placed right where the sheet covers them.
+          bottomPadding={isMobile ? (isMobileExpanded ? Math.round(window.innerHeight * 0.65) : 140) : undefined}
         />
 
         {/* Instructions overlay when no waypoints */}
@@ -2154,6 +2184,7 @@ export function RoutePlanner() {
                   weather={weatherData}
                   onSaveRoute={() => setShowSaveDialog(true)}
                   onShareReceipt={() => setShowResultShareDialog(true)}
+                  onApplyLivePrice={handleApplyFuelSuggestion}
                 />
                 <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
                   <Input

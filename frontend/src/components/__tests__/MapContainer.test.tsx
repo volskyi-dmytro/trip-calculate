@@ -19,6 +19,7 @@ vi.mock('mapbox-gl', () => {
 })
 vi.mock('mapbox-gl/dist/mapbox-gl.css', () => ({}))
 vi.mock('../../contexts/ThemeContext', () => ({ useTheme: () => ({ theme: 'light' }) }))
+vi.mock('../../contexts/LanguageContext', () => ({ useLanguage: () => ({ language: 'en' }) }))
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
 

@@ -12,6 +12,7 @@ import { WeatherStrip } from './WeatherStrip'
 import type { WeatherData } from '../types/weather'
 import type { GarageCar } from '../types/Car'
 import { matchingCarId } from '../utils/carSelection'
+import { displayWaypointName } from '../utils/waypointName'
 
 // Currency options with symbols
 const CURRENCIES = [
@@ -65,6 +66,14 @@ export function RoutePanel({
 }: RoutePanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
+
+  // A geocoder (ours or the AI's) can fall back to raw coordinates as a
+  // waypoint's name — swap in a "Waypoint N" label everywhere a name is
+  // shown, including inside the Waze leg labels built below.
+  const displayWaypoints = waypoints.map((wp, i) => ({
+    ...wp,
+    name: displayWaypointName(wp.name, `${t.planner.waypoint} ${i + 1}`),
+  }))
 
   // Local state for text inputs (to allow empty strings and decimals)
   const [fuelConsumptionInput, setFuelConsumptionInput] = useState<string>('')
@@ -591,7 +600,7 @@ export function RoutePanel({
           </div>
         ) : (
           <div className="space-y-2">
-            {waypoints.map((waypoint, index) => {
+            {displayWaypoints.map((waypoint, index) => {
               const isDragging = draggedIndex === index
               const isDropTarget = dragOverIndex === index && draggedIndex !== index
 
@@ -682,7 +691,7 @@ export function RoutePanel({
       {/* Waze Export Links */}
       {waypoints.length >= 2 && (
         <div style={cardStyle} className="p-3 space-y-2">
-          {wazeLegLinks(waypoints).map(leg => (
+          {wazeLegLinks(displayWaypoints).map(leg => (
             <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer"
                className="trip-result-waze-link">
               <Navigation className="w-3.5 h-3.5" aria-hidden="true" />

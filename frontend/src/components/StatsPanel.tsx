@@ -7,6 +7,7 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { ShareReceiptButton } from './receipt/ShareReceiptButton'
 import { downsampleGeometry } from '../services/receiptService'
 import { computeTripStats } from '../services/tripStats'
+import { displayWaypointName } from '../utils/waypointName'
 
 interface StatsPanelProps {
   waypoints: Waypoint[]
@@ -148,8 +149,8 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
       {waypoints.length >= 2 && stats.totalDistance > 0 && (
         <ShareReceiptButton
           payload={{
-            originLabel: waypoints[0].name,
-            destinationLabel: waypoints[waypoints.length - 1].name,
+            originLabel: displayWaypointName(waypoints[0].name, t.planner.waypoint),
+            destinationLabel: displayWaypointName(waypoints[waypoints.length - 1].name, t.planner.waypoint),
             distanceKm: stats.totalDistance,
             fuelConsumption: routeSettings.fuelConsumption,
             fuelPrice: routeSettings.fuelCostPerLiter,
@@ -180,11 +181,11 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="text-xs font-medium truncate" style={{ color: 'var(--nav-text-primary)' }}>
-                    {segment.from}
+                    {displayWaypointName(segment.from, `${t.planner.waypoint} ${index + 1}`)}
                   </div>
                   <Navigation className="h-2.5 w-2.5 my-0.5" style={{ color: 'var(--nav-text-secondary)' }} />
                   <div className="text-xs font-medium truncate" style={{ color: 'var(--nav-text-primary)' }}>
-                    {segment.to}
+                    {displayWaypointName(segment.to, `${t.planner.waypoint} ${index + 2}`)}
                   </div>
                   <div
                     className="text-xs mt-1"
