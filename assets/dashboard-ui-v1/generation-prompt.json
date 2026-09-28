@@ -1,0 +1,6 @@
+{
+  "generator": "Built-in image_gen",
+  "file": "next-trip.png",
+  "prompt": "Use case: stylized-concept. Create a new standalone transparent dashboard welcome illustration for Trip Calculate, matching the reference's sophisticated paper sculpture editorial travel style, fine grain, warm ivory, sage, forest teal and tiny muted golden accents. Reference is STYLE ONLY, not an edit target. Scene: a small unbranded ivory hatchback beside one tasteful teal weekend travel bag, with a simple curved ivory road ribbon leading behind them toward two layered sage mountain silhouettes and a small golden sun disk. Compact unified horizontal composition, friendly sense of readiness for the next journey, not an advertisement for a car or luggage. Few clear forms, readable at 260 pixels wide, no people. Landscape 3:2 canvas, all objects centered with generous 15% transparent padding. Genuine transparent alpha background, minimal soft contact shadow, no background panel, no large halo. Do not include compass, robot, map pins, screens, text, numbers, letters, logos, interface, watermark or borders. The image will sit to the right of live dashboard welcome copy; deliver only the illustration.",
+  "styleReference": "../seasonal-backgrounds-v1/planner-empty.png"
+}

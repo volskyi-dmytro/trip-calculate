@@ -12,6 +12,7 @@ import { ReceiptsList } from '../components/dashboard/ReceiptsList';
 import { QuickActions } from '../components/dashboard/QuickActions';
 import { CarsCard } from '../components/dashboard/CarsCard';
 import { SecuritySection } from '../components/dashboard/SecuritySection';
+import { NextTripBanner } from '../components/dashboard/NextTripBanner';
 
 export function UserDashboard() {
   const { t } = useLanguage();
@@ -73,6 +74,8 @@ export function UserDashboard() {
             {t('dashboard.subtitle')}
           </p>
         </div>
+
+        <NextTripBanner />
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile & Quick Actions */}

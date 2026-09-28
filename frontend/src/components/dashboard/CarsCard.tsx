@@ -207,15 +207,17 @@ export function CarsCard() {
                 {sortedCars.map((car) => (
                   <div
                     key={car.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                    className="flex flex-col gap-3 p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
                   >
-                    <div className="flex-1">
+                    {/* Details: always full-width so a long name never
+                        squeezes the actions row into letter-by-letter wraps. */}
+                    <div className="w-full min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-semibold text-gray-900 dark:text-white">
+                        <h4 className="font-semibold text-gray-900 dark:text-white break-words">
                           {car.name}
                         </h4>
                         {car.isDefault && (
-                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary">
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-primary flex-shrink-0">
                             <Star className="h-3.5 w-3.5 fill-current" />
                             {t('dashboard.cars.default')}
                           </span>
@@ -233,11 +235,13 @@ export function CarsCard() {
                         <span>{car.fuelConsumption} L/100km</span>
                       </div>
                     </div>
-                    <div className="flex gap-2 mt-3 sm:mt-0">
+                    {/* Actions: separate row that always wraps on its own,
+                        never sharing width with the details block. */}
+                    <div className="flex flex-wrap gap-2">
                       {!car.isDefault && (
                         <Button
                           variant="outline"
-                          size="sm"
+                          size="default"
                           aria-label={`${t('dashboard.cars.setDefault')} ${car.name}`}
                           onClick={() => handleSetDefault(car)}
                           disabled={settingDefaultId !== null}
@@ -251,7 +255,7 @@ export function CarsCard() {
                       )}
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="default"
                         aria-label={`${t('dashboard.cars.edit')} ${car.name}`}
                         onClick={() => openEdit(car)}
                       >
@@ -259,7 +263,7 @@ export function CarsCard() {
                       </Button>
                       <Button
                         variant="outline"
-                        size="sm"
+                        size="default"
                         aria-label={`${t('dashboard.cars.delete')} ${car.name}`}
                         onClick={() => confirmDelete(car)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"

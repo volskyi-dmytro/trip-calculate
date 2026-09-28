@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { MapPin, Edit2, Trash2, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -81,8 +81,18 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
           <CardTitle className="text-xl">{t('dashboard.routes.title')}</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="text-center py-12">
-            <Navigation className="h-16 w-16 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+          <div className="text-center py-8">
+            {/* Confirmed-empty state only — never rendered while loading or
+                on a fetch error. Decorative, so it carries no alt text. */}
+            <img
+              src="/images/planner-v1/waypoints-empty.webp"
+              alt=""
+              width={320}
+              height={213}
+              loading="lazy"
+              decoding="async"
+              className="planner-waypoints-art"
+            />
             <p className="text-gray-600 dark:text-gray-400 mb-4">
               {t('dashboard.routes.empty')}
             </p>

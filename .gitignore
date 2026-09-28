@@ -116,3 +116,4 @@ agent/evals/results/
 # their checksums. Source: the seasonal-backgrounds-v1 pack (see README there).
 assets/seasonal-backgrounds-v1/*.png
 assets/planner-ui-v1/*.png
+assets/dashboard-ui-v1/*.png

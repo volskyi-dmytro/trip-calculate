@@ -106,6 +106,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.error.fetchFailed': 'Failed to load dashboard data',
     'dashboard.error.noData': 'No data available',
 
+    'dashboard.banner.heading': 'Ready for your next trip?',
+    'dashboard.banner.body': 'Plan a route, check the fuel cost, and keep your journeys in one place.',
+    'dashboard.banner.cta': 'Plan a trip',
+
     'dashboard.profile.title': 'Profile',
     'dashboard.profile.accessGranted': 'Access granted',
     'dashboard.profile.noAccess': 'No access',
@@ -199,6 +203,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.security.sessionDuration': '24 hours',
     'dashboard.security.sessionNote': 'Your session will expire after 24 hours of inactivity',
     'dashboard.security.logout': 'Logout',
+    'dashboard.security.accountSettings': 'Account settings',
+    'dashboard.security.dangerZone': 'Danger zone',
 
     // Admin
     'admin.title': 'Admin dashboard',
@@ -510,6 +516,10 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.error.fetchFailed': 'Не вдалося завантажити дані панелі',
     'dashboard.error.noData': 'Дані недоступні',
 
+    'dashboard.banner.heading': 'Готові до наступної подорожі?',
+    'dashboard.banner.body': 'Плануйте маршрути, розраховуйте витрати на пальне та зберігайте свої подорожі в одному місці.',
+    'dashboard.banner.cta': 'Спланувати подорож',
+
     'dashboard.profile.title': 'Профіль',
     'dashboard.profile.accessGranted': 'Доступ Надано',
     'dashboard.profile.noAccess': 'Немає Доступу',
@@ -605,6 +615,8 @@ export const translations: Record<Language, Record<string, string>> = {
     'dashboard.security.sessionDuration': '24 години',
     'dashboard.security.sessionNote': 'Ваша сесія закінчиться після 24 годин неактивності',
     'dashboard.security.logout': 'Вийти',
+    'dashboard.security.accountSettings': 'Налаштування облікового запису',
+    'dashboard.security.dangerZone': 'Небезпечна зона',
 
     // Admin
     'admin.title': 'Панель адміністратора',

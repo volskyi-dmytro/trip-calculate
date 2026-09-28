@@ -57,6 +57,16 @@ def main() -> None:
         art = art.resize((width, round(width * art.height / art.width)), Image.LANCZOS)
         save(art, f"{name}.webp", out=ui_out)
 
+    # Dashboard next-trip banner artwork (assets/dashboard-ui-v1). RGBA like
+    # the above; 640px wide is ~2x the ~300px CSS display width.
+    dash_src = ROOT / "assets" / "dashboard-ui-v1"
+    dash_out = OUT.parent / "dashboard-v1"
+    dash_out.mkdir(exist_ok=True)
+    next_trip = Image.open(dash_src / "next-trip.png").convert("RGBA")
+    width = 640
+    next_trip = next_trip.resize((width, round(width * next_trip.height / next_trip.width)), Image.LANCZOS)
+    save(next_trip, "next-trip.webp", out=dash_out)
+
 
 if __name__ == "__main__":
     main()

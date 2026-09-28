@@ -1480,6 +1480,31 @@ footer {
     margin: 0 auto 6px;
 }
 
+/* ============================================
+   Dashboard next-trip banner (dashboard-v1)
+   Decorative generic car, never the user's own vehicle/route.
+   ============================================ */
+.dashboard-next-trip-art {
+    display: none;
+    width: 280px;
+    height: auto;
+    max-height: 210px;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+@media (min-width: 640px) {
+    .dashboard-next-trip-art {
+        display: block;
+    }
+}
+
+@media (min-width: 1024px) {
+    .dashboard-next-trip-art {
+        width: 300px;
+    }
+}
+
 /* Example prompts: fill the composer only, so they read as suggestions
    (soft chips), not as primary send buttons. */
 .planner-example-chip {
