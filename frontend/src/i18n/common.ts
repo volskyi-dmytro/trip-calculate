@@ -21,6 +21,9 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Popular routes (home page)
     'home.popularRoutes.title': 'Popular routes',
+    'home.intro.eyebrow': 'Less calculating. More travelling.',
+    'home.intro.title': 'The open road. A clear budget.',
+    'home.intro.text': 'Get a simple estimate for your next road trip, whether you’re driving solo or sharing the journey.',
     'home.popularRoutes.viewCost': 'View trip cost',
 
     // City route page
@@ -419,6 +422,9 @@ export const translations: Record<Language, Record<string, string>> = {
 
     // Popular routes (home page)
     'home.popularRoutes.title': 'Популярні маршрути',
+    'home.intro.eyebrow': 'Менше підрахунків. Більше подорожей.',
+    'home.intro.title': 'Відкрита дорога. Зрозумілий бюджет.',
+    'home.intro.text': 'Швидко оцініть витрати на наступну автоподорож — наодинці чи в компанії.',
     'home.popularRoutes.viewCost': 'Переглянути вартість поїздки',
 
     // City route page

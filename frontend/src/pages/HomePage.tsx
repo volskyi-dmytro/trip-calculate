@@ -55,8 +55,23 @@ export function HomePage() {
       <Header onCalculateClick={() => setIsCalculatorOpen(true)} />
 
       <main className="container">
-        <section className="section">
-          <div style={{ maxWidth: '26rem', margin: '0 auto' }}>
+        <section className="section home-intro" aria-labelledby="home-intro-title">
+          <div className="home-intro-copy">
+            <p className="home-intro-eyebrow">{t('home.intro.eyebrow')}</p>
+            <h2 id="home-intro-title" className="home-intro-title">{t('home.intro.title')}</h2>
+            <p className="home-intro-text">{t('home.intro.text')}</p>
+            {/* Decorative: the text beside it carries the meaning. */}
+            <img
+              className="home-intro-art"
+              src="/images/planner-empty.webp"
+              alt=""
+              width={720}
+              height={480}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+          <div className="home-intro-calc">
             <QuickCalculator example />
           </div>
         </section>

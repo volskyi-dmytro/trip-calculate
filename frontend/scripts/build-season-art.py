@@ -22,8 +22,8 @@ SEASONS = ("winter", "spring", "summer", "autumn")
 QUALITY = 84
 
 
-def save(im: Image.Image, name: str, quality: int = QUALITY) -> None:
-    path = OUT / name
+def save(im: Image.Image, name: str, quality: int = QUALITY, out: Path = OUT) -> None:
+    path = out / name
     # No exif/icc passed → metadata is stripped. method=6 = slowest, smallest.
     im.save(path, "WEBP", quality=quality, method=6)
     print(f"{path.relative_to(ROOT)}  {im.width}x{im.height}  {path.stat().st_size / 1024:.1f} KB")
@@ -40,6 +40,12 @@ def main() -> None:
         # downscale so the road/car dissolve into a colour field.
         ambient = desktop.resize((96, 32), Image.LANCZOS).filter(ImageFilter.GaussianBlur(3))
         save(ambient, f"{season}-ambient.webp", quality=70)
+
+    # Season-independent homepage illustration. Kept RGBA so the soft edges
+    # blend into either theme's surface; 720px = 2x the ~360px display width.
+    planner = Image.open(SRC / "planner-empty.png").convert("RGBA")
+    planner = planner.resize((720, 480), Image.LANCZOS)
+    save(planner, "planner-empty.webp", out=OUT.parent)
 
 
 if __name__ == "__main__":
