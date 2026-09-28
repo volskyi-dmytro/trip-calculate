@@ -1,0 +1,16 @@
+[
+  {
+    "file": "ai-welcome.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1638365,
+    "sha256": "47AF4CE54A7137BF458F13EE22F041F8933C92D6A79F1BDE09EA8E2C78F83060"
+  },
+  {
+    "file": "waypoints-empty.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1407041,
+    "sha256": "8CB3136E639F5AF8C7C069BC2D7D24E3364A50B67A31587B0904C0B5BE1AA37A"
+  }
+]

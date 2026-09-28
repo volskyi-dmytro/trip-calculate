@@ -3,7 +3,7 @@ import type { Waypoint, RouteSettings } from './RoutePlanner'
 import type { FuelSuggestion } from '../services/fuelPriceService'
 import { wazeLegLinks } from '../services/wazeExport'
 import { Input } from '@/components/ui/input'
-import { MapPin, Trash2, GripVertical, Plus, Loader2, ChevronDown, Navigation } from 'lucide-react'
+import { Trash2, GripVertical, Plus, Loader2, ChevronDown, Navigation } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -89,6 +89,16 @@ export function RoutePanel({
 
   // Fuel type dropdown state
   const [fuelTypeOpen, setFuelTypeOpen] = useState(false)
+
+  // Route settings disclosure. Starts collapsed only when the values needed
+  // for a cost estimate are already valid, and re-opens itself if they stop
+  // being valid, so a missing value is never hidden. Collapsing only hides
+  // the fields (they stay mounted), so no input state is lost.
+  const settingsValid = routeSettings.fuelConsumption > 0 && routeSettings.fuelCostPerLiter > 0
+  const [settingsOpen, setSettingsOpen] = useState(!settingsValid)
+  useEffect(() => {
+    if (!settingsValid) setSettingsOpen(true)
+  }, [settingsValid])
 
   // Initialize local state from routeSettings
   useEffect(() => {
@@ -358,10 +368,42 @@ export function RoutePanel({
   return (
     <div className="space-y-4">
       {/* Route Settings */}
-      <div style={cardStyle} className="p-3 space-y-3">
-        <div style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
-          {t.routeSettings.title}
-        </div>
+      <div style={cardStyle} className="p-3">
+        <button
+          type="button"
+          onClick={() => setSettingsOpen(o => !o)}
+          aria-expanded={settingsOpen}
+          aria-controls="route-settings-fields"
+          className="w-full flex items-start justify-between gap-2 text-left"
+        >
+          <span className="min-w-0">
+            <span className="block" style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
+              {t.routeSettings.title}
+            </span>
+            <span className="block truncate text-xs mt-0.5" style={{ color: 'var(--nav-text-secondary)' }}>
+              {[
+                garageCars && garageCars.length > 0
+                  ? (garageCars.find(c => c.id === matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption))?.name
+                    ?? t.planner.customCar)
+                  : null,
+                routeSettings.fuelConsumption > 0 ? `${routeSettings.fuelConsumption} ${t.routeSettings.consumptionUnit}` : null,
+                t.routeSettings.summaryPassengers.replace('{count}', String(routeSettings.passengerCount)),
+              ].filter(Boolean).join(' · ')}
+            </span>
+          </span>
+          <ChevronDown
+            aria-hidden="true"
+            className={`h-4 w-4 flex-shrink-0 mt-0.5 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
+            style={{ color: 'var(--nav-text-secondary)' }}
+          />
+        </button>
+
+        <div id="route-settings-fields" hidden={!settingsOpen} className="mt-3 space-y-3">
+        {!settingsValid && (
+          <p className="text-xs" role="status" style={{ color: 'var(--nav-danger)' }}>
+            {t.routeSettings.missing}
+          </p>
+        )}
 
         {garageCars && garageCars.length > 0 && onSelectCar && (
           <select
@@ -568,6 +610,7 @@ export function RoutePanel({
             className="h-8 text-sm font-mono"
           />
         </div>
+        </div>
       </div>
 
       {/* Waypoints List */}
@@ -593,10 +636,19 @@ export function RoutePanel({
         </div>
 
         {waypoints.length === 0 ? (
-          <div className="text-center py-6" style={{ color: 'var(--nav-text-secondary)' }}>
-            <MapPin className="h-8 w-8 mx-auto mb-2 opacity-40" />
-            <p className="text-xs">{t.waypoints.noWaypoints}</p>
-            <p className="text-xs mt-1 opacity-70">{t.waypoints.clickMap}</p>
+          <div className="text-center py-2" style={{ color: 'var(--nav-text-secondary)' }}>
+            {/* Decorative — the pins are not markers; the text says what to do. */}
+            <img
+              src="/images/planner-v1/waypoints-empty.webp"
+              alt=""
+              width={320}
+              height={213}
+              loading="lazy"
+              decoding="async"
+              className="planner-waypoints-art"
+            />
+            <p className="text-sm font-medium" style={{ color: 'var(--nav-text-primary)' }}>{t.waypoints.noWaypoints}</p>
+            <p className="text-xs mt-1">{t.waypoints.clickMap}</p>
           </div>
         ) : (
           <div className="space-y-2">

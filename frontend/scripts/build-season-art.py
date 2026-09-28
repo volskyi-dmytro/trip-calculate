@@ -47,6 +47,16 @@ def main() -> None:
     planner = planner.resize((720, 480), Image.LANCZOS)
     save(planner, "planner-empty.webp", out=OUT.parent)
 
+    # Signed-in planner artwork (assets/planner-ui-v1). RGBA like the above;
+    # widths are ~2x the largest CSS display size (280px / 144px).
+    ui_src = ROOT / "assets" / "planner-ui-v1"
+    ui_out = OUT.parent / "planner-v1"
+    ui_out.mkdir(exist_ok=True)
+    for name, width in (("ai-welcome", 600), ("waypoints-empty", 320)):
+        art = Image.open(ui_src / f"{name}.png").convert("RGBA")
+        art = art.resize((width, round(width * art.height / art.width)), Image.LANCZOS)
+        save(art, f"{name}.webp", out=ui_out)
+
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,7 @@
 import React from 'react';
 
-type InputProps = React.InputHTMLAttributes<HTMLInputElement>;
+// ComponentProps (not InputHTMLAttributes) so React 19's ref-as-prop reaches <input>.
+type InputProps = React.ComponentProps<'input'>;
 
 export function Input({ className = '', ...props }: InputProps) {
   return (

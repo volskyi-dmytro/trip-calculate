@@ -31,6 +31,9 @@ export const routePlannerTranslations = {
       fuelCost: 'Fuel cost (per liter)',
       currency: 'Currency',
       passengers: 'Passengers',
+      summaryPassengers: 'Passengers: {count}',
+      consumptionUnit: 'L/100 km',
+      missing: 'Enter fuel consumption and price to see costs.',
     },
     fuel: {
       typeLabel: 'Fuel type',
@@ -43,8 +46,8 @@ export const routePlannerTranslations = {
     },
     waypoints: {
       title: 'Waypoints',
-      noWaypoints: 'No waypoints yet',
-      clickMap: 'Click on the map to add waypoints',
+      noWaypoints: 'Add your first stop',
+      clickMap: 'Search above or choose a point on the map.',
     },
     routeSummary: {
       title: 'Route summary',
@@ -167,7 +170,6 @@ export const routePlannerTranslations = {
       costPerPerson: 'Cost per person',
     },
     agent: {
-      welcome: 'Hi! I can help you plan your route. Just describe your trip, for example: "A trip from Kyiv to Lviv for 2 passengers".',
       updated: '✓ Updated: {changes}.',
       noChanges: 'Nothing changed. Please add more details.',
       couldNotFind: 'Could not find: {places}.',
@@ -179,15 +181,22 @@ export const routePlannerTranslations = {
       genericError: 'Something went wrong while processing your request.',
       assistant: 'AI assistant',
       insights: 'Insights',
-      describeTrip: 'Describe your trip (e.g., "A trip from Kyiv to Lviv for 2 passengers")...',
-      askShort: 'Ask AI...',
+      describeTrip: 'Describe your trip…',
       suggestedStops: 'Suggested stops',
       addToRoute: 'Add to route',
       dismiss: 'Dismiss',
       greeting: 'Where to next, {name}?',
       greetingNoName: 'Where to next?',
       greetingSubtitle: 'Just tell me where you want to go.',
-      greetingExample: '(e.g., "Drive from Kyiv to Lviv with 3 people")',
+      examplesLabel: 'Try an example',
+      // `text` is what lands in the composer — a complete prompt, never sent
+      // automatically (each send is a billable AI request).
+      examples: [
+        { label: 'Kyiv to Lviv, 2 passengers', text: 'A trip from Kyiv to Lviv for 2 passengers' },
+        { label: 'A weekend trip with a stop', text: 'A weekend trip from Kyiv to Odesa with a stop in Uman' },
+        { label: 'Plan a cross-border drive', text: 'Drive from Lviv to Kraków for 3 people' },
+      ],
+      replaceDraft: 'Replace your current message with this example?',
       configureManually: 'Or set it up manually',
     },
     bottomSheet: {
@@ -262,6 +271,9 @@ export const routePlannerTranslations = {
       fuelCost: 'Вартість пального (за літр)',
       currency: 'Валюта',
       passengers: 'Пасажири',
+      summaryPassengers: 'Пасажирів: {count}',
+      consumptionUnit: 'л/100 км',
+      missing: 'Вкажіть витрату й ціну пального, щоб бачити вартість.',
     },
     fuel: {
       typeLabel: 'Тип пального',
@@ -274,8 +286,8 @@ export const routePlannerTranslations = {
     },
     waypoints: {
       title: 'Точки маршруту',
-      noWaypoints: 'Немає точок маршруту',
-      clickMap: 'Клацніть на карті, щоб додати точки',
+      noWaypoints: 'Додайте першу точку',
+      clickMap: 'Скористайтеся пошуком вище або оберіть точку на карті.',
     },
     routeSummary: {
       title: 'Підсумок маршруту',
@@ -398,7 +410,6 @@ export const routePlannerTranslations = {
       costPerPerson: 'Вартість на особу',
     },
     agent: {
-      welcome: 'Привіт! Я допоможу спланувати маршрут. Просто опишіть поїздку, наприклад: «Поїздка з Києва до Львова на двох пасажирів».',
       updated: '✓ Оновлено: {changes}.',
       noChanges: 'Нічого не змінено. Додайте, будь ласка, більше деталей.',
       couldNotFind: 'Не вдалося знайти: {places}.',
@@ -410,15 +421,20 @@ export const routePlannerTranslations = {
       genericError: 'Під час обробки запиту сталася помилка.',
       assistant: 'AI-асистент',
       insights: 'Підказки',
-      describeTrip: 'Опишіть поїздку (наприклад, «Поїздка з Києва до Львова на двох пасажирів»)...',
-      askShort: 'Запитайте AI...',
+      describeTrip: 'Опишіть свою поїздку…',
       suggestedStops: 'Рекомендовані зупинки',
       addToRoute: 'Додати до маршруту',
       dismiss: 'Закрити',
       greeting: 'Куди далі, {name}?',
       greetingNoName: 'Куди далі?',
       greetingSubtitle: 'Просто скажіть, куди хочете поїхати.',
-      greetingExample: '(наприклад, «Поїздка з Києва до Львова на трьох»)',
+      examplesLabel: 'Спробуйте приклад',
+      examples: [
+        { label: 'Київ — Львів, 2 пасажири', text: 'Поїздка з Києва до Львова на 2 пасажирів' },
+        { label: 'Вихідні із зупинкою', text: 'Поїздка на вихідні з Києва до Одеси із зупинкою в Умані' },
+        { label: 'Поїздка за кордон', text: 'Поїздка зі Львова до Кракова на 3 особи' },
+      ],
+      replaceDraft: 'Замінити ваше повідомлення цим прикладом?',
       configureManually: 'Або налаштуйте вручну',
     },
     bottomSheet: {

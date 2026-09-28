@@ -31,7 +31,6 @@ import { withLocalePrefix } from '../utils/locale'
 import { routeEditPath } from '../utils/routePaths'
 import { routeCalculationKey, resolveRouteCalculation } from '../utils/aiResultCard'
 import { preferredCarForAiResult } from '../utils/carSelection'
-import type { ChatMessage } from '../types'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
 
@@ -120,11 +119,8 @@ export function RoutePlanner() {
   const [isEditMode, setIsEditMode] = useState(false)
 
   // AI Chat State
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
   const [chatInput, setChatInput] = useState('')
   const [isProcessingAi, setIsProcessingAi] = useState(false)
-  const [pendingSuggestions, setPendingSuggestions] = useState<string[] | null>(null)
-  const [isApplyingSuggestions, setIsApplyingSuggestions] = useState(false)
 
   // SSE progress: stages completed so far for the in-flight AI request;
   // degraded = stream fell back to sync (keep last honest state + shimmer)
@@ -140,7 +136,9 @@ export function RoutePlanner() {
   const routeCalculationSeq = useRef(0)
 
   // View mode: welcome screen vs dashboard
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(true)
+  // A saved route (?routeId=) opens straight into the planner — rendering the
+  // welcome first would flash it (and fetch its artwork) before the load.
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => !searchParams.get('routeId'))
   const [manualMode, setManualMode] = useState(false)
 
   // Map visibility state (Issue #1 fix: Collapsible map)
@@ -201,17 +199,6 @@ export function RoutePlanner() {
     languageRef.current = language
   }, [language])
 
-  // Initialize welcome message
-  useEffect(() => {
-    const welcomeMessage = getTranslation(language as Language).agent.welcome;
-
-    setChatMessages([{
-      id: 'init',
-      role: 'assistant',
-      content: welcomeMessage,
-      timestamp: Date.now()
-    }]);
-  }, [language])
 
   // Check for routeId in URL parameters and load route for editing
   useEffect(() => {
@@ -902,14 +889,6 @@ export function RoutePlanner() {
     const message = submittedMessage.trim();
     if (!message) return;
 
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: message,
-      timestamp: Date.now()
-    };
-
-    setChatMessages(prev => [...prev, userMsg]);
     setChatInput('');
     setIsProcessingAi(true);
     // New request replaces whatever the slot was showing: hide any
@@ -938,7 +917,7 @@ export function RoutePlanner() {
         longitude: wp.lng,
       }));
       const agentResult = await streamRouteWithAgent(
-        userMsg.content, language, currentRoute,
+        message, language, currentRoute,
         { fuel_type: routeSettings.fuelType, currency: routeSettings.currency },
         (stage) => setAgentDoneStages(prev => [...prev, stage]),
         () => setAgentDegraded(true),
@@ -1095,16 +1074,6 @@ export function RoutePlanner() {
           ? ` ${t.agent.couldNotFind.replace('{places}', skippedNames.join(', '))}`
           : '';
 
-        const responseMsg: ChatMessage = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: updates.length > 0
-            ? `${t.agent.updated.replace('{changes}', updates.join(', '))}${skippedNote}`
-            : t.agent.noChanges,
-          timestamp: Date.now(),
-          kind: 'result',
-        };
-        setChatMessages(prev => [...prev, responseMsg]);
 
         // Success toast notification. Bottom-center + a bounded duration:
         // the default top-right position sits over the map's zoom controls
@@ -1113,7 +1082,9 @@ export function RoutePlanner() {
           toast.success(
             t.agent.routeUpdated,
             {
-              description: t.agent.routeUpdatedDescription,
+              // skippedNote used to live only in the (never displayed)
+              // chat transcript; the toast is where users actually see it.
+              description: `${t.agent.routeUpdatedDescription}${skippedNote}`,
               duration: 4000,
               position: 'bottom-center',
             }
@@ -1124,13 +1095,6 @@ export function RoutePlanner() {
         // generic fallback so users learn WHY the request failed
         const reason = agentResult.error || t.chat.aiFailedDescription;
 
-        setChatMessages(prev => [...prev, {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: reason,
-          timestamp: Date.now()
-        }]);
-
         // Error toast - no data returned
         toast.error(t.chat.aiFailedTitle, {
           description: reason,
@@ -1140,13 +1104,6 @@ export function RoutePlanner() {
     } catch (e) {
       console.error(e);
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
-
-      setChatMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: t.agent.genericError,
-        timestamp: Date.now()
-      }]);
 
       // Error toast - exception occurred
       toast.error(
@@ -1168,48 +1125,6 @@ export function RoutePlanner() {
     const message = new FormData(e.currentTarget).get('aiPrompt');
     void handleSendChat(typeof message === 'string' ? message : '');
   }, [handleSendChat]);
-
-  // Apply Suggested Stops
-  const handleApplySuggestions = useCallback(async () => {
-    if (!pendingSuggestions) return;
-    setIsApplyingSuggestions(true);
-
-    try {
-      const newWaypoints = [...waypoints];
-      const destination = newWaypoints.pop();
-
-      for (const stopName of pendingSuggestions) {
-        const result = await geocodingService.forwardGeocode(stopName);
-        if (result) {
-          const locationName = await geocodingService.reverseGeocode(result.lat, result.lng);
-          newWaypoints.push({
-            id: Date.now().toString() + '-suggested-' + Math.random(),
-            lat: result.lat,
-            lng: result.lng,
-            name: locationName
-          });
-        }
-      }
-
-      if (destination) {
-        newWaypoints.push(destination);
-      }
-
-      setWaypoints(newWaypoints);
-
-      setChatMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'assistant',
-        content: `✓ Added ${pendingSuggestions.join(', ')} to your route. Recalculating...`,
-        timestamp: Date.now()
-      }]);
-    } catch (error) {
-      console.error("Failed to add stops", error);
-    } finally {
-      setIsApplyingSuggestions(false);
-      setPendingSuggestions(null);
-    }
-  }, [pendingSuggestions, waypoints]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {
@@ -1250,19 +1165,435 @@ export function RoutePlanner() {
   if (showWelcomeScreen && !manualMode) {
     return (
       <WelcomeScreen
-        chatMessages={chatMessages}
         chatInput={chatInput}
         onChatInputChange={setChatInput}
         onSendMessage={handleSendChat}
         isProcessing={isProcessingAi}
         onManualClick={handleManualClick}
-        pendingSuggestions={pendingSuggestions}
-        onApplySuggestions={handleApplySuggestions}
-        onDismissSuggestions={() => setPendingSuggestions(null)}
-        isApplyingSuggestions={isApplyingSuggestions}
       />
     );
   }
+
+  // Shared by the desktop sidebar and the mobile sheet — only one of them
+  // renders at a time (isMobile), so ids inside stay unique.
+  const renderPlannerBody = () => (
+    <>
+
+      {/* ── Route name + edit mode indicator ── */}
+      {(routeName || isEditMode) && (
+        <div
+          className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
+          style={{
+            background: 'var(--nav-bg-input)',
+            border: '1px solid var(--nav-border)',
+            color: 'var(--nav-text-secondary)',
+          }}
+        >
+          {isEditMode && (
+            <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
+          )}
+          <span className="truncate">{routeName || t.planner.editingRoute}</span>
+        </div>
+      )}
+
+      {/* ── START input ── */}
+      <div>
+        <Label
+          className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+          style={{ color: 'var(--nav-text-secondary)' }}
+        >
+          {t.planner.start}
+        </Label>
+        <div className="relative">
+          <Input
+            type="text"
+            placeholder={t.planner.searchStart}
+            value={startLocationInput}
+            onChange={(e) => setStartLocationInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isSearchingStart) {
+                handleStartLocationSearch()
+              }
+            }}
+            disabled={isSearchingStart}
+            className="w-full pr-8"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-primary)',
+            }}
+          />
+          {isSearchingStart && (
+            <Loader2
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+              style={{ color: 'var(--nav-accent)' }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Swap button ── */}
+      {waypoints.length >= 2 && (
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              const swapped = [...waypoints]
+              const first = swapped[0]
+              swapped[0] = swapped[swapped.length - 1]
+              swapped[swapped.length - 1] = first
+              reorderWaypoints(swapped)
+            }}
+            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-secondary)',
+            }}
+            title={t.planner.swapTitle}
+          >
+            ↕ {t.planner.swap}
+          </button>
+        </div>
+      )}
+
+      {/* ── DESTINATION input ── */}
+      <div>
+        <Label
+          className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
+          style={{ color: 'var(--nav-text-secondary)' }}
+        >
+          {t.planner.destination}
+        </Label>
+        <div className="relative">
+          <Input
+            type="text"
+            placeholder={t.planner.searchDestination}
+            value={destinationInput}
+            onChange={(e) => setDestinationInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !isSearchingDestination) {
+                handleDestinationSearch()
+              }
+            }}
+            disabled={isSearchingDestination}
+            className="w-full pr-8"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-primary)',
+            }}
+          />
+          {isSearchingDestination && (
+            <Loader2
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
+              style={{ color: 'var(--nav-accent)' }}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* ── Calculate Route button ── */}
+      {(() => {
+        const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
+        const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
+        const isDisabled = !hasInputs || isBusy
+        return (
+          <button
+            onClick={handleCalculateRoute}
+            disabled={isDisabled}
+            title={!hasInputs ? t.buttons.enterLocations : undefined}
+            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            style={{
+              background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
+              border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
+              color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
+              opacity: isDisabled ? 0.6 : 1,
+              cursor: isDisabled ? 'not-allowed' : 'pointer',
+            }}
+          >
+            {isBusy
+              ? <Loader2 className="h-4 w-4 animate-spin" />
+              : <MapPin className="h-4 w-4" />
+            }
+            {isBusy ? t.buttons.calculatingRoute : t.buttons.calculateRoute}
+          </button>
+        )
+      })()}
+
+      {/* ── Divider ── */}
+      <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+      {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
+      <RoutePanel
+        waypoints={waypoints}
+        routeSettings={routeSettings}
+        onUpdateWaypointName={updateWaypointName}
+        onRemoveWaypoint={removeWaypoint}
+        onReorderWaypoints={reorderWaypoints}
+        onUpdateSettings={updateRouteSettings}
+        onAddManually={() => setShowManualInputDialog(true)}
+        isCalculating={isCalculatingRoute}
+        fuelSuggestion={fuelSuggestion}
+        onApplyFuelSuggestion={handleApplyFuelSuggestion}
+        weather={weatherData}
+        departureDate={departureDate}
+        onDepartureDateChange={setDepartureDate}
+        garageCars={garageCars}
+        onSelectCar={handleSelectCar}
+      />
+
+      {/* ── Route Stats ── only once there is a route; before that the
+          waypoint card's empty state is the single piece of guidance. */}
+      {waypoints.length >= 2 && (
+        <>
+          <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+          <StatsPanel
+            waypoints={waypoints}
+            routeSettings={routeSettings}
+            routeDistance={routeDistance}
+            routeDuration={routeDuration}
+            routeGeometry={routeGeometry}
+          />
+        </>
+      )}
+
+      {/* ── Divider ── */}
+      <div style={{ height: '1px', background: 'var(--nav-border)' }} />
+
+      {/* ── Action Buttons ── */}
+      <div className="space-y-2">
+        {isEditMode && (
+          <button
+            onClick={createNewRoute}
+            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-primary)',
+            }}
+          >
+            <FilePlus className="h-4 w-4" />
+            {t.planner.newRoute}
+          </button>
+        )}
+
+        {/* Load Route Dialog trigger */}
+        <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+          <DialogTrigger asChild>
+            <button
+              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+              style={{
+                background: 'var(--nav-bg-input)',
+                border: '1px solid var(--nav-border)',
+                color: 'var(--nav-text-primary)',
+              }}
+            >
+              <FolderOpen className="h-4 w-4" />
+              {t.buttons.loadRoute}
+            </button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{t.dialogs.load.title}</DialogTitle>
+              <DialogDescription>{t.dialogs.load.description}</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-2 max-h-96 overflow-y-auto">
+              {loadingRoutes ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : savedRoutes.length === 0 ? (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
+                  <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
+                </div>
+              ) : (
+                savedRoutes.map(route => (
+                  <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1">
+                        <h3 className="font-semibold">{route.name}</h3>
+                        <p className="text-sm text-muted-foreground">
+                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(route.updatedAt!).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
+                          {t.buttons.load}
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Secondary route actions — one compact row under Load route */}
+        <div className="grid grid-cols-3 gap-2">
+          {/* Save Route Dialog trigger */}
+          <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+            <DialogTrigger asChild>
+              <button
+                disabled={waypoints.length === 0}
+                className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
+                style={{
+                  background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
+                  border: '1px solid var(--nav-border)',
+                  color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
+                }}
+              >
+                <Save className="h-4 w-4" />
+                {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
+                <DialogDescription>
+                  {isEditMode ? t.planner.updateDescription : t.dialogs.save.description}
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
+                  <Input
+                    id="route-name"
+                    placeholder={t.dialogs.save.placeholder}
+                    value={routeName}
+                    onChange={(e) => setRouteName(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
+                    }}
+                  />
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
+                  <ul className="list-disc list-inside mt-2 space-y-1">
+                    <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
+                    <li>{t.dialogs.save.fuelSettings}</li>
+                    <li>{t.dialogs.save.calculations}</li>
+                  </ul>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
+                  {t.buttons.cancel}
+                </Button>
+                {isEditMode && (
+                  <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                    {savingRoute ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
+                    ) : (
+                      <><FilePlus className="h-4 w-4 mr-2" />{t.planner.saveAsNew}</>
+                    )}
+                  </Button>
+                )}
+                <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
+                  {savingRoute ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
+                  ) : (
+                    <><Save className="h-4 w-4 mr-2" />{isEditMode ? t.planner.update : t.buttons.save}</>
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          <button
+            onClick={exportRouteAsJSON}
+            disabled={waypoints.length === 0}
+            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-text-primary)',
+            }}
+          >
+            <Upload className="h-4 w-4" />
+            {t.buttons.exportJson}
+          </button>
+
+          <button
+            onClick={clearRoute}
+            disabled={waypoints.length === 0 || isProcessingAi}
+            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            style={{
+              background: 'var(--nav-bg-input)',
+              border: '1px solid var(--nav-border)',
+              color: 'var(--nav-danger)',
+            }}
+          >
+            <Trash2 className="h-4 w-4" />
+            {t.buttons.clear}
+          </button>
+        </div>
+      </div>
+
+    </>
+  )
+
+  const renderComposer = () => (
+    <>
+      <AgentActivitySlot
+        isProcessing={isProcessingAi}
+        doneStages={agentDoneStages}
+        degraded={agentDegraded}
+        showResult={showResultCard && !cardDismissed}
+        onDismiss={() => setCardDismissed(true)}
+        waypoints={waypoints}
+        routeSettings={routeSettings}
+        routeDistance={routeDistance}
+        routeDuration={routeDuration}
+        fuelSuggestion={fuelSuggestion}
+        weather={weatherData}
+        onSaveRoute={() => setShowSaveDialog(true)}
+        onShareReceipt={() => setShowResultShareDialog(true)}
+        onApplyLivePrice={handleApplyFuelSuggestion}
+      />
+      <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
+        <Input
+          type="text"
+          name="aiPrompt"
+          placeholder={t.chat.askPlaceholder}
+          aria-label={t.chat.inputLabel}
+          value={chatInput}
+          onChange={(e) => setChatInput(e.target.value)}
+          disabled={isProcessingAi}
+          className="flex-1 h-9 text-sm disabled:opacity-50"
+          style={{
+            background: 'var(--nav-bg-input)',
+            border: '1px solid var(--nav-border)',
+            color: 'var(--nav-text-primary)',
+          }}
+        />
+        <button
+          type="submit"
+          aria-label={t.planner.sendMessage}
+          disabled={isProcessingAi}
+          className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
+          style={{
+            background: 'var(--nav-accent)',
+            color: '#000',
+          }}
+        >
+          {isProcessingAi ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <Send className="h-4 w-4" />
+          )}
+        </button>
+      </form>
+      <AiPrivacyNote className="mt-1" />
+    </>
+  )
 
   // Dashboard view — map-first Precision Navigation layout
   return (
@@ -1277,359 +1608,7 @@ export function RoutePlanner() {
           {/* Scrollable content area */}
           <div className="flex-1 overflow-y-auto">
             <div className="p-4 space-y-5">
-
-              {/* ── Route name + edit mode indicator ── */}
-              {(routeName || isEditMode) && (
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-text-secondary)',
-                  }}
-                >
-                  {isEditMode && (
-                    <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
-                  )}
-                  <span className="truncate">{routeName || t.planner.editingRoute}</span>
-                </div>
-              )}
-
-              {/* ── START input ── */}
-              <div>
-                <Label
-                  className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                  style={{ color: 'var(--nav-text-secondary)' }}
-                >
-                  {t.planner.start}
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder={t.planner.searchStart}
-                    value={startLocationInput}
-                    onChange={(e) => setStartLocationInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isSearchingStart) {
-                        handleStartLocationSearch()
-                      }
-                    }}
-                    disabled={isSearchingStart}
-                    className="w-full pr-8"
-                    style={{
-                      background: 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: 'var(--nav-text-primary)',
-                    }}
-                  />
-                  {isSearchingStart && (
-                    <Loader2
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                      style={{ color: 'var(--nav-accent)' }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* ── Swap button ── */}
-              {waypoints.length >= 2 && (
-                <div className="flex justify-center">
-                  <button
-                    onClick={() => {
-                      const swapped = [...waypoints]
-                      const first = swapped[0]
-                      swapped[0] = swapped[swapped.length - 1]
-                      swapped[swapped.length - 1] = first
-                      reorderWaypoints(swapped)
-                    }}
-                    className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
-                    style={{
-                      background: 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: 'var(--nav-text-secondary)',
-                    }}
-                    title={t.planner.swapTitle}
-                  >
-                    ↕ {t.planner.swap}
-                  </button>
-                </div>
-              )}
-
-              {/* ── DESTINATION input ── */}
-              <div>
-                <Label
-                  className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                  style={{ color: 'var(--nav-text-secondary)' }}
-                >
-                  {t.planner.destination}
-                </Label>
-                <div className="relative">
-                  <Input
-                    type="text"
-                    placeholder={t.planner.searchDestination}
-                    value={destinationInput}
-                    onChange={(e) => setDestinationInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !isSearchingDestination) {
-                        handleDestinationSearch()
-                      }
-                    }}
-                    disabled={isSearchingDestination}
-                    className="w-full pr-8"
-                    style={{
-                      background: 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: 'var(--nav-text-primary)',
-                    }}
-                  />
-                  {isSearchingDestination && (
-                    <Loader2
-                      className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                      style={{ color: 'var(--nav-accent)' }}
-                    />
-                  )}
-                </div>
-              </div>
-
-              {/* ── Calculate Route button ── */}
-              {(() => {
-                const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
-                const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
-                const isDisabled = !hasInputs || isBusy
-                return (
-                  <button
-                    onClick={handleCalculateRoute}
-                    disabled={isDisabled}
-                    title={!hasInputs ? t.buttons.enterLocations : undefined}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                    style={{
-                      background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
-                      border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
-                      color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
-                      opacity: isDisabled ? 0.6 : 1,
-                      cursor: isDisabled ? 'not-allowed' : 'pointer',
-                    }}
-                  >
-                    {isBusy
-                      ? <Loader2 className="h-4 w-4 animate-spin" />
-                      : <MapPin className="h-4 w-4" />
-                    }
-                    {isBusy ? t.buttons.calculatingRoute : t.buttons.calculateRoute}
-                  </button>
-                )
-              })()}
-
-              {/* ── Divider ── */}
-              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-              {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
-              <RoutePanel
-                waypoints={waypoints}
-                routeSettings={routeSettings}
-                onUpdateWaypointName={updateWaypointName}
-                onRemoveWaypoint={removeWaypoint}
-                onReorderWaypoints={reorderWaypoints}
-                onUpdateSettings={updateRouteSettings}
-                onAddManually={() => setShowManualInputDialog(true)}
-                isCalculating={isCalculatingRoute}
-                fuelSuggestion={fuelSuggestion}
-                onApplyFuelSuggestion={handleApplyFuelSuggestion}
-                weather={weatherData}
-                departureDate={departureDate}
-                onDepartureDateChange={setDepartureDate}
-                garageCars={garageCars}
-                onSelectCar={handleSelectCar}
-              />
-
-              {/* ── Divider ── */}
-              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-              {/* ── Route Stats ── */}
-              <StatsPanel
-                waypoints={waypoints}
-                routeSettings={routeSettings}
-                routeDistance={routeDistance}
-                routeDuration={routeDuration}
-                routeGeometry={routeGeometry}
-              />
-
-              {/* ── Divider ── */}
-              <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-              {/* ── Action Buttons ── */}
-              <div className="space-y-2">
-                {isEditMode && (
-                  <button
-                    onClick={createNewRoute}
-                    className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
-                    style={{
-                      background: 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: 'var(--nav-text-primary)',
-                    }}
-                  >
-                    <FilePlus className="h-4 w-4" />
-                    {t.planner.newRoute}
-                  </button>
-                )}
-
-                {/* Load Route Dialog trigger */}
-                <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-                  <DialogTrigger asChild>
-                    <button
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
-                      style={{
-                        background: 'var(--nav-bg-input)',
-                        border: '1px solid var(--nav-border)',
-                        color: 'var(--nav-text-primary)',
-                      }}
-                    >
-                      <FolderOpen className="h-4 w-4" />
-                      {t.buttons.loadRoute}
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{t.dialogs.load.title}</DialogTitle>
-                      <DialogDescription>{t.dialogs.load.description}</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                      {loadingRoutes ? (
-                        <div className="flex items-center justify-center py-8">
-                          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
-                      ) : savedRoutes.length === 0 ? (
-                        <div className="text-center py-8">
-                          <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
-                          <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
-                        </div>
-                      ) : (
-                        savedRoutes.map(route => (
-                          <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
-                            <div className="flex items-center justify-between">
-                              <div className="flex-1">
-                                <h3 className="font-semibold">{route.name}</h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
-                                </p>
-                                <p className="text-xs text-muted-foreground">
-                                  {new Date(route.updatedAt!).toLocaleDateString()}
-                                </p>
-                              </div>
-                              <div className="flex gap-2">
-                                <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
-                                  {t.buttons.load}
-                                </Button>
-                                <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </div>
-                          </Card>
-                        ))
-                      )}
-                    </div>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Save Route Dialog trigger */}
-                <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                  <DialogTrigger asChild>
-                    <button
-                      disabled={waypoints.length === 0}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
-                      style={{
-                        background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
-                        border: '1px solid var(--nav-border)',
-                        color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
-                      }}
-                    >
-                      <Save className="h-4 w-4" />
-                      {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
-                      <DialogDescription>
-                        {isEditMode ? t.planner.updateDescription : t.dialogs.save.description}
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="route-name">{t.dialogs.save.routeName}</Label>
-                        <Input
-                          id="route-name"
-                          placeholder={t.dialogs.save.placeholder}
-                          value={routeName}
-                          onChange={(e) => setRouteName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
-                          }}
-                        />
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
-                        <ul className="list-disc list-inside mt-2 space-y-1">
-                          <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
-                          <li>{t.dialogs.save.fuelSettings}</li>
-                          <li>{t.dialogs.save.calculations}</li>
-                        </ul>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                        {t.buttons.cancel}
-                      </Button>
-                      {isEditMode && (
-                        <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
-                          {savingRoute ? (
-                            <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
-                          ) : (
-                            <><FilePlus className="h-4 w-4 mr-2" />{t.planner.saveAsNew}</>
-                          )}
-                        </Button>
-                      )}
-                      <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
-                        {savingRoute ? (
-                          <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
-                        ) : (
-                          <><Save className="h-4 w-4 mr-2" />{isEditMode ? t.planner.update : t.buttons.save}</>
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                <button
-                  onClick={exportRouteAsJSON}
-                  disabled={waypoints.length === 0}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-text-primary)',
-                  }}
-                >
-                  <Upload className="h-4 w-4" />
-                  {t.buttons.exportJson}
-                </button>
-
-                <button
-                  onClick={clearRoute}
-                  disabled={waypoints.length === 0 || isProcessingAi}
-                  className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-                  style={{
-                    background: 'var(--nav-bg-input)',
-                    border: '1px solid var(--nav-border)',
-                    color: 'var(--nav-danger)',
-                  }}
-                >
-                  <Trash2 className="h-4 w-4" />
-                  {t.buttons.clear}
-                </button>
-              </div>
-
+              {renderPlannerBody()}
             </div>{/* end scrollable content */}
           </div>
 
@@ -1638,56 +1617,7 @@ export function RoutePlanner() {
             className="flex-shrink-0 p-3"
             style={{ borderTop: '1px solid var(--nav-border)' }}
           >
-            <AgentActivitySlot
-              isProcessing={isProcessingAi}
-              doneStages={agentDoneStages}
-              degraded={agentDegraded}
-              showResult={showResultCard && !cardDismissed}
-              onDismiss={() => setCardDismissed(true)}
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              routeDistance={routeDistance}
-              routeDuration={routeDuration}
-              fuelSuggestion={fuelSuggestion}
-              weather={weatherData}
-              onSaveRoute={() => setShowSaveDialog(true)}
-              onShareReceipt={() => setShowResultShareDialog(true)}
-              onApplyLivePrice={handleApplyFuelSuggestion}
-            />
-            <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
-              <Input
-                type="text"
-                name="aiPrompt"
-                placeholder={t.chat.askPlaceholder}
-                aria-label={t.chat.inputLabel}
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                disabled={isProcessingAi}
-                className="flex-1 h-9 text-sm disabled:opacity-50"
-                style={{
-                  background: 'var(--nav-bg-input)',
-                  border: '1px solid var(--nav-border)',
-                  color: 'var(--nav-text-primary)',
-                }}
-              />
-              <button
-                type="submit"
-                aria-label={t.planner.sendMessage}
-                disabled={isProcessingAi}
-                className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
-                style={{
-                  background: 'var(--nav-accent)',
-                  color: '#000',
-                }}
-              >
-                {isProcessingAi ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
-            </form>
-            <AiPrivacyNote className="mt-1" />
+            {renderComposer()}
           </div>
         </div>
       )}
@@ -1819,359 +1749,7 @@ export function RoutePlanner() {
             <>
               <div className="flex-1 overflow-y-auto">
                 <div className="p-4 space-y-5">
-
-                  {/* ── Route name + edit mode indicator ── */}
-                  {(routeName || isEditMode) && (
-                    <div
-                      className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs"
-                      style={{
-                        background: 'var(--nav-bg-input)',
-                        border: '1px solid var(--nav-border)',
-                        color: 'var(--nav-text-secondary)',
-                      }}
-                    >
-                      {isEditMode && (
-                        <Edit className="h-3 w-3" style={{ color: 'var(--nav-accent)' }} />
-                      )}
-                      <span className="truncate">{routeName || t.planner.editingRoute}</span>
-                    </div>
-                  )}
-
-                  {/* ── START input ── */}
-                  <div>
-                    <Label
-                      className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                      style={{ color: 'var(--nav-text-secondary)' }}
-                    >
-                      {t.planner.start}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type="text"
-                        placeholder={t.planner.searchStart}
-                        value={startLocationInput}
-                        onChange={(e) => setStartLocationInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !isSearchingStart) {
-                            handleStartLocationSearch()
-                          }
-                        }}
-                        disabled={isSearchingStart}
-                        className="w-full pr-8"
-                        style={{
-                          background: 'var(--nav-bg-input)',
-                          border: '1px solid var(--nav-border)',
-                          color: 'var(--nav-text-primary)',
-                        }}
-                      />
-                      {isSearchingStart && (
-                        <Loader2
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                          style={{ color: 'var(--nav-accent)' }}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Swap button ── */}
-                  {waypoints.length >= 2 && (
-                    <div className="flex justify-center">
-                      <button
-                        onClick={() => {
-                          const swapped = [...waypoints]
-                          const first = swapped[0]
-                          swapped[0] = swapped[swapped.length - 1]
-                          swapped[swapped.length - 1] = first
-                          reorderWaypoints(swapped)
-                        }}
-                        className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
-                        style={{
-                          background: 'var(--nav-bg-input)',
-                          border: '1px solid var(--nav-border)',
-                          color: 'var(--nav-text-secondary)',
-                        }}
-                        title={t.planner.swapTitle}
-                      >
-                        ↕ {t.planner.swap}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* ── DESTINATION input ── */}
-                  <div>
-                    <Label
-                      className="block text-xs font-semibold mb-1.5 uppercase tracking-wider"
-                      style={{ color: 'var(--nav-text-secondary)' }}
-                    >
-                      {t.planner.destination}
-                    </Label>
-                    <div className="relative">
-                      <Input
-                        type="text"
-                        placeholder={t.planner.searchDestination}
-                        value={destinationInput}
-                        onChange={(e) => setDestinationInput(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' && !isSearchingDestination) {
-                            handleDestinationSearch()
-                          }
-                        }}
-                        disabled={isSearchingDestination}
-                        className="w-full pr-8"
-                        style={{
-                          background: 'var(--nav-bg-input)',
-                          border: '1px solid var(--nav-border)',
-                          color: 'var(--nav-text-primary)',
-                        }}
-                      />
-                      {isSearchingDestination && (
-                        <Loader2
-                          className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin"
-                          style={{ color: 'var(--nav-accent)' }}
-                        />
-                      )}
-                    </div>
-                  </div>
-
-                  {/* ── Calculate Route button ── */}
-                  {(() => {
-                    const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
-                    const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
-                    const isDisabled = !hasInputs || isBusy
-                    return (
-                      <button
-                        onClick={handleCalculateRoute}
-                        disabled={isDisabled}
-                        title={!hasInputs ? t.buttons.enterLocations : undefined}
-                        className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
-                        style={{
-                          background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
-                          border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
-                          color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
-                          opacity: isDisabled ? 0.6 : 1,
-                          cursor: isDisabled ? 'not-allowed' : 'pointer',
-                        }}
-                      >
-                        {isBusy
-                          ? <Loader2 className="h-4 w-4 animate-spin" />
-                          : <MapPin className="h-4 w-4" />
-                        }
-                        {isBusy ? t.buttons.calculatingRoute : t.buttons.calculateRoute}
-                      </button>
-                    )
-                  })()}
-
-                  {/* ── Divider ── */}
-                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-                  {/* ── Waypoints + Settings + Stats (RoutePanel) ── */}
-                  <RoutePanel
-                    waypoints={waypoints}
-                    routeSettings={routeSettings}
-                    onUpdateWaypointName={updateWaypointName}
-                    onRemoveWaypoint={removeWaypoint}
-                    onReorderWaypoints={reorderWaypoints}
-                    onUpdateSettings={updateRouteSettings}
-                    onAddManually={() => setShowManualInputDialog(true)}
-                    isCalculating={isCalculatingRoute}
-                    fuelSuggestion={fuelSuggestion}
-                    onApplyFuelSuggestion={handleApplyFuelSuggestion}
-                    weather={weatherData}
-                    departureDate={departureDate}
-                    onDepartureDateChange={setDepartureDate}
-                    garageCars={garageCars}
-                    onSelectCar={handleSelectCar}
-                  />
-
-                  {/* ── Divider ── */}
-                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-                  {/* ── Route Stats ── */}
-                  <StatsPanel
-                    waypoints={waypoints}
-                    routeSettings={routeSettings}
-                    routeDistance={routeDistance}
-                    routeDuration={routeDuration}
-                    routeGeometry={routeGeometry}
-                  />
-
-                  {/* ── Divider ── */}
-                  <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-
-                  {/* ── Action Buttons ── */}
-                  <div className="space-y-2">
-                    {isEditMode && (
-                      <button
-                        onClick={createNewRoute}
-                        className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
-                        style={{
-                          background: 'var(--nav-bg-input)',
-                          border: '1px solid var(--nav-border)',
-                          color: 'var(--nav-text-primary)',
-                        }}
-                      >
-                        <FilePlus className="h-4 w-4" />
-                        {t.planner.newRoute}
-                      </button>
-                    )}
-
-                    {/* Load Route Dialog trigger */}
-                    <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
-                      <DialogTrigger asChild>
-                        <button
-                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
-                          style={{
-                            background: 'var(--nav-bg-input)',
-                            border: '1px solid var(--nav-border)',
-                            color: 'var(--nav-text-primary)',
-                          }}
-                        >
-                          <FolderOpen className="h-4 w-4" />
-                          {t.buttons.loadRoute}
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>{t.dialogs.load.title}</DialogTitle>
-                          <DialogDescription>{t.dialogs.load.description}</DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-2 max-h-96 overflow-y-auto">
-                          {loadingRoutes ? (
-                            <div className="flex items-center justify-center py-8">
-                              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                            </div>
-                          ) : savedRoutes.length === 0 ? (
-                            <div className="text-center py-8">
-                              <p className="text-muted-foreground mb-2">{t.dialogs.load.noRoutes}</p>
-                              <p className="text-sm text-muted-foreground">{t.dialogs.load.createFirst}</p>
-                            </div>
-                          ) : (
-                            savedRoutes.map(route => (
-                              <Card key={route.id} className="p-4 hover:bg-accent/50 transition-colors">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex-1">
-                                    <h3 className="font-semibold">{route.name}</h3>
-                                    <p className="text-sm text-muted-foreground">
-                                      {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
-                                    </p>
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(route.updatedAt!).toLocaleDateString()}
-                                    </p>
-                                  </div>
-                                  <div className="flex gap-2">
-                                    <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
-                                      {t.buttons.load}
-                                    </Button>
-                                    <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </div>
-                              </Card>
-                            ))
-                          )}
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-
-                    {/* Save Route Dialog trigger */}
-                    <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-                      <DialogTrigger asChild>
-                        <button
-                          disabled={waypoints.length === 0}
-                          className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-40"
-                          style={{
-                            background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
-                            border: '1px solid var(--nav-border)',
-                            color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
-                          }}
-                        >
-                          <Save className="h-4 w-4" />
-                          {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
-                        </button>
-                      </DialogTrigger>
-                      <DialogContent>
-                        <DialogHeader>
-                          <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
-                          <DialogDescription>
-                            {isEditMode ? t.planner.updateDescription : t.dialogs.save.description}
-                          </DialogDescription>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <div>
-                            <Label htmlFor="route-name-mobile">{t.dialogs.save.routeName}</Label>
-                            <Input
-                              id="route-name-mobile"
-                              placeholder={t.dialogs.save.placeholder}
-                              value={routeName}
-                              onChange={(e) => setRouteName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
-                              }}
-                            />
-                          </div>
-                          <div className="text-sm text-muted-foreground">
-                            <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
-                            <ul className="list-disc list-inside mt-2 space-y-1">
-                              <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
-                              <li>{t.dialogs.save.fuelSettings}</li>
-                              <li>{t.dialogs.save.calculations}</li>
-                            </ul>
-                          </div>
-                        </div>
-                        <DialogFooter>
-                          <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
-                            {t.buttons.cancel}
-                          </Button>
-                          {isEditMode && (
-                            <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
-                              {savingRoute ? (
-                                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
-                              ) : (
-                                <><FilePlus className="h-4 w-4 mr-2" />{t.planner.saveAsNew}</>
-                              )}
-                            </Button>
-                          )}
-                          <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
-                            {savingRoute ? (
-                              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
-                            ) : (
-                              <><Save className="h-4 w-4 mr-2" />{isEditMode ? t.planner.update : t.buttons.save}</>
-                            )}
-                          </Button>
-                        </DialogFooter>
-                      </DialogContent>
-                    </Dialog>
-
-                    <button
-                      onClick={exportRouteAsJSON}
-                      disabled={waypoints.length === 0}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-                      style={{
-                        background: 'var(--nav-bg-input)',
-                        border: '1px solid var(--nav-border)',
-                        color: 'var(--nav-text-primary)',
-                      }}
-                    >
-                      <Upload className="h-4 w-4" />
-                      {t.buttons.exportJson}
-                    </button>
-
-                    <button
-                      onClick={clearRoute}
-                      disabled={waypoints.length === 0 || isProcessingAi}
-                      className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-40"
-                      style={{
-                        background: 'var(--nav-bg-input)',
-                        border: '1px solid var(--nav-border)',
-                        color: 'var(--nav-danger)',
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      {t.buttons.clear}
-                    </button>
-                  </div>
-
+                  {renderPlannerBody()}
                 </div>{/* end scrollable content */}
               </div>
 
@@ -2180,56 +1758,7 @@ export function RoutePlanner() {
                 className="flex-shrink-0 p-3"
                 style={{ borderTop: '1px solid var(--nav-border)' }}
               >
-                <AgentActivitySlot
-                  isProcessing={isProcessingAi}
-                  doneStages={agentDoneStages}
-                  degraded={agentDegraded}
-                  showResult={showResultCard && !cardDismissed}
-                  onDismiss={() => setCardDismissed(true)}
-                  waypoints={waypoints}
-                  routeSettings={routeSettings}
-                  routeDistance={routeDistance}
-                  routeDuration={routeDuration}
-                  fuelSuggestion={fuelSuggestion}
-                  weather={weatherData}
-                  onSaveRoute={() => setShowSaveDialog(true)}
-                  onShareReceipt={() => setShowResultShareDialog(true)}
-                  onApplyLivePrice={handleApplyFuelSuggestion}
-                />
-                <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
-                  <Input
-                    type="text"
-                    name="aiPrompt"
-                    placeholder={t.chat.askPlaceholder}
-                aria-label={t.chat.inputLabel}
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    disabled={isProcessingAi}
-                    className="flex-1 h-9 text-sm disabled:opacity-50"
-                    style={{
-                      background: 'var(--nav-bg-input)',
-                      border: '1px solid var(--nav-border)',
-                      color: 'var(--nav-text-primary)',
-                    }}
-                  />
-                  <button
-                    type="submit"
-                    aria-label={t.planner.sendMessage}
-                    disabled={isProcessingAi}
-                    className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
-                    style={{
-                      background: 'var(--nav-accent)',
-                      color: '#000',
-                    }}
-                  >
-                    {isProcessingAi ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Send className="h-4 w-4" />
-                    )}
-                  </button>
-                </form>
-                <AiPrivacyNote className="mt-1" />
+                {renderComposer()}
               </div>
             </>
           )}

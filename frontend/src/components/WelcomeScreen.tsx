@@ -1,103 +1,129 @@
+import { useRef } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation } from '../i18n/routePlanner';
 import { useAuth } from '../contexts/AuthContext';
-import { ChatInterface } from './ChatInterface';
-import { Bot, ArrowRight } from 'lucide-react';
-import type { ChatMessage } from '../types';
+import { ArrowRight, Loader2, Send } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { AiPrivacyNote } from './AiPrivacyNote';
 
 interface WelcomeScreenProps {
-  chatMessages: ChatMessage[];
   chatInput: string;
   onChatInputChange: (value: string) => void;
   onSendMessage: (message: string) => void;
   isProcessing: boolean;
   onManualClick: () => void;
-  pendingSuggestions?: string[] | null;
-  onApplySuggestions?: () => void;
-  onDismissSuggestions?: () => void;
-  isApplyingSuggestions?: boolean;
 }
 
+// Pre-conversation entry: a compact intro and composer instead of an empty
+// transcript. Sending hands off to the planner's conversation layout (the
+// parent flips showWelcomeScreen), so nothing here needs to render replies.
 export function WelcomeScreen({
-  chatMessages,
   chatInput,
   onChatInputChange,
   onSendMessage,
   isProcessing,
   onManualClick,
-  pendingSuggestions,
-  onApplySuggestions,
-  onDismissSuggestions,
-  isApplyingSuggestions,
 }: WelcomeScreenProps) {
   const { language } = useLanguage();
   const { user } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const firstName = user?.name.split(' ')[0];
-  const tr = getTranslation(language).agent;
+  const tr = getTranslation(language);
+  const t = tr.agent;
 
-  const t = {
-    greeting: firstName ? tr.greeting.replace('{name}', firstName) : tr.greetingNoName,
-    subtitle: tr.greetingSubtitle,
-    example: tr.greetingExample,
-    manualLink: tr.configureManually,
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Read the DOM value, not state: autofill/IME can update the field
+    // without a React change event.
+    const message = new FormData(e.currentTarget).get('aiPrompt');
+    onSendMessage(typeof message === 'string' ? message : '');
+  };
+
+  // Examples only fill the composer — sending stays an explicit user action
+  // because every send is a billable AI request.
+  const applyExample = (text: string) => {
+    const draft = chatInput.trim();
+    if (draft && draft !== text && !window.confirm(t.replaceDraft)) return;
+    onChatInputChange(text);
+    inputRef.current?.focus();
   };
 
   return (
     // h-full + internal scroll: the planner page wraps this in an
-    // overflow-hidden viewport-height container, so a min-h-screen block
-    // gets its bottom (incl. the manual-config link) clipped with no scroll.
+    // overflow-hidden viewport-height container.
     <div className="h-full overflow-y-auto flex px-4">
-      <div className="w-full max-w-2xl m-auto py-12">
-        {/* Robot Icon */}
-        <div className="flex justify-center mb-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
-          <div
-            className="w-20 h-20 rounded-2xl flex items-center justify-center"
-            style={{ background: 'var(--accent-soft)' }}
-          >
-            <Bot className="w-10 h-10 text-primary" />
-          </div>
-        </div>
+      <div className="w-full max-w-xl m-auto py-6">
+        <img
+          src="/images/planner-v1/ai-welcome.webp"
+          alt=""
+          width={600}
+          height={400}
+          className="planner-welcome-art"
+        />
 
-        {/* Greeting */}
-        <div className="text-center mb-8 animate-in fade-in slide-in-from-bottom-5 duration-700 delay-150">
-          <h1 className="text-4xl md:text-5xl font-bold text-slate-900 dark:text-white mb-4">
-            {t.greeting}
+        <div className="text-center mb-5">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
+            {firstName ? t.greeting.replace('{name}', firstName) : t.greetingNoName}
           </h1>
-          <p className="text-lg text-slate-600 dark:text-slate-300 mb-2">
-            {t.subtitle}
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            {t.example}
-          </p>
+          <p className="text-base text-slate-600 dark:text-slate-300">{t.greetingSubtitle}</p>
         </div>
 
-        {/* Chat Card */}
-        <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 delay-300">
-          <ChatInterface
-            messages={chatMessages}
-            chatInput={chatInput}
-            onChatInputChange={onChatInputChange}
-            onSendMessage={onSendMessage}
-            isProcessing={isProcessing}
-            isCentered={true}
-            showInsightsButton={false}
-            pendingSuggestions={pendingSuggestions}
-            onApplySuggestions={onApplySuggestions}
-            onDismissSuggestions={onDismissSuggestions}
-            isApplyingSuggestions={isApplyingSuggestions}
-          />
-        </div>
+        <div className="glass-panel p-4 rounded-xl">
+          <form className="flex gap-2" onSubmit={handleSubmit}>
+            <Input
+              ref={inputRef}
+              type="text"
+              name="aiPrompt"
+              aria-label={tr.chat.inputLabel}
+              value={chatInput}
+              onChange={(e) => onChatInputChange(e.target.value)}
+              placeholder={t.describeTrip}
+              disabled={isProcessing}
+              className="flex-1 h-11 text-base"
+              autoFocus
+            />
+            <button
+              type="submit"
+              aria-label={tr.planner.sendMessage}
+              disabled={isProcessing}
+              className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 bg-primary text-white disabled:opacity-40"
+            >
+              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </button>
+          </form>
 
-        {/* Manual Configuration Link */}
-        <div className="text-center mt-6 animate-in fade-in slide-in-from-bottom-7 duration-700 delay-450">
-          <button
-            onClick={onManualClick}
-            className="text-primary hover:opacity-80 font-medium flex items-center gap-1 mx-auto transition-opacity group"
-          >
-            <span>{t.manualLink}</span>
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="mt-3" role="group" aria-label={t.examplesLabel}>
+            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{t.examplesLabel}</p>
+            <div className="flex flex-wrap gap-2">
+              {t.examples.map((ex) => (
+                <button
+                  key={ex.label}
+                  type="button"
+                  onClick={() => applyExample(ex.text)}
+                  disabled={isProcessing}
+                  className="planner-example-chip"
+                >
+                  {ex.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 dark:border-slate-700">
+            <AiPrivacyNote className="flex-1 min-w-[12rem]" />
+            <button
+              type="button"
+              onClick={onManualClick}
+              className="text-sm font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
+              // --accent, not text-primary: the Tailwind primary is the same
+              // dark teal in both themes and fails contrast on dark glass.
+              style={{ color: 'var(--accent)' }}
+            >
+              {t.configureManually}
+              <ArrowRight className="w-4 h-4" aria-hidden="true" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

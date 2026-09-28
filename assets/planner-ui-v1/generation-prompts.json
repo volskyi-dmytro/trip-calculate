@@ -1,0 +1,14 @@
+{
+  "generator": "Built-in image_gen",
+  "assets": [
+    {
+      "file": "ai-welcome.png",
+      "prompt": "Use case: stylized-concept. Create a new compact transparent welcome illustration for the signed-in AI trip-planning screen of Trip Calculate. Use the provided image ONLY as a visual style reference: sophisticated textured paper sculpture, warm ivory, forest teal, sage, tiny muted ochre accents, soft dimensional shading. New subject: one elegant teal compass with ivory face (no letters or numbers), resting next to a small folded ivory route ribbon that gently curves toward a miniature sage mountain and two slender evergreen trees, with a tiny unbranded ivory hatchback on the near end of the route. A single small gold four-point glint subtly suggests assistance. Single coherent centered composition, simple readable silhouette, fewer details than reference, no giant map. Landscape 3:2, generous transparent padding, designed to display at 240–300 CSS pixels wide above a prompt input. Genuinely transparent background, clean edges and minimal contact shadows, no large glow or background rectangle. No robot, no face, no text, no interface, no labels, no logos, no watermark. A warm invitation to plan a journey, not a diagram or navigation tool."
+    },
+    {
+      "file": "waypoints-empty.png",
+      "prompt": "Use case: stylized-concept. New compact transparent empty-waypoints illustration for a narrow 320px manual route planner sidebar. Reference image is STYLE ONLY: refined textured ivory paper and matte forest-teal shapes, sage, subtle ochre accents. Subject: one small folded paper strip with a clear graceful teal path linking TWO simple upright map pins, first teal, second muted gold, with one tiny sage hill behind. Extremely simple clean silhouette, low detail, no car, no compass, no trees, no elaborate landscape. Landscape 3:2 composition centered with 15% transparent margin. Intended to render only 120–150 CSS pixels wide and around 85px high, so pins must stay clearly readable. Genuinely transparent alpha background, soft minimal contact shadow, no solid panel, no glow. Match sophisticated travel editorial paper aesthetic, no glossy plastic, no text, letters, numbers, geographic map labels, logos, UI or watermark. It is a decorative hint for adding start and destination, not the actual map or actual markers."
+    }
+  ],
+  "styleReference": "../seasonal-backgrounds-v1/planner-empty.png"
+}

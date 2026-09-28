@@ -115,3 +115,4 @@ agent/evals/results/
 # Seasonal art PNG masters (~18 MB). Kept out of git; manifest.json holds
 # their checksums. Source: the seasonal-backgrounds-v1 pack (see README there).
 assets/seasonal-backgrounds-v1/*.png
+assets/planner-ui-v1/*.png

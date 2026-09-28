@@ -7,7 +7,7 @@ import { AuthProvider } from '../../contexts/AuthContext'
 import { QuickCalculator } from '../QuickCalculator'
 import { ProfileCard } from '../dashboard/ProfileCard'
 import { RoutesList } from '../dashboard/RoutesList'
-import { ChatInterface } from '../ChatInterface'
+import { WelcomeScreen } from '../WelcomeScreen'
 import { RoutePanel } from '../RoutePanel'
 
 function renderEnglish(node: React.ReactNode) {
@@ -74,9 +74,9 @@ describe('core control accessibility', () => {
 
   it('names the AI send action', () => {
     const welcomeChatHtml = renderEnglish(
-      <ChatInterface messages={[]} chatInput="Kyiv to Lviv"
+      <WelcomeScreen chatInput="Kyiv to Lviv"
         onChatInputChange={() => undefined} onSendMessage={() => undefined}
-        isProcessing={false} />,
+        isProcessing={false} onManualClick={() => undefined} />,
     )
     expect(welcomeChatHtml).toContain('aria-label="Send message"')
   })
