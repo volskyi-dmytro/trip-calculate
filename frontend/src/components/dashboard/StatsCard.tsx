@@ -1,4 +1,4 @@
-import { MapPin, Navigation, DollarSign, Calendar } from 'lucide-react';
+import { MapPin, Navigation, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { UserStats } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
@@ -7,9 +7,30 @@ interface StatsCardProps {
   stats: UserStats;
 }
 
-export function StatsCard({ stats }: StatsCardProps) {
-  const { t, tn } = useLanguage();
+function formatMoney(amount: number, currency: string, locale: string): string {
+  try {
+    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
+  } catch {
+    return `${amount.toFixed(2)} ${currency}`; // not an ISO code Intl knows
+  }
+}
 
+export function StatsCard({ stats }: StatsCardProps) {
+  const { t, language } = useLanguage();
+  const locale = language === 'uk' ? 'uk-UA' : 'en-US';
+
+  // Never add UAH to EUR: show one total per currency when the backend
+  // provides them; fall back to the legacy single figure otherwise.
+  const perCurrency = Object.entries(stats.fuelCostByCurrency ?? {});
+  const fuelCostValue = perCurrency.length > 0
+    ? perCurrency.map(([currency, amount]) => formatMoney(amount, currency, locale)).join(' · ')
+    : stats.mostUsedCurrency
+      ? formatMoney(stats.totalFuelCost, stats.mostUsedCurrency, locale)
+      : stats.totalFuelCost.toFixed(2);
+
+  // Account age is deliberately not a tile: it's account metadata, not a
+  // travel statistic, and the profile card already shows the join date.
+  // The cost tile spans both columns — it may list several currencies.
   const statItems = [
     {
       label: t('dashboard.stats.totalRoutes'),
@@ -23,13 +44,8 @@ export function StatsCard({ stats }: StatsCardProps) {
     },
     {
       label: t('dashboard.stats.totalFuelCost'),
-      value: `${stats.mostUsedCurrency || '$'}${stats.totalFuelCost.toFixed(2)}`,
+      value: fuelCostValue,
       icon: DollarSign,
-    },
-    {
-      label: t('dashboard.stats.accountAge'),
-      value: tn('dashboard.stats.days', stats.accountAgeDays),
-      icon: Calendar,
     },
   ];
 
@@ -45,7 +61,7 @@ export function StatsCard({ stats }: StatsCardProps) {
             return (
               <div
                 key={index}
-                className="flex items-center p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                className="flex items-center p-4 last:sm:col-span-2 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
               >
                 <div
                   className="p-2.5 rounded-lg mr-4"
@@ -53,11 +69,11 @@ export function StatsCard({ stats }: StatsCardProps) {
                 >
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
-                <div>
+                <div className="min-w-0">
                   <p className="text-sm text-gray-600 dark:text-gray-400">
                     {item.label}
                   </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums">
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums break-words">
                     {item.value}
                   </p>
                 </div>

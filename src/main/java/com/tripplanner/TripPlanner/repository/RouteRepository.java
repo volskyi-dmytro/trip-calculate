@@ -28,7 +28,9 @@ public interface RouteRepository extends JpaRepository<Route, Long> {
     @Query("SELECT COALESCE(SUM(r.totalCost), 0) FROM Route r WHERE r.userId = :userId")
     BigDecimal sumTotalCostByUserId(@Param("userId") Long userId);
 
-    @Query("SELECT r.currency, COUNT(r) as cnt FROM Route r WHERE r.userId = :userId GROUP BY r.currency ORDER BY cnt DESC")
+    // [currency, count, sum(totalCost)] per currency, most used first. The sum
+    // lets the dashboard show per-currency totals instead of adding UAH to EUR.
+    @Query("SELECT r.currency, COUNT(r) as cnt, COALESCE(SUM(r.totalCost), 0) FROM Route r WHERE r.userId = :userId GROUP BY r.currency ORDER BY cnt DESC")
     List<Object[]> findMostUsedCurrencyByUserId(@Param("userId") Long userId);
 
     @Query("SELECT COUNT(r) FROM Route r JOIN r.waypoints w WHERE r.userId = :userId")

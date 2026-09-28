@@ -1484,11 +1484,12 @@ footer {
    Dashboard next-trip banner (dashboard-v1)
    Decorative generic car, never the user's own vehicle/route.
    ============================================ */
+/* Sized so the whole banner (image + 24px padding) lands ~180–220px tall. */
 .dashboard-next-trip-art {
     display: none;
-    width: 280px;
+    width: 220px;
     height: auto;
-    max-height: 210px;
+    max-height: 170px;
     object-fit: contain;
     flex-shrink: 0;
 }
@@ -1501,7 +1502,7 @@ footer {
 
 @media (min-width: 1024px) {
     .dashboard-next-trip-art {
-        width: 300px;
+        width: 250px;
     }
 }
 

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
+import java.util.Map;
 
 /**
  * DTO for user activity statistics
@@ -21,4 +22,6 @@ public class UserStatsDTO {
     private BigDecimal totalFuelCost;
     private Long accountAgeDays;
     private String mostUsedCurrency;
+    /** Fuel cost summed per currency (most used first); totalFuelCost mixes currencies. */
+    private Map<String, BigDecimal> fuelCostByCurrency;
 }

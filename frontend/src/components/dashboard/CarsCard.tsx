@@ -255,7 +255,7 @@ export function CarsCard() {
                       )}
                       <Button
                         variant="outline"
-                        size="default"
+                        size="icon"
                         aria-label={`${t('dashboard.cars.edit')} ${car.name}`}
                         onClick={() => openEdit(car)}
                       >
@@ -263,7 +263,7 @@ export function CarsCard() {
                       </Button>
                       <Button
                         variant="outline"
-                        size="default"
+                        size="icon"
                         aria-label={`${t('dashboard.cars.delete')} ${car.name}`}
                         onClick={() => confirmDelete(car)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"

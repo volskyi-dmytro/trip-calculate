@@ -18,7 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -165,6 +167,12 @@ public class UserDashboardService {
         // Get most used currency
         List<Object[]> currencyStats = routeRepository.findMostUsedCurrencyByUserId(user.getId());
         String mostUsedCurrency = currencyStats.isEmpty() ? null : (String) currencyStats.get(0)[0];
+        // LinkedHashMap keeps the most-used-first order; null currencies are
+        // skipped (Jackson can't serialize a null map key).
+        Map<String, BigDecimal> fuelCostByCurrency = new LinkedHashMap<>();
+        for (Object[] row : currencyStats) {
+            if (row[0] != null) fuelCostByCurrency.put((String) row[0], (BigDecimal) row[2]);
+        }
 
         return UserStatsDTO.builder()
                 .totalRoutes(totalRoutes)
@@ -173,6 +181,7 @@ public class UserDashboardService {
                 .totalFuelCost(totalFuelCost != null ? totalFuelCost : BigDecimal.ZERO)
                 .accountAgeDays(accountAgeDays)
                 .mostUsedCurrency(mostUsedCurrency)
+                .fuelCostByCurrency(fuelCostByCurrency)
                 .build();
     }
 

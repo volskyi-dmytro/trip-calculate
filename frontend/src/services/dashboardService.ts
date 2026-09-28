@@ -21,6 +21,8 @@ export interface UserStats {
   totalFuelCost: number;
   accountAgeDays: number;
   mostUsedCurrency?: string;
+  /** Per-currency totals, most used first. Absent from older backends. */
+  fuelCostByCurrency?: Record<string, number>;
 }
 
 export interface RouteListItem {
