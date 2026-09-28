@@ -111,32 +111,24 @@ public class SpaShellController {
         boolean english = "en".equals(locale);
         String title = english
                 ? "Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs | Trip Calculate"
-                : "Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate";
+                : "Розрахувати вартість поїздки на авто — калькулятор пального | Trip Calculate";
         String description = english
                 ? "Live fuel prices by country, real driving distances and a per-passenger split. Work out the cost of a trip across Ukraine or on to Europe in seconds — free, no sign-up."
-                : ukrainianHomeDescription();
+                // General on purpose: a Kyiv → Lviv figure here read like a single-route
+                // guide to people searching for a calculator (GSC 2026-09: 0 clicks on
+                // "розрахувати вартість поїздки" at position ~6).
+                : "Розрахуйте вартість поїздки на авто та витрати на пальне онлайн. Введіть відстань, витрату на 100 км і ціну за літр — миттєвий розрахунок і поділ між пасажирами без реєстрації.";
         String ogTitle = english
                 ? "Road Trip Fuel Cost Calculator for Ukraine and Europe | Trip Calculate"
-                : "Калькулятор вартості поїздки на авто | Trip Calculate";
+                : "Розрахувати вартість поїздки на авто | Trip Calculate";
 
         String canonical = SITE_ORIGIN + "/" + locale;
-        String jsonLd = jsonLdWebSite(locale) + jsonLdWebApplication(canonical, locale, description);
+        // The popular-routes links ship with the HTML (HomePage reads this island),
+        // so crawlers see them without waiting on /api/city-routes.
+        String jsonLd = jsonLdWebSite(locale) + jsonLdWebApplication(canonical, locale, description)
+                + dataIsland("city-routes-data", cityRouteService.summaries());
         String noscript = homeNoscript(english, locale);
         return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
-    }
-
-    // Quotes today's Kyiv → Lviv estimate (the same cached figures as its city page)
-    // instead of hard-coded numbers that go stale; no prices when none are known.
-    private String ukrainianHomeDescription() {
-        String tail = "Розрахуйте свою поїздку за реальною відстанню — безкоштовно, без реєстрації.";
-        Map<String, Object> kyivLviv = cityRouteService.get("kyiv-lviv", "uk").orElse(null);
-        if (kyivLviv == null || kyivLviv.get("totalCost") == null || kyivLviv.get("perPassenger") == null) {
-            return "Калькулятор вартості пального для поїздки на авто з поділом витрат між пасажирами. " + tail;
-        }
-        double total = ((Number) kyivLviv.get("totalCost")).doubleValue();
-        double perPassenger = ((Number) kyivLviv.get("perPassenger")).doubleValue();
-        return "Київ → Львів ≈ " + formatMoneyUk(total) + " на пальне в один бік (7,5 л/100 км), по "
-                + formatMoneyUk(perPassenger) + " з особи, якщо вас 4. " + tail;
     }
 
     private PageMetadata buildRoutePlannerMetadata(String locale) {
@@ -327,6 +319,15 @@ public class SpaShellController {
         }
     }
 
+    private String dataIsland(String id, Object payload) {
+        try {
+            return "\n    <script type=\"application/json\" id=\"" + id + "\">"
+                    + escapeForScript(objectMapper.writeValueAsString(payload)) + "</script>";
+        } catch (JsonProcessingException e) {
+            throw new IllegalStateException("Failed to serialize " + id, e);
+        }
+    }
+
     private String toScriptTag(Object payload) {
         try {
             String json = escapeForScript(objectMapper.writeValueAsString(payload));
@@ -360,7 +361,7 @@ public class SpaShellController {
     private String homeNoscript(boolean english, String locale) {
         String h1 = english
                 ? "Road Trip Fuel Cost Calculator for Ukraine and Europe"
-                : "Калькулятор вартості поїздки на авто";
+                : "Розрахувати вартість поїздки на авто";
         List<String> paragraphs = english
                 ? List.of(
                         "Trip Calculate works out your road trip's fuel cost from real driving distances and live fuel prices by country, then splits the total between passengers.",

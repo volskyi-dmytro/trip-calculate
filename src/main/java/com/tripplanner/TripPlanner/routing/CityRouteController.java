@@ -24,12 +24,7 @@ public class CityRouteController {
 
     @GetMapping
     public List<Map<String, Object>> list() {
-        return cityRouteService.all().stream()
-                .map(r -> Map.<String, Object>of(
-                        "slug", r.slug(),
-                        "from", Map.of("uk", r.from().uk(), "en", r.from().en()),
-                        "to", Map.of("uk", r.to().uk(), "en", r.to().en())))
-                .toList();
+        return cityRouteService.summaries();
     }
 
     @GetMapping("/{slug}")

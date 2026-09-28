@@ -49,6 +49,16 @@ public class CityRouteService {
         return CityRouteCatalog.ALL;
     }
 
+    /** Catalog list in both languages: GET /api/city-routes and the home page's embedded copy. */
+    public List<Map<String, Object>> summaries() {
+        return CityRouteCatalog.ALL.stream()
+                .map(r -> Map.<String, Object>of(
+                        "slug", r.slug(),
+                        "from", Map.of("uk", r.from().uk(), "en", r.from().en()),
+                        "to", Map.of("uk", r.to().uk(), "en", r.to().en())))
+                .toList();
+    }
+
     public Optional<Map<String, Object>> get(String slug, String locale) {
         CityRouteCatalog.CityRoute route = CityRouteCatalog.find(slug);
         if (route == null) {

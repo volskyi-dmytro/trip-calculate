@@ -200,23 +200,27 @@ class SpaShellControllerTest {
     }
 
     @Test
-    void ukrainianHomeDescriptionUsesTheLiveKyivLvivCost() throws Exception {
+    void ukrainianHomeSnippetTargetsTheCalculatorIntentNotOneRoute() throws Exception {
         mockFuelPrice(60.0, Instant.now());
         String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
 
+        assertTrue(html.contains("<title>Розрахувати вартість поїздки на авто — калькулятор пального | Trip Calculate</title>"));
         Matcher description = Pattern.compile("<meta name=\"description\" content=\"([^\"]*)\"").matcher(html);
         assertTrue(description.find());
-        assertTrue(description.group(1).startsWith("Київ → Львів ≈ "), description.group(1));
-        assertFalse(description.group(1).contains("2 349"), "stale hard-coded price");
+        assertTrue(description.group(1).startsWith("Розрахуйте вартість поїздки на авто"), description.group(1));
+        assertFalse(description.group(1).contains("Київ"), "a single route reads as a route guide");
+        assertFalse(description.group(1).contains("грн"), "no volatile prices in the home snippet");
     }
 
     @Test
-    void ukrainianHomeDescriptionHasNoPricesWhenNoneAreKnown() throws Exception {
+    void homeShipsThePopularRouteListSoCrawlersNeedNoApiCall() throws Exception {
         String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
-
-        Matcher description = Pattern.compile("<meta name=\"description\" content=\"([^\"]*)\"").matcher(html);
-        assertTrue(description.find());
-        assertFalse(description.group(1).contains("грн"), description.group(1));
+        Matcher island = Pattern.compile("<script type=\"application/json\" id=\"city-routes-data\">(.*?)</script>").matcher(html);
+        assertTrue(island.find());
+        List<Map<String, Object>> routes = new ObjectMapper().readValue(island.group(1), List.class);
+        assertEquals(com.tripplanner.TripPlanner.routing.CityRouteCatalog.ALL.size(), routes.size());
+        assertEquals("kyiv-lviv", routes.get(0).get("slug"));
+        assertEquals(Map.of("uk", "Київ", "en", "Kyiv"), routes.get(0).get("from"));
     }
 
     @Test

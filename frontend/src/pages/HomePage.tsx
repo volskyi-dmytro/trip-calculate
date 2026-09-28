@@ -10,16 +10,29 @@ import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteSummary } from '../services/cityRouteService';
 
+/** Popular-route list SpaShellController ships with the home HTML, so crawlers see
+ *  the links without an API call (same idea as CityRoutePage's data island). */
+function embeddedRoutes(): CityRouteSummary[] {
+  try {
+    const island = document.getElementById('city-routes-data');
+    return island ? (JSON.parse(island.textContent ?? '') as CityRouteSummary[]) : [];
+  } catch {
+    return [];
+  }
+}
+
 export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
   const { t, language } = useLanguage();
-  const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>([]);
+  const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>(embeddedRoutes);
   useDocumentTitle(t('pageTitle.home'));
 
-  // Best-effort — a failed fetch just hides the section, never breaks the page.
+  // The server embeds the list on /en and /uk; the fetch only covers a client-side
+  // arrival from another page. Best-effort — a failure just hides the section.
   useEffect(() => {
+    if (popularRoutes.length > 0) return;
     cityRouteService.list().then(setPopularRoutes).catch(() => {});
-  }, []);
+  }, [popularRoutes.length]);
 
   const features = [
     {

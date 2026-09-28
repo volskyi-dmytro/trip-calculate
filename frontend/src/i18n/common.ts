@@ -425,7 +425,7 @@ export const translations: Record<Language, Record<string, string>> = {
   },
   uk: {
     // Header
-    'header.title': 'Дізнайтеся вартість поїздки заздалегідь',
+    'header.title': 'Розрахувати вартість поїздки на авто',
     'header.tagline': 'Плануйте маршрут на мапі, перевіряйте ціни на пальне в Україні та для поїздок до Європи, і діліть суму між пасажирами.',
     'header.signInHint': 'Увійдіть через Google, щоб створювати та зберігати поїздки. Швидкий калькулятор працює без акаунта.',
     'header.createTrip': 'Створити поїздку',
@@ -484,7 +484,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'cityRoute.related': 'Схожі маршрути',
     'cityRoute.notFound.title': 'Маршрут не знайдено',
     'notFound.title': 'Сторінку не знайдено',
-    'pageTitle.home': 'Калькулятор вартості поїздки на авто — пальне і поділ витрат',
+    'pageTitle.home': 'Розрахувати вартість поїздки на авто — калькулятор пального',
     'pageTitle.routePlanner': 'Планувальник маршруту на карті з пальним і погодою — AI-асистент',
     'pageTitle.cityRoute': '{from} → {to}: вартість поїздки на авто, відстань і пальне',
     'notFound.text': 'Сторінки, яку ви шукаєте, не існує або її перенесено.',

@@ -15,7 +15,7 @@ describe('formatDocumentTitle', () => {
   // client navigation the tab must show the same text.
   it.each([
     ['en', 'pageTitle.home', 'Road Trip Fuel Cost Calculator for Ukraine and Europe — Split Costs | Trip Calculate'],
-    ['uk', 'pageTitle.home', 'Калькулятор вартості поїздки на авто — пальне і поділ витрат | Trip Calculate'],
+    ['uk', 'pageTitle.home', 'Розрахувати вартість поїздки на авто — калькулятор пального | Trip Calculate'],
     ['en', 'pageTitle.routePlanner', 'Map Route Planner with Fuel Prices & AI Assistant | Trip Calculate'],
     ['uk', 'pageTitle.routePlanner', 'Планувальник маршруту на карті з пальним і погодою — AI-асистент | Trip Calculate'],
   ] as const)('%s %s matches the server-rendered title', (lang, key, expected) => {
