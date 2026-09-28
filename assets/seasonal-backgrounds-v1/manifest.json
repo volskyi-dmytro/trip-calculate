@@ -1,0 +1,65 @@
+[
+  {
+    "file": "autumn-desktop.png",
+    "width": 2172,
+    "height": 724,
+    "bytes": 1944374,
+    "sha256": "680CA95B8FA7910BFCC9BEAA5F7680BE0AE2AA478CE89ED3EB0411397443B8EA"
+  },
+  {
+    "file": "autumn-mobile.png",
+    "width": 1024,
+    "height": 1536,
+    "bytes": 2082968,
+    "sha256": "896E854AEF4A03F6626DD7E4F9EEA3AB49FC6AF27C345ECEB914354ACA71D4CD"
+  },
+  {
+    "file": "planner-empty.png",
+    "width": 1536,
+    "height": 1024,
+    "bytes": 1665593,
+    "sha256": "58CAA855039610DFDAE1551A1CF6E762874BE33E84A62098AC559B4CFD51F3E0"
+  },
+  {
+    "file": "spring-desktop.png",
+    "width": 2172,
+    "height": 724,
+    "bytes": 2111753,
+    "sha256": "C0DF62343E3440FD368B33177720F4E6E30840BB70A4DB6F143F213A062D9460"
+  },
+  {
+    "file": "spring-mobile.png",
+    "width": 1024,
+    "height": 1536,
+    "bytes": 2228710,
+    "sha256": "397FB8AD466795A341F6099F9175B3F6600761CEFB2403CCE11B961A432829E3"
+  },
+  {
+    "file": "summer-desktop.png",
+    "width": 2172,
+    "height": 724,
+    "bytes": 2181931,
+    "sha256": "7B9B7B878F85349E222BEEC63A0D81A3562E860A829BD92C3E74C988BDC34762"
+  },
+  {
+    "file": "summer-mobile.png",
+    "width": 1024,
+    "height": 1536,
+    "bytes": 2219284,
+    "sha256": "1C92CCF63A6E85694505ECF3342255DA85627FA053345C133CAB19C6EB21C509"
+  },
+  {
+    "file": "winter-desktop.png",
+    "width": 2172,
+    "height": 724,
+    "bytes": 2090292,
+    "sha256": "20FEC7F6E06DE76EC33762DFE2A027EE17C485D4FEE820037FBB30053CC57F04"
+  },
+  {
+    "file": "winter-mobile.png",
+    "width": 1024,
+    "height": 1536,
+    "bytes": 2266920,
+    "sha256": "D2135330ABE935113EB02A604AD2CC72DAB541330F249F7DE018BBB5FC49CC48"
+  }
+]

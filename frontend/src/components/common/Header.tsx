@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { useSeason } from '../../hooks/useSeason';
+import { useSeason, seasonAssets } from '../../hooks/useSeason';
 import { LoginButton } from '../auth/LoginButton';
 import { UserMenu } from '../auth/UserMenu';
 import { Route, Sun, Moon } from 'lucide-react';
@@ -17,7 +17,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
   const { user, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { language, t } = useLanguage();
-  const season = useSeason();
+  const art = seasonAssets[useSeason()];
 
   const isHomePage = location.pathname === withLocalePrefix('/', language);
   const otherLang = otherLocale(language);
@@ -25,10 +25,13 @@ export function Header({ onCalculateClick }: HeaderProps) {
   const otherLangPath = withLocalePrefix(location.pathname, otherLang) + location.search + location.hash;
 
   return (
-    <header
-      className={`hero${isHomePage ? '' : ' hero--compact'}`}
-      style={{ backgroundImage: `url(/images/${season}.webp)` }}
-    >
+    <header className={`hero${isHomePage ? '' : ' hero--compact'}`}>
+      {/* One <picture> so the browser fetches only the orientation it shows;
+          the old CSS background is gone so nothing downloads twice. */}
+      <picture className="seasonal-hero-art" aria-hidden="true">
+        <source media="(max-width: 767px)" srcSet={art.mobile} width={1024} height={1536} />
+        <img src={art.desktop} alt="" width={2172} height={724} fetchPriority="high" decoding="async" />
+      </picture>
       <div className="hero-scrim" aria-hidden="true" />
       <div className="container hero-inner">
         <div className="topbar">

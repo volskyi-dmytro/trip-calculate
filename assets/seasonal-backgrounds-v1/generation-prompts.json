@@ -1,0 +1,51 @@
+{
+  "tool": "Built-in image_gen",
+  "referenceNote": "Original approved hero reused as autumn; six seasonal variants edited using the original composition.",
+  "assets": [
+    {
+      "file": "winter-desktop.png",
+      "prompt": "Edit the reference into the WINTER edition of the same Trip Calculate hero. Preserve the exact panoramic 3:1 framing, painterly editorial texture, mountain silhouettes, lake, winding road geometry, small ivory hatchback at lower right, and visual hierarchy. Only change season: snow blankets the right-hand mountains, distant hills and roadside; evergreen boughs dusted with snow; lake icy pale blue; soft pale winter sunlight near the right horizon. Road remains cleared dark asphalt with readable road markings. Retain deep forest-teal and muted blue-green shadows, restrained ivory snow highlights. Crucially keep LEFT 55% dark quiet teal with low-detail silhouettes for white HTML copy; no white snow highlights in that copy area. Preserve subtle dark upper margin for navigation. Sophisticated inviting winter journey, no blizzard. No text, logos, labels, UI, borders or watermark. Full bleed opaque artwork. Match reference dimensions and composition.",
+      "references": [
+        "autumn-desktop.png"
+      ]
+    },
+    {
+      "file": "winter-mobile.png",
+      "prompt": "Create WINTER mobile seasonal variant. Image 1 is the EDIT TARGET: preserve its exact 1024x1536 portrait composition, road, car position, horizon height, subtle grain and painterly style. Image 2 is the winter desktop COLOR AND SEASON REFERENCE only. Change the lower landscape of image 1 to snow-covered mountains and roadside, snow-dusted evergreens, icy pale blue lake, pale winter sunlight, as in image 2. Keep road cleared dark asphalt. MOST IMPORTANT: preserve entire upper 60% as quiet dark deep forest-teal atmosphere for white HTML copy, no snow highlights or details in that region. All bright winter scene remains at bottom. Keep same small ivory car and gentle road curve, no new objects. Full bleed opaque, no words, UI, logos, labels, border, watermark.",
+      "references": [
+        "autumn-mobile.png",
+        "winter-desktop.png"
+      ]
+    },
+    {
+      "file": "spring-desktop.png",
+      "prompt": "Edit the reference into the SPRING edition of the same Trip Calculate hero. Preserve exact panoramic 3:1 framing, painterly editorial texture, layered mountain silhouettes, lake, winding road geometry, small ivory hatchback at lower right and visual hierarchy. Only change season: fresh light sage and mint-green growth on right-hand slopes, delicate small cream and pale blush wildflowers along the near roadside, a few subtle flowering shrubs among evergreen trees, fresh pale spring morning sunlight. Mountain tops may retain tiny traces of melting snow, valleys lush with new growth. Teal lake and gentle mist. Restrained natural colors, not neon, floral details only on the right. Crucially keep LEFT 55% dark quiet forest teal low-detail silhouettes for white HTML copy; no flowers or bright highlights in copy area. Preserve subdued upper navigation area. Cohesive refined travel editorial painting, not photoreal stock image. No text, logos, labels, UI, borders or watermark. Full bleed opaque artwork. Match reference dimensions and composition.",
+      "references": [
+        "autumn-desktop.png"
+      ]
+    },
+    {
+      "file": "spring-mobile.png",
+      "prompt": "Create SPRING mobile seasonal variant. Image 1 is the EDIT TARGET: preserve its exact 1024x1536 portrait composition, road, car position, horizon height, subtle grain and painterly style. Image 2 is the spring desktop COLOR AND SEASON REFERENCE only. Change lower landscape of image 1 to fresh light green growth on slopes, delicate cream and pale blush roadside wildflowers and flowering shrubs, sage evergreen woods, teal lake, soft spring morning light and tiny traces of melting snow only on distant peaks, as in image 2. MOST IMPORTANT: preserve entire upper 60% as quiet dark deep forest-teal atmosphere for white HTML copy, no flowers or highlights there. All bright seasonal details remain at bottom. Keep same small ivory car and gentle road curve, no new objects. Full bleed opaque, no words, UI, logos, labels, border, watermark.",
+      "references": [
+        "autumn-mobile.png",
+        "spring-desktop.png"
+      ]
+    },
+    {
+      "file": "summer-desktop.png",
+      "prompt": "Edit the reference into the SUMMER edition of the same Trip Calculate hero. Preserve exact panoramic 3:1 framing, painterly editorial texture, layered mountain silhouettes, lake, winding road geometry, small ivory hatchback at lower right and visual hierarchy. Only change season: full rich green foliage and lush meadow grasses on right slopes, deep emerald evergreen woods, clear turquoise lake, snow-free mountain ridges, warm luminous late-afternoon sunshine with honey highlights. Feel like a relaxed summer road trip. Use deep teal, mature green, restrained sage, turquoise and warm gold; no autumn orange foliage, no spring blossoms, no snow. Preserve painted grain and refined aesthetic, not glossy or oversaturated. Crucially keep LEFT 55% dark quiet forest teal low-detail silhouettes for white HTML copy, no bright highlights in copy area. Preserve subdued navigation area. No text, logos, labels, UI, borders or watermark. Full bleed opaque artwork. Match reference dimensions and composition.",
+      "references": [
+        "autumn-desktop.png"
+      ]
+    },
+    {
+      "file": "summer-mobile.png",
+      "prompt": "Create SUMMER mobile seasonal variant. Image 1 is the EDIT TARGET: preserve its exact 1024x1536 portrait composition, road, car position, horizon height, subtle grain and painterly style. Image 2 is the summer desktop COLOR AND SEASON REFERENCE only. Change lower landscape of image 1 to lush mature green meadows and emerald evergreen woods, clear turquoise lake, snow-free mountain ridges, warm honey late-afternoon sunshine as in image 2. No spring blossoms, snow, or autumn orange foliage. MOST IMPORTANT: preserve entire upper 60% as quiet dark deep forest-teal atmosphere for white HTML copy, no bright highlights or detailed foliage there. All bright summer details remain at bottom. Keep same small ivory car and gentle road curve, no new objects. Full bleed opaque, no words, UI, logos, labels, border, watermark.",
+      "references": [
+        "autumn-mobile.png",
+        "summer-desktop.png"
+      ]
+    }
+  ]
+}

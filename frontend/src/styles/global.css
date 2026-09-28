@@ -486,23 +486,58 @@ a:hover {
        the user dropdown that overflows the hero's bottom edge. 30 keeps the
        header above page content but below .modal-overlay (100). */
     z-index: 30;
-    background-size: cover;
-    background-position: center;
-    background-repeat: no-repeat;
-    background-color: #2a3540; /* fallback while the photo loads */
+    /* Fallback while the artwork loads — the art's own deep teal. */
+    background-color: #123a3a;
+}
+
+/* Seasonal artwork. Clipped on its own box so the hero itself stays
+   overflow-visible for the user dropdown. */
+.seasonal-hero-art {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+}
+
+.seasonal-hero-art img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    /* Desktop art: copy space on the left, road and car on the right. */
+    object-position: 80% 70%;
+}
+
+/* Portrait art: quiet sky on top for copy, scenery at the bottom. The home
+   hero gets roughly the art's own 2:3 height so the road isn't cropped away;
+   capped so tablets-in-portrait don't get a full-screen hero. */
+@media (max-width: 767px) {
+    .seasonal-hero-art img { object-position: 50% 100%; }
+    .hero:not(.hero--compact) { min-height: min(150vw, 640px); }
 }
 
 .hero-scrim {
     position: absolute;
     inset: 0;
     z-index: 0;
+    /* The art is already dark teal where copy sits; the scrim only covers
+       the brighter scenery that crops in behind text on narrower screens. */
     background: linear-gradient(
         180deg,
-        rgba(12, 18, 24, 0.62) 0%,
-        rgba(12, 18, 24, 0.28) 45%,
-        rgba(12, 18, 24, 0.55) 100%
+        rgba(6, 24, 26, 0.45) 0%,
+        rgba(6, 24, 26, 0.45) 30%,
+        rgba(6, 24, 26, 0.62) 60%,
+        rgba(6, 24, 26, 0.78) 100%
     );
     pointer-events: none;
+}
+
+@media (min-width: 768px) {
+    .hero-scrim {
+        background:
+            linear-gradient(90deg, rgba(6, 24, 26, 0.78) 0%, rgba(6, 24, 26, 0.60) 45%, rgba(6, 24, 26, 0.10) 75%, transparent 90%),
+            linear-gradient(180deg, rgba(6, 24, 26, 0.45) 0%, transparent 40%);
+    }
 }
 
 .hero-inner {
@@ -602,7 +637,7 @@ a:hover {
     font-size: 0.78rem;
     font-weight: 700;
     letter-spacing: 0.05em;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.9);
     cursor: pointer;
     text-decoration: none;
     transition: background-color 0.15s ease, color 0.15s ease;
@@ -631,7 +666,7 @@ a:hover {
 
 .hero-sub {
     margin: 0 0 24px;
-    color: rgba(255, 255, 255, 0.88);
+    color: rgba(255, 255, 255, 0.95);
     font-size: clamp(0.95rem, 2.8vw, 1.075rem);
     line-height: 1.55;
     max-width: 54ch;
@@ -662,7 +697,7 @@ a:hover {
 .hero-hint {
     margin: 12px 0 0;
     font-size: 0.82rem;
-    color: rgba(255, 255, 255, 0.75);
+    color: rgba(255, 255, 255, 0.9);
     text-shadow: 0 1px 6px rgba(0, 0, 0, 0.35);
 }
 

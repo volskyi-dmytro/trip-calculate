@@ -1,7 +1,7 @@
 import { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
-import { useSeason } from './hooks/useSeason';
+import { useSeason, seasonAssets } from './hooks/useSeason';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -54,7 +54,7 @@ function App() {
   useEffect(() => {
     document.documentElement.style.setProperty(
       '--season-image',
-      `url(/images/${season}-ambient.webp)`
+      `url(${seasonAssets[season].ambient})`
     );
   }, [season]);
 
