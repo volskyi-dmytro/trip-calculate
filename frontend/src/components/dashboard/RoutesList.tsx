@@ -15,6 +15,7 @@ import {
 import type { RouteListItem } from '../../services/dashboardService';
 import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatMoney } from '../../utils/money';
 import { withLocalePrefix } from '../../utils/locale';
 import { routeEditPath } from '../../utils/routePaths';
 import { timeAgo } from '../../i18n/dates';
@@ -148,7 +149,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                       {route.totalDistance.toFixed(1)} km
                     </span>
                     <span>
-                      {route.currency}{route.totalCost.toFixed(2)}
+                      {formatMoney(route.totalCost, route.currency, language)}
                     </span>
                     <span className="text-xs">
                       {timeAgo(route.createdAt, language)}

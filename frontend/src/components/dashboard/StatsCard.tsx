@@ -2,30 +2,22 @@ import { MapPin, Navigation, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { UserStats } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatMoney } from '../../utils/money';
 
 interface StatsCardProps {
   stats: UserStats;
 }
 
-function formatMoney(amount: number, currency: string, locale: string): string {
-  try {
-    return new Intl.NumberFormat(locale, { style: 'currency', currency }).format(amount);
-  } catch {
-    return `${amount.toFixed(2)} ${currency}`; // not an ISO code Intl knows
-  }
-}
-
 export function StatsCard({ stats }: StatsCardProps) {
   const { t, language } = useLanguage();
-  const locale = language === 'uk' ? 'uk-UA' : 'en-US';
 
   // Never add UAH to EUR: show one total per currency when the backend
   // provides them; fall back to the legacy single figure otherwise.
   const perCurrency = Object.entries(stats.fuelCostByCurrency ?? {});
   const fuelCostValue = perCurrency.length > 0
-    ? perCurrency.map(([currency, amount]) => formatMoney(amount, currency, locale)).join(' · ')
+    ? perCurrency.map(([currency, amount]) => formatMoney(amount, currency, language)).join(' · ')
     : stats.mostUsedCurrency
-      ? formatMoney(stats.totalFuelCost, stats.mostUsedCurrency, locale)
+      ? formatMoney(stats.totalFuelCost, stats.mostUsedCurrency, language)
       : stats.totalFuelCost.toFixed(2);
 
   // Account age is deliberately not a tile: it's account metadata, not a

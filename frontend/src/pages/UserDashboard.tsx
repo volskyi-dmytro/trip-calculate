@@ -77,26 +77,45 @@ export function UserDashboard() {
 
         <NextTripBanner />
 
+        {/* Below lg the two column wrappers dissolve (display: contents) so
+            every card is a direct item of the one-column grid and `order`
+            can put saved routes near the top on phones instead of after
+            profile, quick actions and cars. From lg the columns are normal
+            blocks again and the order classes have no effect. */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Column - Profile & Quick Actions */}
-          <div className="space-y-6">
-            <ProfileCard
-              profile={dashboardData.profile}
-              onProfileUpdate={fetchDashboard}
-            />
-            <QuickActions />
-            <CarsCard />
+          <div className="contents lg:block lg:space-y-6">
+            <div className="order-6">
+              <ProfileCard
+                profile={dashboardData.profile}
+                onProfileUpdate={fetchDashboard}
+              />
+            </div>
+            <div className="order-3">
+              <QuickActions />
+            </div>
+            <div className="order-4">
+              <CarsCard />
+            </div>
           </div>
 
           {/* Middle & Right Columns - Stats & Routes */}
-          <div className="lg:col-span-2 space-y-6">
-            <StatsCard stats={dashboardData.stats} />
-            <RoutesList
-              routes={dashboardData.recentRoutes}
-              onRouteDeleted={fetchDashboard}
-            />
-            <ReceiptsList />
-            <SecuritySection />
+          <div className="contents lg:block lg:col-span-2 lg:space-y-6">
+            <div className="order-1">
+              <StatsCard stats={dashboardData.stats} />
+            </div>
+            <div className="order-2">
+              <RoutesList
+                routes={dashboardData.recentRoutes}
+                onRouteDeleted={fetchDashboard}
+              />
+            </div>
+            <div className="order-5">
+              <ReceiptsList />
+            </div>
+            <div className="order-7">
+              <SecuritySection />
+            </div>
           </div>
         </div>
         </div>
