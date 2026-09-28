@@ -2,6 +2,7 @@ import { useEffect, Suspense, lazy } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import { useSeason, seasonAssets } from './hooks/useSeason';
+import { useDropServerHeadOnNavigation } from './hooks/useDocumentTitle';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { LanguageProvider } from './contexts/LanguageContext';
@@ -34,6 +35,11 @@ const CityRoutePage = lazy(() =>
   import('./pages/CityRoutePage').then((m) => ({ default: m.CityRoutePage })),
 );
 
+function ServerHeadCleanup() {
+  useDropServerHeadOnNavigation();
+  return null;
+}
+
 function RouteFallback() {
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -60,6 +66,7 @@ function App() {
 
   return (
     <BrowserRouter>
+      <ServerHeadCleanup />
       <ThemeProvider>
         <LanguageProvider>
           <AuthProvider>

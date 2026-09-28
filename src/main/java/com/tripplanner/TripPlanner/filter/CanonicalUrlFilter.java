@@ -11,7 +11,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.util.Set;
 
 /**
  * Normalizes public SEO URL variants before MVC and Spring Security handle the request.
@@ -23,16 +22,6 @@ public class CanonicalUrlFilter extends OncePerRequestFilter {
     private static final String WWW_HOST = "www.trip-calculate.online";
     private static final String CANONICAL_ORIGIN = "https://trip-calculate.online";
     private static final String INDEX_HTML_PATH = "/index.html";
-    private static final Set<String> PUBLIC_TRAILING_SLASH_PATHS = Set.of(
-            "/en/",
-            "/uk/",
-            "/en/route-planner/",
-            "/uk/route-planner/",
-            "/en/privacy/",
-            "/uk/privacy/",
-            "/en/terms/",
-            "/uk/terms/");
-
     @Override
     protected void doFilterInternal(HttpServletRequest request,
                                     HttpServletResponse response,
@@ -71,8 +60,12 @@ public class CanonicalUrlFilter extends OncePerRequestFilter {
         return WWW_HOST.equalsIgnoreCase(request.getServerName());
     }
 
+    // Every locale-prefixed page ("/en/", "/uk/route/kyiv-lviv/", ...) has one
+    // canonical form without the trailing slash. SpaShellController would
+    // otherwise serve the slash variant as a duplicate 200.
     private String normalizedPath(String requestPath) {
-        return PUBLIC_TRAILING_SLASH_PATHS.contains(requestPath)
+        boolean localized = requestPath.startsWith("/en/") || requestPath.startsWith("/uk/");
+        return localized && requestPath.endsWith("/")
                 ? requestPath.substring(0, requestPath.length() - 1)
                 : requestPath;
     }

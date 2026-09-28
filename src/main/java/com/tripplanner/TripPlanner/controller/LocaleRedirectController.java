@@ -28,7 +28,9 @@ public class LocaleRedirectController {
     public ResponseEntity<Void> redirectToLocale(HttpServletRequest request) {
         String locale = localeResolver.resolve(request.getHeader(HttpHeaders.ACCEPT_LANGUAGE));
         String uri = request.getRequestURI();
-        String path = "/".equals(uri) ? "" : uri;
+        // No /{locale}/profile page exists any more; the profile lives on the
+        // dashboard, so send old links there in one hop instead of into a 404.
+        String path = "/".equals(uri) ? "" : "/profile".equals(uri) ? "/dashboard" : uri;
         String query = request.getQueryString();
         String location = "/" + locale + path + (query != null ? "?" + query : "");
         return ResponseEntity.status(HttpStatus.MOVED_PERMANENTLY)

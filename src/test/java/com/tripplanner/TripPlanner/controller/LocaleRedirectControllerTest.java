@@ -45,6 +45,16 @@ class LocaleRedirectControllerTest {
     }
 
     @Test
+    void redirectsLegacyProfileToTheDashboardInsteadOfA404() {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/profile");
+        when(localeResolver.resolve(null)).thenReturn("uk");
+
+        ResponseEntity<Void> response = controller.redirectToLocale(request);
+
+        assertEquals("/uk/dashboard", response.getHeaders().getLocation().toString());
+    }
+
+    @Test
     void preservesQueryString() {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", "/dashboard");
         request.setQueryString("tab=routes");

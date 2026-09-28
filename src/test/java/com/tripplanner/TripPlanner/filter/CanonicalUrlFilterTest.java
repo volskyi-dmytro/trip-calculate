@@ -31,7 +31,8 @@ class CanonicalUrlFilterTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"/en/", "/uk/", "/en/route-planner/", "/uk/route-planner/",
-            "/en/privacy/", "/uk/privacy/", "/en/terms/", "/uk/terms/"})
+            "/en/privacy/", "/uk/privacy/", "/en/terms/", "/uk/terms/",
+            "/uk/route/kyiv-lviv/", "/en/route/kyiv-lviv/", "/en/dashboard/"})
     void redirectsEveryLocalizedPublicTrailingSlashToCanonicalPath(String path) throws Exception {
         MockHttpServletRequest request = new MockHttpServletRequest("GET", path);
         request.addHeader("Host", "trip-calculate.online");

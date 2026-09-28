@@ -1,6 +1,8 @@
 User-agent: *
-Disallow: /dashboard
-Disallow: /admin
+# Private pages (/{locale}/dashboard, /{locale}/admin, share receipts /r/...)
+# are NOT disallowed here on purpose: they answer with X-Robots-Tag noindex,
+# and a crawler blocked by robots.txt could never see that. Access control is
+# authentication on the APIs, never this file.
 # City pages load their public data from here (Google renders with it)
 Allow: /api/city-routes
 Disallow: /api/
