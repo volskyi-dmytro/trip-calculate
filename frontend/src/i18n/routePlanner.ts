@@ -24,6 +24,8 @@ export const routePlannerTranslations = {
       calculateRoute: 'Calculate route',
       calculatingRoute: 'Calculating...',
       enterLocations: 'Enter origin and destination first',
+      needWaypoints: 'Add waypoints first',
+      waitForAi: 'Wait for the AI request to finish',
     },
     routeSettings: {
       title: 'Route settings',
@@ -133,6 +135,7 @@ export const routePlannerTranslations = {
       privacyLink: 'Privacy Policy',
     },
     planner: {
+      routeInputsHeading: 'Route',
       editingRoute: 'Editing route',
       start: 'Start',
       destination: 'Destination',
@@ -264,6 +267,8 @@ export const routePlannerTranslations = {
       calculateRoute: 'Порахувати маршрут',
       calculatingRoute: 'Розрахунок...',
       enterLocations: 'Спочатку введіть початок і призначення',
+      needWaypoints: 'Спершу додайте точки маршруту',
+      waitForAi: 'Зачекайте, поки AI завершить запит',
     },
     routeSettings: {
       title: 'Налаштування маршруту',
@@ -373,6 +378,7 @@ export const routePlannerTranslations = {
       privacyLink: 'Політика конфіденційності',
     },
     planner: {
+      routeInputsHeading: 'Маршрут',
       editingRoute: 'Редагування маршруту',
       start: 'Звідки',
       destination: 'Куди',

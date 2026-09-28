@@ -1196,6 +1196,10 @@ export function RoutePlanner() {
         </div>
       )}
 
+      {/* Screen-reader-only heading: the first task group (start,
+          destination, calculate) otherwise has no semantic heading at all. */}
+      <h2 className="sr-only">{t.planner.routeInputsHeading}</h2>
+
       {/* ── START input ── */}
       <div>
         <Label
@@ -1443,6 +1447,7 @@ export function RoutePlanner() {
             <DialogTrigger asChild>
               <button
                 disabled={waypoints.length === 0}
+                title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
                 className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
                 style={{
                   background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
@@ -1510,6 +1515,7 @@ export function RoutePlanner() {
           <button
             onClick={exportRouteAsJSON}
             disabled={waypoints.length === 0}
+            title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
             className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
@@ -1524,6 +1530,11 @@ export function RoutePlanner() {
           <button
             onClick={clearRoute}
             disabled={waypoints.length === 0 || isProcessingAi}
+            title={
+              waypoints.length === 0 ? t.buttons.needWaypoints
+                : isProcessingAi ? t.buttons.waitForAi
+                : undefined
+            }
             className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
