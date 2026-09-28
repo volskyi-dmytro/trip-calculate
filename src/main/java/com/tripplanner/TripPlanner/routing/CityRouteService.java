@@ -77,6 +77,9 @@ public class CityRouteService {
         dto.put("fuelType", "petrol");
         dto.put("fuelPricePerLiter", fuel != null ? round2(fuel.pricePerLiter()) : null);
         dto.put("fuelPriceDate", fuel != null ? fuel.fetchedAt().toString() : null);
+        // "minfin" = daily A-95 national average; "seed" = the migration's
+        // placeholder before the first refresh. The page labels them differently.
+        dto.put("fuelPriceSource", fuel != null ? fuel.source() : null);
         dto.put("currency", "UAH");
         dto.put("consumptionL100", CONSUMPTION_L_PER_100KM);
         dto.put("passengers", PASSENGERS);
@@ -124,7 +127,7 @@ public class CityRouteService {
         return new DistanceResult(route.estDistanceKm(), route.estDurationMin(), false);
     }
 
-    private record FuelPrice(double pricePerLiter, Instant fetchedAt) {}
+    private record FuelPrice(double pricePerLiter, String source, Instant fetchedAt) {}
 
     private FuelPrice fuelPrice() {
         // Fuel data is advisory: a DB/table failure must degrade to "no price",
@@ -139,7 +142,7 @@ public class CityRouteService {
 
     private FuelPrice queryFuelPrice() {
         List<FuelPrice> rows = jdbc.query(
-                "SELECT price, currency, fetched_at FROM fuel_prices WHERE fuel_type = 'petrol' AND country_code = 'UA'",
+                "SELECT price, currency, source, fetched_at FROM fuel_prices WHERE fuel_type = 'petrol' AND country_code = 'UA'",
                 (rs, rowNum) -> {
                     String currency = rs.getString("currency").trim();
                     if (!"UAH".equals(currency)) {
@@ -147,7 +150,8 @@ public class CityRouteService {
                         // a converted price for an unexpected currency here.
                         return null;
                     }
-                    return new FuelPrice(rs.getDouble("price"), rs.getTimestamp("fetched_at").toInstant());
+                    return new FuelPrice(rs.getDouble("price"), rs.getString("source"),
+                            rs.getTimestamp("fetched_at").toInstant());
                 });
         return rows.stream().filter(java.util.Objects::nonNull).findFirst().orElse(null);
     }

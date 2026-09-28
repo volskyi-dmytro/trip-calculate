@@ -75,6 +75,7 @@ const routeDetail = {
   fuelType: 'petrol' as const,
   fuelPricePerLiter: 58.2,
   fuelPriceDate: '2026-09-20',
+  fuelPriceSource: 'minfin',
   currency: 'UAH',
   consumptionL100: 7.5,
   passengers: 4,
@@ -155,5 +156,27 @@ describe('CityRoutePage', () => {
     await renderPage()
 
     expect(document.title).toBe('Kyiv → Lviv | Trip Calculate')
+  })
+
+  it('explains the formula, the one-way fuel-only scope and where its data comes from', async () => {
+    embedIsland('kyiv-lviv', 'en', routeDetail)
+    const container = await renderPage()
+
+    for (const key of ['method.liters', 'method.cost', 'method.share', 'method.scope',
+      'method.distanceLive', 'method.priceLive', 'method.conditions']) {
+      expect(container.textContent).toContain(`cityRoute.${key}`)
+    }
+    // Visible breadcrumb matching the server's BreadcrumbList
+    expect(container.querySelector('nav a[href="/en"]')?.textContent).toBe('Trip Calculate')
+  })
+
+  it('never presents the placeholder seed price as a current market price', async () => {
+    embedIsland('kyiv-lviv', 'en', { ...routeDetail, fuelPriceSource: 'seed', distanceSource: 'estimate' })
+    const container = await renderPage()
+
+    expect(container.textContent).toContain('cityRoute.method.priceDefault')
+    expect(container.textContent).toContain('cityRoute.method.distanceEstimate')
+    expect(container.textContent).not.toContain('cityRoute.method.priceLive')
+    expect(container.textContent).not.toContain('cityRoute.priceDateSuffix')
   })
 })

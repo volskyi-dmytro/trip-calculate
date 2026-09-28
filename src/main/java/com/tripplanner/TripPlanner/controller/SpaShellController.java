@@ -17,6 +17,9 @@ import org.springframework.web.util.HtmlUtils;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.Month;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,6 +39,7 @@ import java.util.regex.Pattern;
 public class SpaShellController {
 
     private static final String SITE_ORIGIN = "https://trip-calculate.online";
+    private static final ZoneId KYIV = ZoneId.of("Europe/Kyiv");
     private static final Set<String> NON_PUBLIC_APP_ROUTES = Set.of(
             "/en/dashboard", "/en/dashboard/",
             "/uk/dashboard", "/uk/dashboard/",
@@ -116,7 +120,7 @@ public class SpaShellController {
                 : "Калькулятор вартості поїздки на авто | Trip Calculate";
 
         String canonical = SITE_ORIGIN + "/" + locale;
-        String jsonLd = jsonLdWebApplication(canonical, locale, description);
+        String jsonLd = jsonLdWebSite(locale) + jsonLdWebApplication(canonical, locale, description);
         String noscript = homeNoscript(english, locale);
         return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
     }
@@ -131,8 +135,8 @@ public class SpaShellController {
         }
         double total = ((Number) kyivLviv.get("totalCost")).doubleValue();
         double perPassenger = ((Number) kyivLviv.get("perPassenger")).doubleValue();
-        return "Київ → Львів ≈ " + formatMoneyUk(total) + " на пальне, по " + formatMoneyUk(perPassenger)
-                + " на пасажира. " + tail;
+        return "Київ → Львів ≈ " + formatMoneyUk(total) + " на пальне в один бік (7,5 л/100 км), по "
+                + formatMoneyUk(perPassenger) + " з особи, якщо вас 4. " + tail;
     }
 
     private PageMetadata buildRoutePlannerMetadata(String locale) {
@@ -235,11 +239,14 @@ public class SpaShellController {
         String distance = Math.round(distanceKm) + (english ? " km" : " км");
         String duration = english ? formatDurationEn(durationMin) : formatDurationUk(durationMin);
         if (totalCost != null && perPassenger != null) {
+            // The quoted cost is only meaningful with its assumptions attached.
             return english
-                    ? fromName + " → " + toName + " ≈ " + distance + ", " + duration + ". Fuel ≈ "
-                            + formatMoneyEn(totalCost) + ", " + formatMoneyEn(perPassenger) + " per passenger. Free calculator, real driving distance."
-                    : fromName + " → " + toName + " ≈ " + distance + ", " + duration + " у дорозі. Пальне ≈ "
-                            + formatMoneyUk(totalCost) + ", по " + formatMoneyUk(perPassenger) + " на пасажира. Розрахуйте поїздку безкоштовно.";
+                    ? fromName + " → " + toName + " ≈ " + distance + ", " + duration + " by car. One-way fuel ≈ "
+                            + formatMoneyEn(totalCost) + " at 7.5 L/100 km, " + formatMoneyEn(perPassenger)
+                            + " each for 4 people. Adjust it for your car — free."
+                    : fromName + " → " + toName + " ≈ " + distance + ", " + duration + " у дорозі. Пальне в один бік ≈ "
+                            + formatMoneyUk(totalCost) + " при 7,5 л/100 км, по " + formatMoneyUk(perPassenger)
+                            + " з особи, якщо вас 4. Змініть під своє авто — безкоштовно.";
         }
         return english
                 ? fromName + " → " + toName + " ≈ " + distance + ", " + duration + ". Calculate the fuel cost and split it between passengers — free, no sign-up."
@@ -249,6 +256,18 @@ public class SpaShellController {
     // ------------------------------------------------------------------
     // JSON-LD
     // ------------------------------------------------------------------
+
+    // Google reads the site name from WebSite data on the home page. No
+    // SearchAction: the site has no search results page to point it at.
+    private String jsonLdWebSite(String locale) {
+        Map<String, Object> obj = new LinkedHashMap<>();
+        obj.put("@context", "https://schema.org");
+        obj.put("@type", "WebSite");
+        obj.put("name", "Trip Calculate");
+        obj.put("url", SITE_ORIGIN + "/" + locale);
+        obj.put("inLanguage", locale);
+        return toScriptTag(obj);
+    }
 
     private String jsonLdWebApplication(String url, String locale, String description) {
         Map<String, Object> offers = new LinkedHashMap<>();
@@ -405,7 +424,13 @@ public class SpaShellController {
                 english
                         ? "Free trip cost calculator for the " + fromName + " to " + toName + " road trip: real driving distance, live fuel price, and a per-passenger split."
                         : "Безкоштовний калькулятор вартості поїздки " + fromName + " – " + toName + ": реальна відстань, актуальна ціна на пальне та поділ витрат між пасажирами.",
-                facts);
+                facts,
+                english
+                        ? "How it is calculated: litres = distance × L/100 km ÷ 100; fuel cost = litres × price per litre; share per person = fuel cost ÷ people. One way only; tolls, parking and accommodation are not included."
+                        : "Як рахуємо: літри = відстань × л/100 км ÷ 100; вартість пального = літри × ціна за літр; частка з особи = вартість пального ÷ кількість людей. Лише в один бік; платні дороги, паркування й житло не враховані.",
+                english
+                        ? "Distance and drive time assume normal road conditions and do not reflect closures, checkpoints or security restrictions. Check official sources before you travel."
+                        : "Відстань і час у дорозі наведено для звичайних умов; вони не враховують перекриття, блокпости чи безпекові обмеження. Перед поїздкою перевірте офіційні джерела.");
 
         List<NoscriptLink> links = new ArrayList<>();
         links.add(new NoscriptLink(SITE_ORIGIN + "/" + (english ? "uk" : "en") + "/route/" + slug,
@@ -506,12 +531,36 @@ public class SpaShellController {
                 + "\n    <link rel=\"alternate\" hreflang=\"uk\" href=\"" + metadata.alternateUrl("uk") + "\" />"
                 + "\n    <link rel=\"alternate\" hreflang=\"x-default\" href=\"" + metadata.defaultUrl() + "\" />\n  ";
         String jsonLd = metadata.jsonLd != null ? metadata.jsonLd : "";
-        html = html.replace("</head>", alternates + jsonLd + "\n  </head>");
+        html = html.replace("</head>", alternates + heroPreload(LocalDate.now(KYIV)) + jsonLd + "\n  </head>");
 
         if (metadata.noscript != null) {
             html = html.replace("<div id=\"root\"></div>", "<div id=\"root\"></div>" + metadata.noscript);
         }
         return html;
+    }
+
+    /**
+     * The seasonal hero (Header.tsx) is the home page's LCP image, but the
+     * browser only finds it after the JS bundle runs. Preloading it here, with
+     * the same media split as the header's &lt;picture&gt;, starts the download
+     * with the HTML. Paths mirror frontend/src/hooks/useSeason.ts.
+     */
+    static String heroPreload(LocalDate today) {
+        String base = "/images/seasons-v1/" + season(today.getMonth());
+        return "\n    <link rel=\"preload\" as=\"image\" href=\"" + base + "-mobile.webp\" media=\"(max-width: 767px)\" fetchpriority=\"high\" />"
+                + "\n    <link rel=\"preload\" as=\"image\" href=\"" + base + "-desktop.webp\" media=\"(min-width: 768px)\" fetchpriority=\"high\" />";
+    }
+
+    // Same meteorological seasons as useSeason.getSeason. The client uses the
+    // visitor's clock, so a mismatch is possible only around midnight on a
+    // season's first day: one wasted preload, no visual difference.
+    static String season(Month month) {
+        return switch (month) {
+            case MARCH, APRIL, MAY -> "spring";
+            case JUNE, JULY, AUGUST -> "summer";
+            case SEPTEMBER, OCTOBER, NOVEMBER -> "autumn";
+            default -> "winter";
+        };
     }
 
     private String replaceMeta(String html, String attribute, String key, String content) {

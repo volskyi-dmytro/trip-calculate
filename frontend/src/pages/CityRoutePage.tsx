@@ -114,9 +114,16 @@ export function CityRoutePage() {
         day: 'numeric',
       })
     : null;
-  const priceDate = formattedPriceDate
+  const livePrice = r.fuelPricePerLiter !== null && r.fuelPriceSource !== 'seed';
+  const priceDate = livePrice && formattedPriceDate
     ? t('cityRoute.priceDateSuffix').replace('{date}', formattedPriceDate)
     : '';
+  const priceNote =
+    r.fuelPricePerLiter === null
+      ? t('cityRoute.method.priceMissing')
+      : livePrice
+        ? t('cityRoute.method.priceLive').replace('{date}', formattedPriceDate ?? '')
+        : t('cityRoute.method.priceDefault');
   const explanation = t('cityRoute.explanation')
     .replace('{consumption}', r.consumptionL100.toLocaleString(language === 'uk' ? 'uk-UA' : 'en-GB'))
     .replace('{passengers}', tn('common.passengersGenitive', r.passengers))
@@ -155,6 +162,14 @@ export function CityRoutePage() {
       <Header />
       <main className="container">
         <section className="section">
+          {/* Visible counterpart of the server's BreadcrumbList JSON-LD. */}
+          <nav aria-label={t('cityRoute.breadcrumb')} className="breadcrumb">
+            <Link to={withLocalePrefix('/', language)}>Trip Calculate</Link>
+            <span aria-hidden="true"> › </span>
+            <span aria-current="page">
+              {r.fromName} → {r.toName}
+            </span>
+          </nav>
           <h1>
             {r.fromName} → {r.toName}: {t('cityRoute.titleSuffix')}
           </h1>
@@ -189,6 +204,27 @@ export function CityRoutePage() {
                 <p>{label}</p>
               </div>
             ))}
+          </div>
+        </section>
+
+        <section className="section">
+          <h2>{t('cityRoute.method.title')}</h2>
+          <div className="faq-list">
+            <div className="faq-item">
+              <ul className="city-method-formula">
+                <li>{t('cityRoute.method.liters')}</li>
+                <li>{t('cityRoute.method.cost')}</li>
+                <li>{t('cityRoute.method.share')}</li>
+              </ul>
+              <p>{t('cityRoute.method.scope')}</p>
+            </div>
+            <div className="faq-item">
+              <p>
+                {t(r.distanceSource === 'live' ? 'cityRoute.method.distanceLive' : 'cityRoute.method.distanceEstimate')}{' '}
+                {priceNote}
+              </p>
+              <p>{t('cityRoute.method.conditions')}</p>
+            </div>
           </div>
         </section>
 

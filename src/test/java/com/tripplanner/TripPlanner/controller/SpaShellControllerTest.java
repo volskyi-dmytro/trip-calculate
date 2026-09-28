@@ -301,6 +301,95 @@ class SpaShellControllerTest {
         assertEquals("noindex, nofollow", response.getHeaders().getFirst("X-Robots-Tag"));
     }
 
+    @Test
+    void homeEmitsWebSiteJsonLdForTheSiteName() throws Exception {
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+        Map<String, Object> site = new ObjectMapper().readValue(extractJsonLd(html, "WebSite"), Map.class);
+        assertEquals("Trip Calculate", site.get("name"));
+        assertEquals("https://trip-calculate.online/uk", site.get("url"));
+    }
+
+    @Test
+    void cityRouteStatesItsMethodAndThatTheFigureIsOneWayFuelOnly() throws Exception {
+        mockFuelPrice(58.90, Instant.now());
+        String en = controller.shell(new MockHttpServletRequest("GET", "/en/route/kyiv-lviv")).getBody();
+        assertTrue(en.contains("litres = distance × L/100 km ÷ 100"));
+        assertTrue(en.contains("tolls, parking and accommodation are not included"));
+        assertTrue(en.contains("do not reflect closures"));
+        Matcher description = Pattern.compile("<meta name=\"description\" content=\"([^\"]*)\"").matcher(en);
+        assertTrue(description.find());
+        assertTrue(description.group(1).contains("One-way fuel") && description.group(1).contains("7.5 L/100 km"),
+                description.group(1));
+    }
+
+    /**
+     * sitemap.xml is hand-written; this keeps it equal to what the server
+     * actually serves as indexable: every entry is a 200 without noindex, its
+     * alternates match the page's own hreflang tags, every catalog route is
+     * listed, and nothing private or redirecting is.
+     */
+    @Test
+    void sitemapListsExactlyTheIndexablePagesWithTheSameAlternatesAsTheirHtml() throws Exception {
+        String xml = java.nio.file.Files.readString(java.nio.file.Path.of("frontend/public/sitemap.xml"));
+        org.w3c.dom.Document doc = javax.xml.parsers.DocumentBuilderFactory.newInstance()
+                .newDocumentBuilder().parse(new java.io.ByteArrayInputStream(xml.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+        org.w3c.dom.NodeList urls = doc.getElementsByTagName("url");
+
+        java.util.Set<String> expected = new java.util.TreeSet<>();
+        for (String page : List.of("", "/route-planner", "/privacy", "/terms")) {
+            expected.add("/en" + page);
+            expected.add("/uk" + page);
+        }
+        for (var route : com.tripplanner.TripPlanner.routing.CityRouteCatalog.ALL) {
+            expected.add("/en/route/" + route.slug());
+            expected.add("/uk/route/" + route.slug());
+        }
+
+        java.util.Set<String> listed = new java.util.TreeSet<>();
+        String origin = "https://trip-calculate.online";
+        for (int i = 0; i < urls.getLength(); i++) {
+            org.w3c.dom.Element url = (org.w3c.dom.Element) urls.item(i);
+            String loc = url.getElementsByTagName("loc").item(0).getTextContent().trim();
+            assertTrue(loc.startsWith(origin), loc);
+            String path = loc.substring(origin.length());
+            assertTrue(listed.add(path), "duplicate " + path);
+
+            ResponseEntity<String> response = controller.shell(new MockHttpServletRequest("GET", path));
+            assertEquals(200, response.getStatusCode().value(), path);
+            assertFalse(response.getHeaders().containsKey("X-Robots-Tag"), path);
+
+            org.w3c.dom.NodeList links = url.getElementsByTagName("xhtml:link");
+            assertEquals(3, links.getLength(), path);
+            for (int j = 0; j < links.getLength(); j++) {
+                org.w3c.dom.Element link = (org.w3c.dom.Element) links.item(j);
+                String tag = "<link rel=\"alternate\" hreflang=\"" + link.getAttribute("hreflang")
+                        + "\" href=\"" + link.getAttribute("href") + "\" />";
+                assertTrue(response.getBody().contains(tag), path + " html lacks " + tag);
+            }
+        }
+        assertEquals(expected, listed);
+    }
+
+    @Test
+    void preloadsTheCurrentSeasonsHeroWithTheHeadersMediaSplit() throws Exception {
+        String preload = SpaShellController.heroPreload(java.time.LocalDate.of(2026, 10, 1));
+        assertTrue(preload.contains("href=\"/images/seasons-v1/autumn-mobile.webp\" media=\"(max-width: 767px)\""));
+        assertTrue(preload.contains("href=\"/images/seasons-v1/autumn-desktop.webp\" media=\"(min-width: 768px)\""));
+        assertEquals("winter", SpaShellController.season(java.time.Month.DECEMBER));
+        assertEquals("winter", SpaShellController.season(java.time.Month.FEBRUARY));
+        assertEquals("spring", SpaShellController.season(java.time.Month.MARCH));
+        assertEquals("summer", SpaShellController.season(java.time.Month.AUGUST));
+        // Every preloaded file must exist, or the preload is a wasted 404.
+        for (java.time.Month month : java.time.Month.values()) {
+            for (String variant : List.of("-mobile.webp", "-desktop.webp")) {
+                assertTrue(java.nio.file.Files.exists(java.nio.file.Path.of(
+                        "frontend/public/images/seasons-v1/" + SpaShellController.season(month) + variant)));
+            }
+        }
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+        assertEquals(2, occurrences(html, "rel=\"preload\" as=\"image\""));
+    }
+
     private String extractJsonLd(String html, String type) {
         int index = 0;
         while (true) {

@@ -25,6 +25,8 @@ export interface CityRouteDetail {
   fuelType: 'petrol';
   fuelPricePerLiter: number | null;
   fuelPriceDate: string | null;
+  /** 'minfin' = daily national average; 'seed' = placeholder before the first refresh. */
+  fuelPriceSource: string | null;
   currency: string;
   consumptionL100: number;
   passengers: number;
