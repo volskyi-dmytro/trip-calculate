@@ -369,6 +369,10 @@ export function RoutePanel({
     <div className="space-y-4">
       {/* Route Settings */}
       <div style={cardStyle} className="p-3">
+        {/* h2 wraps the button (WAI-ARIA accordion pattern) rather than
+            nesting inside it — headings aren't valid button content, and
+            `contents` keeps the wrapper out of layout entirely. */}
+        <h2 className="contents">
         <button
           type="button"
           onClick={() => setSettingsOpen(o => !o)}
@@ -397,6 +401,7 @@ export function RoutePanel({
             style={{ color: 'var(--nav-text-secondary)' }}
           />
         </button>
+        </h2>
 
         <div id="route-settings-fields" hidden={!settingsOpen} className="mt-3 space-y-3">
         {!settingsValid && (
@@ -616,9 +621,9 @@ export function RoutePanel({
       {/* Waypoints List */}
       <div style={cardStyle} className="p-3 space-y-3">
         <div className="flex items-center justify-between">
-          <span style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
+          <h2 style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
             {t.waypoints.title} ({waypoints.length})
-          </span>
+          </h2>
           {onAddManually && (
             <button
               onClick={onAddManually}
