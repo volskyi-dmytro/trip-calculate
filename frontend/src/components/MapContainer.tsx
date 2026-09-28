@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Waypoint } from './RoutePlanner'
@@ -24,6 +24,7 @@ const DEFAULT_PADDING = 50
 
 export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint, onDeleteWaypoint, bottomPadding }: MapContainerProps) {
   const mapRef = useRef<mapboxgl.Map | null>(null)
+  const [mapFailed, setMapFailed] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const onAddWaypointRef = useRef(onAddWaypoint)
@@ -111,21 +112,29 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       return
     }
 
-    // Create map instance
-    const map = new mapboxgl.Map({
-      container: mapContainerRef.current,
-      style: theme === 'dark'
-        ? 'mapbox://styles/mapbox/dark-v11'
-        : 'mapbox://styles/mapbox/streets-v12',
-      center: [30.5234, 50.4501], // [lng, lat] - Kyiv, Ukraine (Mapbox uses lng-first!)
-      zoom: 6,
-      projection: { name: 'mercator' }, // Explicitly set to mercator (not globe)
-      pitch: 55,
-      bearing: -15,
-      antialias: true,
-      // Don't send device/performance telemetry to Mapbox (Privacy Policy: no analytics).
-      performanceMetricsCollection: false
-    })
+    // Mapbox throws synchronously without WebGL (disabled GPU, old devices,
+    // some crawlers' renderers). Uncaught, that unmounts the whole page.
+    let map: mapboxgl.Map
+    try {
+      map = new mapboxgl.Map({
+        container: mapContainerRef.current,
+        style: theme === 'dark'
+          ? 'mapbox://styles/mapbox/dark-v11'
+          : 'mapbox://styles/mapbox/streets-v12',
+        center: [30.5234, 50.4501], // [lng, lat] - Kyiv, Ukraine (Mapbox uses lng-first!)
+        zoom: 6,
+        projection: { name: 'mercator' }, // Explicitly set to mercator (not globe)
+        pitch: 55,
+        bearing: -15,
+        antialias: true,
+        // Don't send device/performance telemetry to Mapbox (Privacy Policy: no analytics).
+        performanceMetricsCollection: false
+      })
+    } catch (err) {
+      console.error('⚠️ [MAP] Mapbox failed to initialize:', err)
+      setMapFailed(true)
+      return
+    }
 
     // Add navigation controls
     map.addControl(new mapboxgl.NavigationControl(), 'top-right')
@@ -481,5 +490,12 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     }
   }, [waypoints, routeGeometry, onUpdateWaypoint, bottomPadding, t])
 
+  if (mapFailed) {
+    return (
+      <div id="map" role="status" className="w-full h-full flex items-center justify-center p-6 text-center text-sm">
+        {t.mapUnavailable}
+      </div>
+    )
+  }
   return <div id="map" ref={mapContainerRef} className="w-full h-full" />
 }

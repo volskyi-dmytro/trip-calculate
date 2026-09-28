@@ -5,6 +5,7 @@ export type { Language } from '../types';
 export const routePlannerTranslations = {
   en: {
     title: 'Trip route planner',
+    mapUnavailable: "The map can't be shown in this browser (WebGL is unavailable).",
     buttons: {
       loadRoute: 'Load route',
       saveRoute: 'Save route',
@@ -248,6 +249,7 @@ export const routePlannerTranslations = {
   },
   uk: {
     title: 'Планувальник маршруту',
+    mapUnavailable: 'Карту не вдається показати в цьому браузері (WebGL недоступний).',
     buttons: {
       loadRoute: 'Завантажити маршрут',
       saveRoute: 'Зберегти маршрут',
