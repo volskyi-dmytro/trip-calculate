@@ -370,9 +370,10 @@ export function RoutePanel({
       {/* Route Settings */}
       <div style={cardStyle} className="p-3">
         {/* h2 wraps the button (WAI-ARIA accordion pattern) rather than
-            nesting inside it — headings aren't valid button content, and
-            `contents` keeps the wrapper out of layout entirely. */}
-        <h2 className="contents">
+            nesting inside it — headings aren't valid button content. A plain
+            block h2, not `display: contents`, which some browsers drop from
+            the accessibility tree (losing the heading this exists for). */}
+        <h2>
         <button
           type="button"
           onClick={() => setSettingsOpen(o => !o)}
