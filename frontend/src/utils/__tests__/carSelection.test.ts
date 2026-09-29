@@ -104,3 +104,24 @@ describe('preferredCarForAiResult', () => {
     expect(preferredCarForAiResult(cars, 'trip to Lviv for 2 people', true)).toBeNull()
   })
 })
+
+describe('carMentionedInText across spelling (audit #7)', () => {
+  const superb: GarageCar = {
+    id: 9, name: 'Škoda Superb', makeModel: 'Škoda Superb 2.0 TDI', fuelType: 'diesel',
+    fuelConsumption: 6.5, isDefault: false, source: 'catalog',
+  }
+  const catalog = [{
+    id: 'skoda-superb', make: 'Škoda', model: 'Superb', years: '2008–2023',
+    aliases: ['суперб', 'шкода суперб'],
+    variants: [{ fuelType: 'diesel' as const, consumption: 6.5, label: '2.0 TDI' }],
+  }]
+
+  it('ignores diacritics and the engine suffix', () => {
+    expect(carMentionedInText([superb], 'Kyiv to Lviv in my skoda superb')?.id).toBe(9)
+  })
+
+  it('matches the catalog\'s Cyrillic aliases when the catalog is loaded', () => {
+    expect(carMentionedInText([superb], 'Київ Львів на суперб', catalog)?.id).toBe(9)
+    expect(carMentionedInText([superb], 'Київ Львів на суперб')).toBeNull()
+  })
+})

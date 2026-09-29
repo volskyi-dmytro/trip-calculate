@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { searchCatalog, type CatalogEntry } from '../carCatalog';
+import { matchCatalogCar, searchCatalog, type CatalogEntry } from '../carCatalog';
 import { CAR_PRESETS } from '../carPresets';
 import catalog from '../../data/carCatalog.json';
 
@@ -51,5 +51,23 @@ describe('presets', () => {
         expect(v).toBeLessThanOrEqual(25.0);
       }
     }
+  });
+});
+
+describe('matchCatalogCar (one source of truth, BUG-5)', () => {
+  const entries = catalog as CatalogEntry[];
+
+  it('uses the catalog figure for a described catalog car instead of an AI guess', () => {
+    const hit = matchCatalogCar('fiat doblo 1.9 jtd', entries);
+    expect(hit?.variant).toEqual({ fuelType: 'diesel', consumption: 6.0, label: '1.9 JTD' });
+  });
+
+  it('understands Cyrillic names and fuel words', () => {
+    expect(matchCatalogCar('шкода суперб дизель', entries)?.variant.consumption).toBe(6.5);
+  });
+
+  it('leaves ambiguous or unknown cars to the AI estimate', () => {
+    expect(matchCatalogCar('fiat doblo', entries)).toBeNull();
+    expect(matchCatalogCar('trabant 601', entries)).toBeNull();
   });
 });

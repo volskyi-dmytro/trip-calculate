@@ -1,3 +1,4 @@
+import { FUEL_WORDS } from '../i18n/fuelWords';
 // FuelType is declared here (single source of truth for Task 6). Task 7's
 // `types/Car.ts` re-exports this type rather than redeclaring it.
 export type FuelType = 'petrol' | 'diesel' | 'lpg';
@@ -38,6 +39,35 @@ export function searchCatalog(query: string, entries: CatalogEntry[], limit = 8)
     .filter((r) => r.score > 0)
     .sort((a, b) => b.score - a.score);
   return scored.slice(0, limit).map((r) => r.entry);
+}
+
+// Case- and diacritic-insensitive ("Škoda" == "skoda"), single-spaced.
+export const foldText = (s: string) =>
+  s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim().replace(/\s+/g, ' ');
+
+/**
+ * The catalog car a free-text description names, with one unambiguous
+ * variant: an engine label in the text ("1.9 JTD"), else a fuel word, else the
+ * model's only variant. Null when the car isn't in the catalog or the variant
+ * can't be told apart — only then is an AI estimate appropriate. Keeps one
+ * source of truth: "Fiat Doblo 1.9 JTD" is the catalog's 6.0, never a fresh
+ * AI guess of 6.5.
+ */
+export function matchCatalogCar(
+  description: string,
+  entries: CatalogEntry[],
+): { entry: CatalogEntry; variant: CatalogVariant } | null {
+  const text = ` ${foldText(description)} `;
+  const entry = entries.find((e) =>
+    [`${e.make} ${e.model}`, ...e.aliases].some((name) => text.includes(` ${foldText(name)} `)),
+  );
+  if (!entry) return null;
+  const byLabel = entry.variants.filter((v) => text.includes(` ${foldText(v.label)} `));
+  if (byLabel.length === 1) return { entry, variant: byLabel[0] };
+  const byFuel = entry.variants.filter((v) =>
+    FUEL_WORDS[v.fuelType].some((w) => text.includes(` ${w} `)));
+  if (byFuel.length === 1) return { entry, variant: byFuel[0] };
+  return entry.variants.length === 1 ? { entry, variant: entry.variants[0] } : null;
 }
 
 export async function loadCatalog(): Promise<CatalogEntry[]> {

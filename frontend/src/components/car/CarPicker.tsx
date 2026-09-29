@@ -5,7 +5,7 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useAuth } from '../../contexts/AuthContext';
-import { loadCatalog, searchCatalog } from '../../utils/carCatalog';
+import { loadCatalog, matchCatalogCar, searchCatalog } from '../../utils/carCatalog';
 import type { CatalogEntry, CatalogVariant } from '../../utils/carCatalog';
 import { CAR_PRESETS } from '../../utils/carPresets';
 import type { CarPreset } from '../../utils/carPresets';
@@ -50,6 +50,8 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<'rate_limited' | 'recognize_failed' | null>(null);
   const [aiResult, setAiResult] = useState<AiEstimateResult | null>(null);
+  // The description named a catalog car: show the catalog's value, not an AI guess.
+  const [aiFromCatalog, setAiFromCatalog] = useState(false);
   // Monotonically increasing request id. Bumped before each estimate request
   // and again whenever the dialog resets, so responses belonging to a stale
   // request (superseded or from a closed session) are discarded on arrival.
@@ -163,7 +165,20 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
     setAiLoading(true);
     setAiError(null);
     setAiResult(null);
+    setAiFromCatalog(false);
     try {
+      // One source of truth: a car the catalog knows uses the catalog value.
+      const known = matchCatalogCar(trimmed, catalogLoaded ? catalog : await loadCatalog());
+      if (id !== estimateSeq.current) return;
+      if (known) {
+        setAiResult({
+          makeModel: `${known.entry.make} ${known.entry.model} ${known.variant.label}`,
+          fuelType: known.variant.fuelType,
+          consumption: known.variant.consumption,
+        });
+        setAiFromCatalog(true);
+        return;
+      }
       const result = await carService.estimate(trimmed, language);
       if (id !== estimateSeq.current) return;
       setAiResult({
@@ -187,7 +202,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
       makeModel: aiResult.makeModel,
       fuelType: aiResult.fuelType,
       consumption: aiResult.consumption,
-      source: 'ai',
+      source: aiFromCatalog ? 'catalog' : 'ai',
     });
     onClose();
   };
@@ -377,6 +392,9 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
             {aiResult && (
               <div className="rounded-md border border-gray-200/60 dark:border-gray-700/60 p-3 space-y-2">
                 <p className="font-medium text-sm">{aiResult.makeModel}</p>
+                {aiFromCatalog && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{tr('carPicker.fromCatalog')}</p>
+                )}
                 <p className="text-xs text-gray-500 dark:text-gray-400">
                   {aiResult.fuelType === 'petrol'
                     ? t.fuelPetrol

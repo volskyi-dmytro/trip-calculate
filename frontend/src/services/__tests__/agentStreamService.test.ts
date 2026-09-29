@@ -158,3 +158,23 @@ describe('weather stage (SP3)', () => {
     vi.unstubAllGlobals()
   })
 })
+
+describe('streamRouteWithAgent rate limit (BUG-6)', () => {
+  it('surfaces a 429 with its retry time and does not burn a second request', async () => {
+    vi.stubGlobal('document', { cookie: 'XSRF-TOKEN=t' })
+    const body = JSON.stringify({ error: 'Rate limit exceeded', resetTime: '2026-09-29T10:15:00' })
+    const fetchMock = vi.fn().mockResolvedValue(new Response(body, { status: 429 }))
+    vi.stubGlobal('fetch', fetchMock)
+    const fallback = vi.spyOn(agentService, 'parseRouteWithAgent')
+    const { streamRouteWithAgent } = await import('../agentStreamService')
+
+    const error = await streamRouteWithAgent('Kyiv to Lviv', 'en', [], undefined, () => {})
+      .catch((e: unknown) => e)
+
+    expect(error).toBeInstanceOf(agentService.AiRateLimitError)
+    expect((error as agentService.AiRateLimitError).retryAt?.toISOString()).toBe('2026-09-29T10:15:00.000Z')
+    expect(fallback).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+    fallback.mockRestore()
+  })
+})

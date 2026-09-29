@@ -4,6 +4,25 @@ import type { WeatherData } from '../types/weather';
 // Spring Boot proxy endpoint in front of the Python LangGraph agent
 const AI_INSIGHTS_ENDPOINT = '/api/ai/insights';
 
+/** The AI quota is used up; `retryAt` says when the user may try again. */
+export class AiRateLimitError extends Error {
+  readonly retryAt: Date | null;
+  constructor(retryAt: Date | null) {
+    super('AI rate limit exceeded');
+    this.retryAt = retryAt;
+  }
+}
+
+/** Reads the backend's 429 body (resetTime, UTC) or Retry-After header. */
+export async function rateLimitErrorFrom(response: Response): Promise<AiRateLimitError> {
+  const body = await response.json().catch(() => ({})) as { resetTime?: string };
+  const retryAfter = Number(response.headers.get('Retry-After'));
+  const retryAt = body.resetTime
+    ? new Date(body.resetTime.endsWith('Z') ? body.resetTime : `${body.resetTime}Z`)
+    : Number.isFinite(retryAfter) && retryAfter > 0 ? new Date(Date.now() + retryAfter * 1000) : null;
+  return new AiRateLimitError(retryAt && !Number.isNaN(retryAt.getTime()) ? retryAt : null);
+}
+
 // Client-side cache for recent requests (sessionStorage)
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const CACHE_KEY_PREFIX = 'ai_cache_';
@@ -214,17 +233,7 @@ export const parseRouteWithAgent = async (
     if (!response.ok) {
       // Handle rate limiting
       if (response.status === 429) {
-        const errorData = await response.json().catch(() => ({}));
-        const resetTime = errorData.resetTime;
-        const limitType = errorData.limitType || 'unknown';
-
-        if (resetTime) {
-          const resetDate = new Date(resetTime);
-          const now = new Date();
-          const minutesUntilReset = Math.ceil((resetDate.getTime() - now.getTime()) / 1000 / 60);
-          throw new Error(`Rate limit exceeded. ${limitType} limit reached. Please try again in ${minutesUntilReset} minutes.`);
-        }
-        throw new Error('Rate limit exceeded. Please try again later.');
+        throw await rateLimitErrorFrom(response);
       }
 
       throw new Error(`AI service error: ${response.status} ${response.statusText}`);

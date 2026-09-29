@@ -1,7 +1,9 @@
 import * as agentService from './agentService'
 import {
+  AiRateLimitError,
   mapAgentRouteResponse,
   ensureCsrfToken,
+  rateLimitErrorFrom,
   type AgentParseResult,
   type AgentRouteResponse,
   type CurrentRouteWaypoint,
@@ -97,6 +99,11 @@ export const streamRouteWithAgent = async (
         ...(settingsContext ? { settingsContext } : {}),
       }),
     })
+    // Quota exhausted is a real answer, not a transport failure: retrying via
+    // the sync endpoint would only be rejected again (BUG-6).
+    if (response.status === 429) {
+      throw await rateLimitErrorFrom(response)
+    }
     if (!response.ok || !response.body) {
       throw new Error(`stream unavailable: ${response.status}`)
     }
@@ -150,6 +157,7 @@ export const streamRouteWithAgent = async (
   } catch (err) {
     // A caller-callback bug bypasses the fallback entirely — see CallerCallbackError
     if (err instanceof CallerCallbackError) throw err.cause
+    if (err instanceof AiRateLimitError) throw err
     // Transport failure before a result frame: one silent sync retry —
     // the worst case is exactly the pre-SP2 UX. onDegraded lets the
     // progress UI keep its last honest state with a shimmer meanwhile.

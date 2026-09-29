@@ -7,9 +7,10 @@ import { RoutePanel } from '../RoutePanel'
 import type { RouteSettings, Waypoint } from '../RoutePlanner'
 
 vi.mock('../../contexts/LanguageContext', () => ({
-  useLanguage: () => ({ language: 'en' }),
+  useLanguage: () => ({ language: 'en', t: (key: string) => key }),
 }))
 vi.mock('../WeatherStrip', () => ({ WeatherStrip: () => null }))
+vi.mock('../car/CarPicker', () => ({ CarPicker: () => null }))
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean })
   .IS_REACT_ACT_ENVIRONMENT = true

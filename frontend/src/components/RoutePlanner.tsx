@@ -15,6 +15,7 @@ import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
+import { AiRateLimitError } from '../services/agentService'
 import { AiPrivacyNote } from './AiPrivacyNote'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
@@ -31,6 +32,7 @@ import { withLocalePrefix } from '../utils/locale'
 import { routeEditPath } from '../utils/routePaths'
 import { routeCalculationKey, resolveRouteCalculation } from '../utils/aiResultCard'
 import { preferredCarForAiResult } from '../utils/carSelection'
+import { loadCatalog, type CatalogEntry } from '../utils/carCatalog'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
 
@@ -84,6 +86,13 @@ export function RoutePlanner() {
   // Latest-wins sequence guard for the debounced fuel suggestion fetch below
   const fuelFetchSeq = useRef(0)
   const [garageCars, setGarageCars] = useState<GarageCar[]>([])
+  // Catalog aliases let "шкода суперб" in a chat message find the garage's
+  // "Škoda Superb" (see carMentionedInText). Loaded only when there's a garage.
+  const [carCatalog, setCarCatalog] = useState<CatalogEntry[]>([])
+  useEffect(() => {
+    if (garageCars.length === 0 || carCatalog.length > 0) return
+    loadCatalog().then(setCarCatalog).catch(() => {})
+  }, [garageCars.length, carCatalog.length])
   // Guards the one-time default-car prefill below so it never re-applies
   // over AI/user edits made before the garage fetch resolves
   const appliedDefaultCar = useRef(false)
@@ -103,6 +112,8 @@ export function RoutePlanner() {
   const [routeGeometry, setRouteGeometry] = useState<Array<[number, number]>>([])
   const [routeDistance, setRouteDistance] = useState<number>(0) // in km from OSRM
   const [routeDuration, setRouteDuration] = useState<number>(0) // in minutes from OSRM
+  // No road connects the waypoints: no cost, receipt, Waze link or save.
+  const [routeUnreachable, setRouteUnreachable] = useState(false)
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [showManualInputDialog, setShowManualInputDialog] = useState(false)
   const [manualAddress, setManualAddress] = useState('')
@@ -286,6 +297,7 @@ export function RoutePlanner() {
 
       if (waypoints.length < 2) {
         console.log('🟢 [PLANNER] Less than 2 waypoints, clearing route');
+        setRouteUnreachable(false)
         setRouteGeometry([])
         setRouteDistance(0)
         setRouteDuration(0)
@@ -320,6 +332,7 @@ export function RoutePlanner() {
         setRouteGeometry(route.geometry)
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
+        setRouteUnreachable(Boolean(route.noRoute))
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
@@ -332,7 +345,15 @@ export function RoutePlanner() {
         console.log('🟢 [PLANNER] State updated with route geometry');
 
         // Log routing success/failure for debugging
-        if (route.totalDistance > 0) {
+        if (route.noRoute) {
+          const tr = getTranslation(languageRef.current as Language).planner
+          toast.error(tr.noRouteTitle, {
+            description: tr.noRouteDescription
+              .replace('{from}', waypoints[0].name)
+              .replace('{to}', waypoints[waypoints.length - 1].name),
+            duration: 8000,
+          })
+        } else if (route.totalDistance > 0) {
           console.log('✅ [PLANNER] Road-based route calculated:', route.totalDistance.toFixed(2), 'km');
           console.log('✅ [PLANNER] Route geometry has', route.geometry.length, 'points');
         } else {
@@ -359,6 +380,7 @@ export function RoutePlanner() {
         setRouteGeometry(fallbackGeometry)
         setRouteDistance(0)
         setRouteDuration(0)
+        setRouteUnreachable(false)
         setIsCalculatingRoute(false)
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -935,7 +957,7 @@ export function RoutePlanner() {
         // user already chose. Only once neither applies do we fall through
         // to the AI's own numbers.
         const agentGaveCarDetails = Boolean(agentData.consumption || agentData.fuelType) || waypoints.length >= 2;
-        const preferredCar = preferredCarForAiResult(garageCars, message, agentGaveCarDetails);
+        const preferredCar = preferredCarForAiResult(garageCars, message, agentGaveCarDetails, carCatalog);
 
         if (preferredCar) {
           setRouteSettings(prev => ({
@@ -1103,6 +1125,14 @@ export function RoutePlanner() {
       }
     } catch (e) {
       console.error(e);
+      if (e instanceof AiRateLimitError) {
+        const at = e.retryAt?.toLocaleTimeString(language === 'uk' ? 'uk-UA' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
+        toast.error(t.chat.rateLimitedTitle, {
+          description: at ? t.chat.rateLimitedAt.replace('{time}', at) : t.chat.rateLimitedLater,
+          duration: 8000,
+        });
+        return;
+      }
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
 
       // Error toast - exception occurred
@@ -1118,7 +1148,7 @@ export function RoutePlanner() {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog]);
 
   const handleChatFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1344,6 +1374,7 @@ export function RoutePlanner() {
         onDepartureDateChange={setDepartureDate}
         garageCars={garageCars}
         onSelectCar={handleSelectCar}
+        routeUnreachable={routeUnreachable}
       />
 
       {/* ── Route Stats ── only once there is a route; before that the
@@ -1351,13 +1382,25 @@ export function RoutePlanner() {
       {waypoints.length >= 2 && (
         <>
           <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-          <StatsPanel
-            waypoints={waypoints}
-            routeSettings={routeSettings}
-            routeDistance={routeDistance}
-            routeDuration={routeDuration}
-            routeGeometry={routeGeometry}
-          />
+          {routeUnreachable ? (
+            <div role="alert" className="rounded-lg p-3 text-sm"
+              style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}>
+              <p className="font-semibold">{t.planner.noRouteTitle}</p>
+              <p style={{ color: 'var(--nav-text-secondary)' }}>
+                {t.planner.noRouteDescription
+                  .replace('{from}', waypoints[0].name)
+                  .replace('{to}', waypoints[waypoints.length - 1].name)}
+              </p>
+            </div>
+          ) : (
+            <StatsPanel
+              waypoints={waypoints}
+              routeSettings={routeSettings}
+              routeDistance={routeDistance}
+              routeDuration={routeDuration}
+              routeGeometry={routeGeometry}
+            />
+          )}
         </>
       )}
 
@@ -1446,8 +1489,8 @@ export function RoutePlanner() {
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
             <DialogTrigger asChild>
               <button
-                disabled={waypoints.length === 0}
-                title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
+                disabled={waypoints.length === 0 || routeUnreachable}
+                title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
                 className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
                 style={{
                   background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',

@@ -10,7 +10,8 @@ import { useLanguage } from '../contexts/LanguageContext'
 import { toast } from 'sonner'
 import { WeatherStrip } from './WeatherStrip'
 import type { WeatherData } from '../types/weather'
-import type { GarageCar } from '../types/Car'
+import type { CarSelection, GarageCar } from '../types/Car'
+import { CarPicker } from './car/CarPicker'
 import { matchingCarId } from '../utils/carSelection'
 import { displayWaypointName } from '../utils/waypointName'
 
@@ -45,6 +46,8 @@ interface RoutePanelProps {
   onDepartureDateChange: (date: string) => void
   garageCars?: GarageCar[]
   onSelectCar?: (car: GarageCar) => void
+  /** No road connects the waypoints: hide navigation links. */
+  routeUnreachable?: boolean
 }
 
 export function RoutePanel({
@@ -63,9 +66,37 @@ export function RoutePanel({
   onDepartureDateChange,
   garageCars,
   onSelectCar,
+  routeUnreachable = false,
 }: RoutePanelProps) {
-  const { language } = useLanguage()
+  const { language, t: tr } = useLanguage()
   const t = getTranslation(language as Language)
+
+  // Car choice. The garage <select> can't be derived from the settings alone:
+  // "Custom" changes no setting, so a derived value snapped straight back to
+  // the matching garage car (BUG-4). customChosen makes that choice explicit.
+  const [customChosen, setCustomChosen] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  const [pickedCar, setPickedCar] = useState<CarSelection | null>(null)
+  const garageMatchId = garageCars && garageCars.length > 0
+    ? matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption)
+    : null
+  const garageMatch = garageCars?.find(c => c.id === garageMatchId) ?? null
+  // A car picked from the catalog/presets keeps its name only while the
+  // settings still hold its values; any manual edit turns it into "custom".
+  const pickedStillApplies = pickedCar !== null
+    && pickedCar.fuelType === routeSettings.fuelType
+    && Math.abs(pickedCar.consumption - routeSettings.fuelConsumption) < 0.05
+  const carLabel = customChosen
+    ? t.planner.customCar
+    : garageMatch?.name ?? (pickedStillApplies ? pickedCar!.name : null)
+
+  const handlePickerSelect = (selection: CarSelection) => {
+    // Local recalculation only: stats derive from routeSettings, no AI call.
+    onUpdateSettings({ ...routeSettings, fuelConsumption: selection.consumption, fuelType: selection.fuelType })
+    setPickedCar(selection)
+    setCustomChosen(false)
+    setPickerOpen(false)
+  }
 
   // A geocoder (ours or the AI's) can fall back to raw coordinates as a
   // waypoint's name — swap in a "Waypoint N" label everywhere a name is
@@ -387,10 +418,7 @@ export function RoutePanel({
             </span>
             <span className="block truncate text-xs mt-0.5" style={{ color: 'var(--nav-text-secondary)' }}>
               {[
-                garageCars && garageCars.length > 0
-                  ? (garageCars.find(c => c.id === matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption))?.name
-                    ?? t.planner.customCar)
-                  : null,
+                carLabel ?? (garageCars && garageCars.length > 0 ? t.planner.customCar : null),
                 routeSettings.fuelConsumption > 0 ? `${routeSettings.fuelConsumption} ${t.routeSettings.consumptionUnit}` : null,
                 t.routeSettings.summaryPassengers.replace('{count}', String(routeSettings.passengerCount)),
               ].filter(Boolean).join(' · ')}
@@ -414,11 +442,24 @@ export function RoutePanel({
         {garageCars && garageCars.length > 0 && onSelectCar && (
           <select
             aria-label={t.planner.car}
-            className="w-full h-8 text-xs rounded-md border border-input bg-background px-2 mb-1"
-            value={matchingCarId(garageCars, routeSettings.fuelType, routeSettings.fuelConsumption) ?? 'custom'}
+            className="w-full h-8 text-xs rounded-md px-2 mb-1"
+            // bg-background/border-input have no theme tokens here (Tailwind v4)
+            // and rendered transparent; use the panel's own input style.
+            style={{ ...inputStyle, background: 'var(--surface)' }}
+            value={customChosen ? 'custom' : garageMatchId ?? 'custom'}
             onChange={(e) => {
+              if (e.target.value === 'custom') {
+                setCustomChosen(true)
+                setPickedCar(null)
+                document.getElementById('fuel-consumption')?.focus()
+                return
+              }
               const car = garageCars.find((c) => c.id === Number(e.target.value))
-              if (car) onSelectCar(car)
+              if (car) {
+                setCustomChosen(false)
+                setPickedCar(null)
+                onSelectCar(car)
+              }
             }}
           >
             {garageCars.map((car) => (
@@ -429,6 +470,21 @@ export function RoutePanel({
             <option value="custom">{t.planner.customCar}</option>
           </select>
         )}
+
+        <button
+          type="button"
+          onClick={() => setPickerOpen(true)}
+          className="w-full h-8 text-xs rounded-md px-2 font-medium"
+          style={{ border: '1px solid var(--nav-border)', background: 'var(--nav-bg-input)', color: 'var(--nav-text-primary)' }}
+        >
+          {tr('carPicker.title')}
+        </button>
+        <CarPicker
+          open={pickerOpen}
+          onClose={() => setPickerOpen(false)}
+          onSelect={handlePickerSelect}
+          garageCars={garageCars}
+        />
 
         <div className="space-y-1">
           <label style={labelStyle} htmlFor="fuel-consumption">{t.routeSettings.fuelConsumption}</label>
@@ -500,7 +556,9 @@ export function RoutePanel({
             {fuelTypeOpen && (
               <div
                 className="absolute z-50 w-full rounded-md shadow-lg mt-1"
-                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+                // Opaque --surface, not the translucent input glass: an open list
+                // sits over the map and cards and must stay readable (BUG-2).
+                style={{ background: 'var(--surface)', border: '1px solid var(--nav-border)' }}
                 role="listbox"
               >
                 {FUEL_TYPES.map((option) => (
@@ -559,7 +617,9 @@ export function RoutePanel({
             {currencyOpen && (
               <div
                 className="absolute z-50 w-full rounded-md shadow-lg mt-1"
-                style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)' }}
+                // Opaque --surface, not the translucent input glass: an open list
+                // sits over the map and cards and must stay readable (BUG-2).
+                style={{ background: 'var(--surface)', border: '1px solid var(--nav-border)' }}
                 role="listbox"
               >
                 {CURRENCIES.map((curr) => (
@@ -747,7 +807,7 @@ export function RoutePanel({
       <WeatherStrip weather={weather} />
 
       {/* Waze Export Links */}
-      {waypoints.length >= 2 && (
+      {waypoints.length >= 2 && !routeUnreachable && (
         <div style={cardStyle} className="p-3 space-y-2">
           {wazeLegLinks(displayWaypoints).map(leg => (
             <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer"
