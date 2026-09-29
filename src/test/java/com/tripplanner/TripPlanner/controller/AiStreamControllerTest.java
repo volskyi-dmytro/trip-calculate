@@ -189,7 +189,7 @@ class AiStreamControllerTest {
         CompletableFuture<HttpResponse<Stream<String>>> future = CompletableFuture.completedFuture(response);
         SseEmitter emitter = mock(SseEmitter.class);
 
-        controller.relay(future, emitter, false, "key", 1L, System.currentTimeMillis(), new AtomicReference<>());
+        controller.relay(future, emitter, false, "key", 1L, System.currentTimeMillis(), new AtomicReference<>(), () -> { });
 
         ArgumentCaptor<SseEmitter.SseEventBuilder> captor = ArgumentCaptor.forClass(SseEmitter.SseEventBuilder.class);
         verify(emitter).send(captor.capture());
@@ -220,7 +220,7 @@ class AiStreamControllerTest {
         CompletableFuture<HttpResponse<Stream<String>>> future = CompletableFuture.completedFuture(response);
         SseEmitter emitter = mock(SseEmitter.class);
 
-        controller.relay(future, emitter, false, "key", 1L, System.currentTimeMillis(), new AtomicReference<>());
+        controller.relay(future, emitter, false, "key", 1L, System.currentTimeMillis(), new AtomicReference<>(), () -> { });
 
         verify(emitter).complete();
         verify(usageService).logResponse(eq(1L), eq("error"), eq("stream ended without terminal frame"), anyLong());

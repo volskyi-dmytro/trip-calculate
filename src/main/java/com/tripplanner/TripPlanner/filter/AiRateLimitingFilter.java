@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.tripplanner.TripPlanner.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -21,7 +23,11 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -62,6 +68,40 @@ public class AiRateLimitingFilter implements Filter {
 
     @Value("${ai.ratelimit.max-identities:1000}")
     private int maxUserBuckets;
+
+    // Testers/trusted users (internal user ids, never emails) get a larger
+    // per-user allowance; the global caps still apply to them.
+    @Value("${ai.ratelimit.trusted-user-ids:}")
+    private String trustedUserIdsConfig;
+
+    @Value("${ai.ratelimit.trusted.minute:10}")
+    private int trustedMinuteLimit;
+
+    @Value("${ai.ratelimit.trusted.hourly:100}")
+    private int trustedHourlyLimit;
+
+    @Value("${ai.ratelimit.trusted.daily:200}")
+    private int trustedDailyLimit;
+
+    // Field-injected like the @Value settings above: this filter is created with
+    // `new` in SecurityConfig and wired as a bean. Only consulted when a trusted
+    // allowlist is configured.
+    @Autowired(required = false)
+    private UserRepository userRepository;
+
+    /**
+     * Request attribute holding a Runnable that gives this request's reserved
+     * quota back. Controllers run it when the request failed on our side
+     * (agent down, 5xx, broken stream), so errors never cost the user quota.
+     */
+    public static final String REFUND_ATTRIBUTE = AiRateLimitingFilter.class.getName() + ".refund";
+
+    /** Returns the reserved quota of this request, at most once; no-op when none. */
+    public static void refund(ServletRequest request) {
+        if (request.getAttribute(REFUND_ATTRIBUTE) instanceof Runnable refund) {
+            refund.run();
+        }
+    }
 
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<String, RateLimitBucket> userLimits = new ConcurrentHashMap<>();
@@ -133,7 +173,11 @@ public class AiRateLimitingFilter implements Filter {
         }
 
         String rateLimitKey = "oidc:" + subject;
-        String tierName = "public-beta";
+        boolean trusted = isTrusted(email);
+        String tierName = trusted ? "trusted" : "public-beta";
+        int[] userLimitsForTier = trusted
+                ? new int[] {trustedMinuteLimit, trustedHourlyLimit, trustedDailyLimit}
+                : new int[] {authMinuteLimit, authHourlyLimit, authDailyLimit};
         long currentTime = System.currentTimeMillis();
 
         LimitRejection cooldown = activeCooldown(globalCooldown.get(), currentTime);
@@ -145,18 +189,20 @@ public class AiRateLimitingFilter implements Filter {
             }
         }
         if (cooldown != null) {
-            sendRejectionResponse(httpResponse, cooldown, tierName);
+            sendRejectionResponse(httpResponse, cooldown, tierName, userLimitsForTier);
             return;
         }
 
         totalRequests.incrementAndGet();
-        LimitRejection rejection = reserveAtomically(rateLimitKey, currentTime);
+        LimitRejection rejection = reserveAtomically(rateLimitKey, currentTime, userLimitsForTier);
         if (rejection != null) {
             totalRejections.incrementAndGet();
             logRejectionSampled(rejection, currentTime);
-            sendRejectionResponse(httpResponse, rejection, tierName);
+            sendRejectionResponse(httpResponse, rejection, tierName, userLimitsForTier);
             return;
         }
+        Runnable refund = refundFor(rateLimitKey, currentTime);
+        httpRequest.setAttribute(REFUND_ATTRIBUTE, refund);
 
         activeUsers.put(rateLimitKey, Boolean.TRUE);
         if (currentTime - lastLogTime > HOUR_MS) {
@@ -169,9 +215,64 @@ public class AiRateLimitingFilter implements Filter {
         }
 
         chain.doFilter(request, response);
+        // Synchronous failures refund here; async (SSE) failures are refunded by
+        // the controller once the stream's outcome is known.
+        if (!httpRequest.isAsyncStarted() && httpResponse.getStatus() >= 500) {
+            refund.run();
+        }
     }
 
-    private LimitRejection reserveAtomically(String rateLimitKey, long now) {
+    private boolean isTrusted(String email) {
+        Set<Long> trustedIds = trustedUserIds();
+        if (trustedIds.isEmpty() || userRepository == null) {
+            return false;
+        }
+        return userRepository.findByEmail(email)
+                .map(user -> trustedIds.contains(user.getId()))
+                .orElse(false);
+    }
+
+    private Set<Long> trustedUserIds() {
+        if (trustedUserIdsConfig == null || trustedUserIdsConfig.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(trustedUserIdsConfig.split(","))
+                .map(String::trim)
+                .filter(id -> id.matches("\\d+"))
+                .map(Long::valueOf)
+                .collect(Collectors.toSet());
+    }
+
+    /**
+     * Undoes one reservation in every window it was counted in, unless that
+     * window has since rolled over (then the slot is already free).
+     */
+    private Runnable refundFor(String rateLimitKey, long reservedAt) {
+        AtomicBoolean done = new AtomicBoolean();
+        return () -> {
+            if (!done.compareAndSet(false, true)) {
+                return;
+            }
+            synchronized (globalLock) {
+                RateLimitBucket user = userLimits.get(rateLimitKey);
+                if (user != null) {
+                    release(user, reservedAt);
+                }
+                release(globalBucket(), reservedAt);
+            }
+        };
+    }
+
+    private void release(RateLimitBucket bucket, long reservedAt) {
+        for (RateLimitEntry entry : new RateLimitEntry[] {bucket.minute, bucket.hourly, bucket.daily}) {
+            if (entry.windowStart.get() <= reservedAt) {
+                entry.count.updateAndGet(c -> Math.max(0, c - 1));
+            }
+        }
+        bucket.cooldown = null;
+    }
+
+    private LimitRejection reserveAtomically(String rateLimitKey, long now, int[] userLimitsForTier) {
         synchronized (globalLock) {
             RateLimitBucket global = globalBucket();
             resetBucket(global, now);
@@ -199,7 +300,7 @@ public class AiRateLimitingFilter implements Filter {
 
             resetBucket(user, now);
             rejection = firstExceeded(user, now, false,
-                    authMinuteLimit, authHourlyLimit, authDailyLimit);
+                    userLimitsForTier[0], userLimitsForTier[1], userLimitsForTier[2]);
             if (rejection != null) {
                 user.cooldown = rejection;
                 return rejection;
@@ -252,12 +353,12 @@ public class AiRateLimitingFilter implements Filter {
     }
 
     private void sendRejectionResponse(HttpServletResponse response, LimitRejection rejection,
-                                       String userTier) throws IOException {
+                                       String userTier, int[] userLimitsForTier) throws IOException {
         sendRateLimitResponse(response, rejection.scope(), rejection.resetAt(),
                 rejection.global() ? "public-beta-global" : userTier,
-                rejection.global() ? globalMinuteLimit : authMinuteLimit,
-                rejection.global() ? globalHourlyLimit : authHourlyLimit,
-                rejection.global() ? globalDailyLimit : authDailyLimit);
+                rejection.global() ? globalMinuteLimit : userLimitsForTier[0],
+                rejection.global() ? globalHourlyLimit : userLimitsForTier[1],
+                rejection.global() ? globalDailyLimit : userLimitsForTier[2]);
     }
 
     private RateLimitBucket globalBucket() {

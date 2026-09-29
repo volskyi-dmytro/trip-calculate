@@ -5,6 +5,7 @@ import com.tripplanner.TripPlanner.dto.AgentResponse;
 import com.tripplanner.TripPlanner.security.ClientIpResolver;
 import com.tripplanner.TripPlanner.service.AiCacheService;
 import com.tripplanner.TripPlanner.service.AiUsageService;
+import com.tripplanner.TripPlanner.filter.AiRateLimitingFilter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.slf4j.Logger;
@@ -143,7 +144,7 @@ public class AiStreamController {
         Map<String, Object> body = new HashMap<>();
         body.put("message", prompt);
         body.put("language", language);
-        body.put("user_id", userEmail != null ? userEmail : "anonymous");
+        body.put("user_id", usageService.agentUserId(userEmail));
         if (!currentRoute.isEmpty()) {
             body.put("current_route", currentRoute);
         }
@@ -181,7 +182,11 @@ public class AiStreamController {
         emitter.onTimeout(() -> { future.cancel(true); closeBody(bodyRef); });
         emitter.onError(e -> { future.cancel(true); closeBody(bodyRef); });
 
-        relayExecutor.submit(() -> relay(future, emitter, cacheable, cacheKey, logId, startTime, bodyRef));
+        // Captured now: the relay outlives this method, and only it knows whether
+        // the stream failed on our side (then the user gets the quota back).
+        Runnable refund = httpRequest.getAttribute(AiRateLimitingFilter.REFUND_ATTRIBUTE) instanceof Runnable r
+                ? r : () -> { };
+        relayExecutor.submit(() -> relay(future, emitter, cacheable, cacheKey, logId, startTime, bodyRef, refund));
         return emitter;
     }
 
@@ -189,10 +194,11 @@ public class AiStreamController {
     // with a mocked HttpResponse, without mocking the JDK HttpClient async pipeline.
     void relay(CompletableFuture<HttpResponse<Stream<String>>> future, SseEmitter emitter,
                        boolean cacheable, String cacheKey, Long logId, long startTime,
-                       AtomicReference<Stream<String>> bodyRef) {
+                       AtomicReference<Stream<String>> bodyRef, Runnable refund) {
         try {
             HttpResponse<Stream<String>> response = future.get();
             if (response.statusCode() != 200) {
+                refund.run();
                 usageService.logResponse(logId, "error", "Agent returned " + response.statusCode(),
                         System.currentTimeMillis() - startTime);
                 emitter.send(SseEmitter.event().name("error")
@@ -212,6 +218,7 @@ public class AiStreamController {
                     recordResult(data, cacheable, cacheKey, logId, startTime);
                 } else if ("error".equals(event)) {
                     terminalFrameSeen.set(true);
+                    refund.run();
                     usageService.logResponse(logId, "error", "stream_failed",
                             System.currentTimeMillis() - startTime);
                 }
@@ -226,12 +233,14 @@ public class AiStreamController {
                 bodyRef.set(null);
             }
             if (!terminalFrameSeen.get()) {
+                refund.run();
                 usageService.logResponse(logId, "error", "stream ended without terminal frame",
                         System.currentTimeMillis() - startTime);
             }
             emitter.complete();
         } catch (Exception e) {
             logger.warn("AI stream relay failed: {}", e.getMessage());
+            refund.run();
             usageService.logResponse(logId, "error", e.getMessage(), System.currentTimeMillis() - startTime);
             try {
                 emitter.send(SseEmitter.event().name("error")

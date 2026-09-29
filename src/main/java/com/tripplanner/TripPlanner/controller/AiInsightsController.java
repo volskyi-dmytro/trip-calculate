@@ -128,7 +128,7 @@ public class AiInsightsController {
             Map<String, Object> body = new HashMap<>();
             body.put("message", prompt);
             body.put("language", language);
-            body.put("user_id", userEmail != null ? userEmail : "anonymous");
+            body.put("user_id", usageService.agentUserId(userEmail));
             if (!currentRoute.isEmpty()) {
                 // Shape validation is the agent's job (CurrentWaypoint schema)
                 body.put("current_route", currentRoute);

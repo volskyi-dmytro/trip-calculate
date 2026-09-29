@@ -45,6 +45,19 @@ public class AiUsageService {
      * @return The log ID for subsequent status updates
      */
     @Transactional
+    /**
+     * The identity the agent (and so Langfuse) sees: the internal user id, never
+     * the email — traces must stay findable per user without holding PII.
+     */
+    public String agentUserId(String userEmail) {
+        if (userEmail == null) {
+            return "anonymous";
+        }
+        return userRepository.findByEmail(userEmail)
+                .map(user -> "user-" + user.getId())
+                .orElse("anonymous");
+    }
+
     public Long logRequest(Long userId, String userEmail, String ipAddress, String prompt, String language) {
         // If userId is null but email is provided, try to fetch userId
         if (userId == null && userEmail != null) {

@@ -339,6 +339,57 @@ class AiRateLimitingFilterTest {
         }
     }
 
+    @Test
+    void aRefundedFailureGivesTheQuotaBack() throws Exception {
+        authenticate("user@example.com", 1L);
+        AiRateLimitingFilter filter = configuredFilter(1, 100, 100, 500);
+        FilterChain chain = mock(FilterChain.class);
+
+        MockHttpServletRequest failed = new MockHttpServletRequest("POST", "/api/ai/insights/stream");
+        filter.doFilter(failed, new MockHttpServletResponse(), chain);
+        AiRateLimitingFilter.refund(failed);   // e.g. the agent stream broke
+        AiRateLimitingFilter.refund(failed);   // idempotent
+
+        assertEquals(200, invoke(filter, chain).getStatus());
+        assertEquals(429, invoke(filter, chain).getStatus());
+    }
+
+    @Test
+    void aServerErrorIsRefundedAutomatically() throws Exception {
+        authenticate("user@example.com", 1L);
+        AiRateLimitingFilter filter = configuredFilter(1, 100, 100, 500);
+        FilterChain failing = (req, res) -> ((jakarta.servlet.http.HttpServletResponse) res).setStatus(502);
+
+        assertEquals(502, invoke(filter, failing).getStatus());
+        assertEquals(200, invoke(filter, mock(FilterChain.class)).getStatus());
+    }
+
+    @Test
+    void trustedUsersGetTheLargerAllowanceAndSeeTheirRetryTime() throws Exception {
+        authenticate("tester@example.com", 1L);
+        AiRateLimitingFilter filter = configuredFilter(1, 100, 100, 500);
+        com.tripplanner.TripPlanner.repository.UserRepository users =
+                mock(com.tripplanner.TripPlanner.repository.UserRepository.class);
+        com.tripplanner.TripPlanner.entity.User tester = new com.tripplanner.TripPlanner.entity.User();
+        tester.setId(17L);
+        when(users.findByEmail("tester@example.com")).thenReturn(java.util.Optional.of(tester));
+        ReflectionTestUtils.setField(filter, "userRepository", users);
+        ReflectionTestUtils.setField(filter, "trustedUserIdsConfig", " 17, 42 ");
+        ReflectionTestUtils.setField(filter, "trustedMinuteLimit", 3);
+        ReflectionTestUtils.setField(filter, "trustedHourlyLimit", 100);
+        ReflectionTestUtils.setField(filter, "trustedDailyLimit", 100);
+        FilterChain chain = mock(FilterChain.class);
+
+        for (int i = 0; i < 3; i++) {
+            assertEquals(200, invoke(filter, chain).getStatus());
+        }
+        MockHttpServletResponse rejected = invoke(filter, chain);
+        assertEquals(429, rejected.getStatus());
+        assertEquals(true, rejected.getContentAsString().contains("\"tier\":\"trusted\""));
+        assertEquals(true, rejected.getContentAsString().contains("\"resetTime\""));
+        assertEquals(true, Integer.parseInt(rejected.getHeader("Retry-After")) > 0);
+    }
+
     private AiRateLimitingFilter configuredFilter(int userMinute, int userHourly,
                                                   int userDaily, int globalDaily) {
         AiRateLimitingFilter filter = new AiRateLimitingFilter();
