@@ -16,6 +16,7 @@ import { geocodingService } from '../services/geocodingService'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
 import { AiRateLimitError } from '../services/agentService'
+import { BlockingErrorDialog, type BlockingError } from './BlockingErrorDialog'
 import { AiPrivacyNote } from './AiPrivacyNote'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
@@ -114,6 +115,8 @@ export function RoutePlanner() {
   const [routeDuration, setRouteDuration] = useState<number>(0) // in minutes from OSRM
   // No road connects the waypoints: no cost, receipt, Waze link or save.
   const [routeUnreachable, setRouteUnreachable] = useState(false)
+  // Failures the user must acknowledge (centered dialog, not a fading toast)
+  const [blockingError, setBlockingError] = useState<BlockingError | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
   const [showManualInputDialog, setShowManualInputDialog] = useState(false)
   const [manualAddress, setManualAddress] = useState('')
@@ -347,11 +350,11 @@ export function RoutePlanner() {
         // Log routing success/failure for debugging
         if (route.noRoute) {
           const tr = getTranslation(languageRef.current as Language).planner
-          toast.error(tr.noRouteTitle, {
+          setBlockingError({
+            title: tr.noRouteTitle,
             description: tr.noRouteDescription
               .replace('{from}', waypoints[0].name)
               .replace('{to}', waypoints[waypoints.length - 1].name),
-            duration: 8000,
           })
         } else if (route.totalDistance > 0) {
           console.log('✅ [PLANNER] Road-based route calculated:', route.totalDistance.toFixed(2), 'km');
@@ -1117,32 +1120,23 @@ export function RoutePlanner() {
         // generic fallback so users learn WHY the request failed
         const reason = agentResult.error || t.chat.aiFailedDescription;
 
-        // Error toast - no data returned
-        toast.error(t.chat.aiFailedTitle, {
-          description: reason,
-          duration: 5000
-        });
+        setBlockingError({ title: t.chat.aiFailedTitle, description: reason });
       }
     } catch (e) {
       console.error(e);
       if (e instanceof AiRateLimitError) {
         const at = e.retryAt?.toLocaleTimeString(language === 'uk' ? 'uk-UA' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-        toast.error(t.chat.rateLimitedTitle, {
+        setBlockingError({
+          title: t.chat.rateLimitedTitle,
           description: at ? t.chat.rateLimitedAt.replace('{time}', at) : t.chat.rateLimitedLater,
-          duration: 8000,
         });
         return;
       }
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
 
-      // Error toast - exception occurred
-      toast.error(
-        t.agent.processingError,
-        {
-          description: t.agent.processingErrorDescription.replace('{error}', errorMessage),
-          duration: 5000
-        }
-      );
+      // The raw message is technical and English-only; it stays in the console.
+      console.error('AI processing failed:', errorMessage);
+      setBlockingError({ title: t.agent.processingError, description: t.chat.aiFailedDescription });
     } finally {
       setIsProcessingAi(false);
       setAgentDoneStages([]);
@@ -1820,6 +1814,13 @@ export function RoutePlanner() {
       )}
 
       {/* ── Dialogs — rendered at root level for correct z-index ── */}
+
+      {/* Failures the user must read: no road route, AI limit, AI failure */}
+      <BlockingErrorDialog
+        error={blockingError}
+        onClose={() => setBlockingError(null)}
+        acknowledgeLabel={t.planner.acknowledge}
+      />
 
       {/* Share receipt dialog for the result card's Share button — mirrors
           the payload StatsPanel's own ShareReceiptButton builds, but lives

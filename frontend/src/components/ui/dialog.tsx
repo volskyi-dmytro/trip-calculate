@@ -42,11 +42,14 @@ export function DialogTrigger({
 export function Dialog({
   open,
   onOpenChange,
-  children
+  children,
+  role = 'dialog'
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   children: React.ReactNode;
+  /** 'alertdialog' for messages that interrupt the user and need a response. */
+  role?: 'dialog' | 'alertdialog';
 }) {
   // Separate trigger from content
   const childArray = React.Children.toArray(children);
@@ -127,7 +130,7 @@ export function Dialog({
           />
           <div
             ref={panelRef}
-            role="dialog"
+            role={role}
             aria-modal="true"
             aria-labelledby={titleId}
             aria-describedby={descriptionId}
