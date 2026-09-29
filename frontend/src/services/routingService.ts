@@ -9,6 +9,9 @@ export interface RoutingResult {
   totalDuration: number; // in minutes
   geometry: Array<[number, number]>; // lat/lng pairs
   segments: RouteSegment[];
+  /** No drivable road connects the waypoints (e.g. another continent).
+   *  Distinct from an outage: there is nothing honest to estimate. */
+  noRoute?: boolean;
 }
 
 // Use backend proxy for routing to avoid CORS and timeout issues with public OSRM servers
@@ -41,6 +44,10 @@ export const routingService = {
       const data = response.data;
 
       console.log('🔵 [ROUTING] Response from backend:', data);
+
+      if (data.noRoute) {
+        return { totalDistance: 0, totalDuration: 0, geometry: [], segments: [], noRoute: true };
+      }
 
       if (data.error || data.fallback) {
         console.warn('⚠️ [ROUTING] Backend returned fallback/error response');

@@ -412,12 +412,14 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
         console.log('✅ [MAP] Route geometry updated')
 
-        // Fit bounds to show entire route
+        // Fit the route AND every marker: a route that stops short of a
+        // waypoint must not leave that marker off-screen (BUG-7).
         if (mapboxCoordinates.length > 0) {
           const bounds = mapboxCoordinates.reduce(
             (bounds, coord) => bounds.extend(coord as [number, number]),
             new mapboxgl.LngLatBounds(mapboxCoordinates[0] as [number, number], mapboxCoordinates[0] as [number, number])
           )
+          waypoints.forEach(wp => bounds.extend([wp.lng, wp.lat]))
 
           map.fitBounds(bounds, {
             padding: fitBoundsPadding,

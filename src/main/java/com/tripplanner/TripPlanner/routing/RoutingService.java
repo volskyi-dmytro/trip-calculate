@@ -19,6 +19,20 @@ public class RoutingService {
 
     private static final String DEFAULT_MAPBOX_REQUEST_ORIGIN = "https://trip-calculate.online";
 
+    // How far a provider may move a requested point onto the road network before
+    // the route is treated as not reaching it. Villages and trailheads snap well
+    // within this; another continent does not.
+    static final double MAX_SNAP_METERS = 10_000;
+
+    /** Returned (by identity) when no drivable route connects the waypoints. */
+    static final Map<String, Object> NO_ROUTE = Map.of(
+        "noRoute", true,
+        "totalDistance", 0,
+        "totalDuration", 0,
+        "geometry", Collections.emptyList(),
+        "segments", Collections.emptyList()
+    );
+
     private final RestTemplate restTemplate;
     private final String mapboxAccessToken;
     private final String mapboxRequestOrigin;
@@ -91,30 +105,80 @@ public class RoutingService {
             .map(w -> w.lng() + "," + w.lat())
             .collect(Collectors.joining(";"));
 
+        // Set when a provider answers "no road connects these points" (Mapbox
+        // NoRoute/NoSegment) or returns a route that fails validateReach. Then the
+        // only honest answer is "no route" — never a straight line with a cost.
+        boolean unreachable = false;
+
         // Try Mapbox first (if token is available). Its Directions API takes at most
         // 25 coordinates; longer routes go straight to OSRM instead of failing there.
         if (mapboxAccessToken != null && !mapboxAccessToken.isBlank()
                 && waypoints.size() <= MAPBOX_MAX_COORDINATES) {
-            Map<String, Object> mapboxResult = tryMapbox(coordinates);
-            if (mapboxResult != null) {
+            Map<String, Object> mapboxResult = tryMapbox(coordinates, waypoints);
+            if (mapboxResult == NO_ROUTE) {
+                unreachable = true;
+            } else if (mapboxResult != null) {
                 return mapboxResult;
             }
             log.warn("Mapbox routing failed, falling back to OSRM...");
         }
 
-        // Fallback to OSRM servers
+        // Fallback to OSRM servers. They get the same validation, so a fallback can
+        // never "succeed" with a route Mapbox correctly refused.
         for (int i = 0; i < osrmServers.size(); i++) {
-            Map<String, Object> osrmResult = tryOSRM(osrmServers.get(i), coordinates, i + 1);
-            if (osrmResult != null) {
+            Map<String, Object> osrmResult = tryOSRM(osrmServers.get(i), coordinates, waypoints, i + 1);
+            if (osrmResult == NO_ROUTE) {
+                unreachable = true;
+            } else if (osrmResult != null) {
                 return osrmResult;
             }
         }
 
+        if (unreachable) {
+            log.warn("No drivable route between the requested waypoints");
+            return NO_ROUTE;
+        }
         log.error("All routing providers failed. Using straight-line fallback.");
         return createFallbackResponse(waypoints);
     }
 
-    private Map<String, Object> tryMapbox(String coordinates) {
+    /**
+     * A provider can return "Ok" for points no road reaches: the public OSRM
+     * server snapped Vancouver to western Ireland (7,960 km away) and routed
+     * Kyiv there. Reject a route when any waypoint was moved further than
+     * MAX_SNAP_METERS onto the road network (providers report it per waypoint),
+     * or when the geometry starts or ends that far from the requested points.
+     */
+    @SuppressWarnings("unchecked")
+    static boolean reachesWaypoints(Map<String, Object> data, List<List<Double>> geometryLatLng,
+                                    List<RoutingController.Waypoint> waypoints) {
+        Object snapped = data.get("waypoints");
+        if (snapped instanceof List<?> list) {
+            for (Object item : list) {
+                if (item instanceof Map<?, ?> point && point.get("distance") instanceof Number meters
+                        && meters.doubleValue() > MAX_SNAP_METERS) {
+                    return false;
+                }
+            }
+        }
+        List<Double> start = geometryLatLng.get(0);
+        List<Double> end = geometryLatLng.get(geometryLatLng.size() - 1);
+        RoutingController.Waypoint first = waypoints.get(0);
+        RoutingController.Waypoint last = waypoints.get(waypoints.size() - 1);
+        return metersBetween(start.get(0), start.get(1), first.lat(), first.lng()) <= MAX_SNAP_METERS
+                && metersBetween(end.get(0), end.get(1), last.lat(), last.lng()) <= MAX_SNAP_METERS;
+    }
+
+    private static double metersBetween(double lat1, double lng1, double lat2, double lng2) {
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLng = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return 6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    private Map<String, Object> tryMapbox(String coordinates, List<RoutingController.Waypoint> waypoints) {
         String url = "https://api.mapbox.com/directions/v5/mapbox/driving/" + coordinates +
             "?access_token=" + mapboxAccessToken +
             "&geometries=geojson" +
@@ -166,11 +230,11 @@ public class RoutingService {
                             log.error("Invalid coordinates or parameters sent to Mapbox");
                             break;
                         case "NoRoute":
-                            log.error("Mapbox could not find a route between the waypoints");
-                            break;
+                            log.warn("Mapbox could not find a route between the waypoints");
+                            return NO_ROUTE;
                         case "NoSegment":
-                            log.error("No road segment found near the coordinates");
-                            break;
+                            log.warn("No road segment found near the coordinates");
+                            return NO_ROUTE;
                         case "ProfileNotFound":
                             log.error("Invalid routing profile (should be 'driving')");
                             break;
@@ -213,6 +277,11 @@ public class RoutingService {
                 .map(coord -> List.of(coord.get(1), coord.get(0)))
                 .toList();
 
+            if (!reachesWaypoints(data, geometryLatLng, waypoints)) {
+                log.warn("Mapbox route does not reach the requested waypoints");
+                return NO_ROUTE;
+            }
+
             double distance = ((Number) route.get("distance")).doubleValue() / 1000; // km
             double duration = ((Number) route.get("duration")).doubleValue() / 60; // minutes
 
@@ -229,7 +298,13 @@ public class RoutingService {
             );
 
         } catch (org.springframework.web.client.HttpClientErrorException e) {
-            log.error("Mapbox HTTP client error: {} - {}", e.getStatusCode(), e.getResponseBodyAsString());
+            String body = e.getResponseBodyAsString();
+            // Mapbox answers 422 with {"code":"NoSegment"|"NoRoute"} for points no road reaches.
+            if (body.contains("\"NoSegment\"") || body.contains("\"NoRoute\"")) {
+                log.warn("Mapbox found no road route: {}", e.getStatusCode());
+                return NO_ROUTE;
+            }
+            log.error("Mapbox HTTP client error: {} - {}", e.getStatusCode(), body);
             if (e.getStatusCode().value() == 401) {
                 log.error("⚠️ AUTHENTICATION FAILED - Check your MAPBOX_ACCESS_TOKEN!");
             } else if (e.getStatusCode().value() == 403) {
@@ -247,7 +322,8 @@ public class RoutingService {
         return null;
     }
 
-    private Map<String, Object> tryOSRM(String server, String coordinates, int serverNumber) {
+    private Map<String, Object> tryOSRM(String server, String coordinates,
+                                        List<RoutingController.Waypoint> waypoints, int serverNumber) {
         String url = server + "/route/v1/driving/" + coordinates +
             "?overview=full&geometries=geojson&steps=false";
 
@@ -260,6 +336,9 @@ public class RoutingService {
             if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
                 Map<String, Object> data = response.getBody();
 
+                if ("NoRoute".equals(data.get("code")) || "NoSegment".equals(data.get("code"))) {
+                    return NO_ROUTE;
+                }
                 if ("Ok".equals(data.get("code")) &&
                     data.containsKey("routes") &&
                     !((List<?>) data.get("routes")).isEmpty()) {
@@ -274,6 +353,11 @@ public class RoutingService {
                         List<List<Double>> geometryLatLng = coordinates_raw.stream()
                             .map(coord -> List.of(coord.get(1), coord.get(0)))
                             .toList();
+
+                        if (geometryLatLng.isEmpty() || !reachesWaypoints(data, geometryLatLng, waypoints)) {
+                            log.warn("OSRM server {} route does not reach the requested waypoints", serverNumber);
+                            return NO_ROUTE;
+                        }
 
                         double distance = ((Number) route.get("distance")).doubleValue() / 1000; // km
                         double duration = ((Number) route.get("duration")).doubleValue() / 60; // minutes
