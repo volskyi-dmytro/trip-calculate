@@ -2,6 +2,7 @@ import asyncio
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 
+import httpx
 import pytest
 from pydantic import ValidationError
 
@@ -156,3 +157,51 @@ async def test_supervise_modify_routes_to_parser():
                                         current_route=_ROUTE))
     assert result["intent"] == "modify"
     assert route_after_supervisor(result) == "parse_locations"
+
+
+def _jev_response(choice, probability):
+    resp = MagicMock()
+    resp.raise_for_status = MagicMock()
+    resp.json.return_value = {"answers": {"intent": {
+        "type": "choice", "choice": choice, "probabilities": {choice: probability}}}}
+    return resp
+
+
+@pytest.mark.parametrize("choice", ["create", "modify"])
+async def test_supervise_confident_jev_skips_llm(monkeypatch, choice):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-test")
+    with patch("app.nodes._jev_http") as http, patch("app.nodes._openai_client") as client:
+        http.post = AsyncMock(return_value=_jev_response(choice, 0.95))
+        client.beta.chat.completions.parse = AsyncMock()
+        result = await supervise(_state(current_route=_ROUTE))
+    assert result["intent"] == choice
+    assert route_after_supervisor(result) == "parse_locations"
+    client.beta.chat.completions.parse.assert_not_called()
+
+
+async def test_supervise_confident_jev_off_topic_sets_error(monkeypatch):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-test")
+    with patch("app.nodes._jev_http") as http:
+        http.post = AsyncMock(return_value=_jev_response("off_topic", 1.0))
+        result = await supervise(_state(message="хто ти?", language="uk"))
+    assert result["intent"] == "off_topic" and "маршрути" in result["error"]
+    # No route: "modify" must not be offered to Jev at all
+    criteria = http.post.call_args.kwargs["json"]["questions"]["intent"]["criteria"]
+    assert "modify" not in criteria
+
+
+@pytest.mark.parametrize("jev", [
+    _jev_response("off_topic", 0.6),            # not confident
+    _jev_response("settings_only", 1.0),        # Jev can't extract settings
+    httpx.HTTPStatusError("503", request=MagicMock(), response=MagicMock()),
+])
+async def test_supervise_defers_to_llm_when_jev_cannot_decide(monkeypatch, jev):
+    monkeypatch.setenv("OPENROUTER_API_KEY", "or-test")
+    decision = SupervisorDecision(intent="create", settings=TripSettings())
+    with patch("app.nodes._jev_http") as http, patch("app.nodes._openai_client") as client:
+        http.post = AsyncMock(side_effect=jev) if isinstance(jev, Exception) \
+            else AsyncMock(return_value=jev)
+        client.beta.chat.completions.parse = AsyncMock(return_value=_llm_response(decision))
+        result = await supervise(_state())
+    assert result["intent"] == "create" and not result.get("error")
+    client.beta.chat.completions.parse.assert_awaited_once()

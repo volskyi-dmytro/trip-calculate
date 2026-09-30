@@ -4,6 +4,9 @@ import pytest
 # Unit tests never hit the real OpenAI API (all calls are mocked), but
 # AsyncOpenAI() validates the key is non-empty at instantiation time.
 os.environ.setdefault("OPENAI_API_KEY", "sk-test-dummy")
+# A real key in the shell would route supervise() through live Jev and bypass
+# the mocked LLM; Jev tests set the key themselves via monkeypatch.
+os.environ.pop("OPENROUTER_API_KEY", None)
 
 
 @pytest.fixture

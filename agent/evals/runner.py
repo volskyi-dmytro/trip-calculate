@@ -272,7 +272,7 @@ async def run_route_case(
     provider_client: Any = None,
 ) -> RouteObservation:
     from app.graph import build_graph
-    from app.nodes import _openai_client as real_client
+    from app.nodes import _openai_client as real_client, _jev_intent as real_jev
     from app.schema import CurrentWaypoint, SettingsContext
 
     client: Any
@@ -309,6 +309,21 @@ async def run_route_case(
     try:
         with ExitStack() as stack:
             _patches(stack, geocoder, client)
+            # Mock mode must stay offline even with OPENROUTER_API_KEY in the
+            # shell. Live mode records Jev decisions: a confident Jev verdict
+            # legitimately skips the OpenAI supervisor, so it is real model
+            # evidence for the zero-token guard below.
+            jev_decisions: list[str] = []
+
+            async def jev(message: str, has_route: bool) -> Optional[str]:
+                if mode == "mock":
+                    return None
+                intent = await real_jev(message, has_route)
+                if intent is not None:
+                    jev_decisions.append(intent)
+                return intent
+
+            stack.enter_context(patch("app.nodes._jev_intent", jev))
             final = await build_graph().ainvoke(state)
         raw_error = None
     except Exception as exc:  # a runner failure, not an agent verdict
@@ -364,7 +379,7 @@ async def run_route_case(
         model=model,
         # Same evidence-of-a-real-call guard the car path uses: supervise()
         # and parse_locations() also swallow provider errors and degrade.
-        raw_error=raw_error or _no_model_call(mode, usage),
+        raw_error=raw_error or (None if jev_decisions else _no_model_call(mode, usage)),
     )
 
 
