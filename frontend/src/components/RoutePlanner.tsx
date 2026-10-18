@@ -756,6 +756,10 @@ export function RoutePlanner() {
         fuelPriceTouched: true
       })
       setRouteName(route.name)
+      // A route opened from the dialog is the same record the ?routeId= link edits: Save updates
+      // it (with an explicit "Save as new"), instead of silently creating a duplicate.
+      setCurrentRouteId(routeId)
+      setIsEditMode(true)
       if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
