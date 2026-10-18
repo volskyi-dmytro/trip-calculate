@@ -2,10 +2,13 @@ import { useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation } from '../i18n/routePlanner';
 import { useAuth } from '../contexts/AuthContext';
-import { ArrowRight, Loader2, Send } from 'lucide-react';
-import { Input } from '@/components/ui/input';
+import { ArrowRight } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { AiPrivacyNote } from './AiPrivacyNote';
+import { PromptComposer } from './PromptComposer';
+import { LimitBanner } from './LimitBanner';
+import { AgentProgress } from './AgentProgress';
+import type { AgentStage } from '../services/agentStreamService';
 
 interface WelcomeScreenProps {
   chatInput: string;
@@ -13,6 +16,11 @@ interface WelcomeScreenProps {
   onSendMessage: (message: string) => void;
   isProcessing: boolean;
   onManualClick: () => void;
+  /** Set after a 429: banner + send disabled until retryAt (null = time unknown). */
+  limit?: { retryAt: Date | null } | null;
+  onLimitExpire?: () => void;
+  doneStages?: AgentStage[];
+  degraded?: boolean;
 }
 
 // Pre-conversation entry: a compact intro and composer instead of an empty
@@ -24,23 +32,19 @@ export function WelcomeScreen({
   onSendMessage,
   isProcessing,
   onManualClick,
+  limit = null,
+  onLimitExpire = () => {},
+  doneStages = [],
+  degraded = false,
 }: WelcomeScreenProps) {
   const { language } = useLanguage();
   const { user } = useAuth();
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
   const [pendingExample, setPendingExample] = useState<string | null>(null);
 
   const firstName = user?.name.split(' ')[0];
   const tr = getTranslation(language);
   const t = tr.agent;
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Read the DOM value, not state: autofill/IME can update the field
-    // without a React change event.
-    const message = new FormData(e.currentTarget).get('aiPrompt');
-    onSendMessage(typeof message === 'string' ? message : '');
-  };
 
   // Examples only fill the composer — sending stays an explicit user action
   // because every send is a billable AI request.
@@ -74,36 +78,32 @@ export function WelcomeScreen({
         />
 
         <div className="text-center mb-5">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
             {firstName ? t.greeting.replace('{name}', firstName) : t.greetingNoName}
-          </h2>
+          </h1>
           <p className="text-base text-slate-600 dark:text-slate-300">{t.greetingSubtitle}</p>
         </div>
 
         <div className="glass-panel p-4 rounded-xl">
-          <form className="flex gap-2" onSubmit={handleSubmit}>
-            <Input
-              ref={inputRef}
-              type="text"
-              name="aiPrompt"
-              aria-label={tr.chat.inputLabel}
-              value={chatInput}
-              onChange={(e) => onChatInputChange(e.target.value)}
-              placeholder={t.describeTrip}
-              disabled={isProcessing}
-              className="flex-1 h-11 text-base"
-              autoFocus
-            />
-            <button
-              type="submit"
-              aria-label={tr.planner.sendMessage}
-              disabled={isProcessing}
-              className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 bg-primary text-primary-foreground disabled:opacity-40"
-            >
-              {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </button>
-          </form>
+          <PromptComposer
+            ref={inputRef}
+            value={chatInput}
+            onChange={onChatInputChange}
+            onSubmit={onSendMessage}
+            placeholder={t.describeTrip}
+            isProcessing={isProcessing}
+            sendDisabled={limit?.retryAt != null}
+            autoFocus
+          />
+          {limit && (
+            <div className="mt-3">
+              <LimitBanner retryAt={limit.retryAt} onExpire={onLimitExpire} />
+            </div>
+          )}
 
+          {isProcessing ? (
+            <div className="mt-3"><AgentProgress doneStages={doneStages} degraded={degraded} /></div>
+          ) : (
           <div className="mt-3" role="group" aria-label={t.examplesLabel}>
             <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{t.examplesLabel}</p>
             <div className="flex flex-wrap gap-2">
@@ -112,7 +112,6 @@ export function WelcomeScreen({
                   key={ex.label}
                   type="button"
                   onClick={() => applyExample(ex.text)}
-                  disabled={isProcessing}
                   className="planner-example-chip"
                 >
                   {ex.label}
@@ -120,6 +119,7 @@ export function WelcomeScreen({
               ))}
             </div>
           </div>
+          )}
 
           <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 dark:border-slate-700">
             <AiPrivacyNote className="flex-1 min-w-[12rem]" />

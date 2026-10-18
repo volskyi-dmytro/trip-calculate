@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Search, ChevronUp, ChevronDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -18,6 +18,8 @@ import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamSe
 import { AiRateLimitError } from '../services/agentService'
 import { BlockingErrorDialog, type BlockingError } from './BlockingErrorDialog'
 import { AiPrivacyNote } from './AiPrivacyNote'
+import { PromptComposer } from './PromptComposer'
+import { LimitBanner } from './LimitBanner'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
@@ -138,6 +140,9 @@ export function RoutePlanner() {
 
   // AI Chat State
   const [chatInput, setChatInput] = useState('')
+  // AI quota hit: inline banner instead of a modal; the draft stays in chatInput.
+  const [aiLimit, setAiLimit] = useState<{ retryAt: Date | null } | null>(null)
+  const clearAiLimit = useCallback(() => setAiLimit(null), [])
   const [isProcessingAi, setIsProcessingAi] = useState(false)
 
   // SSE progress: stages completed so far for the in-flight AI request;
@@ -934,7 +939,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     const message = submittedMessage.trim();
     if (!message) return;
 
-    setChatInput('');
+    setAiLimit(null);
     setIsProcessingAi(true);
     // New request replaces whatever the slot was showing: hide any
     // previous result immediately (progress UI takes over the slot while
@@ -970,6 +975,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       const agentData = agentResult.data;
 
       if (agentData) {
+        setChatInput(''); // cleared only on success so a failed send keeps the draft
         const updates: string[] = [];
 
         // Garage car precedence: a car the user actually named in their
@@ -1145,11 +1151,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     } catch (e) {
       console.error(e);
       if (e instanceof AiRateLimitError) {
-        const at = e.retryAt?.toLocaleTimeString(language === 'uk' ? 'uk-UA' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-        setBlockingError({
-          title: t.chat.rateLimitedTitle,
-          description: at ? t.chat.rateLimitedAt.replace('{time}', at) : t.chat.rateLimitedLater,
-        });
+        setAiLimit({ retryAt: e.retryAt });
         return;
       }
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
@@ -1163,12 +1165,6 @@ const handleManualAddressSubmit = useCallback(async () => {
       setAgentDegraded(false);
     }
   }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog]);
-
-  const handleChatFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const message = new FormData(e.currentTarget).get('aiPrompt');
-    void handleSendChat(typeof message === 'string' ? message : '');
-  }, [handleSendChat]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {
@@ -1214,6 +1210,10 @@ const handleManualAddressSubmit = useCallback(async () => {
         onSendMessage={handleSendChat}
         isProcessing={isProcessingAi}
         onManualClick={handleManualClick}
+        limit={aiLimit}
+        onLimitExpire={clearAiLimit}
+        doneStages={agentDoneStages}
+        degraded={agentDegraded}
       />
     );
   }
@@ -1629,39 +1629,15 @@ const handleManualAddressSubmit = useCallback(async () => {
         onShareReceipt={() => setShowResultShareDialog(true)}
         onApplyLivePrice={handleApplyFuelSuggestion}
       />
-      <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
-        <Input
-          type="text"
-          name="aiPrompt"
-          placeholder={t.chat.askPlaceholder}
-          aria-label={t.chat.inputLabel}
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          disabled={isProcessingAi}
-          className="flex-1 h-9 text-sm disabled:opacity-50"
-          style={{
-            background: 'var(--nav-bg-input)',
-            border: '1px solid var(--nav-border)',
-            color: 'var(--nav-text-primary)',
-          }}
-        />
-        <button
-          type="submit"
-          aria-label={t.planner.sendMessage}
-          disabled={isProcessingAi}
-          className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
-          style={{
-            background: 'var(--nav-accent)',
-            color: '#000',
-          }}
-        >
-          {isProcessingAi ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </button>
-      </form>
+      <PromptComposer
+        value={chatInput}
+        onChange={setChatInput}
+        onSubmit={handleSendChat}
+        placeholder={waypoints.length >= 2 ? t.chat.askPlaceholder : t.agent.describeTrip}
+        isProcessing={isProcessingAi}
+        sendDisabled={aiLimit?.retryAt != null}
+      />
+      {aiLimit && <div className="mt-2"><LimitBanner retryAt={aiLimit.retryAt} onExpire={clearAiLimit} /></div>}
       <AiPrivacyNote className="mt-1" />
     </>
   )
@@ -1669,6 +1645,7 @@ const handleManualAddressSubmit = useCallback(async () => {
   // Dashboard view — map-first Precision Navigation layout
   return (
     <div className="relative flex h-full overflow-hidden">
+      <h1 className="sr-only">{t.title}</h1>
 
       {/* ── DESKTOP SIDEBAR — hidden on mobile ── */}
       {!isMobile && (

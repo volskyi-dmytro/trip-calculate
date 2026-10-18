@@ -587,17 +587,31 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
 }
 
 .agent-progress-step.agent-progress-pending {
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 .agent-progress-step.agent-progress-running {
-  color: var(--nav-accent);
+  color: var(--text);
   font-weight: 600;
 }
 
 .agent-progress-step.agent-progress-done {
   color: var(--text);
   font-weight: 500;
+}
+
+.agent-progress-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 5rem;
+  padding: 0.75rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+}
+
+.agent-progress-running .agent-progress-icon {
+  color: var(--accent);
 }
 
 .agent-progress-icon {

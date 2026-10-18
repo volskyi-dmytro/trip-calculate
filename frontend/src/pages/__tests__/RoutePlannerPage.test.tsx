@@ -21,7 +21,8 @@ vi.mock('../../contexts/LanguageContext', () => ({
   useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), t: (key: string) => key }),
 }))
 vi.mock('../../components/RoutePlanner', () => ({
-  RoutePlanner: () => <div data-testid="route-planner">Route planner ready</div>,
+  // the real RoutePlanner owns the page h1 (WelcomeScreen visible / dashboard sr-only)
+  RoutePlanner: () => <div data-testid="route-planner"><h1>Planner title</h1>Route planner ready</div>,
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
 vi.mock('../../components/PlannerGuestPreview', () => ({

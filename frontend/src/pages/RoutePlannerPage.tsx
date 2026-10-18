@@ -46,8 +46,7 @@ export function RoutePlannerPage() {
       <SkipLink />
       <AppHeader />
       <main id="main" tabIndex={-1} className="flex-1 overflow-hidden">
-        {/* The planner has no visible page title; WelcomeScreen's greeting is an h2. */}
-        <h1 className="sr-only">{t('header.nav.routePlanner')}</h1>
+        {/* h1 lives in WelcomeScreen (visible) or RoutePlanner (sr-only dashboard) */}
         <RoutePlanner />
       </main>
     </div>
