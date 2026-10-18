@@ -10,6 +10,9 @@ type Clickable = { onClick?: (e: React.MouseEvent) => void };
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// Open order determines which modal owns keyboard handling and focus restoration.
+const dialogStack: Array<{ panel: HTMLDivElement; restoreTarget: HTMLElement | null }> = [];
+
 // Ref-counted so nested/multiple open dialogs keep the page locked until the last closes.
 let scrollLocks = 0
 let savedOverflow = ''
@@ -87,11 +90,15 @@ export function Dialog({
     if (!open) return;
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const panel = panelRef.current;
+    if (!panel) return;
+    const entry = { panel, restoreTarget: previouslyFocused };
+    dialogStack.push(entry);
     const focusables = () =>
       panel ? Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE)) : [];
     (focusables()[0] ?? panel)?.focus();
 
     const onKeyDown = (e: KeyboardEvent) => {
+      if (dialogStack[dialogStack.length - 1] !== entry) return;
       if (e.key === 'Escape') {
         e.stopPropagation();
         onOpenChangeRef.current(false);
@@ -117,7 +124,19 @@ export function Dialog({
     document.addEventListener('keydown', onKeyDown);
     return () => {
       document.removeEventListener('keydown', onKeyDown);
-      previouslyFocused?.focus?.();
+      const index = dialogStack.indexOf(entry);
+      const wasTopmost = index === dialogStack.length - 1;
+      if (index !== -1) {
+        // If a lower layer disappears first, its opener is the surviving
+        // destination for upper layers whose own opener was inside that layer.
+        for (const above of dialogStack.slice(index + 1)) {
+          if (above.restoreTarget && (panel.contains(above.restoreTarget) || !above.restoreTarget.isConnected)) {
+            above.restoreTarget = entry.restoreTarget;
+          }
+        }
+        dialogStack.splice(index, 1);
+      }
+      if (wasTopmost && entry.restoreTarget?.isConnected) entry.restoreTarget.focus();
     };
   }, [open]);
 

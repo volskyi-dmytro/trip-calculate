@@ -122,8 +122,12 @@ export function RoutePlanner() {
   // No road connects the waypoints: no cost, receipt, Waze link or save.
   const [routeUnreachable, setRouteUnreachable] = useState(false)
   // Provenance of routeDistance/routeDuration; undefined until a calculation lands.
-  const [routeEstimate, setRouteEstimate] = useState<{ quality: EstimateQuality; source: string; calculatedAt: string } | undefined>()
-  const routeQuality = routeEstimate?.quality
+  const [routeEstimate, setRouteEstimate] = useState<{ quality: EstimateQuality; source: string; calculatedAt: string; routeKey: string } | undefined>()
+  // A result belongs to its exact inputs, never to a newly edited shape.
+  // Derive this during render so actions cannot briefly expose the old result
+  // before the replacement-calculation effect has run.
+  const routeQuality: EstimateQuality = routeEstimate?.routeKey === routeCalculationKey(waypoints)
+    ? routeEstimate.quality : 'unavailable'
   // Failures the user must acknowledge (centered dialog, not a fading toast)
   const [blockingError, setBlockingError] = useState<BlockingError | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
@@ -174,6 +178,7 @@ export function RoutePlanner() {
 
   // Route calculation state
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+  const routeReady = !isCalculatingRoute && (routeQuality === 'road' || routeQuality === 'approximate')
 
   // Mobile bottom sheet state
   const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek')
@@ -355,6 +360,12 @@ export function RoutePlanner() {
       console.log('🟢 [PLANNER] Waypoints:', waypoints.map(w => ({ id: w.id, name: w.name, lat: w.lat, lng: w.lng })));
 
       setIsCalculatingRoute(true)
+      setRouteEstimate(undefined)
+      setRouteGeometry([])
+      setRouteDistance(0)
+      setRouteDuration(0)
+      setRouteUnreachable(false)
+      setShowResultShareDialog(false)
 
       try {
         const route = await routingService.getRoute(waypoints)
@@ -379,7 +390,7 @@ export function RoutePlanner() {
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
         setRouteUnreachable(Boolean(route.noRoute))
-        setRouteEstimate({ quality: route.quality, source: route.source, calculatedAt: route.calculatedAt })
+        setRouteEstimate({ quality: route.quality, source: route.source, calculatedAt: route.calculatedAt, routeKey: calculationRouteKey })
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
@@ -427,7 +438,7 @@ export function RoutePlanner() {
         setRouteDistance(0)
         setRouteDuration(0)
         setRouteUnreachable(false)
-        setRouteEstimate({ quality: 'approximate', source: 'straight-line', calculatedAt: new Date().toISOString() })
+        setRouteEstimate({ quality: 'approximate', source: 'straight-line', calculatedAt: new Date().toISOString(), routeKey: calculationRouteKey })
         setIsCalculatingRoute(false)
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -614,6 +625,7 @@ export function RoutePlanner() {
   }, [navigate, language, t])
 
   const saveRouteToServer = useCallback(async (saveAsNew = false) => {
+    if (!routeReady) return
     if (waypoints.length < 2) {
       toast.error(t.toasts.minWaypoints)
       return
@@ -676,7 +688,7 @@ export function RoutePlanner() {
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -731,6 +743,7 @@ export function RoutePlanner() {
   }, [t])
 
   const exportRouteAsJSON = useCallback(() => {
+    if (!routeReady) return
     const routeData = {
       name: routeName || `Route ${new Date().toLocaleDateString()}`,
       waypoints,
@@ -748,7 +761,7 @@ export function RoutePlanner() {
     URL.revokeObjectURL(url)
 
     toast.success(t.toasts.routeExported)
-  }, [waypoints, routeSettings, routeName, routeDistance, routeDuration, routeEstimate, t])
+  }, [waypoints, routeSettings, routeName, routeDistance, routeDuration, routeEstimate, routeReady, t])
 
 const handleManualAddressSubmit = useCallback(async () => {
     if (!manualAddress.trim()) {
@@ -1245,7 +1258,7 @@ const handleManualAddressSubmit = useCallback(async () => {
   }
 
   const peekSummary = waypoints.length >= 2 && !routeUnreachable
-    ? summarizeTrip({ waypoints, routeSettings, routeDistance, routeDuration, routeQuality, language, t })
+    ? summarizeTrip({ waypoints, routeSettings, routeDistance: routeReady ? routeDistance : 0, routeDuration: routeReady ? routeDuration : 0, routeQuality, language, t })
     : null
   announcementRef.current = peekSummary?.announcement ?? ''
 
@@ -1259,13 +1272,14 @@ const handleManualAddressSubmit = useCallback(async () => {
         <TripSummaryCard
           waypoints={waypoints}
           routeSettings={routeSettings}
-          routeDistance={routeDistance}
-          routeDuration={routeDuration}
+          routeDistance={routeReady ? routeDistance : 0}
+          routeDuration={routeReady ? routeDuration : 0}
           routeQuality={routeQuality}
+          estimatePending={!routeReady}
           fuelSuggestion={fuelSuggestion}
           weather={weatherData}
-          onSaveRoute={() => setShowSaveDialog(true)}
-          onShareReceipt={() => setShowResultShareDialog(true)}
+          onSaveRoute={() => { if (routeReady) setShowSaveDialog(true) }}
+          onShareReceipt={() => { if (routeReady && routeQuality === 'road') setShowResultShareDialog(true) }}
           onApplyLivePrice={handleApplyFuelSuggestion}
           saveLabel={isEditMode ? t.planner.updateRoute : undefined}
           headingRef={summaryHeadingRef}
@@ -1540,7 +1554,7 @@ const handleManualAddressSubmit = useCallback(async () => {
             {/* With 2+ waypoints the summary card owns Save; this is the fallback. */}
             {waypoints.length < 2 && <DialogTrigger asChild>
               <button
-                disabled={waypoints.length === 0 || routeUnreachable}
+                disabled={!routeReady}
                 title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
                 className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
                 style={{
@@ -1587,7 +1601,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                   {t.buttons.cancel}
                 </Button>
                 {isEditMode && (
-                  <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                  <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute || !routeReady}>
                     {savingRoute ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                     ) : (
@@ -1595,7 +1609,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                     )}
                   </Button>
                 )}
-                <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
+                <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute || !routeReady}>
                   {savingRoute ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                   ) : (
@@ -1608,7 +1622,7 @@ const handleManualAddressSubmit = useCallback(async () => {
 
           <button
             onClick={exportRouteAsJSON}
-            disabled={waypoints.length === 0}
+            disabled={!routeReady}
             title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
             className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
@@ -1700,7 +1714,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       >
         <MapContainer
           waypoints={waypoints}
-          routeGeometry={routeGeometry}
+          routeGeometry={routeReady ? routeGeometry : []}
           onAddWaypoint={addWaypoint}
           onUpdateWaypoint={updateWaypoint}
           onDeleteWaypoint={removeWaypoint}
@@ -1833,7 +1847,7 @@ const handleManualAddressSubmit = useCallback(async () => {
           the payload StatsPanel's own ShareReceiptButton builds, but lives
           here because TripResultCard exposes a plain onShareReceipt callback
           rather than owning its own dialog (see task-7-report.md) */}
-      {waypoints.length >= 2 && routeQuality === 'road' && (
+      {waypoints.length >= 2 && routeReady && routeQuality === 'road' && (
         <ShareReceiptModal
           payload={{
             originLabel: waypoints[0].name,

@@ -9,17 +9,18 @@ type T = ReturnType<typeof getTranslation>
 
 const shortName = (name: string) => name.split(',')[0].trim()
 
-/** Largest-remainder rounding to whole km so the displayed legs add up to the displayed total. */
+/** Reconcile at the total's display precision: tenths below 10 km, whole km above. */
 export function roundLegsToTotal(legs: number[], total: number): number[] {
   if (legs.length === 0) return []
-  const target = Math.max(0, Math.round(total))
-  const floors = legs.map(l => Math.max(0, Math.floor(l)))
+  const scale = total < 10 ? 10 : 1
+  const target = Math.max(0, Math.round(total * scale))
+  const floors = legs.map(l => Math.max(0, Math.floor(l * scale)))
   let remaining = target - floors.reduce((a, b) => a + b, 0)
   const order = legs
-    .map((l, i) => ({ i, r: l - Math.floor(l) }))
+    .map((l, i) => ({ i, r: l * scale - Math.floor(l * scale) }))
     .sort((a, b) => b.r - a.r)
   for (let k = 0; remaining > 0; k++, remaining--) floors[order[k % order.length].i]++
-  return floors
+  return floors.map(value => value / scale)
 }
 
 /** Every string the result UI shows, computed once so card, peek line and live-region message cannot disagree. */

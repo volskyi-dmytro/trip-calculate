@@ -1,4 +1,5 @@
 import type { RouteSettings, Waypoint } from '../components/RoutePlanner'
+import { nominatimFetch } from './nominatimQueue'
 
 export type FuelType = 'petrol' | 'diesel' | 'lpg'
 
@@ -81,7 +82,7 @@ async function countryForPoint(lat: number, lng: number): Promise<string | undef
   const cached = sessionStorage.getItem(key)
   if (cached) return cached === 'null' ? undefined : cached
   try {
-    const resp = await fetch(
+    const resp = await nominatimFetch(
       `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=3&addressdetails=1`,
     )
     if (!resp.ok) return undefined

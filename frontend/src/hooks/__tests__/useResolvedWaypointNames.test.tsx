@@ -2,7 +2,6 @@
 import { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { geocodingService } from '../../services/geocodingService'
 import { useResolvedWaypointNames } from '../useResolvedWaypointNames'
 
 ;(globalThis as typeof globalThis & { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true
@@ -21,14 +20,15 @@ const tick = (ms: number) => act(() => vi.advanceTimersByTimeAsync(ms))
 
 describe('useResolvedWaypointNames', () => {
   beforeEach(() => vi.useFakeTimers())
-  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks() })
+  afterEach(() => { vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
   it('queues reverse geocoding serially, >=1 s apart, and caches repeats', async () => {
     const starts: number[] = []
-    vi.spyOn(geocodingService, 'reverseGeocode').mockImplementation(async lat => {
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
       starts.push(Date.now())
-      return `Place ${lat}`
-    })
+      const lat = new URL(url).searchParams.get('lat')
+      return { ok: true, json: async () => ({ address: { city: `Place ${lat}` } }) } as Response
+    }))
     const rename = vi.fn()
     await mount(mk(), rename)
 

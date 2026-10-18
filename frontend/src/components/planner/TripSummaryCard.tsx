@@ -18,6 +18,7 @@ export interface TripSummaryCardProps {
   routeDistance: number
   routeDuration: number
   routeQuality?: EstimateQuality
+  estimatePending?: boolean
   fuelSuggestion: FuelSuggestion | null
   weather: WeatherData | null
   onSaveRoute: () => void
@@ -33,7 +34,7 @@ export interface TripSummaryCardProps {
 /** The single place a trip result is shown: per-person cost first, once; the arithmetic lives in a closed disclosure. */
 export function TripSummaryCard({
   waypoints, routeSettings, routeDistance, routeDuration, routeQuality,
-  fuelSuggestion, weather, onSaveRoute, onShareReceipt, onApplyLivePrice, saveLabel, headingRef,
+  fuelSuggestion, weather, onSaveRoute, onShareReceipt, onApplyLivePrice, saveLabel, headingRef, estimatePending = false,
 }: TripSummaryCardProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -41,7 +42,7 @@ export function TripSummaryCard({
   const uid = useId()
   const s = summarizeTrip({ waypoints, routeSettings, routeDistance, routeDuration, routeQuality, language, t })
   // A public receipt carries no quality flag, so only a road route may be shared.
-  const canShare = s.stats.quality === 'road'
+  const canShare = !estimatePending && s.stats.quality === 'road'
   const displayWaypoints = waypoints.map((wp, i) => ({
     ...wp,
     name: displayWaypointName(wp.name, `${t.planner.waypoint} ${i + 1}`),
@@ -97,7 +98,7 @@ export function TripSummaryCard({
       </p>
 
       <div className="trip-summary-actions">
-        <button type="button" onClick={onSaveRoute} className="trip-summary-btn trip-summary-btn-primary">
+        <button type="button" onClick={onSaveRoute} disabled={estimatePending || s.stats.quality === 'unavailable'} className="trip-summary-btn trip-summary-btn-primary">
           <Save className="h-4 w-4" aria-hidden="true" /> {saveLabel ?? t.resultCard.save}
         </button>
         <button type="button" onClick={onShareReceipt} className="trip-summary-btn"

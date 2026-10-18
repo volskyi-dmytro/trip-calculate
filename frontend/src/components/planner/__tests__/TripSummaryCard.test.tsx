@@ -133,7 +133,11 @@ describe('roundLegsToTotal', () => {
     const legs = [100.4, 100.4, 100.4]
     const out = roundLegsToTotal(legs, 301.2)
     expect(out.reduce((a, b) => a + b, 0)).toBe(301)
-    expect(roundLegsToTotal([0.6, 0.6], 1.2)).toEqual([1, 0])
     expect(roundLegsToTotal([], 5)).toEqual([])
+  })
+  it('reconciles short-route legs at the tenth-km precision shown for the total', () => {
+    expect(roundLegsToTotal([0.6, 0.6], 1.2)).toEqual([0.6, 0.6])
+    const legs = roundLegsToTotal([0.64, 0.64, 0.64], 1.92)
+    expect(legs.reduce((a, b) => a + b, 0)).toBeCloseTo(1.9)
   })
 })
