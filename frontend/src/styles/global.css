@@ -5,11 +5,11 @@
 /* Make `primary` / `muted-foreground` utilities (used by ui/* components
    and dashboards) resolve to the product palette instead of silently
    generating nothing under Tailwind v4's default theme. */
-@theme {
-    --color-primary: #0e7a63;
-    --color-primary-foreground: #ffffff;
-    --color-muted: #eef1f4;
-    --color-muted-foreground: #5f6e7b;
+@theme inline {
+    --color-primary: var(--accent);
+    --color-primary-foreground: var(--on-accent);
+    --color-muted: var(--surface-2);
+    --color-muted-foreground: var(--text-2);
 }
 
 /* ============================================
@@ -22,13 +22,15 @@
     --surface-2: #eef1f4;
     --text: #1a242e;
     --text-2: #51606d;
-    --text-3: #8593a0;
+    --text-3: #5f6e7b; /* 4.76:1 on --bg, 5.25:1 on white */
     --border: #e0e6eb;
     --border-strong: #c9d2da;
 
     --accent: #0e7a63;
     --accent-hover: #0b6350;
     --accent-soft: rgba(14, 122, 99, 0.10);
+    /* Text on filled-accent surfaces: 5.27:1 on #0e7a63 */
+    --on-accent: #ffffff;
 
     --danger: #b93a3f;
     --danger-soft: rgba(185, 58, 63, 0.10);
@@ -89,13 +91,15 @@ body[data-theme="dark"],
     --surface-2: #1d2630;
     --text: #e7ecf1;
     --text-2: #97a3ae;
-    --text-3: #66737e;
+    --text-3: #8593a0; /* 5.41:1 on --surface */
     --border: #242e38;
     --border-strong: #34414c;
 
     --accent: #2cc296;
     --accent-hover: #43d3a9;
     --accent-soft: rgba(44, 194, 150, 0.14);
+    /* White on this mint is 2.27:1; ink is 8.36:1 */
+    --on-accent: #0b1210;
 
     --danger: #e05c5c;
     --danger-soft: rgba(224, 92, 92, 0.12);
@@ -229,12 +233,8 @@ body::before {
    mint (dark) — same pairing as .btn vs the planner's accent icon buttons. */
 .sheet-trigger-pill {
     background: var(--nav-accent);
-    color: #ffffff;
+    color: var(--on-accent);
     border: 1px solid var(--glass-border);
-}
-
-.dark .sheet-trigger-pill {
-    color: #0f1117;
 }
 
 /* Blur is the expensive part of the material: use a lighter radius on
@@ -303,7 +303,27 @@ a:hover {
 
 ::selection {
     background: var(--accent);
-    color: #ffffff;
+    color: var(--on-accent);
+}
+
+.skip-link {
+    position: absolute;
+    left: 8px;
+    top: -64px;
+    z-index: 1000;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.skip-link:focus {
+    top: 8px;
+    color: var(--on-accent);
+}
+
+main:focus {
+    outline: none;
 }
 
 *:focus-visible {
@@ -363,7 +383,7 @@ a:hover {
     font-size: 0.95rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: #ffffff;
+    color: var(--on-accent);
     background: var(--accent);
     cursor: pointer;
     transition: background-color 0.18s ease, border-color 0.18s ease,
@@ -459,8 +479,8 @@ a:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border-radius: 9px;
     border: 1px solid var(--border);
@@ -632,8 +652,8 @@ a:hover {
     justify-content: center;
     border: none;
     background: transparent;
-    min-width: 42px;
-    height: 38px;
+    min-width: 44px;
+    height: 44px;
     padding: 0 10px;
     font-family: inherit;
     font-size: 0.78rem;
@@ -649,6 +669,28 @@ a:hover {
 .seg a.seg-on {
     background: rgba(255, 255, 255, 0.94);
     color: #1a242e;
+}
+
+/* Slim bar variant (planner): same controls as the hero header, themed for a glass strip */
+.app-bar .brand,
+.app-bar .brand:hover {
+    color: var(--text);
+}
+
+.app-bar .icon-btn,
+.app-bar .seg {
+    background: var(--glass-input);
+    border-color: var(--border-strong);
+    color: var(--text-2);
+}
+
+.app-bar .seg a {
+    color: var(--text-2);
+}
+
+.app-bar .seg a.seg-on {
+    background: var(--accent);
+    color: var(--on-accent);
 }
 
 .hero-content {
@@ -1182,6 +1224,10 @@ footer {
 .footer-links a {
     color: var(--text-2);
     font-weight: 600;
+    /* 44px touch target without changing the visual rhythm */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
 }
 
 .footer-links a:hover {
