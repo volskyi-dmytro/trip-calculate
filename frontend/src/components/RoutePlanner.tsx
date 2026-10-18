@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label'
 import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Search, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
-import { geocodingService } from '../services/geocodingService'
+import { geocodingService, type Place } from '../services/geocodingService'
+import { PlaceCombobox } from './PlaceCombobox'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
 import { AiRateLimitError } from '../services/agentService'
@@ -812,7 +813,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     try {
       toast.loading(t.toasts.searchingLocation)
 
-      const result = await geocodingService.forwardGeocode(manualAddress)
+      const result = await geocodingService.forwardGeocode(manualAddress, language)
 
       toast.dismiss()
 
@@ -846,11 +847,11 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearching(false)
     }
-  }, [manualAddress, t])
+  }, [manualAddress, t, language])
 
   // Handle start location search
-  const handleStartLocationSearch = useCallback(async () => {
-    if (!startLocationInput.trim()) {
+  const handleStartLocationSearch = useCallback(async (picked?: Place) => {
+    if (!picked && !startLocationInput.trim()) {
       toast.error(t.toasts.enterAddress)
       return
     }
@@ -858,7 +859,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     setIsSearchingStart(true)
 
     try {
-      const result = await geocodingService.forwardGeocode(startLocationInput)
+      const result = picked ?? await geocodingService.forwardGeocode(startLocationInput, language)
 
       if (!result) {
         toast.error(t.toasts.locationNotFound)
@@ -866,8 +867,8 @@ const handleManualAddressSubmit = useCallback(async () => {
         return
       }
 
-      // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng)
 
       // Update or add start waypoint
       if (waypoints.length > 0) {
@@ -895,11 +896,11 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearchingStart(false)
     }
-  }, [startLocationInput, waypoints, t])
+  }, [startLocationInput, waypoints, t, language])
 
   // Handle destination search
-  const handleDestinationSearch = useCallback(async () => {
-    if (!destinationInput.trim()) {
+  const handleDestinationSearch = useCallback(async (picked?: Place) => {
+    if (!picked && !destinationInput.trim()) {
       toast.error(t.toasts.enterAddress)
       return
     }
@@ -907,7 +908,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     setIsSearchingDestination(true)
 
     try {
-      const result = await geocodingService.forwardGeocode(destinationInput)
+      const result = picked ?? await geocodingService.forwardGeocode(destinationInput, language)
 
       if (!result) {
         toast.error(t.toasts.locationNotFound)
@@ -915,8 +916,8 @@ const handleManualAddressSubmit = useCallback(async () => {
         return
       }
 
-      // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng)
 
       // Update or add destination waypoint
       if (waypoints.length > 1) {
@@ -949,7 +950,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearchingDestination(false)
     }
-  }, [destinationInput, waypoints, t])
+  }, [destinationInput, waypoints, t, language])
 
   // Geocode both start and destination atomically, then trigger auto-calculation via waypoints update
   const handleCalculateRoute = useCallback(async () => {
@@ -1354,16 +1355,14 @@ const handleManualAddressSubmit = useCallback(async () => {
           {t.planner.start}
         </Label>
         <div className="relative">
-          <Input
-            type="text"
+          <PlaceCombobox
+            label={t.planner.start}
+            language={language}
             placeholder={t.planner.searchStart}
             value={startLocationInput}
-            onChange={(e) => setStartLocationInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isSearchingStart) {
-                handleStartLocationSearch()
-              }
-            }}
+            onChange={setStartLocationInput}
+            onPick={handleStartLocationSearch}
+            onSubmit={() => { if (!isSearchingStart) handleStartLocationSearch() }}
             disabled={isSearchingStart}
             className="w-full pr-8"
             style={{
@@ -1415,16 +1414,14 @@ const handleManualAddressSubmit = useCallback(async () => {
           {t.planner.destination}
         </Label>
         <div className="relative">
-          <Input
-            type="text"
+          <PlaceCombobox
+            label={t.planner.destination}
+            language={language}
             placeholder={t.planner.searchDestination}
             value={destinationInput}
-            onChange={(e) => setDestinationInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isSearchingDestination) {
-                handleDestinationSearch()
-              }
-            }}
+            onChange={setDestinationInput}
+            onPick={handleDestinationSearch}
+            onSubmit={() => { if (!isSearchingDestination) handleDestinationSearch() }}
             disabled={isSearchingDestination}
             className="w-full pr-8"
             style={{
@@ -1805,12 +1802,14 @@ const handleManualAddressSubmit = useCallback(async () => {
             /* Collapsed state: start + destination quick-entry */
             <div className="flex items-center gap-2 px-3 pb-2">
               <div className="relative flex-1">
-                <Input
-                  type="text"
+                <PlaceCombobox
+                  label={t.planner.start}
+                  language={language}
                   placeholder={t.planner.startShort}
                   value={startLocationInput}
-                  onChange={(e) => setStartLocationInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
+                  onChange={setStartLocationInput}
+                  onPick={handleStartLocationSearch}
+                  onSubmit={() => { if (!isSearchingStart) handleStartLocationSearch() }}
                   disabled={isSearchingStart}
                   className="h-11 text-sm w-full"
                   style={{
@@ -1824,12 +1823,14 @@ const handleManualAddressSubmit = useCallback(async () => {
                 )}
               </div>
               <div className="relative flex-1">
-                <Input
-                  type="text"
+                <PlaceCombobox
+                  label={t.planner.destination}
+                  language={language}
                   placeholder={t.planner.destinationShort}
                   value={destinationInput}
-                  onChange={(e) => setDestinationInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
+                  onChange={setDestinationInput}
+                  onPick={handleDestinationSearch}
+                  onSubmit={() => { if (!isSearchingDestination) handleDestinationSearch() }}
                   disabled={isSearchingDestination}
                   className="h-11 text-sm w-full"
                   style={{

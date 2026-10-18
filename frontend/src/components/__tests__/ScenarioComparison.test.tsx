@@ -137,8 +137,20 @@ describe('QuickCalculator + scenarios', () => {
     act(() => price.focus())
     type(price, '1e999')
     act(() => price.blur())
-    expect(price.value).toBe('0')
+    // QA F1: invalid text stays visible and flagged (no silent 0); the result resets, never stale.
+    expect(price.value).toBe('1e999')
+    expect(price.getAttribute('aria-invalid')).toBe('true')
+    expect(container.querySelector('[role="alert"]')).not.toBeNull()
     expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('0.00 EUR')
+  })
+  it('accepts a decimal comma in distance and recalculates (QA F1)', () => {
+    const { container } = mount(<QuickCalculator prefill={{ distance: 0, consumption: 10, price: 10, passengers: 1, currency: 'EUR' }} />)
+    const d = container.querySelector<HTMLInputElement>('#quick-distance')!
+    act(() => d.focus())
+    type(d, '10,5')
+    act(() => d.blur())
+    expect(d.value).toBe('10.5')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('10.50 EUR')
   })
   it('normalizes typed decimals on blur without losing partial input', () => {
     const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 1, price: 1, passengers: 2, currency: 'EUR' }} />)
