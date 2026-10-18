@@ -29,3 +29,30 @@ export async function openPlannerManual(page: Page, path = '/en/route-planner') 
 export async function mockNominatim(page: Page, rows: Record<string, unknown>[]) {
   await page.route('**/nominatim.openstreetmap.org/**', route => route.fulfill({ json: route.request().url().includes('/reverse') ? { address: { city: 'Mock City' } } : rows }))
 }
+
+const PLACES: Record<string, { lat: string; lon: string; name: string }> = {
+  kyiv: { lat: '50.45', lon: '30.52', name: 'Kyiv' },
+  lviv: { lat: '49.84', lon: '24.03', name: 'Lviv' },
+  zhytomyr: { lat: '50.25', lon: '28.66', name: 'Zhytomyr' },
+  rivne: { lat: '50.62', lon: '26.25', name: 'Rivne' },
+}
+
+/** Nominatim stub that answers by query text, so multi-stop flows are deterministic. */
+export async function mockPlaces(page: Page) {
+  await page.route('**/nominatim.openstreetmap.org/**', route => {
+    const url = new URL(route.request().url())
+    if (url.pathname.includes('reverse')) {
+      const lat = url.searchParams.get('lat')
+      const hit = Object.values(PLACES).find(p => Math.abs(Number(p.lat) - Number(lat)) < 0.01)
+      return route.fulfill({ json: { address: { city: hit?.name ?? 'Mock City' } } })
+    }
+    const q = (url.searchParams.get('q') ?? '').toLowerCase()
+    const p = PLACES[q]
+    return route.fulfill({ json: p ? [{ ...p, addresstype: 'city', display_name: `${p.name}, Ukraine` }] : [] })
+  })
+}
+
+/** Local road-route stub: distance from call order, so tests can prove which response is shown. */
+export function roadResult(km: number) {
+  return { quality: 'road', provider: 'osrm', totalDistance: km, totalDuration: km * 1.1, segments: [], geometry: [[50.45, 30.52], [49.84, 24.03]] }
+}
