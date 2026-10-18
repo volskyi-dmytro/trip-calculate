@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Shield } from 'lucide-react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Header } from '../components/common/Header';
+import { PageShell } from '../components/common/PageShell';
 import { SystemOverview } from '../components/admin/SystemOverview';
 import { UsersTable } from '../components/admin/UsersTable';
 
@@ -20,8 +20,7 @@ export function AdminDashboard() {
   ];
 
   return (
-    <>
-      <Header />
+    <PageShell footer={false}>
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-8">
         {/* Header */}
@@ -71,6 +70,6 @@ export function AdminDashboard() {
         </div>
         </div>
       </div>
-    </>
+    </PageShell>
   );
 }

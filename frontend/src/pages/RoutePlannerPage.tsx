@@ -1,19 +1,16 @@
-import { Link } from 'react-router-dom';
 import { RoutePlanner } from '../components/RoutePlanner';
+import { AppHeader } from '../components/common/AppHeader';
+import { SkipLink } from '../components/common/PageShell';
 import { Header } from '../components/common/Header';
 import { PlannerGuestPreview } from '../components/PlannerGuestPreview';
 import { useAuth } from '../contexts/AuthContext';
-import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { UserMenu } from '../components/auth/UserMenu';
-import { withLocalePrefix } from '../utils/locale';
-import { Loader2, Navigation, Sun, Moon } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 export function RoutePlannerPage() {
-  const { language, setLanguage, t } = useLanguage();
+  const { t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   useDocumentTitle(t('pageTitle.routePlanner'));
 
   // Guests get a finished sample trip (not the real AI endpoint — that
@@ -22,8 +19,11 @@ export function RoutePlannerPage() {
   if (!authLoading && !user) {
     return (
       <>
+        <SkipLink />
         <Header />
-        <PlannerGuestPreview />
+        <main id="main" tabIndex={-1}>
+          <PlannerGuestPreview />
+        </main>
       </>
     );
   }
@@ -31,75 +31,25 @@ export function RoutePlannerPage() {
   if (authLoading) {
     return (
       <>
+        <SkipLink />
         <Header />
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <main id="main" tabIndex={-1} className="flex items-center justify-center min-h-screen" role="status">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">{t('common.loading')}</span>
+        </main>
       </>
     );
   }
 
   return (
     <div className="flex flex-col h-screen overflow-hidden">
-      <div
-        className="glass-topbar flex-shrink-0 flex items-center justify-between px-4"
-        style={{ height: '56px', zIndex: 50 }}
-      >
-        <Link
-          to={withLocalePrefix('/', language)}
-          className="flex items-center gap-2 hover:opacity-80 transition-opacity no-underline"
-          style={{ color: 'inherit' }}
-        >
-          <Navigation
-            className="h-5 w-5"
-            style={{ color: 'var(--nav-accent)' }}
-            aria-hidden="true"
-          />
-          <span
-            className="font-semibold text-sm tracking-wide"
-            style={{ color: 'var(--nav-text-primary)' }}
-          >
-            Trip Calculate
-          </span>
-        </Link>
-
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => setLanguage(language === 'en' ? 'uk' : 'en')}
-            // Accessible name starts with the visible text (WCAG 2.5.3), so
-            // voice users can say "click UA".
-            aria-label={`${language === 'en' ? 'UA' : 'EN'}: ${t('common.switchLanguage')}`}
-            className="text-xs font-semibold px-2 py-1 rounded transition-colors"
-            style={{
-              color: 'var(--nav-text-secondary)',
-              border: '1px solid var(--nav-border)',
-              background: 'var(--nav-bg-input)',
-            }}
-          >
-            {language === 'en' ? 'UA' : 'EN'}
-          </button>
-
-          <button
-            onClick={toggleTheme}
-            className="flex items-center justify-center w-8 h-8 rounded transition-colors"
-            style={{
-              color: 'var(--nav-text-secondary)',
-              border: '1px solid var(--nav-border)',
-              background: 'var(--nav-bg-input)',
-            }}
-            title={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
-            aria-label={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
-          >
-            {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-          </button>
-
-          {user && <UserMenu />}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-hidden">
+      <SkipLink />
+      <AppHeader />
+      <main id="main" tabIndex={-1} className="flex-1 overflow-hidden">
+        {/* The planner has no visible page title; WelcomeScreen's greeting is an h2. */}
+        <h1 className="sr-only">{t('header.nav.routePlanner')}</h1>
         <RoutePlanner />
-      </div>
+      </main>
     </div>
   );
 }

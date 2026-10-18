@@ -18,4 +18,12 @@ describe('NotFoundPage', () => {
     expect(html).toContain('<h1>notFound.title</h1>')
     expect(html).toContain('<a href="/uk">notFound.cta</a>')
   })
+
+  it('renders a skip link to the single main landmark', () => {
+    const html = renderToStaticMarkup(<NotFoundPage />)
+
+    expect(html).toContain('href="#main"')
+    expect(html.match(/<main[ >]/g)).toHaveLength(1)
+    expect(html).toContain('id="main"')
+  })
 })
