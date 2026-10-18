@@ -206,6 +206,9 @@ export const routePlannerTranslations = {
         { label: 'Plan a cross-border drive', text: 'Drive from Lviv to Kraków for 3 people' },
       ],
       replaceDraft: 'Replace your current message with this example?',
+      replaceDraftTitle: 'Replace your message?',
+      replaceDraftConfirm: 'Replace',
+      replaceDraftCancel: 'Keep mine',
       configureManually: 'Or set it up manually',
     },
     bottomSheet: {
@@ -453,6 +456,9 @@ export const routePlannerTranslations = {
         { label: 'Поїздка за кордон', text: 'Поїздка зі Львова до Кракова на 3 особи' },
       ],
       replaceDraft: 'Замінити ваше повідомлення цим прикладом?',
+      replaceDraftTitle: 'Замінити повідомлення?',
+      replaceDraftConfirm: 'Замінити',
+      replaceDraftCancel: 'Залишити моє',
       configureManually: 'Або налаштуйте вручну',
     },
     bottomSheet: {

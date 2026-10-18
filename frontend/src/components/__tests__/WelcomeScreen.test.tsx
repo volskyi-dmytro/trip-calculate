@@ -52,7 +52,7 @@ describe('WelcomeScreen', () => {
     const img = container.querySelector('img')!
     expect(img.getAttribute('src')).toBe('/images/planner-v1/ai-welcome.webp')
     expect(img.getAttribute('alt')).toBe('')
-    expect(container.querySelector('h1')?.textContent).toBe('Where to next, Dana?')
+    expect(container.querySelector('h2')?.textContent).toBe('Where to next, Dana?')
   })
 
   it('uses native form submission and reads the current DOM value', () => {
@@ -76,18 +76,22 @@ describe('WelcomeScreen', () => {
     expect(document.activeElement).toBe(container.querySelector('input'))
   })
 
-  it('keeps a non-empty draft unless the user confirms replacing it', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('asks in a dialog before replacing a non-empty draft', () => {
     const { container, onChatInputChange } = render({ chatInput: 'my own trip' })
     act(() => exampleButton(container).click())
-    expect(confirm).toHaveBeenCalledOnce()
+    const dialog = document.querySelector('[role="alertdialog"]')!
+    expect(dialog).not.toBeNull()
     expect(onChatInputChange).not.toHaveBeenCalled()
 
-    confirm.mockReturnValue(true)
+    // Keep mine
+    act(() => [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === 'Keep mine')!.click())
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(onChatInputChange).not.toHaveBeenCalled()
+
     act(() => exampleButton(container).click())
+    act(() => [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find(b => b.textContent === 'Replace')!.click())
     expect(onChatInputChange).toHaveBeenCalledWith('A trip from Kyiv to Lviv for 2 passengers')
   })
-
   it('offers manual setup without sending a message', () => {
     const { container, onManualClick, onSendMessage } = render()
     const manual = [...container.querySelectorAll('button')].find(b => b.textContent === 'Or set it up manually')!
