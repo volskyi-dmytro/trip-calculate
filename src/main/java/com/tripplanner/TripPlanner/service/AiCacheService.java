@@ -9,8 +9,9 @@ import java.security.MessageDigest;
 public interface AiCacheService {
 
     /**
-     * Bump when the agent prompt, model, or response schema changes so stale
-     * cached bodies miss (entries also expire by TTL / admin evictAll).
+     * Part of every cache key. MUST be bumped whenever the agent prompt, model
+     * or response schema changes, otherwise stale cached bodies keep hitting
+     * (entries also expire by TTL / admin evictAll).
      */
     String KEY_VERSION = "v2";
 
@@ -28,6 +29,11 @@ public interface AiCacheService {
      * {@link #KEY_VERSION}. Shared by sync proxy and SSE relay so keys agree.
      */
     default String cacheKey(String prompt, String language, Object settingsContext, java.time.LocalDate day) {
+        return cacheKey(prompt, language, settingsContext, day, KEY_VERSION);
+    }
+
+    /** Same as above with an explicit version (test seam: proves a version bump changes the key). */
+    default String cacheKey(String prompt, String language, Object settingsContext, java.time.LocalDate day, String keyVersion) {
         String fuel = "petrol";
         String currency = "UAH";
         if (settingsContext instanceof java.util.Map<?, ?> m) {
@@ -35,7 +41,7 @@ public interface AiCacheService {
             if (m.get("currency") instanceof String c && !c.isBlank()) currency = c.trim().toUpperCase();
         }
         String normalized = prompt.toLowerCase().trim().replaceAll("\\s+", " ");
-        String raw = String.join("|", KEY_VERSION, day.toString(), language, fuel, currency, normalized);
+        String raw = String.join("|", keyVersion, day.toString(), language, fuel, currency, normalized);
         try {
             byte[] hash = MessageDigest.getInstance("SHA-256").digest(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();

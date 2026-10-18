@@ -34,9 +34,13 @@ class AiCacheKeyTest {
         assertNotEquals(base, key("kyiv to lviv", Map.of("fuel_type", "diesel", "currency", "UAH"), D));
         assertNotEquals(base, key("kyiv to lviv", Map.of("fuel_type", "petrol", "currency", "EUR"), D));
         assertNotEquals(base, cache.cacheKey("kyiv to lviv", "uk", UAH_PETROL, D));
-        AiCacheService v3 = mock(AiCacheService.class, CALLS_REAL_METHODS);
-        // version is an interface constant embedded in the hash input: a different day proves the same mechanism
-        assertNotEquals(base, v3.cacheKey("kyiv to lviv", "en", UAH_PETROL, D.plusDays(1)));
+    }
+
+    @Test
+    void bumpingKeyVersionChangesKey() {
+        String current = cache.cacheKey("kyiv to lviv", "en", UAH_PETROL, D, AiCacheService.KEY_VERSION);
+        assertEquals(key("kyiv to lviv", UAH_PETROL, D), current);
+        assertNotEquals(current, cache.cacheKey("kyiv to lviv", "en", UAH_PETROL, D, AiCacheService.KEY_VERSION + "-next"));
     }
 
     @Test
