@@ -105,7 +105,7 @@ public class AiInsightsController {
         // depends on the caller's current route, so replaying it to another
         // user (or the same user with a different route) would be wrong
         boolean cacheable = currentRoute.isEmpty();
-        String cacheKey = cacheService.cacheKey(prompt, language);
+        String cacheKey = cacheService.cacheKey(prompt, language, request.get("settingsContext"));
         String cached = cacheable ? cacheService.get(cacheKey) : null;
         if (cached != null) {
             logger.info("Cache HIT for prompt length={}", prompt.length());
