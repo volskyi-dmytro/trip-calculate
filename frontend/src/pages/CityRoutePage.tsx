@@ -9,6 +9,8 @@ import { translate } from '../i18n/common';
 import { formatMoney } from '../lib/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
+import { plannerPrefillQuery } from '../utils/plannerPrefill';
+import { track } from '../lib/analytics';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
 import '../styles/page-layout.css';
 
@@ -154,6 +156,14 @@ export function CityRoutePage() {
     },
   ].filter((f): f is { icon: typeof MapPin; label: string; value: string } => Boolean(f));
 
+  // Opens the planner with this exact route loaded (guest or signed in).
+  const plannerHref = withLocalePrefix('/route-planner', language) + plannerPrefillQuery({
+    from: { name: r.fromName, lat: r.from.lat, lng: r.from.lng },
+    to: { name: r.toName, lat: r.to.lat, lng: r.to.lng },
+    passengers: r.passengers,
+  });
+  const plannerLabel = t('cityRoute.plannerCtaRoute').replace('{from}', r.fromName).replace('{to}', r.toName);
+
   return (
     <PageShell mainClassName="container">
         <section className="section city-intro">
@@ -170,6 +180,15 @@ export function CityRoutePage() {
             {r.fromName} → {r.toName}: {t('cityRoute.titleSuffix')}
           </h1>
           <p className="section-lead">{explanation}</p>
+          {/* The next step at the decision point (above the fold on phones),
+              not only at the bottom below the method text. */}
+          <Link
+            className="btn mt-4 city-planner-cta"
+            to={plannerHref}
+            onClick={() => track('cta_click', { location: 'route_page', label: 'plan_route_top', slug: r.slug })}
+          >
+            {plannerLabel}
+          </Link>
           </div>
           {/* Calculator right after the intro: on mobile the stats were five tall cards
               deep before any actionable content; from 900px it sits beside the copy. */}
@@ -223,8 +242,12 @@ export function CityRoutePage() {
         </section>
 
         <section className="section text-center">
-          <Link className="btn" to={withLocalePrefix('/route-planner', language)}>
-            {t('cityRoute.plannerCta')}
+          <Link
+            className="btn"
+            to={plannerHref}
+            onClick={() => track('cta_click', { location: 'route_page', label: 'plan_route_bottom', slug: r.slug })}
+          >
+            {plannerLabel}
           </Link>
         </section>
 

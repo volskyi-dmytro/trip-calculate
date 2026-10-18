@@ -833,3 +833,36 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
 /* The fuel-price chips stay tappable at 44px. */
 .fuel-chip-action { min-height: 2.75rem; }
 
+
+/* Live price provenance and the quiet "back to live price" link (UX audit M5) */
+.trip-summary-price-source {
+  color: var(--text-2);
+}
+
+.trip-summary-link {
+  appearance: none;
+  background: none;
+  border: none;
+  padding: 0 0 0 6px;
+  min-height: 32px;
+  font: inherit;
+  font-size: 0.85rem;
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Send button highlight after an example chip filled the prompt */
+.prompt-send-emphasis {
+  box-shadow: 0 0 0 3px var(--accent-soft), 0 0 0 5px var(--accent);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .prompt-send-emphasis {
+    animation: prompt-send-pulse 1.6s ease-in-out 2;
+  }
+}
+
+@keyframes prompt-send-pulse {
+  50% { transform: scale(1.08); }
+}

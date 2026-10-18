@@ -111,7 +111,7 @@ describe('TripSummaryCard', () => {
     const c = mount()
     const stops = [...c.querySelectorAll<HTMLElement>('button, a[href]')].filter(e => !(e as HTMLButtonElement).disabled)
     expect(stops.map(e => e.textContent?.trim())).toEqual([
-      'Save route', 'Share receipt', 'Navigate with Waze', 'How we calculated this',
+      'Save trip', 'Share receipt', 'Navigate with Waze', 'How we calculated this',
     ])
     expect(c.querySelector('[tabindex]:not([tabindex="-1"])')).toBeNull()
   })

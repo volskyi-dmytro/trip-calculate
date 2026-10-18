@@ -1,13 +1,16 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { authService } from '../services/authService';
-import { API_BASE_URL } from '../services/api';
+import { buildLoginUrl } from '../utils/loginUrl';
+import { markSignInStarted, consumeSignInStarted } from '../utils/signInTracking';
+import { track } from '../lib/analytics';
 import type { User } from '../types';
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: () => void;
+  /** Starts Google sign-in; after it the user comes back to `returnTo` (default: this page). */
+  login: (returnTo?: string, source?: string) => void;
   logout: () => void;
 }
 
@@ -34,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           role: (userData.role as 'USER' | 'ADMIN') || 'USER',
           isAdmin: userData.isAdmin || false,
         });
+        const started = consumeSignInStarted();
+        if (started) track('signin_success', { source: started.source, return_to: started.returnTo });
       } else {
         setUser(null);
       }
@@ -45,13 +50,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const login = () => {
-    const loginPath = '/oauth2/authorization/google';
-    const target =
-      API_BASE_URL && API_BASE_URL.length > 0
-        ? `${API_BASE_URL}${loginPath}`
-        : loginPath;
-    window.location.href = target.trim();
+  const login = (returnTo?: string, source = 'direct') => {
+    const url = buildLoginUrl(returnTo);
+    markSignInStarted(source, returnTo ?? window.location.pathname);
+    track('signin_continue', { source });
+    window.location.href = url;
   };
 
   const logout = async () => {

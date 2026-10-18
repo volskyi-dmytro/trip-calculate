@@ -19,7 +19,10 @@ function setValue(input: HTMLInputElement, v: string) {
 const key = (el: Element, k: string) => act(() => { el.dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true })) })
 const input = () => host.querySelector('input')!
 
+// The user types (React onChange fires), then the parent echoes the value back.
 async function typeQuery(q: string) {
+  render('')
+  act(() => setValue(input(), q))
   render(q)
   await act(async () => { await vi.advanceTimersByTimeAsync(500) })
 }
@@ -36,6 +39,15 @@ beforeEach(() => {
 afterEach(() => { act(() => root.unmount()); host.remove(); vi.useRealTimers(); vi.restoreAllMocks() })
 
 describe('PlaceCombobox (QA F2)', () => {
+  it('does not search or open for a value the app sets (e.g. an AI result filling the field)', async () => {
+    render('')
+    render('Kyiv, Ukraine')
+    await act(async () => { await vi.advanceTimersByTimeAsync(500) })
+    expect(geocodingService.searchPlaces).not.toHaveBeenCalled()
+    expect(input().getAttribute('aria-expanded')).toBe('false')
+    expect(host.querySelector('[role="listbox"]')).toBeNull()
+  })
+
   it('exposes combobox/listbox/option roles with suggestions', async () => {
     await typeQuery('Ternopil')
     expect(input().getAttribute('role')).toBe('combobox')

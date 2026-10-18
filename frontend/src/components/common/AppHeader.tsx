@@ -50,6 +50,23 @@ export function TopbarControls() {
         {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
+      {!loading && user && (
+        <nav className="topbar-nav" aria-label={t('header.nav.label')}>
+          <Link
+            to={withLocalePrefix('/route-planner', language)}
+            aria-current={location.pathname === withLocalePrefix('/route-planner', language) ? 'page' : undefined}
+          >
+            {t('header.nav.planTrip')}
+          </Link>
+          <Link
+            to={withLocalePrefix('/dashboard', language)}
+            aria-current={location.pathname === withLocalePrefix('/dashboard', language) ? 'page' : undefined}
+          >
+            {t('header.nav.myTrips')}
+          </Link>
+        </nav>
+      )}
+
       {!loading && (user ? <UserMenu /> : <LoginButton />)}
     </div>
   );

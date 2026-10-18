@@ -42,6 +42,11 @@ import { routeEditPath } from '../utils/routePaths'
 import { routeCalculationKey, resolveRouteCalculation } from '../utils/aiResultCard'
 import { preferredCarForAiResult } from '../utils/carSelection'
 import { loadCatalog, type CatalogEntry } from '../utils/carCatalog'
+import { SignInSheet, type SignInReason } from './auth/SignInSheet'
+import { GuestAiPrompt } from './planner/GuestAiPrompt'
+import { savePlannerDraft, takePlannerDraft, defaultTripName } from '../utils/plannerDraft'
+import { parsePlannerPrefill } from '../utils/plannerPrefill'
+import { track } from '../lib/analytics'
 import type { WeatherData } from '../types/weather'
 import '../styles/route-planner.css'
 
@@ -66,7 +71,8 @@ export interface RouteSettings {
 
 const DEFAULT_ROUTE_SETTINGS: RouteSettings = {
   fuelConsumption: 9.2,
-  fuelCostPerLiter: 55,
+  // Fallback only: the live country-average price replaces it while untouched.
+  fuelCostPerLiter: 87,
   currency: 'UAH',
   passengerCount: 1,
   fuelType: 'petrol',
@@ -89,6 +95,14 @@ export function RoutePlanner() {
   const [searchParams] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
+  // Guests get the full manual planner; AI, saving and loading ask for sign-in.
+  const isGuest = !user
+  const [signIn, setSignIn] = useState<{ reason: SignInReason; returnTo: string; source: string } | null>(null)
+  // Read once on mount: a city-route deep link, or a trip coming back from sign-in.
+  const [initialPrefill] = useState(() => parsePlannerPrefill(searchParams))
+  const [resumeMode] = useState(() => searchParams.get('resume'))
+  const aiStartedAt = useRef(0)
+  const [saveNameError, setSaveNameError] = useState(false)
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
   const [routeSettings, setRouteSettingsState] = useState<RouteSettings>(() => {
@@ -181,8 +195,10 @@ export function RoutePlanner() {
   // View mode: welcome screen vs dashboard
   // A saved route (?routeId=) opens straight into the planner — rendering the
   // welcome first would flash it (and fetch its artwork) before the load.
-  const [showWelcomeScreen, setShowWelcomeScreen] = useState(() => !searchParams.get('routeId'))
-  const [manualMode, setManualMode] = useState(false)
+  // Guests and deep links (?from=…&to=…, a restored draft) skip the AI welcome.
+  const [showWelcomeScreen, setShowWelcomeScreen] = useState(
+    () => !searchParams.get('routeId') && Boolean(user) && !initialPrefill && !resumeMode)
+  const [manualMode, setManualMode] = useState(() => !user || Boolean(initialPrefill) || Boolean(resumeMode))
 
   // Map visibility state (Issue #1 fix: Collapsible map)
   const [isMapVisible, setIsMapVisible] = useState<boolean>(() => {
@@ -226,15 +242,74 @@ export function RoutePlanner() {
     }
   })
 
-  // Load user's routes on mount
+  // Load user's routes on mount (guests have none)
   useEffect(() => {
-    loadSavedRoutes()
-  }, [])
+    if (user) loadSavedRoutes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per sign-in state
+  }, [user])
 
   // Refetch when the dialog opens so routes saved elsewhere (other tab) show up
   useEffect(() => {
-    if (showLoadDialog) loadSavedRoutes()
+    if (showLoadDialog && user) loadSavedRoutes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- dialog open only
   }, [showLoadDialog])
+
+  // One-time start state: a deep link from a city-route page, or the guest
+  // draft restored after Google sign-in (then the save dialog reopens).
+  useEffect(() => {
+    if (resumeMode) {
+      const draft = takePlannerDraft()
+      if (draft) {
+        setWaypoints(draft.waypoints)
+        setRouteSettings(draft.routeSettings)
+        if (draft.departureDate) setDepartureDate(draft.departureDate)
+        if (resumeMode === 'save' && user) {
+          setRouteName(defaultTripName(draft.waypoints))
+          setShowSaveDialog(true)
+          track('route_save_open', { source: 'resume_after_signin' })
+        }
+      }
+      // Drop ?resume so a reload doesn't try again
+      navigate(withLocalePrefix('/route-planner', language), { replace: true })
+      return
+    }
+    if (initialPrefill) {
+      const { from, to, passengers } = initialPrefill
+      setWaypoints([
+        { id: `prefill-${Date.now()}-a`, lat: from.lat, lng: from.lng, name: from.name },
+        { id: `prefill-${Date.now()}-b`, lat: to.lat, lng: to.lng, name: to.name },
+      ])
+      if (passengers) setRouteSettings(prev => ({ ...prev, passengerCount: passengers }))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- mount only
+  }, [])
+
+  /** Guests: keep the trip, explain why we ask, then go to Google and come back here. */
+  const askToSignIn = useCallback((reason: SignInReason, source: string) => {
+    const resume = reason === 'save' ? 'save' : 'restore'
+    setSignIn({
+      reason,
+      source,
+      returnTo: `${withLocalePrefix('/route-planner', language)}?resume=${resume}`,
+    })
+  }, [language])
+
+  const stashDraft = useCallback(() => {
+    if (waypoints.length > 0) savePlannerDraft({ waypoints, routeSettings, departureDate })
+  }, [waypoints, routeSettings, departureDate])
+
+  /** Save from the result card / fallback button: prefilled name, or sign-in for guests. */
+  const openSaveDialog = useCallback(() => {
+    if (!routeReady) return
+    if (isGuest) {
+      askToSignIn('save', 'planner_save')
+      return
+    }
+    setSaveNameError(false)
+    setRouteName(name => name.trim() ? name : defaultTripName(waypoints))
+    setShowSaveDialog(true)
+    track('route_save_open', { source: 'planner', edit: isEditMode })
+  }, [routeReady, isGuest, askToSignIn, waypoints, isEditMode])
 
   // Persist waypoints to localStorage
   useEffect(() => {
@@ -279,6 +354,10 @@ export function RoutePlanner() {
   // Check for routeId in URL parameters and load route for editing
   useEffect(() => {
     const routeId = searchParams.get('routeId')
+    if (routeId && !user) {
+      askToSignIn('general', 'planner_route_link')
+      return
+    }
     if (routeId) {
       const id = parseInt(routeId, 10)
       if (!isNaN(id)) {
@@ -409,6 +488,10 @@ export function RoutePlanner() {
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
+          track('ai_result_shown', {
+            success: true,
+            latency_ms: aiStartedAt.current ? Date.now() - aiStartedAt.current : undefined,
+          })
         }
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -501,7 +584,7 @@ export function RoutePlanner() {
   // pending skip doesn't outlive the route it was set for.
   useEffect(() => {
     if (skipNextWeatherFetch.current) { skipNextWeatherFetch.current = false; return }
-    if (waypoints.length < 2) { setWeatherData(null); return }
+    if (waypoints.length < 2 || !user) { setWeatherData(null); return }
     const seq = ++weatherFetchSeq.current
     const handle = setTimeout(async () => {
       const weather = await fetchCorridorWeather(
@@ -512,7 +595,7 @@ export function RoutePlanner() {
       setWeatherData(weather)
     }, 800)
     return () => clearTimeout(handle)
-  }, [waypoints, departureDate])
+  }, [waypoints, departureDate, user])
 
   const loadSavedRoutes = async () => {
     setLoadingRoutes(true)
@@ -649,7 +732,9 @@ export function RoutePlanner() {
     }
 
     if (!routeName.trim()) {
-      toast.error(t.toasts.enterRouteName)
+      // Shown under the field (aria-describedby), not as a far-away toast
+      setSaveNameError(true)
+      document.getElementById('route-name')?.focus()
       return
     }
 
@@ -691,7 +776,10 @@ export function RoutePlanner() {
       } else {
         // Create new route
         const newRoute = await routeService.createRoute(routeData)
-        toast.success(t.toasts.routeSaved)
+        toast.success(t.toasts.routeSaved, {
+          duration: 6000,
+          action: { label: t.toasts.viewTrips, onClick: () => navigate(withLocalePrefix('/dashboard', language)) },
+        })
 
         // If saving as new from edit mode, switch to editing the new route
         if (saveAsNew && isEditMode) {
@@ -701,11 +789,13 @@ export function RoutePlanner() {
         }
       }
 
+      track('route_save_success', { edit: isEditMode && !saveAsNew, stops: waypoints.length })
       setShowSaveDialog(false)
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to save route:', error)
       const response = (error as { response?: { status?: number; data?: unknown } }).response
+      track('route_save_error', { error_type: String(response?.data ?? response?.status ?? 'network') })
       if (response?.status === 409 && response.data === 'ROUTE_SNAPSHOT_STALE') {
         setShowSaveDialog(false)
         setShowResultShareDialog(false)
@@ -1029,8 +1119,11 @@ const handleManualAddressSubmit = useCallback(async () => {
     const message = submittedMessage.trim();
     if (!message) return;
 
+    if (isGuest) { askToSignIn('ai', 'planner_ai'); return; }
     setAiLimit(null);
     setIsProcessingAi(true);
+    aiStartedAt.current = Date.now();
+    track('ai_prompt_sent', { prompt_length: message.length, has_route: waypoints.length >= 2 });
     // New request replaces whatever the slot was showing: hide any
     // previous result immediately (progress UI takes over the slot while
     // isProcessing is true, then this stays false on error so the slot
@@ -1100,8 +1193,13 @@ const handleManualAddressSubmit = useCallback(async () => {
 
         // Update fuel cost — a chat-dictated price is user-chosen, so mark it
         // touched: the applyLiveFuelPrice guard must never overwrite it
+        // When the agent's price came from its live fuel tool (fuelData), it IS
+        // the live average, not a price the user dictated: leave it untouched
+        // so later route edits keep tracking the live price, and no
+        // contradictory "Use live price" button appears next to it.
         if (agentData.price) {
-          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: true }));
+          const fromLiveTool = Boolean(agentData.fuelData);
+          setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: !fromLiveTool }));
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
 
@@ -1236,13 +1334,16 @@ const handleManualAddressSubmit = useCallback(async () => {
         const reason = agentResult.error || t.chat.aiFailedDescription;
 
         setBlockingError({ title: t.chat.aiFailedTitle, description: reason });
+        track('ai_error', { type: 'no_route' });
       }
     } catch (e) {
       console.error(e);
       if (e instanceof AiRateLimitError) {
         setAiLimit({ retryAt: e.retryAt });
+        track('ai_error', { type: 'rate_limit' });
         return;
       }
+      track('ai_error', { type: 'generic' });
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
 
       // The raw message is technical and English-only; it stays in the console.
@@ -1253,7 +1354,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings, isGuest, askToSignIn]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {
@@ -1328,7 +1429,7 @@ const handleManualAddressSubmit = useCallback(async () => {
           estimatePending={!routeReady}
           fuelSuggestion={fuelSuggestion}
           weather={weatherData}
-          onSaveRoute={() => { if (routeReady) setShowSaveDialog(true) }}
+          onSaveRoute={openSaveDialog}
           onShareReceipt={() => { if (routeReady && routeQuality === 'road') setShowResultShareDialog(true) }}
           onApplyLivePrice={handleApplyFuelSuggestion}
           saveLabel={isEditMode ? t.planner.updateRoute : undefined}
@@ -1351,6 +1452,10 @@ const handleManualAddressSubmit = useCallback(async () => {
           )}
           <span className="truncate">{routeName || t.planner.editingRoute}</span>
         </div>
+      )}
+
+      {isGuest && waypoints.length < 2 && (
+        <p className="text-sm" style={{ color: 'var(--nav-text-secondary)' }}>{t.guest.intro}</p>
       )}
 
       {/* Screen-reader-only heading: the first task group (start,
@@ -1450,10 +1555,15 @@ const handleManualAddressSubmit = useCallback(async () => {
         </div>
       </div>
 
-      {/* ── Calculate Route button ── */}
+      {/* ── Calculate Route button ── hidden once the route on the map already
+          matches the Start/Destination fields (nothing left to calculate) */}
       {(() => {
         const isBusy = isSearchingStart || isSearchingDestination || isCalculatingRoute
         const hasInputs = startLocationInput.trim().length > 0 && destinationInput.trim().length > 0
+        const upToDate = !isBusy && waypoints.length >= 2 && !routeUnreachable
+          && startLocationInput === waypoints[0].name
+          && destinationInput === waypoints[waypoints.length - 1].name
+        if (upToDate) return null
         const isDisabled = !hasInputs || isBusy
         return (
           <button
@@ -1533,8 +1643,8 @@ const handleManualAddressSubmit = useCallback(async () => {
           </button>
         )}
 
-        {/* Load Route Dialog trigger */}
-        <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
+        {/* Load Route Dialog trigger — guests have no saved trips */}
+        {!isGuest && <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
           <DialogTrigger asChild>
             <button
               className="min-h-11 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
@@ -1591,7 +1701,7 @@ const handleManualAddressSubmit = useCallback(async () => {
               )}
             </div>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
 
         {/* Secondary route actions — one compact row under Load route */}
         <div className={`grid gap-2 ${waypoints.length < 2 ? "grid-cols-3" : "grid-cols-2"}`}>
@@ -1600,6 +1710,7 @@ const handleManualAddressSubmit = useCallback(async () => {
             {/* With 2+ waypoints the summary card owns Save; this is the fallback. */}
             {waypoints.length < 2 && <DialogTrigger asChild>
               <button
+                onClick={(e) => { e.preventDefault(); openSaveDialog() }}
                 disabled={!routeReady}
                 title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
                 className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
@@ -1627,20 +1738,22 @@ const handleManualAddressSubmit = useCallback(async () => {
                     id="route-name"
                     placeholder={t.dialogs.save.placeholder}
                     value={routeName}
-                    onChange={(e) => setRouteName(e.target.value)}
+                    aria-invalid={saveNameError || undefined}
+                    aria-describedby={saveNameError ? 'route-name-error' : undefined}
+                    onChange={(e) => { setRouteName(e.target.value); if (e.target.value.trim()) setSaveNameError(false) }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !savingRoute) saveRouteToServer(false)
                     }}
                   />
+                  {saveNameError && (
+                    <p id="route-name-error" role="alert" className="mt-1 text-sm text-destructive">
+                      {t.dialogs.save.nameRequired.replace('{example}', defaultTripName(waypoints, 'Kyiv → Lviv'))}
+                    </p>
+                  )}
                 </div>
-                <div className="text-sm text-muted-foreground">
-                  <p>{isEditMode ? t.planner.willUpdate : t.dialogs.save.willSave}</p>
-                  <ul className="list-disc list-inside mt-2 space-y-1">
-                    <li>{waypoints.length} {t.dialogs.save.waypoints}</li>
-                    <li>{t.dialogs.save.fuelSettings}</li>
-                    <li>{t.dialogs.save.calculations}</li>
-                  </ul>
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  {isEditMode ? t.planner.willUpdate : t.dialogs.save.summary}
+                </p>
               </div>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowSaveDialog(false)}>
@@ -1705,7 +1818,12 @@ const handleManualAddressSubmit = useCallback(async () => {
     </>
   )
 
-  const renderComposer = () => (
+  const renderComposer = () => isGuest ? (
+    <GuestAiPrompt
+      onSignIn={() => askToSignIn('ai', 'planner_ai_prompt')}
+      sampleHref={`${withLocalePrefix('/route-planner', language)}?sample=1`}
+    />
+  ) : (
     <>
       <AgentActivitySlot
         isProcessing={isProcessingAi}
@@ -1883,6 +2001,18 @@ const handleManualAddressSubmit = useCallback(async () => {
         destructive
         onConfirm={() => { if (routeToDelete?.id != null) void deleteRouteFromServer(routeToDelete.id) }}
       />
+
+      {/* Guests: why we ask for Google, before leaving the page. The trip is
+          stashed first so it is restored when they come back signed in. */}
+      {signIn !== null && <SignInSheet
+        open
+        onOpenChange={(open) => { if (!open) setSignIn(null) }}
+        reason={signIn?.reason}
+        returnTo={signIn?.returnTo}
+        source={signIn?.source}
+        hasDraft={waypoints.length > 0}
+        onBeforeLogin={stashDraft}
+      />}
 
       {/* ── Dialogs — rendered at root level for correct z-index ── */}
 

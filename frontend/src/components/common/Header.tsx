@@ -5,6 +5,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { useSeason, seasonAssets } from '../../hooks/useSeason';
 import { withLocalePrefix } from '../../utils/locale';
 import { prefetchRoutePlanner } from '../../utils/plannerChunk';
+import { track } from '../../lib/analytics';
 
 const prefetchProps = {
   onMouseEnter: prefetchRoutePlanner,
@@ -12,15 +13,20 @@ const prefetchProps = {
   onTouchStart: prefetchRoutePlanner,
 };
 
-interface HeaderProps {
-  onCalculateClick?: () => void;
-  /** Guest tap on "Create a trip": lets the page show a sign-in preview first. Defaults to going straight to login. */
-  onGuestCreateTrip?: () => void;
+/** Hero "I already know the distance": jump to the one inline calculator
+ *  instead of opening a second, different calculator in a dialog. */
+function focusQuickCalculator() {
+  const field = document.getElementById('quick-distance') as HTMLInputElement | null;
+  if (!field) return;
+  const reduce = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  field.scrollIntoView({ behavior: reduce ? 'auto' : 'smooth', block: 'center' });
+  field.focus({ preventScroll: true });
+  field.select();
 }
 
-export function Header({ onCalculateClick, onGuestCreateTrip }: HeaderProps) {
+export function Header() {
   const location = useLocation();
-  const { user, loading, login } = useAuth();
+  const { user, loading } = useAuth();
   const { language, t } = useLanguage();
   const art = seasonAssets[useSeason()];
 
@@ -46,16 +52,22 @@ export function Header({ onCalculateClick, onGuestCreateTrip }: HeaderProps) {
             <h1>{t('header.title')}</h1>
             <p className="hero-sub">{t('header.tagline')}</p>
             <div className="hero-actions">
-              {user ? (
-                <Link id="create-trip-btn" className="btn" {...prefetchProps} to={withLocalePrefix('/route-planner', language)}>
-                  {t('header.createTrip')}
-                </Link>
-              ) : (
-                <button id="create-trip-btn" type="button" className="btn" {...prefetchProps} onClick={onGuestCreateTrip ?? login}>
-                  {t('header.createTrip')}
-                </button>
-              )}
-              <button className="btn btn-secondary" onClick={onCalculateClick}>
+              {/* The planner opens for guests too (manual planning); sign-in is
+                  asked for only when they save or use AI. */}
+              <Link
+                id="create-trip-btn"
+                className="btn"
+                {...prefetchProps}
+                to={withLocalePrefix('/route-planner', language)}
+                onClick={() => track('cta_click', { location: 'hero', label: 'plan_trip', signed_in: Boolean(user) })}
+              >
+                {t('header.createTrip')}
+              </Link>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => { track('cta_click', { location: 'hero', label: 'know_distance' }); focusQuickCalculator(); }}
+              >
                 {t('header.calculate')}
               </button>
             </div>

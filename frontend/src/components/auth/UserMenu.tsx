@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { ChevronDown, User, LayoutDashboard, Shield, LogOut } from 'lucide-react';
+import { ChevronDown, User, LayoutDashboard, Shield, LogOut, Map as MapIcon } from 'lucide-react';
 import { avatarProxyUrl } from '../../utils/avatar';
 import { withLocalePrefix } from '../../utils/locale';
 
@@ -42,8 +42,17 @@ export function UserMenu() {
 
   const menuItems = [
     {
+      icon: MapIcon,
+      label: t('header.nav.planTrip'),
+      onClick: () => {
+        navigate(withLocalePrefix('/route-planner', language));
+        setIsOpen(false);
+      },
+      show: true,
+    },
+    {
       icon: LayoutDashboard,
-      label: t('header.nav.dashboard'),
+      label: t('header.nav.myTrips'),
       onClick: () => {
         navigate(withLocalePrefix('/dashboard', language));
         setIsOpen(false);

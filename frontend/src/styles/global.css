@@ -473,18 +473,42 @@ main:focus {
     box-shadow: var(--shadow-md);
 }
 
-/* Icon-only under ~480px so the label can't push the language switch
-   off-screen (see .topbar-controls below); aria-label on the anchor keeps
-   it accessible when the visible label is hidden. */
+/* Under ~480px the full label can't fit next to the language switch, so
+   it swaps to a short visible "Sign in" (an icon-only arrow wasn't
+   recognizable). aria-label on the anchor keeps the full name for AT. */
+.btn-google-label-short {
+    display: none;
+}
+
 @media (max-width: 480px) {
     .btn-google {
-        width: 44px;
-        min-width: 44px;
-        padding: 0;
+        gap: 6px;
+        padding: 0 12px;
     }
 
     .btn-google-label {
         display: none;
+    }
+
+    .btn-google-label-short {
+        display: inline;
+    }
+
+    .btn-google-icon {
+        display: none;
+    }
+}
+
+/* Phones: the visible "Sign in" label needs the room, so the brand keeps
+   only its icon (the name stays available to screen readers). */
+@media (max-width: 420px) {
+    .topbar .brand span {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
     }
 }
 
@@ -686,6 +710,58 @@ main:focus {
     color: #1a242e;
 }
 
+/* Signed-in shortcuts (Plan a trip / My trips). On phones they live in the
+   account menu instead, so the top bar keeps room for the language switch. */
+.topbar-nav {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.topbar-nav a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    border-radius: 9px;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    background: rgba(14, 20, 26, 0.38);
+    -webkit-backdrop-filter: blur(12px) saturate(1.3);
+    backdrop-filter: blur(12px) saturate(1.3);
+    color: #ffffff;
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-decoration: none;
+}
+
+.topbar-nav a:hover,
+.topbar-nav a[aria-current="page"] {
+    background: rgba(14, 20, 26, 0.6);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+.app-bar .topbar-nav a {
+    background: var(--glass-input);
+    border-color: var(--border-strong);
+    color: var(--text-2);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.app-bar .topbar-nav a:hover,
+.app-bar .topbar-nav a[aria-current="page"] {
+    background: var(--accent-soft);
+    color: var(--text);
+}
+
+@media (max-width: 720px) {
+    .topbar-nav {
+        display: none;
+    }
+}
+
 /* Slim bar variant (planner): same controls as the hero header, themed for a glass strip */
 .app-bar .brand,
 .app-bar .brand:hover {
@@ -842,17 +918,6 @@ main:focus {
     text-align: center;
 }
 
-.home-intro-eyebrow {
-    margin: 0;
-    /* --accent is 3.9:1 on the veiled page at this size; the hover shade is
-       darker in light mode and lighter in dark mode — AA in both. */
-    color: var(--accent-hover);
-    font-size: 0.75rem;
-    font-weight: 750;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-}
-
 .home-intro-title {
     margin: 12px 0;
     font-size: clamp(1.5rem, 4.5vw, 1.9rem);
@@ -862,20 +927,65 @@ main:focus {
     text-wrap: balance;
 }
 
-.home-intro-text {
+/* "How it works": three numbered steps — shows what the planner does
+   instead of a decorative illustration and a second headline. */
+.home-steps {
+    list-style: none;
     margin: 0 auto;
-    max-width: 44ch;
-    color: var(--text-2);
-    line-height: 1.6;
-    text-wrap: pretty;
+    padding: 0;
+    max-width: 34rem;
+    display: grid;
+    gap: 16px;
+    text-align: left;
 }
 
-/* Full composition, never cropped; transparent edges sit on either theme. */
-.home-intro-art {
-    display: block;
-    width: min(340px, 100%);
-    height: auto;
-    margin: 20px auto 0;
+.home-step {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.home-step-num {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    background: var(--accent-soft);
+    color: var(--accent-hover);
+    font-weight: 800;
+}
+
+.home-step h3 {
+    margin: 2px 0 4px;
+    font-size: 1.02rem;
+    font-weight: 700;
+}
+
+.home-step p {
+    margin: 0;
+    color: var(--text-2);
+    line-height: 1.55;
+}
+
+.home-how-cta {
+    margin-top: 20px;
+}
+
+.home-calc-label {
+    margin: 0 0 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    color: var(--text);
+    text-align: center;
+}
+
+.route-chip-more {
+    cursor: pointer;
+    font-family: inherit;
+    color: var(--accent-hover);
 }
 
 @media (min-width: 900px) {
@@ -883,6 +993,7 @@ main:focus {
         grid-template-columns: minmax(0, 1fr) 26rem;
         gap: 64px;
         margin: 56px 0;
+        align-items: start;
     }
 
     .home-intro-calc {
@@ -894,12 +1005,12 @@ main:focus {
         text-align: left;
     }
 
-    .home-intro-text {
+    .home-steps {
         margin: 0;
     }
 
-    .home-intro-art {
-        margin: 24px auto 0;
+    .home-calc-label {
+        text-align: left;
     }
 }
 
@@ -1204,6 +1315,16 @@ main:focus {
 .legal td {
     color: var(--text-2);
     min-width: 8rem;
+}
+
+.footer-about {
+    padding-bottom: 12px;
+    font-size: 0.88rem;
+    color: var(--text-2);
+}
+
+.footer-about p {
+    margin: 0 0 6px;
 }
 
 .footer-inner nav.footer-links {

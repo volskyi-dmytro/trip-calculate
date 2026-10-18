@@ -307,6 +307,28 @@ public class SecurityConfig {
         // intercepted code is useless; prompt=login keeps the account chooser.
         resolver.setAuthorizationRequestCustomizer(OAuth2AuthorizationRequestCustomizers.withPkce()
                 .andThen(customizer -> customizer.additionalParameters(params -> params.put("prompt", "login"))));
-        return resolver;
+        // Remember the page the visitor started from (?returnTo=/en/route-planner) so the
+        // success handler can send them back there instead of the homepage.
+        return new OAuth2AuthorizationRequestResolver() {
+            @Override
+            public org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest resolve(
+                    jakarta.servlet.http.HttpServletRequest request) {
+                var authorizationRequest = resolver.resolve(request);
+                if (authorizationRequest != null) {
+                    com.tripplanner.TripPlanner.security.LoginReturnTo.capture(request);
+                }
+                return authorizationRequest;
+            }
+
+            @Override
+            public org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest resolve(
+                    jakarta.servlet.http.HttpServletRequest request, String clientRegistrationId) {
+                var authorizationRequest = resolver.resolve(request, clientRegistrationId);
+                if (authorizationRequest != null) {
+                    com.tripplanner.TripPlanner.security.LoginReturnTo.capture(request);
+                }
+                return authorizationRequest;
+            }
+        };
     }
 }

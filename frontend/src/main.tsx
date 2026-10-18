@@ -10,6 +10,10 @@ import '@fontsource/jetbrains-mono/600.css'
 import './styles/global.css'           // Tailwind base + global styles
 import './styles/route-planner.css'    // Custom route planner (last = highest priority)
 import App from './App.tsx'
+import { initAnalytics } from './lib/analytics'
+
+// No-op unless VITE_ANALYTICS_SRC is set at build time.
+initAnalytics()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
