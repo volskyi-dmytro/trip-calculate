@@ -45,6 +45,13 @@ describe('PlaceCombobox (QA F2)', () => {
     expect(opts[0].textContent).toContain('Ternopil')
   })
 
+  it('renders the list on an opaque surface so the field below does not show through', async () => {
+    await typeQuery('Ternopil')
+    const list = host.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(list.style.background).toContain('var(--surface)')
+    expect(list.className).not.toMatch(/bg-popover|bg-transparent/)
+  })
+
   it('ArrowDown + Enter picks the highlighted suggestion, not the first hit', async () => {
     await typeQuery('Ternopil')
     key(input(), 'ArrowDown'); key(input(), 'ArrowDown'); key(input(), 'Enter')

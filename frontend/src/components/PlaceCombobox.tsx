@@ -83,7 +83,10 @@ export function PlaceCombobox({ value, onChange, onPick, onSubmit, language, lab
           id={listId}
           role="listbox"
           aria-label={label}
-          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-md border bg-popover text-popover-foreground shadow-lg"
+          className="absolute left-0 right-0 top-full z-50 mt-1 max-h-60 overflow-auto rounded-md border shadow-lg"
+          // Opaque surface tokens: the panel behind is frosted glass, so a translucent list lets the
+          // next field's label show through the options.
+          style={{ background: 'var(--surface)', color: 'var(--text)', borderColor: 'var(--border-strong)' }}
         >
           {places.map((p, i) => (
             <li
@@ -93,7 +96,8 @@ export function PlaceCombobox({ value, onChange, onPick, onSubmit, language, lab
               aria-selected={i === active}
               // mousedown (not click) so the input's blur doesn't close the list first.
               onMouseDown={e => { e.preventDefault(); pick(p) }}
-              className={`min-h-11 cursor-pointer px-3 py-2 text-sm ${i === active ? 'bg-accent text-accent-foreground' : ''}`}
+              className="min-h-11 cursor-pointer px-3 py-2 text-sm"
+              style={i === active ? { background: 'var(--accent-soft)' } : undefined}
             >
               <span className="font-medium">{p.name}</span>
               <span className="block truncate text-xs opacity-70">{p.displayName}</span>
