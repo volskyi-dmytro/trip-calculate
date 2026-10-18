@@ -44,7 +44,7 @@ class RouteServiceRealRoutingTest {
         RouteRepository routes = mock(RouteRepository.class);
         when(routes.save(any(Route.class))).thenAnswer(i -> i.getArgument(0));
         return new RouteService(routes, mock(WaypointRepository.class),
-            new RoutingService(rt, "", "https://trip-calculate.online"));
+            new RoutingService(rt, "", "https://trip-calculate.online"), com.tripplanner.TripPlanner.service.RouteTestTransactions.manager(), new com.tripplanner.TripPlanner.service.RouteSaveLimiter(4, 1), mock(jakarta.persistence.EntityManagerFactory.class));
     }
 
     @Test
@@ -65,7 +65,7 @@ class RouteServiceRealRoutingTest {
     @Test
     void mismatchingSnapshotIsRejected() {
         assertThatThrownBy(() -> service(true).saveRoute(request("100.00", "road"), 7L))
-            .isInstanceOf(IllegalArgumentException.class);
+            .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
     }
 
     private SaveRouteRequest request(String km, String quality) {

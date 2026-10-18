@@ -1,6 +1,7 @@
 import type { EstimateQuality } from './routingService'
+import { calculateRouteCost, normalizeDecimal } from './routeCost'
 
-export const ESTIMATE_MODEL_VERSION = 'trip-estimate/1'
+export const ESTIMATE_MODEL_VERSION = 'trip-estimate/2'
 export const ASSUMED_SPEED_KMH = 80
 
 export interface TripStats {
@@ -92,7 +93,7 @@ export function computeTripStats(
     }
   }
 
-  let totalDistance = routeDistance
+  let totalDistance = normalizeDecimal(routeDistance)
 
   const segments: { from: string; to: string; distance: number }[] = []
 
@@ -104,9 +105,9 @@ export function computeTripStats(
     return calculateDistance(from.lat, from.lng, to.lat, to.lng)
   })
   const haversineTotal = haversineDistances.reduce((sum, distance) => sum + distance, 0)
-  const routedScale = totalDistance > 0 && haversineTotal > 0 ? totalDistance / haversineTotal : 1
+  const routedScale = routeDistance > 0 && haversineTotal > 0 ? totalDistance / haversineTotal : 1
   const scaledDistances = haversineDistances.map(distance => distance * routedScale)
-  const segmentDistances = totalDistance > 0
+  const segmentDistances = routeDistance > 0
     ? reconcileRoundedSegments(scaledDistances, totalDistance)
     : scaledDistances
 
@@ -119,14 +120,16 @@ export function computeTripStats(
   }
 
   // Outage: the straight-line sum is the (labelled) approximate distance
-  if (totalDistance === 0 && segments.length > 0) {
-    totalDistance = segments.reduce((sum, seg) => sum + seg.distance, 0)
+  if (routeDistance === 0 && segments.length > 0) {
+    totalDistance = normalizeDecimal(segments.reduce((sum, seg) => sum + seg.distance, 0))
+    const reconciled = reconcileRoundedSegments(segments.map(segment => segment.distance), totalDistance)
+    segments.forEach((segment, index) => { segment.distance = reconciled[index] })
   }
 
-  const fuelNeeded = (totalDistance / 100) * routeSettings.fuelConsumption
-  const fuelCost = fuelNeeded * routeSettings.fuelCostPerLiter
   const passengerCount = routeSettings.passengerCount || 1
-  const costPerPerson = fuelCost / passengerCount
+  const { fuelNeeded, total: fuelCost, perPerson: costPerPerson } = calculateRouteCost(
+    totalDistance, routeSettings.fuelConsumption, routeSettings.fuelCostPerLiter, passengerCount,
+  )
 
   const providerDuration = quality === 'road' && routeDuration > 0
   const estimatedTime = providerDuration ? routeDuration / 60 : totalDistance / ASSUMED_SPEED_KMH

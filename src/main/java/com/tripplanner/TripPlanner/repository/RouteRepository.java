@@ -12,6 +12,11 @@ import java.util.Optional;
 
 @Repository
 public interface RouteRepository extends JpaRepository<Route, Long> {
+    // Lock only the root: PostgreSQL cannot FOR UPDATE the nullable side of a fetch join.
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT r FROM Route r WHERE r.id = :id")
+    Optional<Route> findRootForUpdate(@Param("id") Long id);
+
     List<Route> findByUserIdOrderByUpdatedAtDesc(Long userId);
 
     List<Route> findByUserIdOrderByUpdatedAtDesc(Long userId, Pageable pageable);

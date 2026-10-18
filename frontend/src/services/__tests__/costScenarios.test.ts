@@ -9,7 +9,10 @@ const base: CostInputs = { distanceKm: 584, consumption: 7.5, price: 1.75, passe
 describe('computeCost', () => {
   it('matches the calculator formula exactly (76.65 total, 19.16 per person)', () => {
     const r = computeCost(base)!
-    expect(r.total).toBe((584 / 100) * 7.5 * 1.75)
+    // route-cost/2 returns rounded decimal money, not a binary product's tail.
+    // The shared route-cost-v2 fixture suite exercises the same contract.
+    expect(r.total).toBe(76.65)
+    expect(r.perPerson).toBe(19.16)
     expect(formatAmount(r.total, 'EUR')).toBe('76.65 EUR')
     expect(formatAmount(r.perPerson, 'EUR')).toBe('19.16 EUR')
   })

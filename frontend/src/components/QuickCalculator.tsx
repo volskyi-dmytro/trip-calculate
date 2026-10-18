@@ -13,6 +13,7 @@ import { ScenarioComparison } from './calculator/ScenarioComparison';
 import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorage';
 import { carService } from '../services/carService';
 import { convertFuelPrice, suggestFuelPrice } from '../utils/currencyFuelPrice';
+import { calculateRouteCost, normalizeDecimal } from '../services/routeCost';
 import { useNumericField } from '../hooks/useNumericField';
 import type { CarSelection, GarageCar } from '../types/Car';
 
@@ -46,21 +47,17 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   const initial = !prefill && example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
   const stored = loadStoredCar();
   const [exampleActive, setExampleActive] = useState(!prefill && example);
-  const [distance, setDistance] = useState<number>(prefill?.distance ?? initial?.distance ?? 0);
+  const [distance, setDistance] = useState<number>(normalizeDecimal(prefill?.distance ?? initial?.distance ?? 0));
   const [passengers, setPassengers] = useState<number>(prefill?.passengers ?? initial?.people ?? 1);
   const [fuelConsumption, setFuelConsumption] = useState<number>(
-    prefill?.consumption ?? initial?.consumption ?? stored?.consumption ?? 8.5,
+    normalizeDecimal(prefill?.consumption ?? initial?.consumption ?? stored?.consumption ?? 8.5),
   );
-  const [fuelPrice, setFuelPrice] = useState<number>(prefill?.price ?? initial?.price ?? 55);
+  const [fuelPrice, setFuelPrice] = useState<number>(normalizeDecimal(prefill?.price ?? initial?.price ?? 55));
   const [currency, setCurrency] = useState<string>(prefill?.currency ?? initial?.currency ?? 'UAH');
   const [pickerOpen, setPickerOpen] = useState(false);
   const [storedCar, setStoredCar] = useState<CarSelection | null>(stored);
   const [garageCars, setGarageCars] = useState<GarageCar[]>([]);
-  // Once the user deliberately types a fuel price, currency switches stop
-  // overwriting it (see fuelPriceService.applyLiveFuelPrice for the same rule).
   const [fuelPriceTouched, setFuelPriceTouched] = useState(false);
-  // Read when a currency-switch price lookup resolves: the user may have
-  // typed a price or switched again while it was in flight.
   const priceGuard = useRef({ touched: false, currency });
   priceGuard.current = { touched: fuelPriceTouched, currency };
 
@@ -69,8 +66,9 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   }, [user]);
 
   // Derived, not stored: the what-if comparison prices its baseline with the same formula.
-  const totalCost = (distance / 100) * fuelConsumption * fuelPrice;
-  const costPerPassenger = passengers > 0 ? totalCost / passengers : 0;
+  const cost = calculateRouteCost(distance, fuelConsumption, fuelPrice, passengers);
+  const totalCost = cost.total;
+  const costPerPassenger = cost.perPerson;
 
   // Mobile: show a per-person mini-bar while the result is still below the fold
   // (the user is editing inputs above it). Not shown once scrolled past.
@@ -103,23 +101,21 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   };
 
   const handleCarSelect = (selection: CarSelection) => {
-    edited(setFuelConsumption)(selection.consumption);
+    edited(setFuelConsumption)(normalizeDecimal(selection.consumption));
     saveStoredCar(selection);
     setStoredCar(selection);
     setPickerOpen(false);
   };
 
-  /** Switching currency must not leave the old price sitting under the new
-   * currency (e.g. "1.75" surviving an EUR→UAH switch). Prefers a live price
-   * for the new currency; falls back to converting what's there. Never
-   * touches a price the user deliberately typed. */
+  /** Preserve existing conversion/suggestion behavior for untouched prices;
+   * never overwrite a user edit or a newer currency selection. */
   const handleCurrencyChange = (nextCurrency: string) => {
-    const prevCurrency = currency;
+    const previousCurrency = currency;
     edited(setCurrency)(nextCurrency);
-    if (fuelPriceTouched || nextCurrency === prevCurrency) return;
-    suggestFuelPrice(nextCurrency).then((live) => {
+    if (fuelPriceTouched || nextCurrency === previousCurrency) return;
+    suggestFuelPrice(nextCurrency).then(live => {
       if (priceGuard.current.touched || priceGuard.current.currency !== nextCurrency) return;
-      setFuelPrice(live ?? convertFuelPrice(fuelPrice, prevCurrency, nextCurrency));
+      setFuelPrice(normalizeDecimal(live ?? convertFuelPrice(fuelPrice, previousCurrency, nextCurrency)));
     });
   };
 
@@ -128,10 +124,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     edited(setFuelPrice)(v);
   };
 
-  const distanceField = useNumericField(distance, edited(setDistance), { min: 0 });
-  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1 });
-  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1 });
-  const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0 });
+  const distanceField = useNumericField(distance, edited(setDistance), { min: 0, normalize: normalizeDecimal });
+  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1, normalize: Math.trunc });
+  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1, normalize: normalizeDecimal });
+  const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0, normalize: normalizeDecimal });
 
   const t = {
     title: tr('quickCalc.title'),

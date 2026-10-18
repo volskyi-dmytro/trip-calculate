@@ -1,5 +1,6 @@
 // Pure what-if arithmetic for the quick calculator. Deterministic, no I/O:
 // every scenario is priced on the SAME distance as the baseline.
+import { calculateRouteCost } from './routeCost';
 
 export interface CostInputs {
   distanceKm: number;
@@ -33,9 +34,9 @@ const isNonNegative = (n: number) => Number.isFinite(n) && n >= 0;
 export function computeCost(i: CostInputs): CostResult | null {
   if (!isNonNegative(i.distanceKm) || !isNonNegative(i.consumption) || !isNonNegative(i.price)) return null;
   if (!Number.isInteger(i.passengers) || i.passengers < 1) return null;
-  const total = (i.distanceKm / 100) * i.consumption * i.price;
+  const { total, perPerson } = calculateRouteCost(i.distanceKm, i.consumption, i.price, i.passengers);
   if (!Number.isFinite(total)) return null;
-  return { total, perPerson: total / i.passengers };
+  return { total, perPerson };
 }
 
 /** Parses user text for a numeric override. '' -> undefined (inherit baseline),

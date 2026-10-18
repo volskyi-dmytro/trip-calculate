@@ -5,7 +5,14 @@ import com.tripplanner.TripPlanner.entity.*;
 import com.tripplanner.TripPlanner.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
+import jakarta.persistence.EntityManagerFactory;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import com.tripplanner.TripPlanner.routing.RoutingController;
@@ -21,9 +28,12 @@ public class RouteService {
     private final RouteRepository routeRepository;
     private final WaypointRepository waypointRepository;
     private final RoutingService routingService;
+    private final PlatformTransactionManager transactionManager;
+    private final RouteSaveLimiter saveLimiter;
+    private final EntityManagerFactory entityManagerFactory;
 
     /** Bump when the distance/cost arithmetic changes; stored with every saved route. */
-    static final String CALCULATION_VERSION = "route-save/1";
+    static final String CALCULATION_VERSION = "route-save/2";
 
 
     @Transactional(readOnly = true)
@@ -41,31 +51,75 @@ public class RouteService {
         return convertToDTO(route);
     }
 
-    @Transactional
+    // Suspend a caller's transaction before admission/routing; templates below own only short DB work.
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public RouteDTO saveRoute(SaveRouteRequest request, Long userId) {
-        Route route = new Route();
-        route.setUserId(userId);
-        apply(route, request);
-        // Save first so waypoints can reference the generated id
-        return convertToDTO(routeRepository.save(route));
+        try (RequestContext context = suspendRequestContext();
+             RouteSaveLimiter.Lease ignored = saveLimiter.acquire(userId)) {
+            Estimate estimate = estimate(request);
+            return new TransactionTemplate(transactionManager).execute(status -> {
+                Route route = new Route();
+                route.setUserId(userId);
+                apply(route, request, estimate);
+                return convertToDTO(routeRepository.save(route));
+            });
+        }
     }
 
-    @Transactional
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
     public RouteDTO updateRoute(Long routeId, SaveRouteRequest request, Long userId) {
-        Route route = routeRepository.findByIdAndUserId(routeId, userId)
-                .orElseThrow(() -> new RuntimeException("Route not found"));
-        route.getWaypoints().clear();
-        apply(route, request);
-        return convertToDTO(routeRepository.save(route));
+        try (RequestContext context = suspendRequestContext();
+             RouteSaveLimiter.Lease ignored = saveLimiter.acquire(userId)) {
+            TransactionTemplate read = new TransactionTemplate(transactionManager);
+            read.setReadOnly(true);
+            RouteDTO baseline = read.execute(status -> convertToDTO(routeRepository.findByIdAndUserId(routeId, userId)
+                    .orElseThrow(RouteService::notFound)));
+            Estimate estimate = estimate(request);
+            return new TransactionTemplate(transactionManager).execute(status -> {
+                Route route = routeRepository.findRootForUpdate(routeId)
+                        .filter(r -> userId.equals(r.getUserId()))
+                        .orElseThrow(RouteService::notFound);
+                // Includes updatedAt and all inputs/results/children, initialized under the root lock.
+                if (!baseline.equals(convertToDTO(route))) {
+                    throw new ResponseStatusException(HttpStatus.CONFLICT, "ROUTE_CHANGED");
+                }
+                route.getWaypoints().clear();
+                apply(route, request, estimate);
+                routeRepository.save(route);
+                routeRepository.flush();
+                return convertToDTO(route);
+            });
+        }
+    }
+
+    private static ResponseStatusException notFound() {
+        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Route not found");
+    }
+
+    /**
+     * NOT_SUPPORTED suspends actual caller transactions, but not an idle OSIV EntityManager.
+     * Unbind that request context too: each template must read fresh state using its own
+     * short-lived persistence context. Unbinding does not release any physical connection
+     * already held by the caller: the controller's scalar identity lookup owns/closes its
+     * own context, while arbitrary caller-owned resources remain their owner's responsibility.
+     * Restore the untouched request holder for its owning interceptor to clean up normally.
+     */
+    private RequestContext suspendRequestContext() {
+        return new RequestContext(entityManagerFactory,
+                TransactionSynchronizationManager.unbindResourceIfPossible(entityManagerFactory));
+    }
+
+    private record RequestContext(EntityManagerFactory factory, Object previous) implements AutoCloseable {
+        @Override public void close() {
+            if (previous != null) TransactionSynchronizationManager.bindResource(factory, previous);
+        }
     }
 
     /** Copies inputs and recomputes every derived figure on the server. */
-    private void apply(Route route, SaveRouteRequest request) {
-        Estimate estimate = estimate(request);
-
+    private void apply(Route route, SaveRouteRequest request, Estimate estimate) {
         route.setName(request.getName());
-        route.setFuelConsumption(request.getFuelConsumption());
-        route.setFuelCostPerLiter(request.getFuelCostPerLiter());
+        route.setFuelConsumption(RouteCost.normalize(request.getFuelConsumption()));
+        route.setFuelCostPerLiter(RouteCost.normalize(request.getFuelCostPerLiter()));
         route.setCurrency(request.getCurrency());
         route.setPassengerCount(request.getPassengerCount() != null ? request.getPassengerCount() : 1);
         route.setFuelType(request.getFuelType());
@@ -78,10 +132,7 @@ public class RouteService {
         route.setCalculationVersion(CALCULATION_VERSION);
         route.setCalculatedAt(LocalDateTime.now());
         // Same formula as the planner: km / 100 * L/100km * price, rounded once.
-        route.setTotalCost(estimate.km().multiply(request.getFuelConsumption())
-                .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP)
-                .multiply(request.getFuelCostPerLiter())
-                .setScale(2, RoundingMode.HALF_UP));
+        route.setTotalCost(RouteCost.total(estimate.km(), route.getFuelConsumption(), route.getFuelCostPerLiter()));
 
         for (int i = 0; i < request.getWaypoints().size(); i++) {
             WaypointDTO wpDto = request.getWaypoints().get(i);
@@ -128,10 +179,10 @@ public class RouteService {
 
         SaveRouteRequest.Snapshot claimed = request.getSnapshot();
         if (claimed != null) {
-            BigDecimal tolerance = estimate.km().multiply(new BigDecimal("0.01")).max(new BigDecimal("0.5"));
-            if (!claimed.getQuality().equals(estimate.quality())
-                    || claimed.getDistanceKm().subtract(estimate.km()).abs().compareTo(tolerance) > 0) {
-                throw new IllegalArgumentException("Route snapshot does not match the server calculation");
+            if (!estimate.quality().equals(claimed.getQuality())
+                    || claimed.getDistanceKm() == null || claimed.getDistanceKm().signum() < 0
+                    || RouteCost.normalize(claimed.getDistanceKm()).compareTo(estimate.km()) != 0) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "ROUTE_SNAPSHOT_STALE");
             }
         }
         return estimate;

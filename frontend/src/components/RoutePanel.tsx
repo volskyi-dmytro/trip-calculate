@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { normalizeDecimal } from '../services/routeCost'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import type { FuelSuggestion } from '../services/fuelPriceService'
 import { useResolvedWaypointNames } from '../hooks/useResolvedWaypointNames'
@@ -224,10 +225,11 @@ export function RoutePanel({
       })
     } else {
       // Clean up the display
-      setFuelConsumptionInput(numValue.toString())
+      const normalized = normalizeDecimal(numValue)
+      setFuelConsumptionInput(normalized.toString())
       onUpdateSettings({
         ...routeSettings,
-        fuelConsumption: numValue
+        fuelConsumption: normalized
       })
     }
   }
@@ -293,10 +295,11 @@ export function RoutePanel({
       })
     } else {
       // Clean up the display
-      setFuelCostInput(numValue.toString())
+      const normalized = normalizeDecimal(numValue)
+      setFuelCostInput(normalized.toString())
       onUpdateSettings({
         ...routeSettings,
-        fuelCostPerLiter: numValue,
+        fuelCostPerLiter: normalized,
         fuelPriceTouched: true
       })
     }

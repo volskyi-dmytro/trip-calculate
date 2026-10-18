@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
@@ -27,6 +27,7 @@ import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../s
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
 import { computeTripStats, buildEstimateExport } from '../services/tripStats'
+import { normalizeDecimal } from '../services/routeCost'
 import type { EstimateQuality } from '../services/routingService'
 import { carService } from '../services/carService'
 import type { GarageCar } from '../types/Car'
@@ -71,6 +72,12 @@ const DEFAULT_ROUTE_SETTINGS: RouteSettings = {
   fuelPriceTouched: false,
 }
 
+const normalizeSettings = (settings: RouteSettings): RouteSettings => ({
+  ...settings,
+  fuelConsumption: normalizeDecimal(settings.fuelConsumption),
+  fuelCostPerLiter: normalizeDecimal(settings.fuelCostPerLiter),
+})
+
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 const todayISO = () => isoDate(new Date())
 
@@ -83,12 +90,15 @@ export function RoutePlanner() {
   const { user } = useAuth()
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
-  const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
+  const [routeSettings, setRouteSettingsState] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
     if (!saved) return DEFAULT_ROUTE_SETTINGS
-    try { return { ...DEFAULT_ROUTE_SETTINGS, ...JSON.parse(saved) } }
+    try { return normalizeSettings({ ...DEFAULT_ROUTE_SETTINGS, ...JSON.parse(saved) }) }
     catch { return DEFAULT_ROUTE_SETTINGS }
   })
+  const setRouteSettings = useCallback((update: SetStateAction<RouteSettings>) => {
+    setRouteSettingsState(previous => normalizeSettings(typeof update === 'function' ? update(previous) : update))
+  }, [])
   const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
   // Latest-wins sequence guard for the debounced fuel suggestion fetch below
   const fuelFetchSeq = useRef(0)
@@ -113,6 +123,8 @@ export function RoutePlanner() {
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
   const [savingRoute, setSavingRoute] = useState(false)
+  const saveInFlight = useRef(false)
+  const [routeRefresh, setRouteRefresh] = useState(0)
   const [routeName, setRouteName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
@@ -309,7 +321,7 @@ export function RoutePlanner() {
         }
       })
       .catch(() => {})
-  }, [user])
+  }, [user, setRouteSettings])
 
   // Track mobile viewport
   useEffect(() => {
@@ -455,7 +467,7 @@ export function RoutePlanner() {
     }
 
     updateRoute()
-  }, [waypoints])
+  }, [waypoints, routeRefresh])
 
   // Live fuel price: advisory fetch whenever the route's shape or the fuel
   // context changes; auto-applies only while the price field is untouched
@@ -477,7 +489,7 @@ export function RoutePlanner() {
       }
     }, 1000)
     return () => clearTimeout(handle)
-  }, [waypoints, routeSettings.fuelType, routeSettings.currency])
+  }, [waypoints, routeSettings.fuelType, routeSettings.currency, setRouteSettings])
 
   // Corridor weather: advisory fetch whenever the route shape or the
   // departure date changes. AI responses deliver their own weather_data,
@@ -580,12 +592,12 @@ export function RoutePlanner() {
 
   const updateRouteSettings = useCallback((settings: RouteSettings) => {
     setRouteSettings(settings)
-  }, [])
+  }, [setRouteSettings])
 
   const handleApplyFuelSuggestion = useCallback(() => {
     if (!fuelSuggestion) return
     setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: fuelSuggestion.price, fuelPriceTouched: false }))
-  }, [fuelSuggestion])
+  }, [fuelSuggestion, setRouteSettings])
 
   const handleSelectCar = useCallback((car: GarageCar) => {
     setRouteSettings(prev => ({
@@ -593,7 +605,7 @@ export function RoutePlanner() {
       fuelConsumption: car.fuelConsumption,
       fuelType: car.fuelType,
     }))
-  }, [])
+  }, [setRouteSettings])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
@@ -625,7 +637,7 @@ export function RoutePlanner() {
   }, [navigate, language, t])
 
   const saveRouteToServer = useCallback(async (saveAsNew = false) => {
-    if (!routeReady) return
+    if (!routeReady || saveInFlight.current) return
     if (waypoints.length < 2) {
       toast.error(t.toasts.minWaypoints)
       return
@@ -636,6 +648,8 @@ export function RoutePlanner() {
       return
     }
 
+    saveInFlight.current = true
+    const savedCalculation = routeCalculationSeq.current
     setSavingRoute(true)
     try {
       const routeData: Route = {
@@ -649,7 +663,7 @@ export function RoutePlanner() {
         // Only a calculated estimate is claimed; the server re-verifies it.
         snapshot: routeQuality === 'road' || routeQuality === 'approximate'
           ? {
-              distanceKm: Number(computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance.toFixed(2)),
+              distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance,
               quality: routeQuality,
             }
           : undefined,
@@ -684,8 +698,32 @@ export function RoutePlanner() {
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to save route:', error)
-      toast.error(t.toasts.routeSaveFailed)
+      const response = (error as { response?: { status?: number; data?: unknown } }).response
+      if (response?.status === 409 && response.data === 'ROUTE_SNAPSHOT_STALE') {
+        setShowSaveDialog(false)
+        setShowResultShareDialog(false)
+        // A delayed save failure must not discard a newer waypoint calculation.
+        if (savedCalculation === routeCalculationSeq.current) {
+          ++routeCalculationSeq.current
+          setRouteEstimate(undefined)
+          setRouteGeometry([])
+          setRouteDistance(0)
+          setRouteDuration(0)
+          setIsCalculatingRoute(true)
+          // Reuse the guarded calculation effect, once. Never retry the save.
+          setRouteRefresh(value => value + 1)
+        }
+        toast.error(t.toasts.routeSnapshotStale)
+      } else if (response?.status === 409 && response.data === 'ROUTE_CHANGED') {
+        setShowSaveDialog(false)
+        toast.error(t.toasts.routeChanged)
+      } else if (response?.status === 429 && response.data === 'ROUTE_SAVE_BUSY') {
+        toast.error(t.toasts.routeSaveBusy)
+      } else {
+        toast.error(t.toasts.routeSaveFailed)
+      }
     } finally {
+      saveInFlight.current = false
       setSavingRoute(false)
     }
   }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, navigate, language])
@@ -729,7 +767,7 @@ export function RoutePlanner() {
       console.error('Failed to load route:', error)
       toast.error(t.toasts.routeLoadFailed)
     }
-  }, [t])
+  }, [t, setRouteSettings])
 
   const deleteRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -1203,7 +1241,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {

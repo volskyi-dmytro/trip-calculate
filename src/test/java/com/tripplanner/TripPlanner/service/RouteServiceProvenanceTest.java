@@ -33,7 +33,36 @@ class RouteServiceProvenanceTest {
         routes = mock(RouteRepository.class);
         routing = mock(RoutingService.class);
         when(routes.save(any(Route.class))).thenAnswer(i -> i.getArgument(0));
-        service = new RouteService(routes, mock(WaypointRepository.class), routing);
+        service = new RouteService(routes, mock(WaypointRepository.class), routing, RouteTestTransactions.manager(), new com.tripplanner.TripPlanner.service.RouteSaveLimiter(4, 1), mock(jakarta.persistence.EntityManagerFactory.class));
+    }
+
+    @Test
+    void sameUserCannotStartAnotherSaveWhileProviderIsActive() {
+        java.util.concurrent.atomic.AtomicBoolean nested = new java.util.concurrent.atomic.AtomicBoolean();
+        when(routing.calculateRoute(any())).thenAnswer(i -> {
+            if (!nested.getAndSet(true)) {
+                assertThatThrownBy(() -> service.saveRoute(request(), 7L))
+                    .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class, ex -> {
+                        assertThat(ex.getStatusCode().value()).isEqualTo(429);
+                        assertThat(ex.getReason()).isEqualTo("ROUTE_SAVE_BUSY");
+                    });
+            }
+            return road(540, 300);
+        });
+        service.saveRoute(request(), 7L);
+        verify(routing, times(1)).calculateRoute(any());
+    }
+
+    @Test
+    void fatalProviderFailureAndPersistenceFailureDoNotLeakAdmission() {
+        when(routing.calculateRoute(any())).thenThrow(new AssertionError("fatal provider"));
+        assertThatThrownBy(() -> service.saveRoute(request(), 7L)).isInstanceOf(AssertionError.class);
+        reset(routing);
+        when(routing.calculateRoute(any())).thenReturn(road(540, 300));
+        when(routes.save(any(Route.class))).thenThrow(new IllegalStateException("write failed"));
+        assertThatThrownBy(() -> service.saveRoute(request(), 7L)).isInstanceOf(IllegalStateException.class);
+        doAnswer(i -> i.getArgument(0)).when(routes).save(any(Route.class));
+        assertThat(service.saveRoute(request(), 7L).getTotalDistance()).isEqualByComparingTo("540");
     }
 
     private Map<String, Object> road(double km, double minutes) {
@@ -91,13 +120,25 @@ class RouteServiceProvenanceTest {
         when(routing.calculateRoute(any())).thenReturn(road(540.0, 300));
 
         assertThatThrownBy(() -> service.saveRoute(withSnapshot("100.00", "road"), 7L))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         assertThatThrownBy(() -> service.saveRoute(withSnapshot("540.00", "approximate"), 7L))
-                .isInstanceOf(IllegalArgumentException.class);
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
         verify(routes, never()).save(any());
 
-        // an honest snapshot (within rounding tolerance) is accepted
-        assertThat(service.saveRoute(withSnapshot("540.30", "road"), 7L).getTotalDistance()).isEqualByComparingTo("540.00");
+        // Snapshots in the same decimal normalization bucket are accepted.
+        assertThat(service.saveRoute(withSnapshot("540.004", "road"), 7L).getTotalDistance()).isEqualByComparingTo("540.00");
+    }
+
+    @Test
+    void fiveKmDriftIsAnExactConflictWithoutRetryOrSave() {
+        when(routing.calculateRoute(any())).thenReturn(road(545, 300));
+        assertThatThrownBy(() -> service.saveRoute(withSnapshot("540", "road"), 7L))
+                .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class, ex -> {
+                    assertThat(ex.getStatusCode().value()).isEqualTo(409);
+                    assertThat(ex.getReason()).isEqualTo("ROUTE_SNAPSHOT_STALE");
+                });
+        verify(routing, times(1)).calculateRoute(any());
+        verify(routes, never()).save(any());
     }
 
     @Test
@@ -116,6 +157,7 @@ class RouteServiceProvenanceTest {
         legacy.setUserId(7L);
         legacy.setTotalDistance(new BigDecimal("430.00"));
         when(routes.findByIdAndUserId(5L, 7L)).thenReturn(Optional.of(legacy));
+        when(routes.findRootForUpdate(5L)).thenReturn(Optional.of(legacy));
         when(routing.calculateRoute(any())).thenReturn(road(560.0, 330));
 
         RouteDTO updated = service.updateRoute(5L, request(), 7L);

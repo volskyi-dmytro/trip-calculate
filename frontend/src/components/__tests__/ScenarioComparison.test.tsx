@@ -4,8 +4,11 @@ import { act, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { translate } from '../../i18n/common'
+import fixtures from '../../../../fixtures/route-cost-v2.json'
 
 let lang: 'en' | 'uk' = 'en'
+const currencyLookup = vi.hoisted(() => vi.fn(async () => 55))
+vi.mock('../../utils/currencyFuelPrice', () => ({ suggestFuelPrice: currencyLookup, convertFuelPrice: () => 55 }))
 vi.mock('../../contexts/LanguageContext', () => ({
   useLanguage: () => ({
     language: lang,
@@ -15,7 +18,7 @@ vi.mock('../../contexts/LanguageContext', () => ({
 }))
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: null }) }))
 vi.mock('../car/CarPicker', () => ({ CarPicker: () => null }))
-vi.mock('../receipt/ShareReceiptButton', () => ({ ShareReceiptButton: () => null }))
+vi.mock('../receipt/ShareReceiptButton', () => ({ ShareReceiptButton: ({ payload }: { payload: unknown }) => <div data-testid="receipt-inputs" data-payload={JSON.stringify(payload)} /> }))
 
 const { ScenarioComparison } = await import('../calculator/ScenarioComparison')
 const { QuickCalculator } = await import('../QuickCalculator')
@@ -123,6 +126,68 @@ describe('ScenarioComparison', () => {
 })
 
 describe('QuickCalculator + scenarios', () => {
+  it('keeps a usable local result for fractional passengers and ignores nonfinite price input', () => {
+    const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 1, price: 1, passengers: 2, currency: 'EUR' }} />)
+    const passengers = container.querySelector<HTMLInputElement>('#quick-passengers')!
+    act(() => passengers.focus())
+    type(passengers, '2.5')
+    act(() => passengers.blur())
+    expect(passengers.value).toBe('2')
+    const price = container.querySelector<HTMLInputElement>('#quick-fuel-price')!
+    act(() => price.focus())
+    type(price, '1e999')
+    act(() => price.blur())
+    expect(price.value).toBe('0')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('0.00 EUR')
+  })
+  it('normalizes typed decimals on blur without losing partial input', () => {
+    const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 1, price: 1, passengers: 2, currency: 'EUR' }} />)
+    const field = container.querySelector<HTMLInputElement>('#quick-fuel-price')!
+    act(() => field.focus())
+    type(field, '')
+    expect(field.value).toBe('')
+    type(field, '1.005')
+    act(() => field.blur())
+    expect(field.value).toBe('1.01')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('0.51 EUR')
+  })
+  it.each(fixtures.cases)('matches fixture $rawDistanceKm km and $fuelPrice price in summary, scenario baseline and receipt', c => {
+    const { container } = mount(<QuickCalculator prefill={{ distance: Number(c.rawDistanceKm), consumption: Number(c.fuelConsumption), price: Number(c.fuelPrice), passengers: c.people, currency: 'EUR' }} />)
+    const figures = container.querySelector('[aria-live="polite"]')!.textContent
+    expect(figures).toContain(`${c.totalCost} EUR`)
+    expect(figures).toContain(`${c.costPerPerson} EUR`)
+    expect(container.querySelector('details')!.textContent).toContain(`${c.totalCost} EUR · ${c.costPerPerson} EUR`)
+    expect(JSON.parse(container.querySelector('[data-testid="receipt-inputs"]')!.getAttribute('data-payload')!)).toMatchObject({
+      distanceKm: Number(c.distanceKm), fuelConsumption: Number(c.normalizedFuelConsumption), fuelPrice: Number(c.normalizedFuelPrice), people: c.people,
+    })
+    expect(container.querySelector<HTMLInputElement>('#quick-distance')!.value).toBe(String(Number(c.distanceKm)))
+    expect(container.querySelector<HTMLInputElement>('#quick-consumption')!.value).toBe(String(Number(c.normalizedFuelConsumption)))
+    expect(container.querySelector<HTMLInputElement>('#quick-fuel-price')!.value).toBe(String(Number(c.normalizedFuelPrice)))
+  })
+  it('preserves the established suggested-price conversion on an untouched currency change', async () => {
+    currencyLookup.mockClear()
+    const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 7.5, price: 1.75, currency: 'EUR' }} />)
+    const select = container.querySelector<HTMLSelectElement>('#quick-currency')!
+    await act(async () => { select.value = 'UAH'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+    expect(currencyLookup).toHaveBeenCalledExactlyOnceWith('UAH')
+    expect(container.querySelector<HTMLInputElement>('#quick-fuel-price')!.value).toBe('55')
+    expect(container.querySelector<HTMLInputElement>('#quick-consumption')!.value).toBe('7.5')
+  })
+  it('keeps a deliberately typed price on a currency change with zero network requests', async () => {
+    currencyLookup.mockClear()
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    try {
+      const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 7.5, price: 1.75, currency: 'EUR' }} />)
+      type(container.querySelector<HTMLInputElement>('#quick-fuel-price')!, '1.76')
+      const select = container.querySelector<HTMLSelectElement>('#quick-currency')!
+      await act(async () => { select.value = 'UAH'; select.dispatchEvent(new Event('change', { bubbles: true })) })
+      expect(container.querySelector<HTMLInputElement>('#quick-fuel-price')!.value).toBe('1.76')
+      expect(container.querySelector<HTMLInputElement>('#quick-consumption')!.value).toBe('7.5')
+      expect(fetchSpy).not.toHaveBeenCalled()
+      expect(currencyLookup).not.toHaveBeenCalled()
+    } finally { vi.unstubAllGlobals() }
+  })
   it('baseline equals the calculator figures, scenarios issue zero network requests, and edits do not change the baseline', () => {
     const fetchSpy = vi.fn()
     vi.stubGlobal('fetch', fetchSpy)

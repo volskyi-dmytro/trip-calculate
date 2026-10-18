@@ -1,7 +1,6 @@
 package com.tripplanner.TripPlanner.controller;
 
 import com.tripplanner.TripPlanner.dto.*;
-import com.tripplanner.TripPlanner.entity.User;
 import com.tripplanner.TripPlanner.service.RouteService;
 import com.tripplanner.TripPlanner.service.UserService;
 import jakarta.validation.Valid;
@@ -67,8 +66,7 @@ public class RouteController {
 
     private Long getUserId(OAuth2User principal) {
         String googleId = principal.getAttribute("sub");
-        User user = userService.findByGoogleId(googleId)
+        return userService.findIdByGoogleId(googleId)
                 .orElseThrow(() -> new RuntimeException("User not found"));
-        return user.getId();
     }
 }
