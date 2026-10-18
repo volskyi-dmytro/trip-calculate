@@ -14,12 +14,15 @@ import org.springframework.security.web.SecurityFilterChain;
  */
 @Configuration
 @EnableWebSecurity
+@org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity(prePostEnabled = true) // so @PreAuthorize (admin) is enforced locally like prod
 @Profile("dev")
 public class DevSecurityConfig {
 
     @Bean
-    public SecurityFilterChain devFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain devFilterChain(HttpSecurity http, com.tripplanner.TripPlanner.service.UserService userService) throws Exception {
         http
+            // Real principal for @AuthenticationPrincipal controllers (routes, dashboard)
+            .addFilterBefore(new DevAuthFilter(userService), org.springframework.security.web.authentication.AnonymousAuthenticationFilter.class)
             // Disable CSRF for dev (simplifies testing)
             .csrf(csrf -> csrf.disable())
 
