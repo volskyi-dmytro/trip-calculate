@@ -44,4 +44,10 @@ describe('geocodingService.searchPlaces / forwardGeocode (QA F2)', () => {
     fetchMock.mockResolvedValue({ ok: false })
     expect(await geocodingService.searchPlaces('x')).toEqual([])
   })
+
+  it('reverse geocoding asks for names in the UI language (F6)', async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({ address: { city: 'Lviv', road: 'Rynok' } }) })
+    await geocodingService.reverseGeocode(49.84, 24.03, 'uk')
+    expect(String(fetchMock.mock.calls[0][0])).toContain('accept-language=uk')
+  })
 })

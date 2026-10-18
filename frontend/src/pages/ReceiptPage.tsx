@@ -1,3 +1,4 @@
+import { litreUnit } from '../lib/format'
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
@@ -183,12 +184,12 @@ export function ReceiptPage() {
           </div>
           <div className="receipt-row">
             <dt>{t.consumption}</dt>
-            <dd>{r.fuelConsumption} L/100km</dd>
+            <dd>{r.fuelConsumption} {litreUnit(language)}/100km</dd>
           </div>
           <div className="receipt-row">
             <dt>{t.fuelPrice}</dt>
             <dd>
-              {r.fuelPrice} {r.currency}/L
+              {r.fuelPrice} {r.currency}/{litreUnit(language)}
             </dd>
           </div>
           <div className="receipt-row">

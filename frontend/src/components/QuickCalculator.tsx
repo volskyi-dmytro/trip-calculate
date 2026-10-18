@@ -1,3 +1,4 @@
+import { litreUnit } from '../lib/format'
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -240,7 +241,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
                 className="inline-flex items-center gap-1 min-h-11 hover:underline"
               >
                 <Car className="h-3.5 w-3.5" aria-hidden="true" />
-                {storedCar.name} · {storedCar.consumption} L/100km
+                {storedCar.name} · {storedCar.consumption} {litreUnit(language)}/100km
               </button>
               <button
                 type="button"

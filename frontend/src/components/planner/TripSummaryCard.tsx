@@ -1,5 +1,6 @@
 import { useId, useState, type Ref } from 'react'
 import { ChevronDown, Clock, Fuel, Navigation, Route as RouteIcon, Save, Share2 } from 'lucide-react'
+import { litreUnit } from '../../lib/format'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { getTranslation, type Language } from '../../i18n/routePlanner'
 import { wazeLegLinks } from '../../services/wazeExport'
@@ -88,7 +89,7 @@ export function TripSummaryCard({
 
       <p className="trip-summary-price">
         <Fuel className="h-4 w-4" aria-hidden="true" />
-        {t.resultCard.fuelPrice.replace('{price}', `${s.money(routeSettings.fuelCostPerLiter)}/L`)}
+        {t.resultCard.fuelPrice.replace('{price}', `${s.money(routeSettings.fuelCostPerLiter)}/${litreUnit(language)}`)}
         {usingLivePrice && <> · {t.resultCard.livePrice}</>}
         {!usingLivePrice && fuelSuggestion && onApplyLivePrice && (
           <button type="button" className="fuel-chip fuel-chip-action" onClick={onApplyLivePrice}>
@@ -125,7 +126,7 @@ export function TripSummaryCard({
             <>
               <dl className="trip-summary-rows">
                 <div><dt>{t.costBreakdown.fuelConsumption}</dt><dd>{routeSettings.fuelConsumption} {t.routeSettings.consumptionUnit}</dd></div>
-                <div><dt>{t.costBreakdown.fuelPrice}</dt><dd>{s.money(routeSettings.fuelCostPerLiter)}/L</dd></div>
+                <div><dt>{t.costBreakdown.fuelPrice}</dt><dd>{s.money(routeSettings.fuelCostPerLiter)}/{litreUnit(language)}</dd></div>
                 <div><dt>{t.costBreakdown.fuelNeeded}</dt><dd>{s.fuel}</dd></div>
                 <div><dt>{t.costBreakdown.totalCost}</dt><dd>{s.money(s.stats.fuelCost)}</dd></div>
               </dl>

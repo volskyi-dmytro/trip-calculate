@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDistance, formatDuration, formatLiters, formatMoney } from './format'
+import { formatDistance, formatDuration, formatLiters, formatMoney, litreUnit } from './format'
 
 // Normalise no-break spaces; Ukrainian unit words are percent-encoded because
 // src/ keeps Cyrillic text in src/i18n (see noInlineTranslations.test).
@@ -35,5 +35,14 @@ describe('format', () => {
     expect(formatDuration(119.6, 'en')).toBe('2 h')
     expect(formatDuration(45, 'en')).toBe('45 m')
     expect(formatDuration(0, 'en')).toBe('0 m')
+  })
+})
+
+// QA F6: litre unit was hardcoded "L" on /uk ("грн/L")
+describe('litreUnit', () => {
+  it('localises the litre abbreviation', () => {
+    expect(litreUnit('en')).toBe('L')
+    expect(litreUnit('uk')).toBe('\u043b')
+    expect(litreUnit('uk-UA')).toBe('\u043b')
   })
 })

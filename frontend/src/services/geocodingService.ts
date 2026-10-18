@@ -27,13 +27,14 @@ export const geocodingService = {
    * Uses Nominatim API (free, no API key required)
    * @param lat Latitude
    * @param lng Longitude
+   * @param language UI language for the returned place names
    * @returns Human-readable location name in "City, Street" format
    */
-  async reverseGeocode(lat: number, lng: number): Promise<string> {
+  async reverseGeocode(lat: number, lng: number, language = 'en'): Promise<string> {
     try {
       const response = await nominatimFetch(
         `https://nominatim.openstreetmap.org/reverse?` +
-        `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=${encodeURIComponent(language)}`,
         {
           headers: {
             'User-Agent': 'TripCalculate/1.0', // Required by Nominatim

@@ -1,3 +1,4 @@
+import { litreUnit } from '../lib/format'
 import { useState, useEffect } from 'react'
 import { normalizeDecimal } from '../services/routeCost'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
@@ -97,7 +98,7 @@ export function RoutePanel({
   }
 
   // Coordinate-only names get a reverse-geocoded place name (cached).
-  useResolvedWaypointNames(waypoints, onUpdateWaypointName)
+  useResolvedWaypointNames(waypoints, onUpdateWaypointName, language)
 
   // A geocoder (ours or the AI's) can fall back to raw coordinates as a
   // waypoint's name — swap in a "Waypoint N" label everywhere a name is
@@ -521,7 +522,7 @@ export function RoutePanel({
             routeSettings.fuelPriceTouched ? (
               <button type="button" className="fuel-chip fuel-chip-action"
                       onClick={onApplyFuelSuggestion}>
-                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/L
+                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/{litreUnit(language)}
               </button>
             ) : (
               <span className="fuel-chip">

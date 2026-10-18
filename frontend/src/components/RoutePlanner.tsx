@@ -535,7 +535,7 @@ export function RoutePlanner() {
 
     try {
       // Get location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(lat, lng)
+      const locationName = await geocodingService.reverseGeocode(lat, lng, language)
 
       const newWaypoint: Waypoint = {
         id: Date.now().toString(),
@@ -552,7 +552,7 @@ export function RoutePlanner() {
     } finally {
       setIsGeocoding(false)
     }
-  }, [isGeocoding, t])
+  }, [isGeocoding, t, language])
 
   const updateWaypoint = useCallback(async (id: string, lat: number, lng: number) => {
     // Update position immediately
@@ -562,7 +562,7 @@ export function RoutePlanner() {
 
     // Fetch new address via reverse geocoding
     try {
-      const locationName = await geocodingService.reverseGeocode(lat, lng)
+      const locationName = await geocodingService.reverseGeocode(lat, lng, language)
       setWaypoints(prev =>
         prev.map(wp => wp.id === id ? { ...wp, name: locationName } : wp)
       )
@@ -570,7 +570,7 @@ export function RoutePlanner() {
       console.error('Failed to reverse geocode on drag:', error)
       // Keep the old name if reverse geocoding fails
     }
-  }, [])
+  }, [language])
 
   const removeWaypoint = useCallback((id: string) => {
     if (waypoints.length <= 2) {
@@ -827,7 +827,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Add waypoint
       const newWaypoint: Waypoint = {
@@ -872,7 +872,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
-      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng)
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Update or add start waypoint
       if (waypoints.length > 0) {
@@ -921,7 +921,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
-      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng)
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Update or add destination waypoint
       if (waypoints.length > 1) {
@@ -987,8 +987,8 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       const [startName, destName] = await Promise.all([
-        geocodingService.reverseGeocode(startResult.lat, startResult.lng),
-        geocodingService.reverseGeocode(destResult.lat, destResult.lng)
+        geocodingService.reverseGeocode(startResult.lat, startResult.lng, language),
+        geocodingService.reverseGeocode(destResult.lat, destResult.lng, language)
       ])
 
       const startWaypoint: Waypoint = {
@@ -1015,7 +1015,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       setIsSearchingStart(false)
       setIsSearchingDestination(false)
     }
-  }, [startLocationInput, destinationInput, waypoints, t])
+  }, [startLocationInput, destinationInput, waypoints, t, language])
 
   // AI Chat Handler
   const handleSendChat = useCallback(async (submittedMessage: string) => {
@@ -1145,7 +1145,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         } else if (agentData.originName) {
           const locs = await geocodingService.forwardGeocode(agentData.originName);
           if (locs) {
-            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng, language);
             newWaypoints.push({
               id: Date.now().toString() + '-origin',
               lat: locs.lat,
@@ -1181,7 +1181,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         } else if (agentData.destinationName) {
           const locs = await geocodingService.forwardGeocode(agentData.destinationName);
           if (locs) {
-            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng, language);
             newWaypoints.push({
               id: Date.now().toString() + '-dest',
               lat: locs.lat,
