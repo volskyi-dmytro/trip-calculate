@@ -32,6 +32,8 @@ export interface Route {
   waypoints: Waypoint[];
   createdAt?: string;
   updatedAt?: string;
+  /** Update only: the updatedAt this edit started from; the server answers 409 ROUTE_CHANGED if the row moved on. */
+  expectedUpdatedAt?: string;
 }
 
 export const routeService = {

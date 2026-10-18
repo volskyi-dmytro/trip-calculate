@@ -74,6 +74,13 @@ public class RouteService {
             read.setReadOnly(true);
             RouteDTO baseline = read.execute(status -> convertToDTO(routeRepository.findByIdAndUserId(routeId, userId)
                     .orElseThrow(RouteService::notFound)));
+            // The client says which version it edited; a newer stored row means another session got
+            // there first. Checked before routing so a stale save costs no provider quota. Millisecond
+            // precision: the value the client holds may come from an in-memory entity, the row from the DB.
+            if (request.getExpectedUpdatedAt() != null && !request.getExpectedUpdatedAt().truncatedTo(java.time.temporal.ChronoUnit.MILLIS)
+                    .equals(baseline.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant().truncatedTo(java.time.temporal.ChronoUnit.MILLIS))) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "ROUTE_CHANGED");
+            }
             Estimate estimate = estimate(request);
             return new TransactionTemplate(transactionManager).execute(status -> {
                 Route route = routeRepository.findRootForUpdate(routeId)

@@ -12,7 +12,7 @@ const f = vi.hoisted(() => {
     user: { id: 1, name: 'Test', authenticated: true },
     getRoute: vi.fn(), getSaved: vi.fn(), list: vi.fn(), update: vi.fn(), create: vi.fn(),
     route: { id: 7, name: 'Kyiv-Lviv', fuelConsumption: 10, fuelCostPerLiter: 60, currency: 'UAH', passengerCount: 2, waypoints,
-      totalDistance: 100, updatedAt: '2026-10-18T10:00:00Z' },
+      totalDistance: 100, updatedAt: '2026-10-18T10:00:00.000Z' },
   }
 })
 vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: f.user }) }))
@@ -54,6 +54,15 @@ describe('RoutePlanner: save after Load dialog (F3)', () => {
     expect(f.update).toHaveBeenCalledTimes(1)
     expect(f.update.mock.calls[0][0]).toBe(7)
     expect(f.create).not.toHaveBeenCalled()
+  })
+
+  it('sends the loaded updatedAt on update, then the version the server returned (F7)', async () => {
+    f.update.mockResolvedValue({ ...f.route, updatedAt: '2026-10-18T11:00:00.000Z' })
+    await click('Update route'); await click('Update')
+    expect(f.update.mock.calls[0][1].expectedUpdatedAt).toBe('2026-10-18T10:00:00.000Z')
+    await new Promise(r => setTimeout(r, 0))
+    await click('Update route'); await click('Update')
+    expect(f.update.mock.calls[1][1].expectedUpdatedAt).toBe('2026-10-18T11:00:00.000Z')
   })
 
   it('offers an explicit Save as new that creates exactly one new record', async () => {

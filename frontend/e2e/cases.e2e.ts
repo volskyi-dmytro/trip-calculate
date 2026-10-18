@@ -136,15 +136,45 @@ test.describe('D: routing, saves, receipts (LOCAL)', () => {
     }
   })
 
-  test('D09 two sessions editing the same record sequentially: last write wins (documented behaviour, no client version)', async ({ request }) => {
+  test('D09 API: a PUT based on an older updatedAt gets 409 ROUTE_CHANGED and does not overwrite', async ({ request }) => {
     const r = await seedRoute(request)
-    const put = (name: string) => request.put(`/api/routes/${r.id}`, { data: { ...KYIV_LVIV, name } })
-    const a = await put('QA-LOCAL-TAB-A'); await new Promise(res => setTimeout(res, 1200))
-    const b = await put('QA-LOCAL-TAB-B')
-    console.log('D09 sequential PUT statuses:', a.status(), b.status())
-    expect([a.status(), b.status()]).toEqual([200, 200])
-    const final = await (await request.get(`/api/routes/${r.id}`)).json()
-    expect(final.name).toBe('QA-LOCAL-TAB-B')
+    const put = (name: string, expectedUpdatedAt?: string) => request.put(`/api/routes/${r.id}`, { data: { ...KYIV_LVIV, name, expectedUpdatedAt } })
+    await new Promise(res => setTimeout(res, 1500)) // per-user save limiter
+    const a = await put('QA-LOCAL-TAB-A', r.updatedAt)
+    expect(a.status()).toBe(200)
+    const aBody = await a.json()
+    await new Promise(res => setTimeout(res, 1500))
+    const b = await put('QA-LOCAL-TAB-B', r.updatedAt) // tab B still holds the version before A's save
+    expect(b.status()).toBe(409)
+    expect(await b.text()).toContain('ROUTE_CHANGED')
+    expect((await (await request.get(`/api/routes/${r.id}`)).json()).name).toBe('QA-LOCAL-TAB-A')
+    await new Promise(res => setTimeout(res, 1500))
+    expect((await put('QA-LOCAL-TAB-B2', aBody.updatedAt)).status()).toBe(200) // re-based on the newer version
+    await new Promise(res => setTimeout(res, 1500))
+    expect((await put('QA-LOCAL-LEGACY')).status()).toBe(200) // clients that send no version keep the old behaviour
+  })
+
+  test('D09 UI: two tabs on one record: the second tab to save gets the conflict message and keeps the first tab\'s edit', async ({ browser, request }) => {
+    const r = await seedRoute(request)
+    const ctx = await browser.newContext({ baseURL: 'http://localhost:3000' })
+    const open = async () => {
+      const p = await ctx.newPage()
+      await p.goto(`/en/route-planner?routeId=${r.id}`)
+      await expect(p.getByRole('button', { name: 'Update route' })).toBeVisible({ timeout: 20000 })
+      await p.getByRole('button', { name: 'Update route' }).click()
+      await expect(p.getByRole('button', { name: 'Update', exact: true })).toBeEnabled({ timeout: 30000 })
+      return p
+    }
+    const tabA = await open(), tabB = await open() // both loaded the same version
+    await tabA.locator('#route-name').fill('QA-LOCAL-TABA')
+    await tabA.getByRole('button', { name: 'Update', exact: true }).click()
+    await expect.poll(async () => (await (await request.get(`/api/routes/${r.id}`)).json()).name, { timeout: 20000 }).toBe('QA-LOCAL-TABA')
+    await new Promise(res => setTimeout(res, 1500))
+    await tabB.locator('#route-name').fill('QA-LOCAL-TABB')
+    await tabB.getByRole('button', { name: 'Update', exact: true }).click()
+    await expect(tabB.getByText(en.toasts.routeChanged).first()).toBeVisible({ timeout: 20000 })
+    expect((await (await request.get(`/api/routes/${r.id}`)).json()).name).toBe('QA-LOCAL-TABA')
+    await ctx.close()
   })
 
   test('D10 public receipt exposes no identity, contact or auth data', async ({ request }) => {

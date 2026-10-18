@@ -157,6 +157,8 @@ export function RoutePlanner() {
   // Edit mode state
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
+  // updatedAt of the saved record this edit started from (sent on update to detect another session's save)
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = useState<string | undefined>(undefined)
 
   // AI Chat State
   const [chatInput, setChatInput] = useState('')
@@ -613,6 +615,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setLoadedUpdatedAt(undefined)
     localStorage.removeItem('tripCalculate_currentRoute')
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.routeCleared)
@@ -633,6 +636,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setLoadedUpdatedAt(undefined)
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.newRouteReady)
   }, [navigate, language, t])
@@ -678,7 +682,8 @@ export function RoutePlanner() {
 
       if (isEditMode && currentRouteId && !saveAsNew) {
         // Update existing route
-        await routeService.updateRoute(currentRouteId, routeData)
+        const updated = await routeService.updateRoute(currentRouteId, { ...routeData, expectedUpdatedAt: loadedUpdatedAt })
+        setLoadedUpdatedAt(updated?.updatedAt)
         // Bottom-center + a bounded duration: top-right (the default) sits
         // right over the map's zoom controls and the account menu, and a
         // stacked run of these toasts must not linger and block either.
@@ -691,6 +696,7 @@ export function RoutePlanner() {
         // If saving as new from edit mode, switch to editing the new route
         if (saveAsNew && isEditMode) {
           setCurrentRouteId(newRoute.id!)
+          setLoadedUpdatedAt(newRoute.updatedAt)
           navigate(routeEditPath(newRoute.id!, language), { replace: true })
         }
       }
@@ -727,7 +733,7 @@ export function RoutePlanner() {
       saveInFlight.current = false
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, loadedUpdatedAt, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -760,6 +766,7 @@ export function RoutePlanner() {
       // it (with an explicit "Save as new"), instead of silently creating a duplicate.
       setCurrentRouteId(routeId)
       setIsEditMode(true)
+      setLoadedUpdatedAt(route.updatedAt)
       if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
