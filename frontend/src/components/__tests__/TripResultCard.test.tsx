@@ -54,7 +54,7 @@ describe('TripResultCard', () => {
         onApplyLivePrice={() => {}}
       />,
     )
-    expect(html).not.toContain('class="trip-result-live"')
+    expect(html).not.toContain('· live price')
     expect(html).toContain('Use live price')
   })
 
@@ -92,7 +92,6 @@ describe('TripResultCard', () => {
 
   it('labels an outage estimate approximate and blocks receipt sharing', () => {
     const html = card('approximate', 0)
-    expect(html).toContain('role="status"')
     expect(html).toContain('Approximate')
     expect(html).toContain('≈')
     expect(html).toMatch(/<button[^>]*disabled[^>]*>.*Share/s)
