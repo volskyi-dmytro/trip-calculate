@@ -26,4 +26,11 @@ describe('NotFoundPage', () => {
     expect(html.match(/<main[ >]/g)).toHaveLength(1)
     expect(html).toContain('id="main"')
   })
+
+  it('uses a full-height flex column shell so the footer sticks to the bottom', () => {
+    const html = renderToStaticMarkup(<NotFoundPage />)
+
+    expect(html).toContain('class="flex min-h-dvh flex-col"')
+    expect(html).toMatch(/<main[^>]*class="flex-1 container"/)
+  })
 })
