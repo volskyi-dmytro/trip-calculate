@@ -2,14 +2,17 @@ import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
-import { StatsPanel } from './StatsPanel'
+import { TripSummaryCard } from './planner/TripSummaryCard'
+import { PlannerSheet, type SheetSnap } from './planner/PlannerSheet'
+import { summarizeTrip } from './planner/tripSummary'
 import { RoutePanel } from './RoutePanel'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -145,10 +148,8 @@ export function RoutePlanner() {
   const [agentDoneStages, setAgentDoneStages] = useState<AgentStage[]>([])
   const [agentDegraded, setAgentDegraded] = useState(false)
   // Latest-result concierge slot: showResultCard is true once a request
-  // succeeds with an active result; cardDismissed hides it without losing
-  // the "there is an active result" bookkeeping until the next request/clear
+  // succeeds with an active result (bookkeeping until the next request/clear)
   const [showResultCard, setShowResultCard] = useState(false)
-  const [cardDismissed, setCardDismissed] = useState(false)
   const [showResultShareDialog, setShowResultShareDialog] = useState(false)
   const pendingAiResultRouteKey = useRef<string | null>(null)
   const routeCalculationSeq = useRef(0)
@@ -170,8 +171,35 @@ export function RoutePlanner() {
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
 
   // Mobile bottom sheet state
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek')
+  const isMobileExpanded = sheetSnap !== 'peek'
+  const setIsMobileExpanded = useCallback((v: boolean) => setSheetSnap(v ? 'half' : 'peek'), [])
+  // Result a11y: one polite announcement per new AI result, then focus on the summary heading.
+  const [resultAnnouncement, setResultAnnouncement] = useState('')
+  const announcementRef = useRef('')
+  const summaryHeadingRef = useRef<HTMLHeadingElement>(null)
+  const focusSummaryPending = useRef(false)
+  const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+
+  // A new AI result is announced once; on mobile the sheet opens so the heading exists to take focus.
+  const isMobileRef = useRef(isMobile)
+  isMobileRef.current = isMobile
+  useEffect(() => {
+    if (!showResultCard) {
+      setResultAnnouncement('')
+      return
+    }
+    focusSummaryPending.current = true
+    setResultAnnouncement(announcementRef.current)
+    if (isMobileRef.current) setSheetSnap(snap => (snap === 'peek' ? 'half' : snap))
+  }, [showResultCard])
+  useEffect(() => {
+    if (focusSummaryPending.current && summaryHeadingRef.current) {
+      summaryHeadingRef.current.focus()
+      focusSummaryPending.current = false
+    }
+  })
 
   // Load user's routes on mount
   useEffect(() => {
@@ -286,7 +314,7 @@ export function RoutePlanner() {
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('orientationchange', handleResize)
     }
-  }, [])
+  }, [setIsMobileExpanded])
 
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
@@ -345,7 +373,6 @@ export function RoutePlanner() {
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
-          setCardDismissed(false)
         }
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -558,7 +585,6 @@ export function RoutePlanner() {
     // Clearing the route also clears the latest-result concierge slot —
     // a stale result card no longer describes anything on the map
     setShowResultCard(false)
-    setCardDismissed(false)
     setAgentDoneStages([])
     setAgentDegraded(false)
     // departureDate is intentionally NOT reset here — it isn't tied to the
@@ -684,10 +710,6 @@ export function RoutePlanner() {
   }, [t])
 
   const deleteRouteFromServer = useCallback(async (routeId: number) => {
-    if (!confirm(t.dialogs.load.deleteConfirm)) {
-      return
-    }
-
     try {
       await routeService.deleteRoute(routeId)
       toast.success(t.toasts.routeDeleted)
@@ -941,7 +963,6 @@ const handleManualAddressSubmit = useCallback(async () => {
     // isProcessing is true, then this stays false on error so the slot
     // renders nothing until/unless the new request succeeds)
     setShowResultCard(false);
-    setCardDismissed(false);
     pendingAiResultRouteKey.current = null;
     setAgentDoneStages([]);
     setAgentDegraded(false);
@@ -1218,10 +1239,33 @@ const handleManualAddressSubmit = useCallback(async () => {
     );
   }
 
+  const peekSummary = waypoints.length >= 2 && !routeUnreachable
+    ? summarizeTrip({ waypoints, routeSettings, routeDistance, routeDuration, routeQuality, language, t })
+    : null
+  announcementRef.current = peekSummary?.announcement ?? ''
+
   // Shared by the desktop sidebar and the mobile sheet — only one of them
   // renders at a time (isMobile), so ids inside stay unique.
   const renderPlannerBody = () => (
     <>
+
+      {/* ── Trip result: the single summary (per-person cost, actions, breakdown) ── */}
+      {waypoints.length >= 2 && !routeUnreachable && (
+        <TripSummaryCard
+          waypoints={waypoints}
+          routeSettings={routeSettings}
+          routeDistance={routeDistance}
+          routeDuration={routeDuration}
+          routeQuality={routeQuality}
+          fuelSuggestion={fuelSuggestion}
+          weather={weatherData}
+          onSaveRoute={() => setShowSaveDialog(true)}
+          onShareReceipt={() => setShowResultShareDialog(true)}
+          onApplyLivePrice={handleApplyFuelSuggestion}
+          saveLabel={isEditMode ? t.planner.updateRoute : undefined}
+          headingRef={summaryHeadingRef}
+        />
+      )}
 
       {/* ── Route name + edit mode indicator ── */}
       {(routeName || isEditMode) && (
@@ -1291,15 +1335,16 @@ const handleManualAddressSubmit = useCallback(async () => {
               swapped[swapped.length - 1] = first
               reorderWaypoints(swapped)
             }}
-            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+            className="flex min-h-11 items-center gap-1.5 text-xs px-4 py-1.5 rounded-full transition-colors"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
               color: 'var(--nav-text-secondary)',
             }}
             title={t.planner.swapTitle}
+            aria-label={t.planner.swapAria.replace('{from}', waypoints[0].name).replace('{to}', waypoints[waypoints.length - 1].name)}
           >
-            ↕ {t.planner.swap}
+            <ArrowUpDown className="h-4 w-4" aria-hidden="true" /> {t.planner.swap}
           </button>
         </div>
       )}
@@ -1388,35 +1433,19 @@ const handleManualAddressSubmit = useCallback(async () => {
         onDepartureDateChange={setDepartureDate}
         garageCars={garageCars}
         onSelectCar={handleSelectCar}
-        routeUnreachable={routeUnreachable}
       />
 
-      {/* ── Route Stats ── only once there is a route; before that the
-          waypoint card's empty state is the single piece of guidance. */}
-      {waypoints.length >= 2 && (
-        <>
-          <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-          {routeUnreachable ? (
-            <div role="alert" className="rounded-lg p-3 text-sm"
-              style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}>
-              <p className="font-semibold">{t.planner.noRouteTitle}</p>
-              <p style={{ color: 'var(--nav-text-secondary)' }}>
-                {t.planner.noRouteDescription
-                  .replace('{from}', waypoints[0].name)
-                  .replace('{to}', waypoints[waypoints.length - 1].name)}
-              </p>
-            </div>
-          ) : (
-            <StatsPanel
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              routeDistance={routeDistance}
-              routeDuration={routeDuration}
-              routeQuality={routeQuality}
-              routeGeometry={routeGeometry}
-            />
-          )}
-        </>
+      {/* No road route: say so instead of showing figures */}
+      {waypoints.length >= 2 && routeUnreachable && (
+        <div role="alert" className="rounded-lg p-3 text-sm"
+          style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}>
+          <p className="font-semibold">{t.planner.noRouteTitle}</p>
+          <p style={{ color: 'var(--nav-text-secondary)' }}>
+            {t.planner.noRouteDescription
+              .replace('{from}', waypoints[0].name)
+              .replace('{to}', waypoints[waypoints.length - 1].name)}
+          </p>
+        </div>
       )}
 
       {/* ── Divider ── */}
@@ -1487,8 +1516,8 @@ const handleManualAddressSubmit = useCallback(async () => {
                         <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
                           {t.buttons.load}
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="icon" variant="destructive" aria-label={t.dialogs.load.deleteRoute.replace('{name}', route.name)} onClick={() => setRouteToDelete(route)}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
@@ -1500,10 +1529,11 @@ const handleManualAddressSubmit = useCallback(async () => {
         </Dialog>
 
         {/* Secondary route actions — one compact row under Load route */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${waypoints.length < 2 ? "grid-cols-3" : "grid-cols-2"}`}>
           {/* Save Route Dialog trigger */}
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-            <DialogTrigger asChild>
+            {/* With 2+ waypoints the summary card owns Save; this is the fallback. */}
+            {waypoints.length < 2 && <DialogTrigger asChild>
               <button
                 disabled={waypoints.length === 0 || routeUnreachable}
                 title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
@@ -1517,7 +1547,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                 <Save className="h-4 w-4" />
                 {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
               </button>
-            </DialogTrigger>
+            </DialogTrigger>}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
@@ -1616,8 +1646,8 @@ const handleManualAddressSubmit = useCallback(async () => {
         isProcessing={isProcessingAi}
         doneStages={agentDoneStages}
         degraded={agentDegraded}
-        showResult={showResultCard && !cardDismissed}
-        onDismiss={() => setCardDismissed(true)}
+        showResult={false} // the result is the TripSummaryCard in the planner body
+        onDismiss={() => {}}
         waypoints={waypoints}
         routeSettings={routeSettings}
         routeDistance={routeDistance}
@@ -1732,39 +1762,25 @@ const handleManualAddressSubmit = useCallback(async () => {
 
       {/* ── MOBILE BOTTOM SHEET — hidden on desktop ── */}
       {isMobile && (
-        <div
-          className="glass-sheet absolute bottom-0 left-0 right-0 flex flex-col transition-[height] duration-300 ease-in-out"
-          style={{
-            height: isMobileExpanded ? '65vh' : '140px',
-            zIndex: 40,
-          }}
-        >
-          {/* Sheet trigger: high-contrast pill so it reads as a button over
-              the map, with a nudging chevron announcing the swipe-up */}
-          <button
-            type="button"
-            onClick={() => setIsMobileExpanded(prev => !prev)}
-            className="flex-shrink-0 flex flex-col items-center justify-center pt-1.5 pb-2 w-full"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-            aria-expanded={isMobileExpanded}
-            aria-label={isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
-          >
-            <div
-              className="w-10 h-1 rounded-full mb-1.5"
-              style={{ background: 'var(--nav-border)' }}
-            />
-            <span className="sheet-trigger-pill flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg">
-              {isMobileExpanded ? (
-                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <ChevronUp className="h-4 w-4 sheet-chevron" aria-hidden="true" />
-              )}
-              {isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
-            </span>
-          </button>
-
-          {/* Collapsed state: start + destination quick-entry */}
-          {!isMobileExpanded && (
+        <PlannerSheet
+          snap={sheetSnap}
+          onSnapChange={setSheetSnap}
+          labels={t.bottomSheet}
+          footer={renderComposer()}
+          peek={peekSummary ? (
+            <button
+              type="button"
+              onClick={() => setIsMobileExpanded(true)}
+              className="mx-3 mb-2 flex min-h-11 flex-col items-start justify-center rounded-lg px-3 py-1 text-left"
+              style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}
+            >
+              <span className="text-sm font-semibold">{peekSummary.origin} → {peekSummary.destination}</span>
+              <span className="text-sm" style={{ color: 'var(--nav-text-secondary)' }}>
+                <span style={{ color: 'var(--nav-accent)', fontWeight: 700 }}>{peekSummary.headline.value}</span> {peekSummary.headline.label}
+              </span>
+            </button>
+          ) : (
+            /* Collapsed state: start + destination quick-entry */
             <div className="flex items-center gap-2 px-3 pb-2">
               <div className="relative flex-1">
                 <Input
@@ -1774,7 +1790,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                   onChange={(e) => setStartLocationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
                   disabled={isSearchingStart}
-                  className="h-9 text-sm w-full"
+                  className="h-11 text-sm w-full"
                   style={{
                     background: 'var(--nav-bg-input)',
                     border: '1px solid var(--nav-border)',
@@ -1793,7 +1809,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                   onChange={(e) => setDestinationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
                   disabled={isSearchingDestination}
-                  className="h-9 text-sm w-full"
+                  className="h-11 text-sm w-full"
                   style={{
                     background: 'var(--nav-bg-input)',
                     border: '1px solid var(--nav-border)',
@@ -1806,35 +1822,33 @@ const handleManualAddressSubmit = useCallback(async () => {
               </div>
               <button
                 onClick={() => { if (startLocationInput.trim()) handleStartLocationSearch(); if (destinationInput.trim()) handleDestinationSearch() }}
-                className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0"
-                style={{ background: 'var(--nav-accent)', color: '#0f1117' }}
+                className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0"
+                style={{ background: 'var(--nav-accent)', color: 'var(--on-accent)' }}
                 aria-label={t.planner.search}
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           )}
-
-          {/* Expanded state: scrollable full sidebar content */}
-          {isMobileExpanded && (
-            <>
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 space-y-5">
-                  {renderPlannerBody()}
-                </div>{/* end scrollable content */}
-              </div>
-
-              {/* AI assistant input pinned to bottom */}
-              <div
-                className="flex-shrink-0 p-3"
-                style={{ borderTop: '1px solid var(--nav-border)' }}
-              >
-                {renderComposer()}
-              </div>
-            </>
-          )}
-        </div>
+        >
+          {renderPlannerBody()}
+        </PlannerSheet>
       )}
+
+      {/* Polite live region: the result is announced once, when a new AI result arrives */}
+      <div role="status" aria-live="polite" className="sr-only">{resultAnnouncement}</div>
+
+      {/* Replaces the native confirm() for deleting a saved route */}
+      <ConfirmDialog
+        open={routeToDelete !== null}
+        onOpenChange={(open) => { if (!open) setRouteToDelete(null) }}
+        title={t.dialogs.load.deleteTitle}
+        description={routeToDelete ? `${routeToDelete.name}. ${t.dialogs.load.deleteConfirm}` : ''}
+        confirmLabel={t.buttons.delete}
+        cancelLabel={t.buttons.cancel}
+        destructive
+        onConfirm={() => { if (routeToDelete?.id != null) void deleteRouteFromServer(routeToDelete.id) }}
+      />
 
       {/* ── Dialogs — rendered at root level for correct z-index ── */}
 
