@@ -22,6 +22,17 @@ export function isPartialNumericInput(raw: string): boolean {
   return raw === '' || raw === '-' || raw === '.' || raw === '-.';
 }
 
+/** Parses user-typed numbers, accepting a decimal comma ("10,5"), grouping
+ *  spaces ("1 000,5") and "1,000.5". Returns null for anything that is not a
+ *  plain number so callers can flag it instead of silently treating it as 0. */
+export function parseNumericInput(raw: string): number | null {
+  let s = raw.replace(/[\s\u00a0\u202f]/g, '');
+  // Both separators present: commas are grouping. Otherwise a lone comma is the decimal mark.
+  s = s.includes('.') ? s.replace(/,/g, '') : s.replace(',', '.');
+  if (!/^-?(\d+\.?\d*|\.\d+)$/.test(s)) return null;
+  return Number(s);
+}
+
 export function clampNumeric(n: number, min?: number, max?: number): number {
   let v = n;
   if (min !== undefined) v = Math.max(min, v);
@@ -32,8 +43,8 @@ export function clampNumeric(n: number, min?: number, max?: number): number {
 /** What the field commits to once it loses focus: the clamped parsed number,
  *  or `fallback` when raw is empty/unparseable. */
 export function resolveNumericBlur(raw: string, { min, max, fallback = min ?? 0 }: NumericFieldOptions): number {
-  const parsed = Number(raw);
-  if (raw.trim() === '' || !Number.isFinite(parsed)) return fallback;
+  const parsed = parseNumericInput(raw);
+  if (parsed === null) return fallback;
   return clampNumeric(parsed, min, max);
 }
 
@@ -55,33 +66,48 @@ export function useNumericField(
   const display = (v: number) => (v === emptyEquals ? '' : String(v));
   const [raw, setRaw] = useState(() => display(value));
   const focused = useRef(false);
+  // True while the text is non-empty but not a number: surfaced as aria-invalid so the form can
+  // show a message instead of the old silent 0 / stale total.
+  const [invalid, setInvalid] = useState(false);
 
   useEffect(() => {
-    if (!focused.current) setRaw(display(value));
+    if (!focused.current) {
+      setRaw(display(value));
+      setInvalid(false);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [value, emptyEquals]);
 
+  const fallbackValue = options.fallback ?? min ?? 0;
+  const commit = (n: number) => onChange(options.normalize ? options.normalize(n) : n);
+
   return {
     value: raw,
+    'aria-invalid': invalid ? (true as const) : undefined,
     onFocus: () => {
       focused.current = true;
     },
     onChange: (e: ChangeEvent<HTMLInputElement>) => {
       const next = e.target.value;
       setRaw(next);
-      if (isPartialNumericInput(next)) return;
-      const parsed = Number(next);
-      if (Number.isFinite(parsed)) {
-        const clamped = clampNumeric(parsed, min, max);
-        onChange(options.normalize ? options.normalize(clamped) : clamped);
+      if (isPartialNumericInput(next)) {
+        setInvalid(false);
+        return;
       }
+      const parsed = parseNumericInput(next);
+      setInvalid(parsed === null);
+      // Invalid text commits the fallback so no stale result sits next to it.
+      commit(parsed === null ? fallbackValue : clampNumeric(parsed, min, max));
     },
     onBlur: () => {
       focused.current = false;
       const clamped = resolveNumericBlur(raw, options);
       const resolved = options.normalize ? options.normalize(clamped) : clamped;
-      setRaw(display(resolved));
       onChange(resolved);
+      // Keep the offending text visible (with the error) rather than overwriting it with 0.
+      if (parseNumericInput(raw) === null && raw.trim() !== '' && !isPartialNumericInput(raw)) return;
+      setInvalid(false);
+      setRaw(display(resolved));
     },
   };
 }

@@ -41,6 +41,11 @@ const EXAMPLES = {
   en: { distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
 } as const;
 
+/** Inline validation for useNumericField inputs: never leave bad text next to a result silently. */
+function FieldError({ field, message }: { field: { 'aria-invalid'?: true }; message: string }) {
+  return field['aria-invalid'] ? <p role="alert" className="mt-1 text-xs text-destructive">{message}</p> : null;
+}
+
 export function QuickCalculator({ example = false, prefill }: QuickCalculatorProps) {
   const { language, t: tr } = useLanguage();
   const { user } = useAuth();
@@ -179,6 +184,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             placeholder="0"
             {...distanceField}
           />
+          <FieldError field={distanceField} message={tr('quickCalc.invalidNumber')} />
         </div>
 
         {/* Passengers */}
@@ -225,6 +231,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             className="mt-1"
             {...consumptionField}
           />
+          <FieldError field={consumptionField} message={tr('quickCalc.invalidNumber')} />
           {storedCar ? (
             <div className="mt-1 inline-flex items-center gap-1 text-xs text-primary">
               <button
@@ -269,6 +276,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               className="flex-1"
               {...fuelPriceField}
             />
+          <FieldError field={fuelPriceField} message={tr('quickCalc.invalidNumber')} />
             <div>
               <Label htmlFor="quick-currency" className="sr-only">{t.currency}</Label>
               <select
