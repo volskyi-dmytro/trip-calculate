@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeTripStats } from '../tripStats'
+import { computeTripStats, buildEstimateExport } from '../tripStats'
 
 const wps = [
   { name: 'Kyiv', lat: 50.45, lng: 30.52 },
@@ -75,5 +75,35 @@ describe('computeTripStats', () => {
 
   it('zeroes out below two waypoints', () => {
     expect(computeTripStats([wps[0]], settings, 0, 0).fuelCost).toBe(0)
+  })
+})
+
+describe('computeTripStats provenance (P0-A)', () => {
+  it('labels a routed total as road with provider duration and proportional legs', () => {
+    const s = computeTripStats(wps, settings, 540, 300, 'road')
+    expect(s).toMatchObject({ quality: 'road', durationBasis: 'provider', legBasis: 'proportional' })
+  })
+
+  it('keeps the outage estimate approximate with assumed-speed duration, even if the caller claims road', () => {
+    const s = computeTripStats(wps, settings, 0, 0, 'road')
+    expect(s).toMatchObject({ quality: 'approximate', durationBasis: 'assumed-speed', legBasis: 'straight-line' })
+    expect(s.totalDistance).toBeGreaterThan(0)
+  })
+
+  it('yields no figures for an unavailable route, so no receipt can be built from it', () => {
+    const s = computeTripStats(wps, settings, 0, 0, 'unavailable')
+    expect(s).toMatchObject({ quality: 'unavailable', totalDistance: 0, fuelCost: 0, segments: [] })
+  })
+
+  it('reconciles legs with the total without claiming they are measured', () => {
+    const three = [wps[0], { name: 'Rivne', lat: 50.62, lng: 26.25 }, wps[1]]
+    const s = computeTripStats(three, settings, 600, 360, 'road')
+    expect(s.segments.reduce((sum, l) => sum + l.distance, 0)).toBeCloseTo(600)
+    expect(s.legBasis).toBe('proportional')
+  })
+
+  it('carries outage quality into the export block', () => {
+    const e = buildEstimateExport(wps, settings, 0, 0, { quality: 'approximate', source: 'straight-line', calculatedAt: '2026-01-01T00:00:00Z' })
+    expect(e).toMatchObject({ quality: 'approximate', source: 'straight-line', durationBasis: 'assumed-speed' })
   })
 })

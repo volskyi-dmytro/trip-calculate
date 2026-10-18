@@ -59,6 +59,9 @@ export const routePlannerTranslations = {
       fuelCost: 'Fuel cost',
       estTime: 'Est. time',
       addWaypoints: 'Add waypoints to see route statistics',
+      qualityRoad: 'Road route',
+      qualityApproximate: 'Approximate: straight-line distance, time assumes 80 km/h. Real road distance is usually longer. Receipts need a road route.',
+      legsNote: 'Leg distances are proportional shares of the total, not measured road legs.',
     },
     routeSegments: {
       title: 'Route segments',
@@ -308,6 +311,9 @@ export const routePlannerTranslations = {
       fuelCost: 'Вартість пального',
       estTime: 'Приблизний час',
       addWaypoints: 'Додайте точки для перегляду статистики',
+      qualityRoad: 'Маршрут дорогами',
+      qualityApproximate: 'Приблизно: відстань по прямій, час за 80 км/год. Реальна відстань дорогами зазвичай більша. Для чека потрібен маршрут дорогами.',
+      legsNote: 'Відстані ділянок — пропорційні частки загальної відстані, а не виміряні дорожні ділянки.',
     },
     routeSegments: {
       title: 'Сегменти маршруту',

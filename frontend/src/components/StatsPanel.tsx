@@ -8,6 +8,7 @@ import { ShareReceiptButton } from './receipt/ShareReceiptButton'
 import { downsampleGeometry } from '../services/receiptService'
 import { computeTripStats } from '../services/tripStats'
 import { displayWaypointName } from '../utils/waypointName'
+import type { EstimateQuality } from '../services/routingService'
 
 interface StatsPanelProps {
   waypoints: Waypoint[]
@@ -15,13 +16,15 @@ interface StatsPanelProps {
   routeDistance: number // in km from OSRM routing service
   routeDuration: number // in minutes from OSRM routing service
   routeGeometry?: Array<[number, number]>
+  routeQuality?: EstimateQuality
 }
 
-export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDuration, routeGeometry }: StatsPanelProps) {
+export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDuration, routeGeometry, routeQuality }: StatsPanelProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
 
-  const stats = useMemo(() => computeTripStats(waypoints, routeSettings, routeDistance, routeDuration), [waypoints, routeSettings, routeDistance, routeDuration])
+  const stats = useMemo(() => computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality), [waypoints, routeSettings, routeDistance, routeDuration, routeQuality])
+  const approx = stats.quality === 'approximate'
 
   // Precision Navigation palette helpers
   const cardStyle: React.CSSProperties = {
@@ -52,16 +55,21 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
       {waypoints.length >= 2 ? (
         <div style={cardStyle} className="p-3 space-y-3">
           <div style={sectionTitle}>{t.routeSummary.title}</div>
+          {approx && (
+            <p role="status" style={{ ...labelStyle, color: 'var(--nav-text-primary)' }}>
+              {t.routeSummary.qualityApproximate}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-2">
             <MetricCard
               icon={<Route className="h-3.5 w-3.5" />}
               label={t.routeSummary.totalDistance}
-              value={`${stats.totalDistance.toFixed(2)} km`}
+              value={`${approx ? '≈ ' : ''}${stats.totalDistance.toFixed(2)} km`}
             />
             <MetricCard
               icon={<Clock className="h-3.5 w-3.5" />}
               label={t.routeSummary.estTime}
-              value={`${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}
+              value={`${approx ? '≈ ' : ''}${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}
             />
             <MetricCard
               icon={<Fuel className="h-3.5 w-3.5" />}
@@ -146,7 +154,7 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
       )}
 
       {/* Share receipt */}
-      {waypoints.length >= 2 && stats.totalDistance > 0 && (
+      {waypoints.length >= 2 && stats.quality === 'road' && stats.totalDistance > 0 && (
         <ShareReceiptButton
           payload={{
             originLabel: displayWaypointName(waypoints[0].name, t.planner.waypoint),
@@ -166,6 +174,7 @@ export function StatsPanel({ waypoints, routeSettings, routeDistance, routeDurat
       {stats.segments.length > 0 && (
         <div style={cardStyle} className="p-3 space-y-2">
           <div style={sectionTitle}>{t.routeSegments.title}</div>
+          {stats.legBasis === 'proportional' && <p style={labelStyle}>{t.routeSummary.legsNote}</p>}
           <div className="space-y-2">
             {stats.segments.map((segment, index) => (
               <div

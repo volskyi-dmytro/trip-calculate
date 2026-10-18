@@ -5,6 +5,7 @@ import { AgentProgress } from './AgentProgress'
 import { TripResultCard } from './TripResultCard'
 import type { AgentStage } from '../services/agentStreamService'
 import type { RouteSettings, Waypoint } from './RoutePlanner'
+import type { EstimateQuality } from '../services/routingService'
 import type { FuelSuggestion } from '../services/fuelPriceService'
 import type { WeatherData } from '../types/weather'
 
@@ -20,6 +21,7 @@ interface AgentActivitySlotProps {
   routeSettings: RouteSettings
   routeDistance: number
   routeDuration: number
+  routeQuality?: EstimateQuality
   fuelSuggestion: FuelSuggestion | null
   weather: WeatherData | null
   onSaveRoute: () => void
@@ -44,6 +46,7 @@ export function AgentActivitySlot({
   routeSettings,
   routeDistance,
   routeDuration,
+  routeQuality,
   fuelSuggestion,
   weather,
   onSaveRoute,
@@ -79,6 +82,7 @@ export function AgentActivitySlot({
         routeSettings={routeSettings}
         routeDistance={routeDistance}
         routeDuration={routeDuration}
+        routeQuality={routeQuality}
         fuelSuggestion={fuelSuggestion}
         weather={weather}
         onSaveRoute={onSaveRoute}
