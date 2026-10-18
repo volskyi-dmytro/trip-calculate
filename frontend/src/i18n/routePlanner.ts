@@ -93,6 +93,8 @@ export const routePlannerTranslations = {
         noRoutes: 'No saved routes yet',
         createFirst: 'Create your first route and click "Save route" to save it!',
         deleteConfirm: 'Are you sure you want to delete this route?',
+        deleteTitle: 'Delete saved route?',
+        deleteRoute: 'Delete route {name}',
         routeInfo: 'km',
       },
       manual: {
@@ -154,6 +156,7 @@ export const routePlannerTranslations = {
       search: 'Search',
       swap: 'Swap',
       swapTitle: 'Swap start and destination',
+      swapAria: 'Swap start and destination: {from} and {to}',
       newRoute: 'New route',
       updateRoute: 'Update route',
       updateDescription: 'Update the existing route or save it as a new one',
@@ -218,6 +221,9 @@ export const routePlannerTranslations = {
     bottomSheet: {
       expand: 'Route details',
       collapse: 'Collapse',
+      region: 'Route details',
+      full: 'Expand to full height',
+      half: 'Reduce to half height',
     },
     progress: {
       route: 'Route agent — parsing your trip',
@@ -240,6 +246,11 @@ export const routePlannerTranslations = {
       share: 'Share receipt',
       pendingRoute: 'Calculating road distance…',
       dismiss: 'Dismiss result',
+      totalCost: 'Total cost',
+      totalWithPassengers: '{total} total · passengers: {count}',
+      howCalculated: 'How we calculated this',
+      fuelPrice: 'Fuel price: {price}',
+      announce: 'Trip ready: {from} to {to}, {distance}, {cost} {label}',
     },
     weather: {
       title: 'Weather along the route',
@@ -349,6 +360,8 @@ export const routePlannerTranslations = {
         noRoutes: 'Немає збережених маршрутів',
         createFirst: 'Створіть перший маршрут і натисніть "Зберегти маршрут"!',
         deleteConfirm: 'Ви впевнені, що хочете видалити цей маршрут?',
+        deleteTitle: 'Видалити збережений маршрут?',
+        deleteRoute: 'Видалити маршрут {name}',
         routeInfo: 'км',
       },
       manual: {
@@ -410,6 +423,7 @@ export const routePlannerTranslations = {
       search: 'Пошук',
       swap: 'Поміняти',
       swapTitle: 'Поміняти місцями відправлення і призначення',
+      swapAria: 'Поміняти місцями відправлення і призначення: {from} і {to}',
       newRoute: 'Новий маршрут',
       updateRoute: 'Оновити маршрут',
       updateDescription: 'Оновіть наявний маршрут або збережіть його як новий',
@@ -472,6 +486,9 @@ export const routePlannerTranslations = {
     bottomSheet: {
       expand: 'Маршрут',
       collapse: 'Згорнути',
+      region: 'Деталі маршруту',
+      full: 'Розгорнути на всю висоту',
+      half: 'Зменшити до половини',
     },
     progress: {
       route: 'Агент маршруту — розбираю вашу подорож',
@@ -494,6 +511,11 @@ export const routePlannerTranslations = {
       share: 'Поділитися квитанцією',
       pendingRoute: 'Рахую відстань дорогами…',
       dismiss: 'Приховати результат',
+      totalCost: 'Загальна вартість',
+      totalWithPassengers: '{total} разом · пасажирів: {count}',
+      howCalculated: 'Як ми це порахували',
+      fuelPrice: 'Ціна пального: {price}',
+      announce: 'Поїздка готова: {from} — {to}, {distance}, {cost} {label}',
     },
     weather: {
       title: 'Погода на маршруті',

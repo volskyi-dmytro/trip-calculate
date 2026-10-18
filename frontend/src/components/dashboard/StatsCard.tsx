@@ -2,7 +2,7 @@ import { MapPin, Navigation, DollarSign } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { UserStats } from '../../services/dashboardService';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { formatMoney } from '../../utils/money';
+import { formatDistance, formatMoney } from '../../lib/format';
 
 interface StatsCardProps {
   stats: UserStats;
@@ -31,7 +31,7 @@ export function StatsCard({ stats }: StatsCardProps) {
     },
     {
       label: t('dashboard.stats.totalDistance'),
-      value: `${stats.totalDistance.toFixed(1)} km`,
+      value: formatDistance(stats.totalDistance, language),
       icon: MapPin,
     },
     {

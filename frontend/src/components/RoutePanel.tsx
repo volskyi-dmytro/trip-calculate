@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
 import type { FuelSuggestion } from '../services/fuelPriceService'
-import { wazeLegLinks } from '../services/wazeExport'
+import { useResolvedWaypointNames } from '../hooks/useResolvedWaypointNames'
 import { Input } from '@/components/ui/input'
-import { Trash2, GripVertical, Plus, Loader2, ChevronDown, Navigation } from 'lucide-react'
+import { Trash2, GripVertical, Plus, Loader2, ChevronDown, Fuel } from 'lucide-react'
 import type { Language } from '../types'
 import { getTranslation } from '../i18n/routePlanner'
 import { useLanguage } from '../contexts/LanguageContext'
@@ -46,8 +46,6 @@ interface RoutePanelProps {
   onDepartureDateChange: (date: string) => void
   garageCars?: GarageCar[]
   onSelectCar?: (car: GarageCar) => void
-  /** No road connects the waypoints: hide navigation links. */
-  routeUnreachable?: boolean
 }
 
 export function RoutePanel({
@@ -66,7 +64,6 @@ export function RoutePanel({
   onDepartureDateChange,
   garageCars,
   onSelectCar,
-  routeUnreachable = false,
 }: RoutePanelProps) {
   const { language, t: tr } = useLanguage()
   const t = getTranslation(language as Language)
@@ -97,6 +94,9 @@ export function RoutePanel({
     setCustomChosen(false)
     setPickerOpen(false)
   }
+
+  // Coordinate-only names get a reverse-geocoded place name (cached).
+  useResolvedWaypointNames(waypoints, onUpdateWaypointName)
 
   // A geocoder (ours or the AI's) can fall back to raw coordinates as a
   // waypoint's name — swap in a "Waypoint N" label everywhere a name is
@@ -410,7 +410,7 @@ export function RoutePanel({
           onClick={() => setSettingsOpen(o => !o)}
           aria-expanded={settingsOpen}
           aria-controls="route-settings-fields"
-          className="w-full flex items-start justify-between gap-2 text-left"
+          className="w-full min-h-11 flex items-start justify-between gap-2 text-left"
         >
           <span className="min-w-0">
             <span className="block" style={{ color: 'var(--nav-text-primary)', fontWeight: 600, fontSize: '0.8rem' }}>
@@ -442,7 +442,7 @@ export function RoutePanel({
         {garageCars && garageCars.length > 0 && onSelectCar && (
           <select
             aria-label={t.planner.car}
-            className="w-full h-8 text-xs rounded-md px-2 mb-1"
+            className="w-full h-11 text-xs rounded-md px-2 mb-1"
             // bg-background/border-input have no theme tokens here (Tailwind v4)
             // and rendered transparent; use the panel's own input style.
             style={{ ...inputStyle, background: 'var(--surface)' }}
@@ -474,7 +474,7 @@ export function RoutePanel({
         <button
           type="button"
           onClick={() => setPickerOpen(true)}
-          className="w-full h-8 text-xs rounded-md px-2 font-medium"
+          className="w-full h-11 text-xs rounded-md px-2 font-medium"
           style={{ border: '1px solid var(--nav-border)', background: 'var(--nav-bg-input)', color: 'var(--nav-text-primary)' }}
         >
           {tr('carPicker.title')}
@@ -497,7 +497,7 @@ export function RoutePanel({
             onChange={handleFuelConsumptionChange}
             onBlur={handleFuelConsumptionBlur}
             style={inputStyle}
-            className="h-8 text-sm font-mono"
+            className="h-11 text-sm font-mono"
           />
         </div>
 
@@ -512,17 +512,17 @@ export function RoutePanel({
             onChange={handleFuelCostChange}
             onBlur={handleFuelCostBlur}
             style={inputStyle}
-            className="h-8 text-sm font-mono"
+            className="h-11 text-sm font-mono"
           />
           {fuelSuggestion && (
             routeSettings.fuelPriceTouched ? (
               <button type="button" className="fuel-chip fuel-chip-action"
                       onClick={onApplyFuelSuggestion}>
-                ⛽ {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/L
+                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/L
               </button>
             ) : (
               <span className="fuel-chip">
-                ⛽ {t.fuel.liveApplied} · {fuelSuggestion.source}
+                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.liveApplied} · {fuelSuggestion.source}
                 {fuelSuggestion.stale && ` · ${t.fuel.pricesFrom} ${fuelSuggestion.fetchedAt.slice(0, 10)}`}
               </span>
             )
@@ -543,7 +543,7 @@ export function RoutePanel({
               type="button"
               onClick={() => setFuelTypeOpen(o => !o)}
               style={{ ...inputStyle, paddingRight: '2rem' }}
-              className="flex h-8 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
+              className="flex h-11 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
               aria-haspopup="listbox"
               aria-expanded={fuelTypeOpen}
             >
@@ -571,7 +571,7 @@ export function RoutePanel({
                       onUpdateSettings({ ...routeSettings, fuelType: option.value })
                       setFuelTypeOpen(false)
                     }}
-                    className="flex w-full px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
+                    className="flex min-h-11 w-full items-center px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
                     style={{
                       color: 'var(--nav-text-primary)',
                       background: routeSettings.fuelType === option.value
@@ -601,7 +601,7 @@ export function RoutePanel({
               type="button"
               onClick={() => setCurrencyOpen(o => !o)}
               style={{ ...inputStyle, paddingRight: '2rem' }}
-              className="flex h-8 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
+              className="flex h-11 w-full rounded-md px-3 py-1 text-sm text-left cursor-pointer"
               aria-haspopup="listbox"
               aria-expanded={currencyOpen}
             >
@@ -632,7 +632,7 @@ export function RoutePanel({
                       onUpdateSettings({ ...routeSettings, currency: curr.code })
                       setCurrencyOpen(false)
                     }}
-                    className="flex w-full px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
+                    className="flex min-h-11 w-full items-center px-3 py-1.5 text-sm text-left transition-opacity hover:opacity-70"
                     style={{
                       color: 'var(--nav-text-primary)',
                       background: routeSettings.currency === curr.code
@@ -659,7 +659,7 @@ export function RoutePanel({
             onChange={handlePassengersChange}
             onBlur={handlePassengersBlur}
             style={inputStyle}
-            className="h-8 text-sm font-mono"
+            className="h-11 text-sm font-mono"
           />
         </div>
 
@@ -673,7 +673,7 @@ export function RoutePanel({
             max={new Date(Date.now() + 16 * 86400000).toISOString().slice(0, 10)}
             onChange={(e) => { if (e.target.value) onDepartureDateChange(e.target.value) }}
             style={inputStyle}
-            className="h-8 text-sm font-mono"
+            className="h-11 text-sm font-mono"
           />
         </div>
         </div>
@@ -688,14 +688,14 @@ export function RoutePanel({
           {onAddManually && (
             <button
               onClick={onAddManually}
-              className="flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors"
+              className="flex min-h-11 items-center gap-1 text-xs px-3 py-1 rounded transition-colors"
               style={{
                 background: 'var(--nav-bg-input)',
                 border: '1px solid var(--nav-border)',
                 color: 'var(--nav-accent)',
               }}
             >
-              <Plus className="h-3 w-3" />
+              <Plus className="h-3 w-3" aria-hidden="true" />
               {t.buttons.addManually}
             </button>
           )}
@@ -758,18 +758,26 @@ export function RoutePanel({
                       >
                         {index + 1}
                       </div>
-                      <Input
-                        aria-label={`${t.planner.waypoint} ${index + 1}: ${waypoint.name}`}
-                        value={waypoint.name}
-                        onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
-                        className="h-7 text-xs"
-                        style={inputStyle}
-                        disabled={isCalculating}
-                      />
+                      <div className="flex-1 min-w-0">
+                        <Input
+                          aria-label={`${t.planner.waypoint} ${index + 1}: ${waypoint.name}`}
+                          value={waypoint.name}
+                          onChange={(e) => onUpdateWaypointName(waypoint.id, e.target.value)}
+                          className="h-11 text-sm"
+                          style={inputStyle}
+                          disabled={isCalculating}
+                        />
+                        <div
+                          className="px-1 pt-0.5 font-mono"
+                          style={{ color: 'var(--nav-text-secondary)', fontSize: '0.7rem' }}
+                        >
+                          {waypoint.lat.toFixed(3)}, {waypoint.lng.toFixed(3)}
+                        </div>
+                      </div>
                     </div>
                     <button
                       aria-label={`${t.planner.deleteWaypoint} ${index + 1}: ${waypoint.name}`}
-                      className="h-7 w-7 flex items-center justify-center rounded flex-shrink-0 transition-colors disabled:opacity-30"
+                      className="h-11 w-11 flex items-center justify-center rounded flex-shrink-0 transition-colors disabled:opacity-30"
                       onClick={() => handleDeleteWaypoint(waypoint.id)}
                       disabled={isCalculating || waypoints.length <= 2}
                       title={
@@ -779,14 +787,8 @@ export function RoutePanel({
                       }
                       style={{ color: 'var(--nav-danger)' }}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" aria-hidden="true" />
                     </button>
-                  </div>
-                  <div
-                    className="text-xs px-2 py-0.5 font-mono"
-                    style={{ color: 'var(--nav-text-secondary)', fontSize: '0.65rem' }}
-                  >
-                    {waypoint.lat.toFixed(5)}, {waypoint.lng.toFixed(5)}
                   </div>
                   {index < waypoints.length - 1 && (
                     <div style={{ height: '1px', background: 'var(--nav-border)', margin: '4px 0' }} />
@@ -805,19 +807,6 @@ export function RoutePanel({
       </div>
 
       <WeatherStrip weather={weather} />
-
-      {/* Waze Export Links */}
-      {waypoints.length >= 2 && !routeUnreachable && (
-        <div style={cardStyle} className="p-3 space-y-2">
-          {wazeLegLinks(displayWaypoints).map(leg => (
-            <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer"
-               className="trip-result-waze-link">
-              <Navigation className="w-3.5 h-3.5" aria-hidden="true" />
-              {t.resultCard.navigate}: {leg.label}
-            </a>
-          ))}
-        </div>
-      )}
     </div>
   )
 }

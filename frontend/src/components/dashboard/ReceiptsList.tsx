@@ -5,12 +5,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { ConfirmDialog } from '../ui/confirm-dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatDistance, formatMoney } from '../../lib/format';
 import { receiptService, receiptUrl } from '../../services/receiptService';
 import type { Receipt } from '../../types/Receipt';
 
 /** Owned receipts never expire; this list is where users manage the links they shared. */
 export function ReceiptsList() {
-  const { t: tr, tn } = useLanguage();
+  const { t: tr, tn, language } = useLanguage();
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
@@ -80,11 +81,11 @@ export function ReceiptsList() {
                   <div className="text-sm font-medium truncate">
                     {r.originLabel && r.destinationLabel
                       ? `${r.originLabel} → ${r.destinationLabel}`
-                      : `${t.unnamed} · ${tr('receiptsList.distance').replace('{km}', r.distanceKm.toFixed(0))}`}
+                      : `${t.unnamed} · ${formatDistance(r.distanceKm, language)}`}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
-                    {tn('receiptsList.views', r.viewCount)} · {r.costPerPerson.toFixed(2)} {r.currency}
+                    {tn('receiptsList.views', r.viewCount)} · {formatMoney(r.costPerPerson, r.currency, language)}
                   </div>
                 </div>
                 <Button

@@ -5,6 +5,7 @@ import { PageShell } from '../components/common/PageShell';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translate } from '../i18n/common';
+import { formatMoney } from '../lib/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
@@ -143,12 +144,12 @@ export function CityRoutePage() {
     r.totalCost !== null && {
       icon: ArrowRight,
       label: t('cityRoute.totalCost'),
-      value: `${r.totalCost.toFixed(0)} ${r.currency}`,
+      value: formatMoney(r.totalCost, r.currency, language),
     },
     r.perPassenger !== null && {
       icon: ArrowRight,
       label: t('cityRoute.perPassenger'),
-      value: `${r.perPassenger.toFixed(0)} ${r.currency}`,
+      value: formatMoney(r.perPassenger, r.currency, language),
     },
   ].filter((f): f is { icon: typeof MapPin; label: string; value: string } => Boolean(f));
 
