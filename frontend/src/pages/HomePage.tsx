@@ -3,6 +3,7 @@ import { Calculator, Car, Map, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
 import { PageShell } from '../components/common/PageShell';
+import { SignInSheet } from '../components/auth/SignInSheet';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
