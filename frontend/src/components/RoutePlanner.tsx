@@ -211,6 +211,11 @@ export function RoutePlanner() {
     loadSavedRoutes()
   }, [])
 
+  // Refetch when the dialog opens so routes saved elsewhere (other tab) show up
+  useEffect(() => {
+    if (showLoadDialog) loadSavedRoutes()
+  }, [showLoadDialog])
+
   // Persist waypoints to localStorage
   useEffect(() => {
     if (waypoints.length > 0) {
