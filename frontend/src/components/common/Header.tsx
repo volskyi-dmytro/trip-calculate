@@ -10,9 +10,11 @@ import { withLocalePrefix, otherLocale } from '../../utils/locale';
 
 interface HeaderProps {
   onCalculateClick?: () => void;
+  /** Guest tap on "Create a trip": lets the page show a sign-in preview first. Defaults to going straight to login. */
+  onGuestCreateTrip?: () => void;
 }
 
-export function Header({ onCalculateClick }: HeaderProps) {
+export function Header({ onCalculateClick, onGuestCreateTrip }: HeaderProps) {
   const location = useLocation();
   const { user, loading, login } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -85,7 +87,7 @@ export function Header({ onCalculateClick }: HeaderProps) {
                   {t('header.createTrip')}
                 </Link>
               ) : (
-                <button id="create-trip-btn" type="button" className="btn" onClick={login}>
+                <button id="create-trip-btn" type="button" className="btn" onClick={onGuestCreateTrip ?? login}>
                   {t('header.createTrip')}
                 </button>
               )}

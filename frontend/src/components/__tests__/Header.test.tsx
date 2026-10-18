@@ -101,4 +101,22 @@ describe('Header guest create-trip CTA', () => {
     })
     expect(login).toHaveBeenCalledTimes(1)
   })
+
+  it('hands the tap to onGuestCreateTrip (sign-in preview) instead of logging in', () => {
+    const container = document.createElement('div')
+    document.body.appendChild(container)
+    const root = createRoot(container)
+    const onGuest = vi.fn()
+    currentPathname = '/en'
+    currentLanguage = 'en'
+    act(() => { root.render(<Header onGuestCreateTrip={onGuest} />) })
+    mounted.push(() => { act(() => root.unmount()); container.remove() })
+
+    login.mockClear()
+    act(() => {
+      container.querySelector('#create-trip-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    })
+    expect(onGuest).toHaveBeenCalledTimes(1)
+    expect(login).not.toHaveBeenCalled()
+  })
 })
