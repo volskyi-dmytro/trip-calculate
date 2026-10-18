@@ -27,6 +27,7 @@ public class RoutingService {
     /** Returned (by identity) when no drivable route connects the waypoints. */
     static final Map<String, Object> NO_ROUTE = Map.of(
         "noRoute", true,
+        "quality", "noRoute",
         "totalDistance", 0,
         "totalDuration", 0,
         "geometry", Collections.emptyList(),
@@ -291,6 +292,8 @@ public class RoutingService {
                 geometryLatLng.size());
 
             return Map.of(
+                "quality", "road",
+                "provider", "mapbox",
                 "totalDistance", distance,
                 "totalDuration", duration,
                 "geometry", geometryLatLng,
@@ -368,6 +371,8 @@ public class RoutingService {
                             geometryLatLng.size());
 
                         return Map.of(
+                            "quality", "road",
+                            "provider", "osrm",
                             "totalDistance", distance,
                             "totalDuration", duration,
                             "geometry", geometryLatLng,
@@ -391,6 +396,8 @@ public class RoutingService {
             .toList();
 
         return Map.of(
+            "quality", "approximate",
+            "provider", "straight-line",
             "totalDistance", 0,
             "totalDuration", 0,
             "geometry", fallbackGeometry,
