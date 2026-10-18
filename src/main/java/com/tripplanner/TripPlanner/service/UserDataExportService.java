@@ -61,6 +61,7 @@ public class UserDataExportService {
                         "currency", route.getCurrency(),
                         "passengerCount", route.getPassengerCount(),
                         "totalDistance", route.getTotalDistance(),
+                        "distanceQuality", route.getDistanceQuality() != null ? route.getDistanceQuality() : "legacy",
                         "totalCost", route.getTotalCost(),
                         "createdAt", route.getCreatedAt(),
                         "updatedAt", route.getUpdatedAt(),

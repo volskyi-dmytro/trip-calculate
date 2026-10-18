@@ -8,7 +8,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import com.tripplanner.TripPlanner.routing.RoutingController;
+import com.tripplanner.TripPlanner.routing.RoutingService;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -16,6 +20,10 @@ import java.util.stream.Collectors;
 public class RouteService {
     private final RouteRepository routeRepository;
     private final WaypointRepository waypointRepository;
+    private final RoutingService routingService;
+
+    /** Bump when the distance/cost arithmetic changes; stored with every saved route. */
+    static final String CALCULATION_VERSION = "route-save/1";
 
 
     @Transactional(readOnly = true)
@@ -37,64 +45,44 @@ public class RouteService {
     public RouteDTO saveRoute(SaveRouteRequest request, Long userId) {
         Route route = new Route();
         route.setUserId(userId);
-        route.setName(request.getName());
-        route.setFuelConsumption(request.getFuelConsumption());
-        route.setFuelCostPerLiter(request.getFuelCostPerLiter());
-        route.setCurrency(request.getCurrency());
-        route.setPassengerCount(request.getPassengerCount() != null ? request.getPassengerCount() : 1);
-
-        // Calculate totals
-        BigDecimal totalDistance = calculateTotalDistance(request.getWaypoints());
-        route.setTotalDistance(totalDistance);
-
-        BigDecimal fuelNeeded = totalDistance.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .multiply(request.getFuelConsumption());
-        BigDecimal totalCost = fuelNeeded.multiply(request.getFuelCostPerLiter());
-        route.setTotalCost(totalCost);
-
-        // Save route first
-        route = routeRepository.save(route);
-
-        // Add waypoints
-        for (int i = 0; i < request.getWaypoints().size(); i++) {
-            WaypointDTO wpDto = request.getWaypoints().get(i);
-            Waypoint waypoint = new Waypoint();
-            waypoint.setRoute(route);
-            waypoint.setPositionOrder(i);
-            waypoint.setName(wpDto.getName());
-            waypoint.setLatitude(wpDto.getLatitude());
-            waypoint.setLongitude(wpDto.getLongitude());
-            route.getWaypoints().add(waypoint);
-        }
-
-        route = routeRepository.save(route);
-        return convertToDTO(route);
+        apply(route, request);
+        // Save first so waypoints can reference the generated id
+        return convertToDTO(routeRepository.save(route));
     }
 
     @Transactional
     public RouteDTO updateRoute(Long routeId, SaveRouteRequest request, Long userId) {
         Route route = routeRepository.findByIdAndUserId(routeId, userId)
                 .orElseThrow(() -> new RuntimeException("Route not found"));
+        route.getWaypoints().clear();
+        apply(route, request);
+        return convertToDTO(routeRepository.save(route));
+    }
+
+    /** Copies inputs and recomputes every derived figure on the server. */
+    private void apply(Route route, SaveRouteRequest request) {
+        Estimate estimate = estimate(request);
 
         route.setName(request.getName());
         route.setFuelConsumption(request.getFuelConsumption());
         route.setFuelCostPerLiter(request.getFuelCostPerLiter());
         route.setCurrency(request.getCurrency());
         route.setPassengerCount(request.getPassengerCount() != null ? request.getPassengerCount() : 1);
+        route.setFuelType(request.getFuelType());
+        route.setDepartureDate(request.getDepartureDate());
 
-        // Clear existing waypoints
-        route.getWaypoints().clear();
+        route.setTotalDistance(estimate.km());
+        route.setTotalDurationMinutes(estimate.minutes());
+        route.setDistanceQuality(estimate.quality());
+        route.setDistanceSource(estimate.source());
+        route.setCalculationVersion(CALCULATION_VERSION);
+        route.setCalculatedAt(LocalDateTime.now());
+        // Same formula as the planner: km / 100 * L/100km * price, rounded once.
+        route.setTotalCost(estimate.km().multiply(request.getFuelConsumption())
+                .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP)
+                .multiply(request.getFuelCostPerLiter())
+                .setScale(2, RoundingMode.HALF_UP));
 
-        // Calculate totals
-        BigDecimal totalDistance = calculateTotalDistance(request.getWaypoints());
-        route.setTotalDistance(totalDistance);
-
-        BigDecimal fuelNeeded = totalDistance.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                .multiply(request.getFuelConsumption());
-        BigDecimal totalCost = fuelNeeded.multiply(request.getFuelCostPerLiter());
-        route.setTotalCost(totalCost);
-
-        // Add new waypoints
         for (int i = 0; i < request.getWaypoints().size(); i++) {
             WaypointDTO wpDto = request.getWaypoints().get(i);
             Waypoint waypoint = new Waypoint();
@@ -105,9 +93,48 @@ public class RouteService {
             waypoint.setLongitude(wpDto.getLongitude());
             route.getWaypoints().add(waypoint);
         }
+    }
 
-        route = routeRepository.save(route);
-        return convertToDTO(route);
+    private record Estimate(BigDecimal km, Integer minutes, String quality, String source) {}
+
+    /**
+     * Road distance from the same routing service the planner uses; straight-line
+     * (labelled "approximate") only if every provider is down. A client snapshot is
+     * verified against this, never trusted.
+     */
+    private Estimate estimate(SaveRouteRequest request) {
+        List<RoutingController.Waypoint> points = request.getWaypoints().stream()
+                .map(w -> new RoutingController.Waypoint(w.getLatitude().doubleValue(), w.getLongitude().doubleValue()))
+                .toList();
+
+        Map<String, Object> routed;
+        try {
+            routed = routingService.calculateRoute(points);
+        } catch (Exception e) {
+            routed = Map.of();
+        }
+        if (Boolean.TRUE.equals(routed.get("noRoute"))) {
+            throw new IllegalArgumentException("No drivable route between the waypoints");
+        }
+
+        Estimate estimate;
+        if ("road".equals(routed.get("quality")) && routed.get("totalDistance") instanceof Number km && km.doubleValue() > 0) {
+            Integer minutes = routed.get("totalDuration") instanceof Number d ? (int) Math.round(d.doubleValue()) : null;
+            estimate = new Estimate(BigDecimal.valueOf(km.doubleValue()).setScale(2, RoundingMode.HALF_UP), minutes,
+                    "road", String.valueOf(routed.getOrDefault("provider", "road-router")));
+        } else {
+            estimate = new Estimate(calculateTotalDistance(request.getWaypoints()), null, "approximate", "straight-line");
+        }
+
+        SaveRouteRequest.Snapshot claimed = request.getSnapshot();
+        if (claimed != null) {
+            BigDecimal tolerance = estimate.km().multiply(new BigDecimal("0.01")).max(new BigDecimal("0.5"));
+            if (!claimed.getQuality().equals(estimate.quality())
+                    || claimed.getDistanceKm().subtract(estimate.km()).abs().compareTo(tolerance) > 0) {
+                throw new IllegalArgumentException("Route snapshot does not match the server calculation");
+            }
+        }
+        return estimate;
     }
 
     @Transactional
@@ -162,6 +189,14 @@ public class RouteService {
         dto.setPassengerCount(route.getPassengerCount());
         dto.setTotalDistance(route.getTotalDistance());
         dto.setTotalCost(route.getTotalCost());
+        dto.setFuelType(route.getFuelType());
+        dto.setDepartureDate(route.getDepartureDate());
+        dto.setTotalDurationMinutes(route.getTotalDurationMinutes());
+        // Null quality = saved before provenance existed: straight-line totals, reported as legacy, never upgraded.
+        dto.setDistanceQuality(route.getDistanceQuality() != null ? route.getDistanceQuality() : "legacy");
+        dto.setDistanceSource(route.getDistanceSource());
+        dto.setCalculationVersion(route.getCalculationVersion());
+        dto.setCalculatedAt(route.getCalculatedAt());
         dto.setCreatedAt(route.getCreatedAt());
         dto.setUpdatedAt(route.getUpdatedAt());
         dto.setWaypoints(route.getWaypoints().stream()

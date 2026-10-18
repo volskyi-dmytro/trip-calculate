@@ -22,6 +22,8 @@ public class RouteListItemDTO {
     private BigDecimal totalDistance;
     private BigDecimal totalCost;
     private String currency;
+    /** road | approximate | legacy */
+    private String distanceQuality;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

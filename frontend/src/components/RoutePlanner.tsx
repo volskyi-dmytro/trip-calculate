@@ -596,6 +596,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: routeSettings.fuelCostPerLiter,
         currency: routeSettings.currency,
         passengerCount: routeSettings.passengerCount,
+        fuelType: routeSettings.fuelType,
+        departureDate,
+        // Only a calculated estimate is claimed; the server re-verifies it.
+        snapshot: routeQuality === 'road' || routeQuality === 'approximate'
+          ? {
+              distanceKm: Number(computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance.toFixed(2)),
+              quality: routeQuality,
+            }
+          : undefined,
         waypoints: waypoints.map((wp, index) => ({
           positionOrder: index,
           name: wp.name,
@@ -631,7 +640,7 @@ export function RoutePlanner() {
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, t, isEditMode, currentRouteId, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -652,12 +661,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: route.fuelCostPerLiter,
         currency: route.currency,
         passengerCount: route.passengerCount || 1,
+        // Older saves have no fuel type: keep the current one rather than guess.
+        fuelType: (route.fuelType as RouteSettings['fuelType'] | undefined) ?? DEFAULT_ROUTE_SETTINGS.fuelType,
         // A persisted price is a user-chosen price: mark it touched so the
         // live fuel suggestion effect (see applyLiveFuelPrice guard) never
         // silently overwrites it once the new waypoints trigger a refetch.
         fuelPriceTouched: true
       })
       setRouteName(route.name)
+      if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
 
@@ -1464,7 +1476,8 @@ const handleManualAddressSubmit = useCallback(async () => {
                       <div className="flex-1">
                         <h3 className="font-semibold">{route.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.distanceQuality && route.distanceQuality !== 'road' && ` • ${t.routeSummary.savedApproximate}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(route.updatedAt!).toLocaleDateString()}

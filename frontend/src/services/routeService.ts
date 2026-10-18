@@ -19,6 +19,16 @@ export interface Route {
   passengerCount?: number;
   totalDistance?: number;
   totalCost?: number;
+  fuelType?: string;
+  departureDate?: string; // YYYY-MM-DD
+  totalDurationMinutes?: number;
+  /** Server-computed provenance. 'legacy' = saved before provenance existed (straight-line totals). */
+  distanceQuality?: 'road' | 'approximate' | 'legacy';
+  distanceSource?: string;
+  calculationVersion?: string;
+  calculatedAt?: string;
+  /** Optional: what the client displayed; the server verifies it and rejects mismatches. */
+  snapshot?: { distanceKm: number; quality: 'road' | 'approximate' };
   waypoints: Waypoint[];
   createdAt?: string;
   updatedAt?: string;
