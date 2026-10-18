@@ -3,6 +3,7 @@ import { PageShell } from '../components/common/PageShell';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
+import '../styles/page-layout.css';
 
 // Shown for unknown /en/... and /uk/... paths. The server already answers them
 // with 404 + noindex; this keeps visitors from landing on a blank page.

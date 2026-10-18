@@ -23,6 +23,7 @@ function embeddedRoutes(): CityRouteSummary[] {
 
 export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const { t, language } = useLanguage();
   const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>(embeddedRoutes);
   useDocumentTitle(t('pageTitle.home'));
@@ -65,7 +66,7 @@ export function HomePage() {
 
   return (
     <>
-      <PageShell header={<Header onCalculateClick={() => setIsCalculatorOpen(true)} />} mainClassName="container">
+      <PageShell header={<Header onCalculateClick={() => setIsCalculatorOpen(true)} onGuestCreateTrip={() => setSignInOpen(true)} />} mainClassName="container">
         <section className="section home-intro" aria-labelledby="home-intro-title">
           <div className="home-intro-copy">
             <p className="home-intro-eyebrow">{t('home.intro.eyebrow')}</p>
@@ -153,6 +154,7 @@ export function HomePage() {
         </section>
       </PageShell>
 
+      <SignInSheet open={signInOpen} onOpenChange={setSignInOpen} />
       <CalculatorModal
         isOpen={isCalculatorOpen}
         onClose={() => setIsCalculatorOpen(false)}

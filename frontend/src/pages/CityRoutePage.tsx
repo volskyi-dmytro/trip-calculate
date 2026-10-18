@@ -8,6 +8,7 @@ import { translate } from '../i18n/common';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
+import '../styles/page-layout.css';
 
 type PageState = 'loading' | 'ready' | 'notFound' | 'error';
 
@@ -153,7 +154,8 @@ export function CityRoutePage() {
 
   return (
     <PageShell mainClassName="container">
-        <section className="section">
+        <section className="section city-intro">
+          <div>
           {/* Visible counterpart of the server's BreadcrumbList JSON-LD. */}
           <nav aria-label={t('cityRoute.breadcrumb')} className="breadcrumb">
             <Link to={withLocalePrefix('/', language)}>Trip Calculate</Link>
@@ -166,12 +168,10 @@ export function CityRoutePage() {
             {r.fromName} → {r.toName}: {t('cityRoute.titleSuffix')}
           </h1>
           <p className="section-lead">{explanation}</p>
-        </section>
-
-        {/* Calculator before the stats: on mobile this was five tall cards
-            deep before any actionable content. */}
-        <section className="section">
-          <div style={{ maxWidth: '26rem', margin: '0 auto' }}>
+          </div>
+          {/* Calculator right after the intro: on mobile the stats were five tall cards
+              deep before any actionable content; from 900px it sits beside the copy. */}
+          <div className="city-intro-calc">
             <QuickCalculator
               prefill={{
                 distance: r.distanceKm,
