@@ -454,7 +454,7 @@ main:focus {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 16px;
     border-radius: 9px;
     background: rgba(255, 255, 255, 0.95);
@@ -478,8 +478,8 @@ main:focus {
    it accessible when the visible label is hidden. */
 @media (max-width: 480px) {
     .btn-google {
-        width: 40px;
-        min-width: 40px;
+        width: 44px;
+        min-width: 44px;
         padding: 0;
     }
 
@@ -599,6 +599,7 @@ main:focus {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    min-height: 44px;
     padding: 8px 8px 8px 0;
     color: #ffffff;
     font-size: 1rem;
