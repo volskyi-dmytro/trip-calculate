@@ -42,6 +42,14 @@ class PublicNotFoundSecurityTest {
                 .andExpect(header().string(HttpHeaders.LOCATION, "https://trip-calculate.online/en"));
     }
 
+    // A06: release identity must be readable without a session through the full prod chain.
+    @Test
+    void anonymousCanReadBuildInfo() throws Exception {
+        mockMvc.perform(get("/api/build-info"))
+                .andExpect(status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.commit").isString());
+    }
+
     // GET /api/city-routes/** must be reachable anonymously through the full prod
     // chain — the dev profile's blanket permitAll would hide a denyAll gap.
     @Test

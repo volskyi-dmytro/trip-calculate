@@ -15,7 +15,8 @@ import { Label } from '@/components/ui/label'
 import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Search, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
-import { geocodingService } from '../services/geocodingService'
+import { geocodingService, type Place } from '../services/geocodingService'
+import { PlaceCombobox } from './PlaceCombobox'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
 import { AiRateLimitError } from '../services/agentService'
@@ -156,6 +157,8 @@ export function RoutePlanner() {
   // Edit mode state
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
+  // updatedAt of the saved record this edit started from (sent on update to detect another session's save)
+  const [loadedUpdatedAt, setLoadedUpdatedAt] = useState<string | undefined>(undefined)
 
   // AI Chat State
   const [chatInput, setChatInput] = useState('')
@@ -534,7 +537,7 @@ export function RoutePlanner() {
 
     try {
       // Get location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(lat, lng)
+      const locationName = await geocodingService.reverseGeocode(lat, lng, language)
 
       const newWaypoint: Waypoint = {
         id: Date.now().toString(),
@@ -551,7 +554,7 @@ export function RoutePlanner() {
     } finally {
       setIsGeocoding(false)
     }
-  }, [isGeocoding, t])
+  }, [isGeocoding, t, language])
 
   const updateWaypoint = useCallback(async (id: string, lat: number, lng: number) => {
     // Update position immediately
@@ -561,7 +564,7 @@ export function RoutePlanner() {
 
     // Fetch new address via reverse geocoding
     try {
-      const locationName = await geocodingService.reverseGeocode(lat, lng)
+      const locationName = await geocodingService.reverseGeocode(lat, lng, language)
       setWaypoints(prev =>
         prev.map(wp => wp.id === id ? { ...wp, name: locationName } : wp)
       )
@@ -569,7 +572,7 @@ export function RoutePlanner() {
       console.error('Failed to reverse geocode on drag:', error)
       // Keep the old name if reverse geocoding fails
     }
-  }, [])
+  }, [language])
 
   const removeWaypoint = useCallback((id: string) => {
     if (waypoints.length <= 2) {
@@ -612,6 +615,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setLoadedUpdatedAt(undefined)
     localStorage.removeItem('tripCalculate_currentRoute')
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.routeCleared)
@@ -632,6 +636,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setLoadedUpdatedAt(undefined)
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.newRouteReady)
   }, [navigate, language, t])
@@ -677,7 +682,8 @@ export function RoutePlanner() {
 
       if (isEditMode && currentRouteId && !saveAsNew) {
         // Update existing route
-        await routeService.updateRoute(currentRouteId, routeData)
+        const updated = await routeService.updateRoute(currentRouteId, { ...routeData, expectedUpdatedAt: loadedUpdatedAt })
+        setLoadedUpdatedAt(updated?.updatedAt)
         // Bottom-center + a bounded duration: top-right (the default) sits
         // right over the map's zoom controls and the account menu, and a
         // stacked run of these toasts must not linger and block either.
@@ -690,6 +696,7 @@ export function RoutePlanner() {
         // If saving as new from edit mode, switch to editing the new route
         if (saveAsNew && isEditMode) {
           setCurrentRouteId(newRoute.id!)
+          setLoadedUpdatedAt(newRoute.updatedAt)
           navigate(routeEditPath(newRoute.id!, language), { replace: true })
         }
       }
@@ -726,7 +733,7 @@ export function RoutePlanner() {
       saveInFlight.current = false
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, loadedUpdatedAt, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -755,6 +762,11 @@ export function RoutePlanner() {
         fuelPriceTouched: true
       })
       setRouteName(route.name)
+      // A route opened from the dialog is the same record the ?routeId= link edits: Save updates
+      // it (with an explicit "Save as new"), instead of silently creating a duplicate.
+      setCurrentRouteId(routeId)
+      setIsEditMode(true)
+      setLoadedUpdatedAt(route.updatedAt)
       if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
@@ -812,7 +824,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     try {
       toast.loading(t.toasts.searchingLocation)
 
-      const result = await geocodingService.forwardGeocode(manualAddress)
+      const result = await geocodingService.forwardGeocode(manualAddress, language)
 
       toast.dismiss()
 
@@ -822,7 +834,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Add waypoint
       const newWaypoint: Waypoint = {
@@ -846,11 +858,11 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearching(false)
     }
-  }, [manualAddress, t])
+  }, [manualAddress, t, language])
 
   // Handle start location search
-  const handleStartLocationSearch = useCallback(async () => {
-    if (!startLocationInput.trim()) {
+  const handleStartLocationSearch = useCallback(async (picked?: Place) => {
+    if (!picked && !startLocationInput.trim()) {
       toast.error(t.toasts.enterAddress)
       return
     }
@@ -858,7 +870,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     setIsSearchingStart(true)
 
     try {
-      const result = await geocodingService.forwardGeocode(startLocationInput)
+      const result = picked ?? await geocodingService.forwardGeocode(startLocationInput, language)
 
       if (!result) {
         toast.error(t.toasts.locationNotFound)
@@ -866,8 +878,8 @@ const handleManualAddressSubmit = useCallback(async () => {
         return
       }
 
-      // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Update or add start waypoint
       if (waypoints.length > 0) {
@@ -895,11 +907,11 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearchingStart(false)
     }
-  }, [startLocationInput, waypoints, t])
+  }, [startLocationInput, waypoints, t, language])
 
   // Handle destination search
-  const handleDestinationSearch = useCallback(async () => {
-    if (!destinationInput.trim()) {
+  const handleDestinationSearch = useCallback(async (picked?: Place) => {
+    if (!picked && !destinationInput.trim()) {
       toast.error(t.toasts.enterAddress)
       return
     }
@@ -907,7 +919,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     setIsSearchingDestination(true)
 
     try {
-      const result = await geocodingService.forwardGeocode(destinationInput)
+      const result = picked ?? await geocodingService.forwardGeocode(destinationInput, language)
 
       if (!result) {
         toast.error(t.toasts.locationNotFound)
@@ -915,8 +927,8 @@ const handleManualAddressSubmit = useCallback(async () => {
         return
       }
 
-      // Get proper location name via reverse geocoding
-      const locationName = await geocodingService.reverseGeocode(result.lat, result.lng)
+      // A picked suggestion already carries its label; typed text still gets the reverse-geocoded name.
+      const locationName = picked ? picked.name : await geocodingService.reverseGeocode(result.lat, result.lng, language)
 
       // Update or add destination waypoint
       if (waypoints.length > 1) {
@@ -949,7 +961,7 @@ const handleManualAddressSubmit = useCallback(async () => {
     } finally {
       setIsSearchingDestination(false)
     }
-  }, [destinationInput, waypoints, t])
+  }, [destinationInput, waypoints, t, language])
 
   // Geocode both start and destination atomically, then trigger auto-calculation via waypoints update
   const handleCalculateRoute = useCallback(async () => {
@@ -982,8 +994,8 @@ const handleManualAddressSubmit = useCallback(async () => {
       }
 
       const [startName, destName] = await Promise.all([
-        geocodingService.reverseGeocode(startResult.lat, startResult.lng),
-        geocodingService.reverseGeocode(destResult.lat, destResult.lng)
+        geocodingService.reverseGeocode(startResult.lat, startResult.lng, language),
+        geocodingService.reverseGeocode(destResult.lat, destResult.lng, language)
       ])
 
       const startWaypoint: Waypoint = {
@@ -1010,7 +1022,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       setIsSearchingStart(false)
       setIsSearchingDestination(false)
     }
-  }, [startLocationInput, destinationInput, waypoints, t])
+  }, [startLocationInput, destinationInput, waypoints, t, language])
 
   // AI Chat Handler
   const handleSendChat = useCallback(async (submittedMessage: string) => {
@@ -1140,7 +1152,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         } else if (agentData.originName) {
           const locs = await geocodingService.forwardGeocode(agentData.originName);
           if (locs) {
-            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng, language);
             newWaypoints.push({
               id: Date.now().toString() + '-origin',
               lat: locs.lat,
@@ -1176,7 +1188,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         } else if (agentData.destinationName) {
           const locs = await geocodingService.forwardGeocode(agentData.destinationName);
           if (locs) {
-            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng);
+            const locationName = await geocodingService.reverseGeocode(locs.lat, locs.lng, language);
             newWaypoints.push({
               id: Date.now().toString() + '-dest',
               lat: locs.lat,
@@ -1354,16 +1366,14 @@ const handleManualAddressSubmit = useCallback(async () => {
           {t.planner.start}
         </Label>
         <div className="relative">
-          <Input
-            type="text"
+          <PlaceCombobox
+            label={t.planner.start}
+            language={language}
             placeholder={t.planner.searchStart}
             value={startLocationInput}
-            onChange={(e) => setStartLocationInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isSearchingStart) {
-                handleStartLocationSearch()
-              }
-            }}
+            onChange={setStartLocationInput}
+            onPick={handleStartLocationSearch}
+            onSubmit={() => { if (!isSearchingStart) handleStartLocationSearch() }}
             disabled={isSearchingStart}
             className="w-full pr-8"
             style={{
@@ -1415,16 +1425,14 @@ const handleManualAddressSubmit = useCallback(async () => {
           {t.planner.destination}
         </Label>
         <div className="relative">
-          <Input
-            type="text"
+          <PlaceCombobox
+            label={t.planner.destination}
+            language={language}
             placeholder={t.planner.searchDestination}
             value={destinationInput}
-            onChange={(e) => setDestinationInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' && !isSearchingDestination) {
-                handleDestinationSearch()
-              }
-            }}
+            onChange={setDestinationInput}
+            onPick={handleDestinationSearch}
+            onSubmit={() => { if (!isSearchingDestination) handleDestinationSearch() }}
             disabled={isSearchingDestination}
             className="w-full pr-8"
             style={{
@@ -1805,12 +1813,14 @@ const handleManualAddressSubmit = useCallback(async () => {
             /* Collapsed state: start + destination quick-entry */
             <div className="flex items-center gap-2 px-3 pb-2">
               <div className="relative flex-1">
-                <Input
-                  type="text"
+                <PlaceCombobox
+                  label={t.planner.start}
+                  language={language}
                   placeholder={t.planner.startShort}
                   value={startLocationInput}
-                  onChange={(e) => setStartLocationInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
+                  onChange={setStartLocationInput}
+                  onPick={handleStartLocationSearch}
+                  onSubmit={() => { if (!isSearchingStart) handleStartLocationSearch() }}
                   disabled={isSearchingStart}
                   className="h-11 text-sm w-full"
                   style={{
@@ -1824,12 +1834,14 @@ const handleManualAddressSubmit = useCallback(async () => {
                 )}
               </div>
               <div className="relative flex-1">
-                <Input
-                  type="text"
+                <PlaceCombobox
+                  label={t.planner.destination}
+                  language={language}
                   placeholder={t.planner.destinationShort}
                   value={destinationInput}
-                  onChange={(e) => setDestinationInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
+                  onChange={setDestinationInput}
+                  onPick={handleDestinationSearch}
+                  onSubmit={() => { if (!isSearchingDestination) handleDestinationSearch() }}
                   disabled={isSearchingDestination}
                   className="h-11 text-sm w-full"
                   style={{

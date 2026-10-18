@@ -47,3 +47,6 @@ export function formatDuration(minutes: number, locale: string): string {
   if (m > 0 || h === 0) parts.push(part('minute', m))
   return parts.join(' ')
 }
+
+/** Litre abbreviation for unit suffixes ("/L" vs "/\u043b"); escaped because src/ keeps Cyrillic text in src/i18n. */
+export const litreUnit = (locale: string) => (locale.startsWith('uk') ? '\u043b' : 'L')

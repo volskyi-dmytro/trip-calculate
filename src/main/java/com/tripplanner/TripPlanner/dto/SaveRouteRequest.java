@@ -35,6 +35,9 @@ public class SaveRouteRequest {
 
     private LocalDate departureDate;
 
+    /** Update only: the updatedAt the client loaded. A newer stored row means another session edited it (409 ROUTE_CHANGED). Optional for older clients. */
+    private java.time.Instant expectedUpdatedAt;
+
     @NotNull
     @Size(min = 2, max = 100, message = "2 to 100 waypoints required")
     private List<@Valid WaypointDTO> waypoints;

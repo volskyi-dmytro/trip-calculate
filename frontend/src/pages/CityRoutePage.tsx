@@ -1,3 +1,4 @@
+import { litreUnit } from '../lib/format'
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, MapPin, Clock, Fuel, ArrowRight } from 'lucide-react';
@@ -139,7 +140,7 @@ export function CityRoutePage() {
     r.fuelPricePerLiter !== null && {
       icon: Fuel,
       label: t('cityRoute.fuelPrice'),
-      value: `${r.fuelPricePerLiter} ${r.currency}/L`,
+      value: `${r.fuelPricePerLiter} ${r.currency}/${litreUnit(language)}`,
     },
     r.totalCost !== null && {
       icon: ArrowRight,

@@ -89,6 +89,15 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(e.getStatusCode()).body(body);
     }
 
+    // Method-security (@PreAuthorize) denials are thrown inside the controller layer, so
+    // without this the Exception catch-all below answers 500. Signed-out callers never get
+    // here: the filter chain already answers 401 before the controller runs.
+    @ExceptionHandler(org.springframework.security.access.AccessDeniedException.class)
+    public ResponseEntity<Void> handleAccessDenied(org.springframework.security.access.AccessDeniedException e) {
+        logger.debug("Access denied from IP {}", getClientIp());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneral(Exception e) {
         String clientIp = getClientIp();

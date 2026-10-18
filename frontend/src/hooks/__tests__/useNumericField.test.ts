@@ -1,5 +1,8 @@
-import { describe, expect, it } from 'vitest';
-import { clampNumeric, isPartialNumericInput, resolveNumericBlur } from '../useNumericField';
+/** @vitest-environment jsdom */
+import { describe, expect, it, vi } from 'vitest';
+import { act, createElement } from 'react';
+import { createRoot } from 'react-dom/client';
+import { clampNumeric, isPartialNumericInput, parseNumericInput, resolveNumericBlur, useNumericField } from '../useNumericField';
 
 describe('isPartialNumericInput', () => {
   it.each(['', '-', '.', '-.'])('treats %j as still-typing, not zero', (raw) => {
@@ -42,5 +45,68 @@ describe('resolveNumericBlur', () => {
 
   it('falls back on unparseable text', () => {
     expect(resolveNumericBlur('abc', { min: 1 })).toBe(1);
+  });
+});
+
+// QA F1: decimal comma must parse; garbage must be flagged, never silently 0.
+describe('parseNumericInput', () => {
+  it.each([
+    ['10,5', 10.5],
+    ['10.5', 10.5],
+    ['1 000,5', 1000.5],
+    ['1\u00a0000,5', 1000.5],
+    ['1,000.5', 1000.5],
+    ['-3', -3],
+  ])('parses %j as %d', (raw, want) => {
+    expect(parseNumericInput(raw)).toBe(want);
+  });
+
+  it.each(['abc', '10,5ab', '1.2.3', '10,5,5', '--1'])('rejects %j', (raw) => {
+    expect(parseNumericInput(raw)).toBeNull();
+  });
+});
+
+(globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
+type Field = ReturnType<typeof useNumericField>;
+
+/** Minimal renderHook: createRoot + act, as the other component tests do. */
+function mount(value: number, onChange: (n: number) => void, opts = { min: 0 }) {
+  const ref = { current: null as unknown as Field };
+  function Probe() {
+    ref.current = useNumericField(value, onChange, opts);
+    return null;
+  }
+  act(() => createRoot(document.createElement('div')).render(createElement(Probe)));
+  return ref;
+}
+const type = (f: { current: Field }, v: string) =>
+  act(() => f.current.onChange({ target: { value: v } } as never));
+
+describe('useNumericField with comma / invalid input', () => {
+  it('commits 10,5 as 10.5 and does not flag it', () => {
+    const onChange = vi.fn();
+    const f = mount(0, onChange);
+    type(f, '10,5');
+    expect(onChange).toHaveBeenLastCalledWith(10.5);
+    expect(f.current['aria-invalid']).toBeUndefined();
+  });
+
+  it('flags 10,5ab, keeps the text on blur, and resets the committed value so no stale total remains', () => {
+    const onChange = vi.fn();
+    const f = mount(10.5, onChange);
+    type(f, '10,5ab');
+    expect(f.current['aria-invalid']).toBe(true);
+    expect(onChange).toHaveBeenLastCalledWith(0);
+    act(() => f.current.onBlur());
+    expect(f.current.value).toBe('10,5ab');
+    expect(f.current['aria-invalid']).toBe(true);
+  });
+
+  it('empty blur falls back without an error flag', () => {
+    const f = mount(5, vi.fn());
+    type(f, '');
+    act(() => f.current.onBlur());
+    expect(f.current['aria-invalid']).toBeUndefined();
   });
 });

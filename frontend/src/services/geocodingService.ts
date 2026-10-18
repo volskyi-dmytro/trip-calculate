@@ -12,19 +12,29 @@ export interface ForwardGeocodeResult {
   displayName: string;
 }
 
+export interface Place extends ForwardGeocodeResult {
+  /** Short label for the waypoint (Nominatim `name`), e.g. "Ternopil". */
+  name: string;
+  addressType: string;
+}
+
+const REGION_TYPES = new Set(['state', 'region', 'province', 'state_district', 'county', 'country']);
+const SETTLEMENT_TYPES = new Set(['city', 'town', 'village', 'hamlet', 'municipality']);
+
 export const geocodingService = {
   /**
    * Reverse geocode coordinates to get location name with city and street
    * Uses Nominatim API (free, no API key required)
    * @param lat Latitude
    * @param lng Longitude
+   * @param language UI language for the returned place names
    * @returns Human-readable location name in "City, Street" format
    */
-  async reverseGeocode(lat: number, lng: number): Promise<string> {
+  async reverseGeocode(lat: number, lng: number, language = 'en'): Promise<string> {
     try {
       const response = await nominatimFetch(
         `https://nominatim.openstreetmap.org/reverse?` +
-        `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1&accept-language=${encodeURIComponent(language)}`,
         {
           headers: {
             'User-Agent': 'TripCalculate/1.0', // Required by Nominatim
@@ -74,42 +84,46 @@ export const geocodingService = {
   },
 
   /**
-   * Forward geocoding: Convert address to coordinates
-   * @param address Address or place name to search for
-   * @returns Coordinates and display name, or null if not found
+   * Up to 5 candidate places for a free-text query, in the UI language. The planner shows
+   * these as suggestions; `limit=1` used to hand back whatever Nominatim ranked first, which
+   * for a bare city name is often the oblast or a rural hromada.
    */
-  async forwardGeocode(address: string): Promise<ForwardGeocodeResult | null> {
+  async searchPlaces(query: string, language = 'en', signal?: AbortSignal): Promise<Place[]> {
     try {
       const response = await nominatimFetch(
         `https://nominatim.openstreetmap.org/search?` +
-        `format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`,
-        {
-          headers: {
-            'User-Agent': 'TripCalculate/1.0',
-          },
-        }
+        `format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1` +
+        `&accept-language=${encodeURIComponent(language)}`,
+        { headers: { 'User-Agent': 'TripCalculate/1.0' }, signal },
       );
-
-      if (!response.ok) {
-        throw new Error('Geocoding failed');
-      }
-
-      const data = await response.json();
-
-      if (data.length === 0) {
-        return null; // No results found
-      }
-
-      const result = data[0];
-
-      return {
-        lat: parseFloat(result.lat),
-        lng: parseFloat(result.lon),
-        displayName: result.display_name,
-      };
+      if (!response.ok) throw new Error('Geocoding failed');
+      const data: Array<Record<string, string>> = await response.json();
+      const seen = new Set<string>();
+      return data
+        .filter(r => !seen.has(r.display_name) && seen.add(r.display_name))
+        .map(r => ({
+          lat: parseFloat(r.lat),
+          lng: parseFloat(r.lon),
+          displayName: r.display_name,
+          name: r.name || r.display_name.split(',')[0],
+          addressType: r.addresstype ?? '',
+        }));
     } catch (error) {
-      console.error('Forward geocoding error:', error);
-      return null;
+      if ((error as Error).name !== 'AbortError') console.error('Place search error:', error);
+      return [];
     }
+  },
+
+  /**
+   * Forward geocoding for "Enter without picking a suggestion": the top hit, except that a
+   * region-sized top hit (oblast/county) yields to the first settlement, since the user typed a place to drive to.
+   */
+  async forwardGeocode(address: string, language = 'en'): Promise<ForwardGeocodeResult | null> {
+    const places = await geocodingService.searchPlaces(address, language);
+    if (places.length === 0) return null;
+    const best = REGION_TYPES.has(places[0].addressType)
+      ? places.find(p => SETTLEMENT_TYPES.has(p.addressType)) ?? places[0]
+      : places[0];
+    return { lat: best.lat, lng: best.lng, displayName: best.displayName };
   },
 };

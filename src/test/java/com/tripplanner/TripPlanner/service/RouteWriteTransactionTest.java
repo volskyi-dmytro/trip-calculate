@@ -180,6 +180,31 @@ class RouteWriteTransactionTest {
 
     @jakarta.persistence.PersistenceContext jakarta.persistence.EntityManager em;
 
+    // QA F7: a stale client (older updatedAt than the stored row) must not overwrite a newer edit,
+    // even though no write overlaps in time.
+    @Test void staleExpectedUpdatedAtIsRejectedBeforeRoutingAndMatchingOneIsAccepted() throws Exception {
+        road();
+        RouteDTO v1 = service.saveRoute(RouteCostContractTest.request(), 140L);
+        Thread.sleep(20); // distinct millisecond for the second write
+        service.updateRoute(v1.getId(), RouteCostContractTest.request(), 140L); // "other tab" writes: updatedAt moves on
+        RouteDTO v2 = service.getRoute(v1.getId(), 140L);
+        org.mockito.Mockito.clearInvocations(routing);
+
+        var stale = RouteCostContractTest.request();
+        stale.setExpectedUpdatedAt(v1.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant());
+        assertThatThrownBy(() -> service.updateRoute(v1.getId(), stale, 140L))
+            .isInstanceOfSatisfying(org.springframework.web.server.ResponseStatusException.class,
+                e -> assertThat(e.getReason()).isEqualTo("ROUTE_CHANGED"));
+        verify(routing, never()).calculateRoute(any()); // fails fast, no provider quota spent
+
+        var fresh = RouteCostContractTest.request();
+        fresh.setExpectedUpdatedAt(v2.getUpdatedAt().atZone(java.time.ZoneId.systemDefault()).toInstant());
+        assertThat(service.updateRoute(v1.getId(), fresh, 140L).getId()).isEqualTo(v1.getId());
+
+        // Clients that send no version keep the previous behaviour.
+        assertThat(service.updateRoute(v1.getId(), RouteCostContractTest.request(), 140L).getId()).isEqualTo(v1.getId());
+    }
+
     @Test void waypointChangeWithoutRootTimestampChangeIsStillAConflict() {
         road();
         RouteDTO saved = service.saveRoute(RouteCostContractTest.request(), 118L);

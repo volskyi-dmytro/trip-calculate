@@ -14,6 +14,7 @@ import {
 } from '../ui/dialog';
 import { CarPicker } from '../car/CarPicker';
 import { carService } from '../../services/carService';
+import { litreUnit } from '../../lib/format'
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNumericField } from '../../hooks/useNumericField';
 import type { CarSelection, GarageCar } from '../../types/Car';
@@ -38,7 +39,7 @@ interface PendingCar {
 }
 
 export function CarsCard() {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [cars, setCars] = useState<GarageCar[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -232,7 +233,7 @@ export function CarsCard() {
                         <span className="px-2 py-0.5 rounded-full border border-gray-300/70 dark:border-gray-600/70 capitalize">
                           {car.fuelType}
                         </span>
-                        <span>{car.fuelConsumption} L/100km</span>
+                        <span>{car.fuelConsumption} {litreUnit(language)}/100km</span>
                       </div>
                     </div>
                     {/* Actions: separate row that always wraps on its own,

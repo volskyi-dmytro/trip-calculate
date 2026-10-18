@@ -28,6 +28,10 @@ EXPOSE 8080
 # unless SPRING_PROFILES_ACTIVE is exactly prod or staging
 ENV APP_DEPLOYED=true
 
+# Commit shown by GET /api/build-info; the image build passes --build-arg GIT_SHA=<sha>
+ARG GIT_SHA=unknown
+ENV GIT_SHA=${GIT_SHA}
+
 # Set JVM options optimized for containers
 ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
 
