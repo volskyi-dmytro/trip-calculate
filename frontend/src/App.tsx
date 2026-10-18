@@ -9,12 +9,13 @@ import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { HomePage } from './pages/HomePage';
 import { AdminRoute } from './components/auth/AdminRoute';
 import { LocaleBoundary } from './components/common/LocaleBoundary';
+import { loadRoutePlanner } from './utils/plannerChunk';
 import './styles/global.css';
 
 // Route-level code splitting: HomePage is the landing page and stays eager,
 // everything else loads on demand to keep the initial bundle small.
 const RoutePlannerPage = lazy(() =>
-  import('./pages/RoutePlannerPage').then((m) => ({ default: m.RoutePlannerPage })),
+  loadRoutePlanner().then((m) => ({ default: m.RoutePlannerPage })),
 );
 const ReceiptPage = lazy(() =>
   import('./pages/ReceiptPage').then((m) => ({ default: m.ReceiptPage })),

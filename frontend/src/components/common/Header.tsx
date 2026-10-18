@@ -4,6 +4,13 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSeason, seasonAssets } from '../../hooks/useSeason';
 import { withLocalePrefix } from '../../utils/locale';
+import { prefetchRoutePlanner } from '../../utils/plannerChunk';
+
+const prefetchProps = {
+  onMouseEnter: prefetchRoutePlanner,
+  onFocus: prefetchRoutePlanner,
+  onTouchStart: prefetchRoutePlanner,
+};
 
 interface HeaderProps {
   onCalculateClick?: () => void;
@@ -40,11 +47,11 @@ export function Header({ onCalculateClick, onGuestCreateTrip }: HeaderProps) {
             <p className="hero-sub">{t('header.tagline')}</p>
             <div className="hero-actions">
               {user ? (
-                <Link id="create-trip-btn" className="btn" to={withLocalePrefix('/route-planner', language)}>
+                <Link id="create-trip-btn" className="btn" {...prefetchProps} to={withLocalePrefix('/route-planner', language)}>
                   {t('header.createTrip')}
                 </Link>
               ) : (
-                <button id="create-trip-btn" type="button" className="btn" onClick={onGuestCreateTrip ?? login}>
+                <button id="create-trip-btn" type="button" className="btn" {...prefetchProps} onClick={onGuestCreateTrip ?? login}>
                   {t('header.createTrip')}
                 </button>
               )}
