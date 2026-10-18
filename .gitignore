@@ -117,3 +117,7 @@ agent/evals/results/
 assets/seasonal-backgrounds-v1/*.png
 assets/planner-ui-v1/*.png
 assets/dashboard-ui-v1/*.png
+
+# Playwright
+e2e/.results/
+playwright-report/
