@@ -16,11 +16,13 @@ interface PromptComposerProps {
   /** Rate limited: typing stays possible, sending does not. */
   sendDisabled?: boolean
   autoFocus?: boolean
+  /** Draws attention to the send button (e.g. after an example filled the box). */
+  emphasizeSend?: boolean
 }
 
 /** Auto-growing 2-5 line prompt box. Enter sends, Shift+Enter inserts a newline. */
 export const PromptComposer = forwardRef<HTMLTextAreaElement, PromptComposerProps>(function PromptComposer(
-  { value, onChange, onSubmit, placeholder, isProcessing, sendDisabled = false, autoFocus },
+  { value, onChange, onSubmit, placeholder, isProcessing, sendDisabled = false, autoFocus, emphasizeSend = false },
   ref,
 ) {
   const { language } = useLanguage()
@@ -90,7 +92,7 @@ export const PromptComposer = forwardRef<HTMLTextAreaElement, PromptComposerProp
         type="submit"
         aria-label={tr.planner.sendMessage}
         disabled={isProcessing || sendDisabled}
-        className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 disabled:opacity-40"
+        className={`h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 disabled:opacity-40${emphasizeSend ? ' prompt-send-emphasis' : ''}`}
         style={{ background: 'var(--accent)', color: 'var(--on-accent)' }}
       >
         {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <Send className="h-4 w-4" aria-hidden="true" />}

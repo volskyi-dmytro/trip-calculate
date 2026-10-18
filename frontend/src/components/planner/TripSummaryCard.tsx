@@ -12,6 +12,7 @@ import { formatDistance } from '../../lib/format'
 import type { RouteSettings, Waypoint } from '../RoutePlanner'
 import { WeatherStrip } from '../WeatherStrip'
 import { summarizeTrip } from './tripSummary'
+import { track } from '../../lib/analytics'
 
 export interface TripSummaryCardProps {
   waypoints: Waypoint[]
@@ -90,9 +91,14 @@ export function TripSummaryCard({
       <p className="trip-summary-price">
         <Fuel className="h-4 w-4" aria-hidden="true" />
         {t.resultCard.fuelPrice.replace('{price}', `${s.money(routeSettings.fuelCostPerLiter)}/${litreUnit(language)}`)}
-        {usingLivePrice && <> · {t.resultCard.livePrice}</>}
-        {!usingLivePrice && fuelSuggestion && onApplyLivePrice && (
-          <button type="button" className="fuel-chip fuel-chip-action" onClick={onApplyLivePrice}>
+        {usingLivePrice && (
+          <span className="trip-summary-price-source">
+            {' · '}{t.resultCard.livePrice}{fuelSuggestion?.source ? ` · ${fuelSuggestion.source}` : ''}
+          </span>
+        )}
+        {/* Only after the user typed their own price: a quiet way back to the live one */}
+        {!usingLivePrice && routeSettings.fuelPriceTouched && fuelSuggestion && onApplyLivePrice && (
+          <button type="button" className="trip-summary-link" onClick={onApplyLivePrice}>
             {t.fuel.applyLive}
           </button>
         )}
@@ -109,7 +115,8 @@ export function TripSummaryCard({
       </div>
 
       {legs.map(leg => (
-        <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer" className="trip-summary-btn">
+        <a key={leg.url} href={leg.url} target="_blank" rel="noopener noreferrer" className="trip-summary-btn"
+           onClick={() => track('waze_open', { legs: legs.length })}>
           <Navigation className="h-4 w-4" aria-hidden="true" />
           {t.resultCard.navigate}{legs.length > 1 ? `: ${leg.label}` : ''}
         </a>

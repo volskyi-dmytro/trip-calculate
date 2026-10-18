@@ -2,13 +2,14 @@ import React from 'react';
 
 export function Card({
   children,
-  className = ''
+  className = '',
+  ...rest
 }: {
   children: React.ReactNode;
   className?: string;
-}) {
+} & Omit<React.HTMLAttributes<HTMLDivElement>, 'className' | 'children'>) {
   return (
-    <div className={`rounded-lg glass-panel ${className}`}>
+    <div {...rest} className={`rounded-lg glass-panel ${className}`}>
       {children}
     </div>
   );

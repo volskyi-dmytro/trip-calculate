@@ -37,6 +37,38 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
   // here — otherwise the line stays missing until the next recalculation.
   const routeGeometryRef = useRef(routeGeometry)
   routeGeometryRef.current = routeGeometry
+  // Latest waypoints/padding for the one-time fit on map 'load'. The update
+  // effect below runs on first render, before the style has loaded and the
+  // 'route' source exists, so a static route (the guest sample trip) would
+  // otherwise never be framed and the map stays on its default Kyiv view.
+  const waypointsRef = useRef(waypoints)
+  waypointsRef.current = waypoints
+  const bottomPaddingRef = useRef(bottomPadding)
+  bottomPaddingRef.current = bottomPadding
+  const fitToContent = (map: mapboxgl.Map, duration = 300) => {
+    const points: Array<[number, number]> = [
+      ...routeGeometryRef.current.map(([lat, lng]) => [lng, lat] as [number, number]),
+      ...waypointsRef.current.map(wp => [wp.lng, wp.lat] as [number, number]),
+    ]
+    if (points.length === 0) return
+    if (points.length === 1) {
+      map.jumpTo({ center: points[0], zoom: 10 })
+      return
+    }
+    const bounds = points.reduce(
+      (b, coord) => b.extend(coord),
+      new mapboxgl.LngLatBounds(points[0], points[0]),
+    )
+    map.fitBounds(bounds, {
+      padding: {
+        top: DEFAULT_PADDING,
+        left: DEFAULT_PADDING,
+        right: DEFAULT_PADDING,
+        bottom: bottomPaddingRef.current ?? DEFAULT_PADDING,
+      },
+      duration,
+    })
+  }
   const routeLineData = (): GeoJSON.Feature<GeoJSON.LineString> => ({
     type: 'Feature',
     properties: {},
@@ -182,6 +214,10 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       } else if (!map.getLayer('3d-buildings')) {
         add3DBuildingsLayer(map)
       }
+
+      // Frame whatever arrived before the map was ready (static sample route,
+      // a restored draft, a route opened from a link).
+      fitToContent(map, 0)
     })
 
     mapRef.current = map

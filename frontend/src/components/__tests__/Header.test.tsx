@@ -86,37 +86,32 @@ describe('Header language switcher', () => {
   })
 })
 
-describe('Header guest create-trip CTA', () => {
-  it('renders an always-enabled button that starts Google sign-in', () => {
+describe('Header create-trip CTA', () => {
+  it('opens the planner for guests too (no sign-in wall before value)', () => {
     const container = renderWithLocale('/en', 'en')
-    const cta = container.querySelector<HTMLButtonElement>('#create-trip-btn')
+    const cta = container.querySelector<HTMLAnchorElement>('#create-trip-btn')
 
     expect(cta).not.toBeNull()
-    expect(cta?.disabled).toBe(false)
-    expect(cta?.title).toBe('')
+    expect(cta?.tagName).toBe('A')
+    expect(cta?.getAttribute('href')).toBe('/en/route-planner')
 
     login.mockClear()
     act(() => {
       cta?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
     })
-    expect(login).toHaveBeenCalledTimes(1)
+    expect(login).not.toHaveBeenCalled()
   })
 
-  it('hands the tap to onGuestCreateTrip (sign-in preview) instead of logging in', () => {
-    const container = document.createElement('div')
-    document.body.appendChild(container)
-    const root = createRoot(container)
-    const onGuest = vi.fn()
-    currentPathname = '/en'
-    currentLanguage = 'en'
-    act(() => { root.render(<Header onGuestCreateTrip={onGuest} />) })
-    mounted.push(() => { act(() => root.unmount()); container.remove() })
+  it('"I already know the distance" focuses the inline calculator instead of a second one', () => {
+    const container = renderWithLocale('/en', 'en')
+    const field = document.body.appendChild(document.createElement('input'))
+    field.id = 'quick-distance'
+    field.scrollIntoView = vi.fn()
+    mounted.push(() => field.remove())
 
-    login.mockClear()
-    act(() => {
-      container.querySelector('#create-trip-btn')?.dispatchEvent(new MouseEvent('click', { bubbles: true }))
-    })
-    expect(onGuest).toHaveBeenCalledTimes(1)
-    expect(login).not.toHaveBeenCalled()
+    const button = Array.from(container.querySelectorAll('button')).find((b) => b.textContent === 'header.calculate')!
+    act(() => button.click())
+    expect(document.activeElement).toBe(field)
+    expect(field.scrollIntoView).toHaveBeenCalled()
   })
 })

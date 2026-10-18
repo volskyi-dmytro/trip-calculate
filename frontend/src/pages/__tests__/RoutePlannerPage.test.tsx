@@ -3,9 +3,11 @@ import type { ReactNode } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { RoutePlannerPage } from '../RoutePlannerPage'
 
+let currentSearch = ''
 vi.mock('react-router-dom', () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
-  useLocation: () => ({ pathname: '/en/route-planner', search: '', hash: '' }),
+  useLocation: () => ({ pathname: '/en/route-planner', search: currentSearch, hash: '' }),
+  useSearchParams: () => [new URLSearchParams(currentSearch)],
 }))
 const mockUseAuth = vi.fn(() => ({
   user: { id: '1', name: 'Dmytro', email: 'user@example.com', authenticated: true },
@@ -58,10 +60,21 @@ describe('RoutePlannerPage public beta access', () => {
     }
   })
 
-  it('shows the guest sample-trip preview instead of the planner for a logged-out visitor', () => {
+  it('opens the real planner (manual mode) for a logged-out visitor — no sign-in wall', () => {
     mockUseAuth.mockReturnValueOnce({ user: null, loading: false } as unknown as ReturnType<typeof mockUseAuth>)
 
     const html = renderToStaticMarkup(<RoutePlannerPage />)
+
+    expect(html).toContain('Route planner ready')
+    expect(html).not.toContain('Guest preview')
+  })
+
+  it('shows the static sample trip to a logged-out visitor who asks for it (?sample=1)', () => {
+    currentSearch = '?sample=1'
+    mockUseAuth.mockReturnValueOnce({ user: null, loading: false } as unknown as ReturnType<typeof mockUseAuth>)
+
+    const html = renderToStaticMarkup(<RoutePlannerPage />)
+    currentSearch = ''
 
     expect(html).toContain('Guest preview')
     expect(html).not.toContain('Route planner ready')

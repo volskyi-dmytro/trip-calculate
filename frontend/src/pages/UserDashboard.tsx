@@ -1,8 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { FolderOpen, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { dashboardService, type UserDashboard as UserDashboardData } from '../services/dashboardService';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { withLocalePrefix } from '../utils/locale';
+import { track } from '../lib/analytics';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { PageShell } from '../components/common/PageShell';
 import { ProfileCard } from '../components/dashboard/ProfileCard';
@@ -14,15 +18,43 @@ import { CarsCard } from '../components/dashboard/CarsCard';
 import { SecuritySection } from '../components/dashboard/SecuritySection';
 import { NextTripBanner } from '../components/dashboard/NextTripBanner';
 
+/** Signed-out visitors get a reason and a way in, not "No data" plus an error toast. */
+function SignedOutDashboard() {
+  const { t, language } = useLanguage();
+  const { login } = useAuth();
+  return (
+    <PageShell>
+      <div className="flex justify-center px-4" style={{ padding: "64px 16px" }}>
+        <div className="glass-panel rounded-xl p-8 max-w-md w-full text-center space-y-4">
+          <FolderOpen className="h-10 w-10 mx-auto text-primary" aria-hidden="true" />
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.signedOut.title')}</h1>
+          <p className="text-gray-600 dark:text-gray-300">{t('dashboard.signedOut.text')}</p>
+          <button type="button" className="btn w-full" onClick={() => login(undefined, 'dashboard')}>
+            {t('header.login')}
+          </button>
+          <Link className="inline-flex min-h-11 items-center text-sm text-primary hover:underline" to={withLocalePrefix('/route-planner', language)}>
+            {t('dashboard.signedOut.plan')}
+          </Link>
+        </div>
+      </div>
+    </PageShell>
+  );
+}
+
 export function UserDashboard() {
   const { t } = useLanguage();
+  const { user, loading: authLoading } = useAuth();
   useDocumentTitle(t('dashboard.title'));
   const [dashboardData, setDashboardData] = useState<UserDashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchDashboard();
-  }, []);
+    if (authLoading) return;
+    track('dashboard_view', { signed_in: Boolean(user) });
+    if (user) fetchDashboard();
+    else setLoading(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- fetch once per sign-in state
+  }, [authLoading, user]);
 
   const fetchDashboard = async () => {
     try {
@@ -37,7 +69,9 @@ export function UserDashboard() {
     }
   };
 
-  if (loading) {
+  if (!authLoading && !user) return <SignedOutDashboard />;
+
+  if (authLoading || loading) {
     return (
       <PageShell>
         <div className="flex items-center justify-center min-h-screen" role="status">

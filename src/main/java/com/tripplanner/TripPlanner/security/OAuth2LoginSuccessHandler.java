@@ -37,8 +37,10 @@ public class OAuth2LoginSuccessHandler extends SimpleUrlAuthenticationSuccessHan
 
         log.info("OAuth2 login successful for user ID: {}", user.getId());
 
-        // Redirect to home page after successful authentication
-        setDefaultTargetUrl("/");
-        super.onAuthenticationSuccess(request, response, authentication);
+        // Send the user back to the page they signed in from (same path, same locale).
+        // Falls back to "/" (locale redirect) when no valid returnTo was captured.
+        String returnTo = LoginReturnTo.consume(request);
+        clearAuthenticationAttributes(request);
+        getRedirectStrategy().sendRedirect(request, response, returnTo != null ? returnTo : "/");
     }
 }

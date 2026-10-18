@@ -11,6 +11,8 @@ import { Button } from '@/components/ui/button';
 import { ShareReceiptButton } from './receipt/ShareReceiptButton';
 import { CarPicker } from './car/CarPicker';
 import { ScenarioComparison } from './calculator/ScenarioComparison';
+import { DistanceFinder } from './DistanceFinder';
+import { track } from '../lib/analytics';
 import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorage';
 import { carService } from '../services/carService';
 import { convertFuelPrice, suggestFuelPrice } from '../utils/currencyFuelPrice';
@@ -37,9 +39,13 @@ interface QuickCalculatorProps {
 
 // Static precomputed examples — zero API calls on the landing page (spec decision).
 // The route names are quickCalc.exampleFrom/To in src/i18n/common.ts.
+// EN shows a Ukraine → EU trip (Lviv → Kraków) — the site is sold as
+// "Ukraine and Europe", so a Berlin → Munich example sent a mixed message.
+// Prices are rounded mid-October 2026 averages (UA A-95 ≈ 87 UAH/L; a
+// Lviv → Kraków mix of UA and PL prices ≈ 1.65 EUR/L).
 const EXAMPLES = {
-  uk: { distance: 540, consumption: 7.5, price: 58, people: 4, currency: 'UAH' },
-  en: { distance: 584, consumption: 7.5, price: 1.75, people: 4, currency: 'EUR' },
+  uk: { distance: 540, consumption: 7.5, price: 87, people: 4, currency: 'UAH' },
+  en: { distance: 340, consumption: 7.5, price: 1.65, people: 4, currency: 'EUR' },
 } as const;
 
 /** Inline validation for useNumericField inputs: never leave bad text next to a result silently. */
@@ -64,6 +70,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   const [storedCar, setStoredCar] = useState<CarSelection | null>(stored);
   const [garageCars, setGarageCars] = useState<GarageCar[]>([]);
   const [fuelPriceTouched, setFuelPriceTouched] = useState(false);
+  // The mobile sticky result bar appears only after the user has changed
+  // something, and hides while a field in this card has focus (keyboard open).
+  const [hasEdited, setHasEdited] = useState(false);
+  const [fieldFocused, setFieldFocused] = useState(false);
   const priceGuard = useRef({ touched: false, currency });
   priceGuard.current = { touched: fuelPriceTouched, currency };
 
@@ -101,8 +111,12 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   }, [language, exampleActive]);
 
   /** First user edit converts the example into the user's own trip. */
-  const edited = <T,>(setter: (v: T) => void) => (v: T) => {
+  const edited = <T,>(setter: (v: T) => void, field = 'other') => (v: T) => {
     setExampleActive(false);
+    if (!hasEdited) {
+      setHasEdited(true);
+      track('quick_estimate_edit', { field, prefilled: Boolean(prefill) });
+    }
     setter(v);
   };
 
@@ -127,17 +141,16 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
   const handleFuelPriceChange = (v: number) => {
     setFuelPriceTouched(true);
-    edited(setFuelPrice)(v);
+    edited(setFuelPrice, 'fuel_price')(v);
   };
 
-  const distanceField = useNumericField(distance, edited(setDistance), { min: 0, normalize: normalizeDecimal });
-  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1, normalize: Math.trunc });
-  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1, normalize: normalizeDecimal });
+  const distanceField = useNumericField(distance, edited(setDistance, 'distance'), { min: 0, normalize: normalizeDecimal });
+  const passengersField = useNumericField(passengers, edited(setPassengers, 'passengers'), { min: 1, fallback: 1, normalize: Math.trunc });
+  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption, 'consumption'), { min: 0.1, fallback: 0.1, normalize: normalizeDecimal });
   const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0, normalize: normalizeDecimal });
 
   const t = {
     title: tr('quickCalc.title'),
-    guestMode: tr('quickCalc.guestMode'),
     distance: tr('quickCalc.distance'),
     passengers: tr('quickCalc.passengers'),
     consumption: tr('quickCalc.consumption'),
@@ -147,34 +160,27 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     increasePassengers: tr('quickCalc.increasePassengers'),
     totalCost: tr('quickCalc.totalCost'),
     perPassenger: tr('quickCalc.perPassenger'),
-    exampleBadge: tr('quickCalc.exampleBadge'),
-    exampleRoute: exampleActive
-      ? `${tr('quickCalc.exampleFrom')} → ${tr('quickCalc.exampleTo')}`
-      : '',
+    exampleLabel: tr('quickCalc.exampleLabel').replace(
+      '{route}', `${tr('quickCalc.exampleFrom')} → ${tr('quickCalc.exampleTo')}`),
   };
 
   return (
-    <Card className="p-6">
+    <Card
+      className="p-6"
+      onFocus={(e) => { if ((e.target as HTMLElement).tagName === 'INPUT') setFieldFocused(true); }}
+      onBlur={() => setFieldFocused(false)}
+    >
       <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h2>
-          {!user && (
-            <span className="text-xs px-2 py-1 rounded bg-primary/10 text-primary font-semibold">
-              {t.guestMode}
-            </span>
-          )}
-        </div>
+        <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h2>
         {exampleActive && (
-          <div className="mt-2 text-xs px-2 py-1 rounded bg-amber-500/10 text-amber-700 dark:text-amber-400 font-medium">
-            {t.exampleRoute} · {t.exampleBadge}
-          </div>
+          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t.exampleLabel}</p>
         )}
       </div>
 
       <div className="space-y-4">
         {/* Distance */}
         <div>
-          <Label htmlFor="quick-distance" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-distance" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             {t.distance}
           </Label>
           <Input
@@ -186,11 +192,12 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             {...distanceField}
           />
           <FieldError field={distanceField} message={tr('quickCalc.invalidNumber')} />
+          {!prefill && <DistanceFinder onDistance={(km) => edited(setDistance, 'distance_lookup')(km)} />}
         </div>
 
         {/* Passengers */}
         <div>
-          <Label htmlFor="quick-passengers" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-passengers" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             {t.passengers}
           </Label>
           <div className="flex items-center gap-2 mt-1">
@@ -198,7 +205,8 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               aria-label={t.decreasePassengers}
               variant="outline"
               size="icon"
-              onClick={() => edited(setPassengers)(Math.max(1, passengers - 1))}
+              className="h-11 w-11 flex-shrink-0"
+              onClick={() => edited(setPassengers, 'passengers')(Math.max(1, passengers - 1))}
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -213,7 +221,8 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               aria-label={t.increasePassengers}
               variant="outline"
               size="icon"
-              onClick={() => edited(setPassengers)(passengers + 1)}
+              className="h-11 w-11 flex-shrink-0"
+              onClick={() => edited(setPassengers, 'passengers')(passengers + 1)}
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -222,7 +231,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
         {/* Fuel Consumption */}
         <div>
-          <Label htmlFor="quick-consumption" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-consumption" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             {t.consumption}
           </Label>
           <Input
@@ -266,7 +275,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
         {/* Fuel Price */}
         <div>
-          <Label htmlFor="quick-fuel-price" className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase">
+          <Label htmlFor="quick-fuel-price" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
             {t.fuelPrice}
           </Label>
           <div className="flex gap-2 mt-1">
@@ -284,7 +293,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
                 id="quick-currency"
                 value={currency}
                 onChange={(e) => handleCurrencyChange(e.target.value)}
-                className="w-24 h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-24 h-11 md:h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <option value="UAH">UAH</option>
                 <option value="USD">USD</option>
@@ -336,7 +345,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
       </div>
 
       {/* Portaled: .glass-panel sets backdrop-filter, which would trap a fixed child inside the card. */}
-      {resultBelow && distance > 0 && createPortal(
+      {resultBelow && hasEdited && !fieldFocused && distance > 0 && createPortal(
         <div
           aria-hidden="true"
           className="md:hidden fixed inset-x-0 bottom-0 z-40 flex justify-between items-baseline border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-4 py-3 backdrop-blur"

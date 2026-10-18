@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { User, Calendar, Mail, Shield, CheckCircle, Clock, Edit } from 'lucide-react';
+import { User, Calendar, Mail, Edit, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import type { UserProfile } from '../../services/dashboardService';
@@ -17,23 +17,6 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
   const { t, language } = useLanguage();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [avatarFailed, setAvatarFailed] = useState(false);
-
-  const getAccessStatusBadge = () => {
-    if (profile.routePlannerAccess) {
-      return (
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
-          <CheckCircle className="h-3 w-3 mr-1" />
-          {t('dashboard.profile.accessGranted')}
-        </span>
-      );
-    }
-    return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
-          <Clock className="h-3 w-3 mr-1" />
-          {t('dashboard.profile.noAccess')}
-        </span>
-    );
-  };
 
   return (
     <>
@@ -107,13 +90,6 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
                 </span>
               </div>
 
-              <div className="flex items-center text-sm">
-                <Shield className="h-4 w-4 mr-2 text-gray-400" />
-                <span className="text-gray-600 dark:text-gray-300 mr-2">
-                  {t('dashboard.profile.routeAccess')}:
-                </span>
-                {getAccessStatusBadge()}
-              </div>
             </div>
           </div>
         </CardContent>

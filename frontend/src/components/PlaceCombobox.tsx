@@ -24,12 +24,16 @@ export function PlaceCombobox({ value, onChange, onPick, onSubmit, language, lab
   const [places, setPlaces] = useState<Place[]>([])
   const [open, setOpen] = useState(false)
   const [active, setActive] = useState(-1)
-  // Text we set ourselves (after a pick) must not trigger another search.
-  const skipFor = useRef<string | null>(null)
+  // Only text the user typed into this field may open suggestions. Values the
+  // app sets (a pick, an AI result filling Start/Destination, a restored or
+  // loaded route) must not pop the list open over the result card.
+  const typedValue = useRef<string | null>(null)
 
   useEffect(() => {
-    if (skipFor.current === value) return
-    skipFor.current = null
+    if (typedValue.current !== value) {
+      setPlaces([]); setOpen(false)
+      return
+    }
     const q = value.trim()
     if (q.length < MIN_CHARS) { setPlaces([]); setOpen(false); return }
     const ctrl = new AbortController()
@@ -42,7 +46,7 @@ export function PlaceCombobox({ value, onChange, onPick, onSubmit, language, lab
   }, [value, language])
 
   const pick = (p: Place) => {
-    skipFor.current = p.name
+    typedValue.current = null
     setOpen(false); setPlaces([])
     onChange(p.name)
     onPick(p)
@@ -74,7 +78,7 @@ export function PlaceCombobox({ value, onChange, onPick, onSubmit, language, lab
         aria-activedescendant={open && active >= 0 ? `${listId}-${active}` : undefined}
         autoComplete="off"
         value={value}
-        onChange={e => onChange(e.target.value)}
+        onChange={e => { typedValue.current = e.target.value; onChange(e.target.value) }}
         onKeyDown={onKeyDown}
         onBlur={() => setOpen(false)}
       />

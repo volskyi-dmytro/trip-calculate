@@ -8,6 +8,8 @@ vi.mock('../../contexts/LanguageContext', () => ({
   useLanguage: () => ({ language: 'en', t: (k: string) => k }),
 }))
 vi.mock('../../services/api', () => ({ API_BASE_URL: '' }))
+const login = vi.fn()
+vi.mock('../../contexts/AuthContext', () => ({ useAuth: () => ({ user: null, loading: false, login }) }))
 
 const { SignInSheet } = await import('../auth/SignInSheet')
 
@@ -16,20 +18,20 @@ const { SignInSheet } = await import('../auth/SignInSheet')
 const cleanups: Array<() => void> = []
 afterEach(() => { for (const c of cleanups.splice(0)) c() })
 
-function Host() {
+function Host(props: { returnTo?: string; onBeforeLogin?: () => void }) {
   const [open, setOpen] = useState(false)
   return (
     <>
       <button id="opener" onClick={() => setOpen(true)}>Create a trip</button>
-      <SignInSheet open={open} onOpenChange={setOpen} />
+      <SignInSheet open={open} onOpenChange={setOpen} {...props} />
     </>
   )
 }
 
-function setup() {
+function setup(props: { returnTo?: string; onBeforeLogin?: () => void } = {}) {
   const container = document.body.appendChild(document.createElement('div'))
   const root = createRoot(container)
-  act(() => root.render(<Host />))
+  act(() => root.render(<Host {...props} />))
   cleanups.push(() => { act(() => root.unmount()); container.remove() })
   const opener = container.querySelector<HTMLButtonElement>('#opener')!
   opener.focus()
@@ -53,6 +55,17 @@ describe('SignInSheet', () => {
     setup()
     const link = Array.from(document.querySelectorAll('a')).find((a) => a.textContent === 'signInSheet.continue')!
     expect(link.getAttribute('href')).toBe('/oauth2/authorization/google')
+  })
+
+  it('carries the page to come back to, and stashes work before leaving for Google', () => {
+    const onBeforeLogin = vi.fn()
+    setup({ returnTo: '/en/route-planner?resume=save', onBeforeLogin })
+    const link = Array.from(document.querySelectorAll('a')).find((a) => a.textContent === 'signInSheet.continue')!
+    expect(link.getAttribute('href')).toBe('/oauth2/authorization/google?returnTo=%2Fen%2Froute-planner%3Fresume%3Dsave')
+    login.mockClear()
+    act(() => link.click())
+    expect(onBeforeLogin).toHaveBeenCalledTimes(1)
+    expect(login).toHaveBeenCalledWith('/en/route-planner?resume=save', 'unknown')
   })
 
   it('moves focus in and traps Tab in both directions', () => {

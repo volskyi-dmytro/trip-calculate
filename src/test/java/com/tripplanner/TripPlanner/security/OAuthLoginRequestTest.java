@@ -35,6 +35,22 @@ class OAuthLoginRequestTest {
         assertTrue(location.contains("prompt=login"), location);
     }
 
+    @Test
+    void loginStoresSafeReturnToInSession() throws Exception {
+        var result = mockMvc.perform(get("/oauth2/authorization/google").param("returnTo", "/en/route-planner"))
+                .andReturn();
+        Object stored = result.getRequest().getSession().getAttribute(LoginReturnTo.SESSION_ATTRIBUTE);
+        assertTrue("/en/route-planner".equals(stored), String.valueOf(stored));
+    }
+
+    @Test
+    void loginIgnoresExternalReturnTo() throws Exception {
+        var result = mockMvc.perform(get("/oauth2/authorization/google").param("returnTo", "https://evil.com"))
+                .andReturn();
+        var session = result.getRequest().getSession(false);
+        assertTrue(session == null || session.getAttribute(LoginReturnTo.SESSION_ATTRIBUTE) == null);
+    }
+
     // Prod and staging override the scope, so check their files directly.
     @ParameterizedTest
     @ValueSource(strings = {"application-prod.properties", "application-staging.properties"})

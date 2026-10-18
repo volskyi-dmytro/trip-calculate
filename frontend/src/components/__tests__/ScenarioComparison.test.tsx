@@ -210,8 +210,8 @@ describe('QuickCalculator + scenarios', () => {
     const { container } = mount(<QuickCalculator example />)
     const perPerson = () => container.querySelector('[aria-live="polite"]')!.textContent
     const before = perPerson()
-    expect(before).toContain('19.16 EUR')
-    expect(before).toContain('76.65 EUR')
+    expect(before).toContain('10.52 EUR')
+    expect(before).toContain('42.08 EUR')
 
     const details = container.querySelector('details')!
     click(addButton(container))
@@ -221,7 +221,7 @@ describe('QuickCalculator + scenarios', () => {
     click(addButton(container))
 
     // The scenario's baseline row is the calculator's own number.
-    expect(details.textContent).toContain('76.65 EUR · 19.16 EUR')
+    expect(details.textContent).toContain('42.08 EUR · 10.52 EUR')
     expect(perPerson()).toBe(before)
     expect((container.querySelector('#quick-consumption') as HTMLInputElement).value).toBe('7.5')
     expect(fetchSpy).not.toHaveBeenCalled()

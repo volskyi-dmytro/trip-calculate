@@ -8,6 +8,7 @@ const AI_CACHE_PREFIX = 'ai_cache_';
 export function clearPlannerStorage(): void {
   try {
     for (const key of PERSONAL_LOCAL_KEYS) localStorage.removeItem(key);
+    sessionStorage.removeItem('tc_planner_draft');
     for (const key of Object.keys(sessionStorage)) {
       if (key.startsWith(AI_CACHE_PREFIX)) sessionStorage.removeItem(key);
     }

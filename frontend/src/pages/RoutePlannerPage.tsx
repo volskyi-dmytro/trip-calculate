@@ -1,3 +1,5 @@
+import { useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { RoutePlanner } from '../components/RoutePlanner';
 import { AppHeader } from '../components/common/AppHeader';
 import { SkipLink } from '../components/common/PageShell';
@@ -6,27 +8,23 @@ import { PlannerGuestPreview } from '../components/PlannerGuestPreview';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
+import { track } from '../lib/analytics';
 import { Loader2 } from 'lucide-react';
 
 export function RoutePlannerPage() {
   const { t } = useLanguage();
   const { user, loading: authLoading } = useAuth();
+  const [searchParams] = useSearchParams();
   useDocumentTitle(t('pageTitle.routePlanner'));
 
-  // Guests get a finished sample trip (not the real AI endpoint — that
-  // stays authenticated-only) instead of a sales pitch next to an empty
-  // 0 km / 0.00 calculator.
-  if (!authLoading && !user) {
-    return (
-      <>
-        <SkipLink />
-        <Header />
-        <main id="main" tabIndex={-1}>
-          <PlannerGuestPreview />
-        </main>
-      </>
-    );
-  }
+  // ?sample=1: the finished static sample trip (what the AI produces). The AI
+  // endpoint stays authenticated-only, so its numbers aren't computed by AI.
+  const showSample = !user && searchParams.get('sample') === '1';
+  const mode = authLoading ? null : showSample ? 'sample' : user ? 'signed_in' : 'guest';
+
+  useEffect(() => {
+    if (mode) track('planner_view', { mode });
+  }, [mode]);
 
   if (authLoading) {
     return (
@@ -41,6 +39,20 @@ export function RoutePlannerPage() {
     );
   }
 
+  if (showSample) {
+    return (
+      <>
+        <SkipLink />
+        <Header />
+        <main id="main" tabIndex={-1}>
+          <PlannerGuestPreview />
+        </main>
+      </>
+    );
+  }
+
+  // Guests get the real planner in manual mode (map, routing, live fuel
+  // price, receipts); sign-in is asked for only to save or to use AI.
   return (
     <div className="flex flex-col h-screen overflow-hidden">
       <SkipLink />

@@ -50,7 +50,7 @@ export function PlannerPromo() {
         ))}
       </div>
 
-      <Button onClick={login} className="w-full py-6 text-base font-semibold" size="lg">
+      <Button onClick={() => login(undefined, 'planner_promo')} className="w-full py-6 text-base font-semibold" size="lg">
         <Chrome className="w-5 h-5 mr-2" />
         {t.signInButton}
       </Button>

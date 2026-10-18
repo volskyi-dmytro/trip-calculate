@@ -41,6 +41,10 @@ export function WelcomeScreen({
   const { user } = useAuth();
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const [pendingExample, setPendingExample] = useState<string | null>(null);
+  // An example only fills the box (sending costs an AI request), so point at
+  // the send button instead of leaving the user waiting for something to happen.
+  const [exampleApplied, setExampleApplied] = useState(false);
+  const showSendHint = exampleApplied && chatInput.trim().length > 0 && !isProcessing;
 
   const firstName = user?.name.split(' ')[0];
   const tr = getTranslation(language);
@@ -55,11 +59,15 @@ export function WelcomeScreen({
       return;
     }
     onChatInputChange(text);
+    setExampleApplied(true);
     inputRef.current?.focus();
   };
 
   const confirmExample = () => {
-    if (pendingExample !== null) onChatInputChange(pendingExample);
+    if (pendingExample !== null) {
+      onChatInputChange(pendingExample);
+      setExampleApplied(true);
+    }
     setPendingExample(null);
     inputRef.current?.focus();
   };
@@ -93,8 +101,14 @@ export function WelcomeScreen({
             placeholder={t.describeTrip}
             isProcessing={isProcessing}
             sendDisabled={limit?.retryAt != null}
+            emphasizeSend={showSendHint}
             autoFocus
           />
+          {showSendHint && (
+            <p className="mt-2 text-sm font-medium" style={{ color: 'var(--accent)' }} aria-live="polite">
+              {t.pressEnterHint}
+            </p>
+          )}
           {limit && (
             <div className="mt-3">
               <LimitBanner retryAt={limit.retryAt} onExpire={onLimitExpire} />

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Copy, Send, MessageCircle, Share2, Loader2, Check } from 'lucide-react';
 import { toast } from 'sonner';
+import { track } from '../../lib/analytics';
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,7 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
         destinationLabel: destination.trim() || undefined,
       });
       setReceipt(created);
+      track('receipt_share', { has_route: Boolean(payload.routeGeometry), people: payload.people });
     } catch (err: unknown) {
       const status = (err as { response?: { status?: number } }).response?.status;
       toast.error(status === 429 ? t.rateLimited : t.genericError);

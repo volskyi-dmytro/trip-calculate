@@ -156,7 +156,8 @@ function App() {
                 />
               </Routes>
             </Suspense>
-            <Toaster position="top-right" richColors />
+            {/* Bottom-center: top-right covered the header controls (sign-in, account menu). */}
+            <Toaster position="bottom-center" richColors />
           </AuthProvider>
         </LanguageProvider>
       </ThemeProvider>

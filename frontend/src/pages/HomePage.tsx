@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Calculator, Car, Map, Sparkles, Users } from 'lucide-react';
+import { Car, Map, Sparkles } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
 import { PageShell } from '../components/common/PageShell';
-import { SignInSheet } from '../components/auth/SignInSheet';
-import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
+import { track } from '../lib/analytics';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
@@ -23,8 +22,7 @@ function embeddedRoutes(): CityRouteSummary[] {
 }
 
 export function HomePage() {
-  const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
-  const [signInOpen, setSignInOpen] = useState(false);
+  const [showAllRoutes, setShowAllRoutes] = useState(false);
   const { t, language } = useLanguage();
   const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>(embeddedRoutes);
   useDocumentTitle(t('pageTitle.home'));
@@ -36,55 +34,51 @@ export function HomePage() {
     cityRouteService.list().then(setPopularRoutes).catch(() => {});
   }, [popularRoutes.length]);
 
+  // Three plain-language benefits (the old five included one describing the
+  // calculator the visitor had just used, and only one card was clickable).
   const features = [
-    {
-      icon: Sparkles,
-      title: t('intro.aiAssistant.title'),
-      text: t('intro.aiAssistant.text'),
-    },
-    {
-      icon: Calculator,
-      title: t('intro.userFriendly.title'),
-      text: t('intro.userFriendly.text'),
-    },
-    {
-      icon: Car,
-      title: t('intro.carGarage.title'),
-      text: t('intro.carGarage.text'),
-    },
-    {
-      icon: Map,
-      title: t('intro.routePlanner.title'),
-      text: t('intro.routePlanner.text'),
-      href: withLocalePrefix('/route-planner', language),
-    },
-    {
-      icon: Users,
-      title: t('intro.quickLookup.title'),
-      text: t('intro.quickLookup.text'),
-    },
+    { icon: Sparkles, title: t('intro.aiAssistant.title'), text: t('intro.aiAssistant.text') },
+    { icon: Map, title: t('intro.routePlanner.title'), text: t('intro.routePlanner.text') },
+    { icon: Car, title: t('intro.carGarage.title'), text: t('intro.carGarage.text') },
   ];
+
+  const steps = [1, 2, 3].map((n) => ({
+    n,
+    title: t(`home.how.step${n}.title`),
+    text: t(`home.how.step${n}.text`),
+  }));
+
+  // A wall of 20 chips buries the useful ones; the rest stay in the DOM
+  // (crawlable) and appear on request.
+  const VISIBLE_ROUTES = 8;
 
   return (
     <>
-      <PageShell header={<Header onCalculateClick={() => setIsCalculatorOpen(true)} onGuestCreateTrip={() => setSignInOpen(true)} />} mainClassName="container">
-        <section className="section home-intro" aria-labelledby="home-intro-title">
+      <PageShell header={<Header />} mainClassName="container">
+        <section className="section home-intro" aria-labelledby="home-how-title">
           <div className="home-intro-copy">
-            <p className="home-intro-eyebrow">{t('home.intro.eyebrow')}</p>
-            <h2 id="home-intro-title" className="home-intro-title">{t('home.intro.title')}</h2>
-            <p className="home-intro-text">{t('home.intro.text')}</p>
-            {/* Decorative: the text beside it carries the meaning. */}
-            <img
-              className="home-intro-art"
-              src="/images/planner-empty.webp"
-              alt=""
-              width={720}
-              height={480}
-              loading="lazy"
-              decoding="async"
-            />
+            <h2 id="home-how-title" className="home-intro-title">{t('home.how.title')}</h2>
+            <ol className="home-steps">
+              {steps.map((step) => (
+                <li className="home-step" key={step.n}>
+                  <span className="home-step-num" aria-hidden="true">{step.n}</span>
+                  <div>
+                    <h3>{step.title}</h3>
+                    <p>{step.text}</p>
+                  </div>
+                </li>
+              ))}
+            </ol>
+            <Link
+              className="btn home-how-cta"
+              to={withLocalePrefix('/route-planner', language)}
+              onClick={() => track('cta_click', { location: 'home_how', label: 'plan_trip' })}
+            >
+              {t('home.how.cta')}
+            </Link>
           </div>
           <div className="home-intro-calc">
+            <p className="home-calc-label">{t('home.calcLabel')}</p>
             <QuickCalculator example />
           </div>
         </section>
@@ -93,41 +87,43 @@ export function HomePage() {
           <h2>{t('intro.title')}</h2>
           <p className="section-lead">{t('intro.description')}</p>
           <div className="features">
-            {features.map(({ icon: Icon, title, text, href }) =>
-              href ? (
-                <Link className="feature" to={href} key={title}>
-                  <span className="feature-icon">
-                    <Icon size={20} strokeWidth={2} aria-hidden="true" />
-                  </span>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </Link>
-              ) : (
-                <article className="feature" key={title}>
-                  <span className="feature-icon">
-                    <Icon size={20} strokeWidth={2} aria-hidden="true" />
-                  </span>
-                  <h3>{title}</h3>
-                  <p>{text}</p>
-                </article>
-              )
-            )}
+            {features.map(({ icon: Icon, title, text }) => (
+              <article className="feature" key={title}>
+                <span className="feature-icon">
+                  <Icon size={20} strokeWidth={2} aria-hidden="true" />
+                </span>
+                <h3>{title}</h3>
+                <p>{text}</p>
+              </article>
+            ))}
           </div>
         </section>
 
         {popularRoutes.length > 0 && (
           <section className="section">
             <h2>{t('home.popularRoutes.title')}</h2>
-            <div className="route-chips">
-              {popularRoutes.map((route) => (
+            <div className="route-chips" id="popular-routes">
+              {popularRoutes.map((route, i) => (
                 <Link
                   className="route-chip"
                   to={withLocalePrefix(`/route/${route.slug}`, language)}
                   key={route.slug}
+                  hidden={!showAllRoutes && i >= VISIBLE_ROUTES}
                 >
                   {route.from[language]} → {route.to[language]}
                 </Link>
               ))}
+              {!showAllRoutes && popularRoutes.length > VISIBLE_ROUTES && (
+                <button
+                  type="button"
+                  className="route-chip route-chip-more"
+                  aria-controls="popular-routes"
+                  aria-expanded={false}
+                  onClick={() => setShowAllRoutes(true)}
+                >
+                  {t('home.popularRoutes.all')} ({popularRoutes.length})
+                </button>
+              )}
             </div>
           </section>
         )}
@@ -154,12 +150,6 @@ export function HomePage() {
           </div>
         </section>
       </PageShell>
-
-      <SignInSheet open={signInOpen} onOpenChange={setSignInOpen} />
-      <CalculatorModal
-        isOpen={isCalculatorOpen}
-        onClose={() => setIsCalculatorOpen(false)}
-      />
     </>
   );
 }
