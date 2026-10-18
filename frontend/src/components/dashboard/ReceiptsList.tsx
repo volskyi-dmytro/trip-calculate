@@ -3,6 +3,7 @@ import { Copy, Eye, Loader2, Receipt as ReceiptIcon, Trash2 } from 'lucide-react
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { receiptService, receiptUrl } from '../../services/receiptService';
 import type { Receipt } from '../../types/Receipt';
@@ -12,6 +13,7 @@ export function ReceiptsList() {
   const { t: tr, tn } = useLanguage();
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const t = {
     title: tr('receiptsList.title'),
@@ -22,6 +24,8 @@ export function ReceiptsList() {
     deleteLabel: tr('receiptsList.deleteLabel'),
     deleteFailed: tr('receiptsList.deleteFailed'),
     confirmDelete: tr('receiptsList.confirmDelete'),
+    confirmTitle: tr('receiptsList.confirmTitle'),
+    cancel: tr('common.cancel'),
     unnamed: tr('receiptsList.unnamed'),
   };
 
@@ -38,7 +42,6 @@ export function ReceiptsList() {
   };
 
   const handleDelete = async (slug: string) => {
-    if (!window.confirm(t.confirmDelete)) return;
     setDeleting(slug);
     try {
       await receiptService.remove(slug);
@@ -87,7 +90,7 @@ export function ReceiptsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  
                   onClick={() => handleCopy(r.slug)}
                   aria-label={t.copyLabel}
                 >
@@ -96,8 +99,8 @@ export function ReceiptsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleDelete(r.slug)}
+                  
+                  onClick={() => setPendingDelete(r.slug)}
                   disabled={deleting === r.slug}
                   aria-label={t.deleteLabel}
                 >
@@ -112,6 +115,16 @@ export function ReceiptsList() {
           </ul>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title={t.confirmTitle}
+        description={t.confirmDelete}
+        confirmLabel={t.deleteLabel}
+        cancelLabel={t.cancel}
+        destructive
+        onConfirm={() => { if (pendingDelete) void handleDelete(pendingDelete); }}
+      />
     </Card>
   );
 }

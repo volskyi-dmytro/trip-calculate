@@ -1,9 +1,10 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { getTranslation } from '../i18n/routePlanner';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowRight, Loader2, Send } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { ConfirmDialog } from '@/components/ui/confirm-dialog';
 import { AiPrivacyNote } from './AiPrivacyNote';
 
 interface WelcomeScreenProps {
@@ -27,6 +28,7 @@ export function WelcomeScreen({
   const { language } = useLanguage();
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
+  const [pendingExample, setPendingExample] = useState<string | null>(null);
 
   const firstName = user?.name.split(' ')[0];
   const tr = getTranslation(language);
@@ -44,8 +46,17 @@ export function WelcomeScreen({
   // because every send is a billable AI request.
   const applyExample = (text: string) => {
     const draft = chatInput.trim();
-    if (draft && draft !== text && !window.confirm(t.replaceDraft)) return;
+    if (draft && draft !== text) {
+      setPendingExample(text);
+      return;
+    }
     onChatInputChange(text);
+    inputRef.current?.focus();
+  };
+
+  const confirmExample = () => {
+    if (pendingExample !== null) onChatInputChange(pendingExample);
+    setPendingExample(null);
     inputRef.current?.focus();
   };
 
@@ -63,9 +74,9 @@ export function WelcomeScreen({
         />
 
         <div className="text-center mb-5">
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
+          <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
             {firstName ? t.greeting.replace('{name}', firstName) : t.greetingNoName}
-          </h1>
+          </h2>
           <p className="text-base text-slate-600 dark:text-slate-300">{t.greetingSubtitle}</p>
         </div>
 
@@ -87,7 +98,7 @@ export function WelcomeScreen({
               type="submit"
               aria-label={tr.planner.sendMessage}
               disabled={isProcessing}
-              className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 bg-primary text-white disabled:opacity-40"
+              className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0 bg-primary text-primary-foreground disabled:opacity-40"
             >
               {isProcessing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             </button>
@@ -126,6 +137,15 @@ export function WelcomeScreen({
           </div>
         </div>
       </div>
+      <ConfirmDialog
+        open={pendingExample !== null}
+        onOpenChange={(open) => { if (!open) setPendingExample(null); }}
+        title={t.replaceDraftTitle}
+        description={t.replaceDraft}
+        confirmLabel={t.replaceDraftConfirm}
+        cancelLabel={t.replaceDraftCancel}
+        onConfirm={confirmExample}
+      />
     </div>
   );
 }

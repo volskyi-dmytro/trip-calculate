@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, MapPin, Clock, Fuel, ArrowRight } from 'lucide-react';
-import { Header } from '../components/common/Header';
-import { Footer } from '../components/common/Footer';
+import { PageShell } from '../components/common/PageShell';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translate } from '../i18n/common';
@@ -69,21 +68,18 @@ export function CityRoutePage() {
 
   if (state === 'loading') {
     return (
-      <>
-        <Header />
-        <div className="flex items-center justify-center py-24">
+      <PageShell>
+        <div className="flex items-center justify-center py-24" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">{t('common.loading')}</span>
         </div>
-        <Footer />
-      </>
+      </PageShell>
     );
   }
 
   if (state === 'notFound' || state === 'error') {
     return (
-      <>
-        <Header />
-        <main className="container">
+      <PageShell mainClassName="container">
           <section className="section text-center">
             {/* A failed load (e.g. 429) must not read as "route not found" to search engines. */}
             <h1>{state === 'notFound' ? t('cityRoute.notFound.title') : t('cityRoute.error.title')}</h1>
@@ -100,9 +96,7 @@ export function CityRoutePage() {
               </Link>
             )}
           </section>
-        </main>
-        <Footer />
-      </>
+      </PageShell>
     );
   }
 
@@ -158,9 +152,7 @@ export function CityRoutePage() {
   ].filter((f): f is { icon: typeof MapPin; label: string; value: string } => Boolean(f));
 
   return (
-    <>
-      <Header />
-      <main className="container">
+    <PageShell mainClassName="container">
         <section className="section">
           {/* Visible counterpart of the server's BreadcrumbList JSON-LD. */}
           <nav aria-label={t('cityRoute.breadcrumb')} className="breadcrumb">
@@ -253,8 +245,6 @@ export function CityRoutePage() {
             </div>
           </section>
         )}
-      </main>
-      <Footer />
-    </>
+    </PageShell>
   );
 }

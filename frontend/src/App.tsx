@@ -5,7 +5,7 @@ import { useSeason, seasonAssets } from './hooks/useSeason';
 import { useDropServerHeadOnNavigation } from './hooks/useDocumentTitle';
 import { AuthProvider } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
-import { LanguageProvider } from './contexts/LanguageContext';
+import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 import { HomePage } from './pages/HomePage';
 import { AdminRoute } from './components/auth/AdminRoute';
 import { LocaleBoundary } from './components/common/LocaleBoundary';
@@ -41,11 +41,16 @@ function ServerHeadCleanup() {
 }
 
 function RouteFallback() {
+  const { t } = useLanguage();
+  const loadingLabel = t('common.loading');
   return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="glass-panel" style={{ padding: '20px 28px', borderRadius: 'var(--radius-md)' }}>
-        <span className="tnum">…</span>
+    <div className="flex items-center justify-center min-h-screen" role="status" aria-live="polite" aria-busy="true">
+      <div className="glass-panel w-full max-w-sm mx-4 p-6 space-y-3" style={{ borderRadius: 'var(--radius-md)' }} aria-hidden="true">
+        <div className="animate-pulse h-5 w-2/3 rounded bg-muted" />
+        <div className="animate-pulse h-24 w-full rounded bg-muted" />
+        <div className="animate-pulse h-5 w-1/2 rounded bg-muted" />
       </div>
+      <span className="sr-only">{loadingLabel}</span>
     </div>
   );
 }
