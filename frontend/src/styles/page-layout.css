@@ -1,0 +1,43 @@
+/* Layout for the 404 / city-route pages (UX audit F16). Kept out of global.css,
+   which the ui-foundation work owns; fold in when the shells are unified. */
+
+/* Content pages: footer sticks to the bottom instead of floating mid-page. */
+.page-fill {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+}
+
+.page-fill > main {
+    flex: 1;
+    width: 100%;
+}
+
+/* .section h1:not([class]) forces left; centered sections must win. Specificity is higher. */
+.section.text-center h1:not([class]) {
+    text-align: center;
+}
+
+/* City route: copy beside the calculator from 900px (same breakpoint as the home intro). */
+.city-intro {
+    display: grid;
+    gap: 28px;
+}
+
+.city-intro-calc {
+    width: 100%;
+    max-width: 26rem;
+    margin: 0 auto;
+}
+
+@media (min-width: 900px) {
+    .city-intro {
+        grid-template-columns: minmax(0, 1fr) 26rem;
+        gap: 56px;
+        align-items: start;
+    }
+
+    .city-intro-calc {
+        margin: 0;
+    }
+}
