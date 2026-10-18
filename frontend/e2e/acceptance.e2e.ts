@@ -27,8 +27,10 @@ test('acceptance: calculate, save, reload, update, conflict (real local routing;
   await page.locator('#route-name').fill(name)
   await page.getByRole('button', { name: en.buttons.save, exact: true }).click()
   await expect.poll(() => writes.filter(w => w.startsWith('POST')).length, { timeout: 30000 }).toBe(1)
-  const saved = ((await (await request.get('/api/routes')).json()) as { id: number; name: string; passengerCount: number }[]).find(r => r.name === name)!
-  expect(saved).toBeTruthy()
+  // The request event fires on send; wait until the server has actually stored the record.
+  const list = async () => (await (await request.get('/api/routes')).json()) as { id: number; name: string }[]
+  await expect.poll(async () => (await list()).some(r => r.name === name), { timeout: 20000 }).toBe(true)
+  const saved = (await list()).find(r => r.name === name)!
 
   // reload and open the saved record through the Load dialog
   await page.reload()
@@ -44,8 +46,8 @@ test('acceptance: calculate, save, reload, update, conflict (real local routing;
   await page.getByRole('button', { name: 'Update', exact: true }).click()
   await expect.poll(() => writes.filter(w => w.startsWith('PUT')).length, { timeout: 30000 }).toBe(1)
   expect(writes.find(w => w.startsWith('PUT'))).toBe(`PUT /api/routes/${saved.id}`)
-  const after = (await (await request.get('/api/routes')).json()) as { id: number; name: string }[]
-  expect(after.filter(r => r.name === name)).toHaveLength(1)
+  await page.waitForTimeout(1000) // let the update land before checking for stray records
+  expect((await list()).filter(r => r.name === name)).toHaveLength(1)
 
   // conflict: the next update is answered 409 ROUTE_CHANGED -> message, no retry, no extra record
   await page.route(/\/api\/routes\/\d+$/, r => r.request().method() === 'PUT' ? r.fulfill({ status: 409, contentType: 'text/plain', body: 'ROUTE_CHANGED' }) : r.fallback())
