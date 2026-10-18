@@ -204,6 +204,7 @@ public class UserDashboardService {
                 .totalDistance(route.getTotalDistance())
                 .totalCost(route.getTotalCost())
                 .currency(route.getCurrency())
+                .distanceQuality(route.getDistanceQuality() != null ? route.getDistanceQuality() : "legacy")
                 .createdAt(route.getCreatedAt())
                 .updatedAt(route.getUpdatedAt())
                 .build();

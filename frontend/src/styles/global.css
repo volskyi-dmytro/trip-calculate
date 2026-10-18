@@ -5,11 +5,11 @@
 /* Make `primary` / `muted-foreground` utilities (used by ui/* components
    and dashboards) resolve to the product palette instead of silently
    generating nothing under Tailwind v4's default theme. */
-@theme {
-    --color-primary: #0e7a63;
-    --color-primary-foreground: #ffffff;
-    --color-muted: #eef1f4;
-    --color-muted-foreground: #5f6e7b;
+@theme inline {
+    --color-primary: var(--accent);
+    --color-primary-foreground: var(--on-accent);
+    --color-muted: var(--surface-2);
+    --color-muted-foreground: var(--text-2);
 }
 
 /* ============================================
@@ -22,16 +22,25 @@
     --surface-2: #eef1f4;
     --text: #1a242e;
     --text-2: #51606d;
-    --text-3: #8593a0;
+    --text-3: #5f6e7b; /* 4.76:1 on --bg, 5.25:1 on white */
     --border: #e0e6eb;
     --border-strong: #c9d2da;
 
     --accent: #0e7a63;
     --accent-hover: #0b6350;
     --accent-soft: rgba(14, 122, 99, 0.10);
+    /* Text on filled-accent surfaces: 5.27:1 on #0e7a63 */
+    --on-accent: #ffffff;
 
     --danger: #b93a3f;
     --danger-soft: rgba(185, 58, 63, 0.10);
+
+    --info: #1f5fa8;
+    --info-soft: rgba(31, 95, 168, 0.10);
+    --warning: #8a5a00;
+    --warning-soft: rgba(214, 150, 0, 0.14);
+    --success: #1e7a45;
+    --success-soft: rgba(30, 122, 69, 0.10);
 
     /* Glass material — frosted porcelain, legibility first.
        Alpha stays high so text never fights the seasonal backdrop. */
@@ -89,16 +98,25 @@ body[data-theme="dark"],
     --surface-2: #1d2630;
     --text: #e7ecf1;
     --text-2: #97a3ae;
-    --text-3: #66737e;
+    --text-3: #8593a0; /* 5.41:1 on --surface */
     --border: #242e38;
     --border-strong: #34414c;
 
     --accent: #2cc296;
     --accent-hover: #43d3a9;
     --accent-soft: rgba(44, 194, 150, 0.14);
+    /* White on this mint is 2.27:1; ink is 8.36:1 */
+    --on-accent: #0b1210;
 
     --danger: #e05c5c;
     --danger-soft: rgba(224, 92, 92, 0.12);
+
+    --info: #6aa8e8;
+    --info-soft: rgba(106, 168, 232, 0.14);
+    --warning: #e0a93a;
+    --warning-soft: rgba(224, 169, 58, 0.14);
+    --success: #4cc486;
+    --success-soft: rgba(76, 196, 134, 0.12);
 
     --glass-bg: rgba(22, 29, 36, 0.60);
     --glass-bg-strong: rgba(17, 23, 30, 0.78);
@@ -229,12 +247,8 @@ body::before {
    mint (dark) — same pairing as .btn vs the planner's accent icon buttons. */
 .sheet-trigger-pill {
     background: var(--nav-accent);
-    color: #ffffff;
+    color: var(--on-accent);
     border: 1px solid var(--glass-border);
-}
-
-.dark .sheet-trigger-pill {
-    color: #0f1117;
 }
 
 /* Blur is the expensive part of the material: use a lighter radius on
@@ -303,7 +317,27 @@ a:hover {
 
 ::selection {
     background: var(--accent);
-    color: #ffffff;
+    color: var(--on-accent);
+}
+
+.skip-link {
+    position: absolute;
+    left: 8px;
+    top: -64px;
+    z-index: 1000;
+    padding: 12px 16px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    color: var(--on-accent);
+}
+
+.skip-link:focus {
+    top: 8px;
+    color: var(--on-accent);
+}
+
+main:focus {
+    outline: none;
 }
 
 *:focus-visible {
@@ -363,7 +397,7 @@ a:hover {
     font-size: 0.95rem;
     font-weight: 600;
     letter-spacing: 0.01em;
-    color: #ffffff;
+    color: var(--on-accent);
     background: var(--accent);
     cursor: pointer;
     transition: background-color 0.18s ease, border-color 0.18s ease,
@@ -420,7 +454,7 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 40px;
+    min-height: 44px;
     padding: 0 16px;
     border-radius: 9px;
     background: rgba(255, 255, 255, 0.95);
@@ -444,8 +478,8 @@ a:hover {
    it accessible when the visible label is hidden. */
 @media (max-width: 480px) {
     .btn-google {
-        width: 40px;
-        min-width: 40px;
+        width: 44px;
+        min-width: 44px;
         padding: 0;
     }
 
@@ -459,8 +493,8 @@ a:hover {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
     padding: 0;
     border-radius: 9px;
     border: 1px solid var(--border);
@@ -486,7 +520,7 @@ a:hover {
     /* Without a z-index the isolated hero sits at stacking level 0, so any
        later glass panel (transform creates a stacking context) paints over
        the user dropdown that overflows the hero's bottom edge. 30 keeps the
-       header above page content but below .modal-overlay (100). */
+       header above page content but below dialogs (100). */
     z-index: 30;
     /* Fallback while the artwork loads — the art's own deep teal. */
     background-color: #123a3a;
@@ -565,6 +599,7 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: 8px;
+    min-height: 44px;
     padding: 8px 8px 8px 0;
     color: #ffffff;
     font-size: 1rem;
@@ -632,8 +667,8 @@ a:hover {
     justify-content: center;
     border: none;
     background: transparent;
-    min-width: 42px;
-    height: 38px;
+    min-width: 44px;
+    height: 44px;
     padding: 0 10px;
     font-family: inherit;
     font-size: 0.78rem;
@@ -649,6 +684,28 @@ a:hover {
 .seg a.seg-on {
     background: rgba(255, 255, 255, 0.94);
     color: #1a242e;
+}
+
+/* Slim bar variant (planner): same controls as the hero header, themed for a glass strip */
+.app-bar .brand,
+.app-bar .brand:hover {
+    color: var(--text);
+}
+
+.app-bar .icon-btn,
+.app-bar .seg {
+    background: var(--glass-input);
+    border-color: var(--border-strong);
+    color: var(--text-2);
+}
+
+.app-bar .seg a {
+    color: var(--text-2);
+}
+
+.app-bar .seg a.seg-on {
+    background: var(--accent);
+    color: var(--on-accent);
 }
 
 .hero-content {
@@ -1182,6 +1239,10 @@ footer {
 .footer-links a {
     color: var(--text-2);
     font-weight: 600;
+    /* 44px touch target without changing the visual rhythm */
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
 }
 
 .footer-links a:hover {
@@ -1193,81 +1254,6 @@ footer {
         flex-direction: row;
         align-items: center;
         justify-content: space-between;
-    }
-}
-
-/* ============================================
-   Modal — bottom sheet on phones, centered
-   dialog on larger screens
-   ============================================ */
-.modal-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    display: flex;
-    align-items: flex-end;
-    justify-content: center;
-    background: rgba(10, 15, 20, 0.55);
-    animation: overlayIn 0.15s ease-out;
-}
-
-.modal-card {
-    width: 100%;
-    max-height: 88dvh;
-    overflow-y: auto;
-    background: var(--glass-bg-strong);
-    -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
-    backdrop-filter: blur(var(--glass-blur-strong)) saturate(1.4);
-    border: 1px solid var(--glass-border);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    padding: 20px 20px calc(20px + env(safe-area-inset-bottom));
-    box-shadow: inset 0 1px 0 var(--glass-highlight),
-        0 0 0 1px var(--glass-edge), var(--shadow-lg);
-    transform: translateZ(0);
-    animation: sheetUp 0.22s cubic-bezier(0.3, 0.9, 0.4, 1);
-}
-
-.modal-head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 12px;
-    margin-bottom: 16px;
-}
-
-.modal-head h2 {
-    margin: 0;
-    font-size: 1.15rem;
-    font-weight: 700;
-    letter-spacing: -0.01em;
-}
-
-@keyframes overlayIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes sheetUp {
-    from { transform: translateY(24px); opacity: 0.6; }
-    to { transform: translateY(0); opacity: 1; }
-}
-
-@keyframes dialogIn {
-    from { transform: translateY(8px) scale(0.98); opacity: 0; }
-    to { transform: translateY(0) scale(1); opacity: 1; }
-}
-
-@media (min-width: 640px) {
-    .modal-overlay {
-        align-items: center;
-        padding: 24px;
-    }
-
-    .modal-card {
-        max-width: 440px;
-        border-radius: var(--radius-lg);
-        padding: 24px;
-        animation: dialogIn 0.18s ease-out;
     }
 }
 
@@ -1287,11 +1273,11 @@ footer {
 }
 
 .form-group input,
-.modal-card input[type="text"],
-.modal-card input[type="email"],
-.modal-card input[type="number"],
-.modal-card textarea,
-.modal-card select {
+.calc-dialog input[type="text"],
+.calc-dialog input[type="email"],
+.calc-dialog input[type="number"],
+.calc-dialog textarea,
+.calc-dialog select {
     width: 100%;
     min-height: 46px;
     padding: 0 14px;
@@ -1306,9 +1292,9 @@ footer {
 }
 
 .form-group input:focus,
-.modal-card input:focus,
-.modal-card textarea:focus,
-.modal-card select:focus {
+.calc-dialog input:focus,
+.calc-dialog textarea:focus,
+.calc-dialog select:focus {
     outline: none;
     border-color: var(--accent);
     box-shadow: 0 0 0 3px var(--accent-soft);
@@ -1528,8 +1514,9 @@ footer {
 /* Example prompts: fill the composer only, so they read as suggestions
    (soft chips), not as primary send buttons. */
 .planner-example-chip {
-    padding: 6px 12px;
-    border-radius: 999px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 22px;
     border: 1px solid var(--border);
     background: var(--accent-soft);
     color: var(--text);
@@ -1540,8 +1527,11 @@ footer {
     transition: border-color 0.15s ease;
 }
 
-.planner-example-chip:hover:not(:disabled) {
-    border-color: var(--accent);
+/* hover only where it exists: on touch it sticks and reads as "selected" after a tap */
+@media (hover: hover) {
+    .planner-example-chip:hover:not(:disabled) {
+        border-color: var(--accent);
+    }
 }
 
 .planner-example-chip:focus-visible {

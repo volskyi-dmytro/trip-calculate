@@ -67,7 +67,7 @@ export function UserMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-1.5 sm:gap-2 h-10 px-2 sm:px-3 rounded-lg glass-panel hover:shadow transition-shadow"
+        className="flex items-center gap-1.5 sm:gap-2 min-h-11 px-2 sm:px-3 rounded-lg glass-panel hover:shadow transition-shadow"
       >
         {user.picture && !avatarFailed ? (
           <img

@@ -54,7 +54,7 @@ describe('TripResultCard', () => {
         onApplyLivePrice={() => {}}
       />,
     )
-    expect(html).not.toContain('class="trip-result-live"')
+    expect(html).not.toContain('· live price')
     expect(html).toContain('Use live price')
   })
 
@@ -73,5 +73,37 @@ describe('TripResultCard', () => {
     )
     expect(html).not.toContain('50.74507')
     expect(html).toContain('Waypoint 2')
+  })
+
+  const card = (quality: 'road' | 'approximate' | 'unavailable', distance: number) =>
+    renderToStaticMarkup(
+      <TripResultCard
+        waypoints={waypoints}
+        routeSettings={baseSettings}
+        routeDistance={distance}
+        routeDuration={0}
+        routeQuality={quality}
+        fuelSuggestion={null}
+        weather={null}
+        onSaveRoute={() => {}}
+        onShareReceipt={() => {}}
+      />,
+    )
+
+  it('labels an outage estimate approximate and blocks receipt sharing', () => {
+    const html = card('approximate', 0)
+    expect(html).toContain('Approximate')
+    expect(html).toContain('≈')
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>.*Share/s)
+  })
+
+  it('does not allow a receipt when there is no route', () => {
+    expect(card('unavailable', 0)).toMatch(/<button[^>]*disabled/)
+  })
+
+  it('shows a road route without warnings and shareable', () => {
+    const html = card('road', 100)
+    expect(html).not.toContain('Approximate')
+    expect(html).not.toMatch(/<button[^>]*disabled/)
   })
 })

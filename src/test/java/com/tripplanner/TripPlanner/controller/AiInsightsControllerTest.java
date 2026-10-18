@@ -121,4 +121,15 @@ class AiInsightsControllerTest {
         assertFalse(body.contains("127.0.0.1"), body);
         assertFalse(body.contains("internal-agent"), body);
     }
+
+    @Test
+    void settingsContextIsPartOfCacheKey() {
+        // Same settings must reach the key in sync and SSE paths (see AiStreamControllerTest)
+        AiInsightsController controller = controller();
+        ReflectionTestUtils.setField(controller, "agentUrl", "http://localhost:1");
+        Map<String, Object> ctx = Map.of("fuel_type", "diesel", "currency", "EUR");
+        controller.generateInsights(Map.of("message", "Kyiv to Lviv", "settingsContext", ctx),
+                new MockHttpServletRequest());
+        verify(cacheService).cacheKey(anyString(), anyString(), org.mockito.ArgumentMatchers.eq(ctx));
+    }
 }

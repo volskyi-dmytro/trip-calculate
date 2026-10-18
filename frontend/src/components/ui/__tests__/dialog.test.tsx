@@ -79,4 +79,16 @@ describe('Dialog', () => {
     press('Tab', true)
     expect(document.activeElement?.id).toBe('last')
   })
+
+  it('locks body scroll until the last of several open dialogs closes', () => {
+    document.body.style.overflow = ''
+    mount()
+    mount()
+    expect(document.body.style.overflow).toBe('hidden')
+    const backdrops = () => document.body.querySelectorAll<HTMLElement>('[class~="bg-black/50"]')
+    act(() => backdrops()[0].click())
+    expect(document.body.style.overflow).toBe('hidden')
+    act(() => backdrops()[0].click())
+    expect(document.body.style.overflow).toBe('')
+  })
 })

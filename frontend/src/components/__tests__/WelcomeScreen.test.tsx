@@ -57,8 +57,8 @@ describe('WelcomeScreen', () => {
 
   it('uses native form submission and reads the current DOM value', () => {
     const { container, onSendMessage } = render()
-    const input = container.querySelector('input')!
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    const input = container.querySelector('textarea')!
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
       ?.call(input, 'Нововолинськ - Лісабон, 2 пасажира')
     act(() => {
       container.querySelector('form')!.dispatchEvent(
@@ -73,21 +73,25 @@ describe('WelcomeScreen', () => {
     act(() => exampleButton(container).click())
     expect(onChatInputChange).toHaveBeenCalledWith('A trip from Kyiv to Lviv for 2 passengers')
     expect(onSendMessage).not.toHaveBeenCalled()
-    expect(document.activeElement).toBe(container.querySelector('input'))
+    expect(document.activeElement).toBe(container.querySelector('textarea'))
   })
 
-  it('keeps a non-empty draft unless the user confirms replacing it', () => {
-    const confirm = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('asks in a dialog before replacing a non-empty draft', () => {
     const { container, onChatInputChange } = render({ chatInput: 'my own trip' })
     act(() => exampleButton(container).click())
-    expect(confirm).toHaveBeenCalledOnce()
+    const dialog = document.querySelector('[role="alertdialog"]')!
+    expect(dialog).not.toBeNull()
     expect(onChatInputChange).not.toHaveBeenCalled()
 
-    confirm.mockReturnValue(true)
+    // Keep mine
+    act(() => [...dialog.querySelectorAll<HTMLButtonElement>('button')].find(b => b.textContent === 'Keep mine')!.click())
+    expect(document.querySelector('[role="alertdialog"]')).toBeNull()
+    expect(onChatInputChange).not.toHaveBeenCalled()
+
     act(() => exampleButton(container).click())
+    act(() => [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find(b => b.textContent === 'Replace')!.click())
     expect(onChatInputChange).toHaveBeenCalledWith('A trip from Kyiv to Lviv for 2 passengers')
   })
-
   it('offers manual setup without sending a message', () => {
     const { container, onManualClick, onSendMessage } = render()
     const manual = [...container.querySelectorAll('button')].find(b => b.textContent === 'Or set it up manually')!

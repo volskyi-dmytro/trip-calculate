@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { Loader2, MapPin, Clock, Fuel, ArrowRight } from 'lucide-react';
-import { Header } from '../components/common/Header';
-import { Footer } from '../components/common/Footer';
+import { PageShell } from '../components/common/PageShell';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
 import { translate } from '../i18n/common';
+import { formatMoney } from '../lib/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { cityRouteService, type CityRouteDetail } from '../services/cityRouteService';
+import '../styles/page-layout.css';
 
 type PageState = 'loading' | 'ready' | 'notFound' | 'error';
 
@@ -69,21 +70,18 @@ export function CityRoutePage() {
 
   if (state === 'loading') {
     return (
-      <>
-        <Header />
-        <div className="flex items-center justify-center py-24">
+      <PageShell>
+        <div className="flex items-center justify-center py-24" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">{t('common.loading')}</span>
         </div>
-        <Footer />
-      </>
+      </PageShell>
     );
   }
 
   if (state === 'notFound' || state === 'error') {
     return (
-      <>
-        <Header />
-        <main className="container">
+      <PageShell mainClassName="container">
           <section className="section text-center">
             {/* A failed load (e.g. 429) must not read as "route not found" to search engines. */}
             <h1>{state === 'notFound' ? t('cityRoute.notFound.title') : t('cityRoute.error.title')}</h1>
@@ -100,9 +98,7 @@ export function CityRoutePage() {
               </Link>
             )}
           </section>
-        </main>
-        <Footer />
-      </>
+      </PageShell>
     );
   }
 
@@ -148,20 +144,19 @@ export function CityRoutePage() {
     r.totalCost !== null && {
       icon: ArrowRight,
       label: t('cityRoute.totalCost'),
-      value: `${r.totalCost.toFixed(0)} ${r.currency}`,
+      value: formatMoney(r.totalCost, r.currency, language),
     },
     r.perPassenger !== null && {
       icon: ArrowRight,
       label: t('cityRoute.perPassenger'),
-      value: `${r.perPassenger.toFixed(0)} ${r.currency}`,
+      value: formatMoney(r.perPassenger, r.currency, language),
     },
   ].filter((f): f is { icon: typeof MapPin; label: string; value: string } => Boolean(f));
 
   return (
-    <>
-      <Header />
-      <main className="container">
-        <section className="section">
+    <PageShell mainClassName="container">
+        <section className="section city-intro">
+          <div>
           {/* Visible counterpart of the server's BreadcrumbList JSON-LD. */}
           <nav aria-label={t('cityRoute.breadcrumb')} className="breadcrumb">
             <Link to={withLocalePrefix('/', language)}>Trip Calculate</Link>
@@ -174,12 +169,10 @@ export function CityRoutePage() {
             {r.fromName} → {r.toName}: {t('cityRoute.titleSuffix')}
           </h1>
           <p className="section-lead">{explanation}</p>
-        </section>
-
-        {/* Calculator before the stats: on mobile this was five tall cards
-            deep before any actionable content. */}
-        <section className="section">
-          <div style={{ maxWidth: '26rem', margin: '0 auto' }}>
+          </div>
+          {/* Calculator right after the intro: on mobile the stats were five tall cards
+              deep before any actionable content; from 900px it sits beside the copy. */}
+          <div className="city-intro-calc">
             <QuickCalculator
               prefill={{
                 distance: r.distanceKm,
@@ -253,8 +246,6 @@ export function CityRoutePage() {
             </div>
           </section>
         )}
-      </main>
-      <Footer />
-    </>
+    </PageShell>
   );
 }

@@ -39,7 +39,8 @@ public class RoutingController {
             return ResponseEntity.ok(Map.of(
                 "error", true,
                 "message", "Routing service unavailable",
-                "fallback", true
+                "fallback", true,
+                "quality", "approximate"
             ));
         }
     }

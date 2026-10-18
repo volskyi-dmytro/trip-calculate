@@ -5,6 +5,7 @@ import { RoutePlannerPage } from '../RoutePlannerPage'
 
 vi.mock('react-router-dom', () => ({
   Link: ({ children, to }: { children: ReactNode; to: string }) => <a href={to}>{children}</a>,
+  useLocation: () => ({ pathname: '/en/route-planner', search: '', hash: '' }),
 }))
 const mockUseAuth = vi.fn(() => ({
   user: { id: '1', name: 'Dmytro', email: 'user@example.com', authenticated: true },
@@ -20,12 +21,14 @@ vi.mock('../../contexts/LanguageContext', () => ({
   useLanguage: () => ({ language: 'en', setLanguage: vi.fn(), t: (key: string) => key }),
 }))
 vi.mock('../../components/RoutePlanner', () => ({
-  RoutePlanner: () => <div data-testid="route-planner">Route planner ready</div>,
+  // the real RoutePlanner owns the page h1 (WelcomeScreen visible / dashboard sr-only)
+  RoutePlanner: () => <div data-testid="route-planner"><h1>Planner title</h1>Route planner ready</div>,
 }))
 vi.mock('../../components/common/Header', () => ({ Header: () => <header>Header</header> }))
 vi.mock('../../components/PlannerGuestPreview', () => ({
-  PlannerGuestPreview: () => <main>Guest preview</main>,
+  PlannerGuestPreview: () => <div>Guest preview</div>,
 }))
+vi.mock('../../components/auth/LoginButton', () => ({ LoginButton: () => <a href="/login">Login</a> }))
 vi.mock('../../components/auth/UserMenu', () => ({ UserMenu: () => <div>User menu</div> }))
 
 describe('RoutePlannerPage public beta access', () => {
@@ -39,8 +42,20 @@ describe('RoutePlannerPage public beta access', () => {
   it('gives the language and theme buttons localized accessible names', () => {
     const html = renderToStaticMarkup(<RoutePlannerPage />)
 
-    expect(html).toContain('aria-label="UA: common.switchLanguage"')
+    expect(html).toContain('aria-label="common.language"')
+    expect(html).toContain('>UA</a>')
     expect(html).toMatch(/aria-label="common\.theme\.to(Light|Dark)"/)
+  })
+
+  it('has a skip link, one main landmark and exactly one h1', () => {
+    for (const guest of [false, true]) {
+      if (guest) mockUseAuth.mockReturnValueOnce({ user: null, loading: false } as unknown as ReturnType<typeof mockUseAuth>)
+      const html = renderToStaticMarkup(<RoutePlannerPage />)
+      expect(html).toContain('href="#main"')
+      expect(html.match(/<main[ >]/g)).toHaveLength(1)
+      expect(html).toContain('id="main"')
+      if (!guest) expect(html.match(/<h1[ >]/g)).toHaveLength(1)
+    }
   })
 
   it('shows the guest sample-trip preview instead of the planner for a logged-out visitor', () => {

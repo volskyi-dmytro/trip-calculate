@@ -45,7 +45,7 @@ class AiStreamControllerTest {
         controller = new AiStreamController(cacheService, usageService, new ObjectMapper());
         ReflectionTestUtils.setField(controller, "agentUrl", "http://localhost:1");
         when(usageService.logRequest(any(), any(), any(), any(), any())).thenReturn(1L);
-        when(cacheService.cacheKey(anyString(), anyString())).thenReturn("key");
+        when(cacheService.cacheKey(anyString(), anyString(), any())).thenReturn("key");
     }
 
     private Map<String, Object> request(String message) {
@@ -224,5 +224,14 @@ class AiStreamControllerTest {
 
         verify(emitter).complete();
         verify(usageService).logResponse(eq(1L), eq("error"), eq("stream ended without terminal frame"), anyLong());
+    }
+
+    @Test
+    void settingsContextIsPartOfCacheKey() {
+        Map<String, Object> ctx = Map.of("fuel_type", "diesel", "currency", "EUR");
+        Map<String, Object> m = request("Kyiv to Lviv");
+        m.put("settingsContext", ctx);
+        controller.streamInsights(m, httpRequest, httpResponse);
+        verify(cacheService).cacheKey(anyString(), anyString(), eq(ctx));
     }
 }

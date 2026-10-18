@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import type { ChangeEvent } from 'react';
 
 export interface NumericFieldOptions {
+  /** Normalize committed values while preserving the raw in-progress edit. */
+  normalize?: (value: number) => number;
   min?: number;
   max?: number;
   /** Committed value used when the field is left empty/unparseable on blur.
@@ -31,7 +33,7 @@ export function clampNumeric(n: number, min?: number, max?: number): number {
  *  or `fallback` when raw is empty/unparseable. */
 export function resolveNumericBlur(raw: string, { min, max, fallback = min ?? 0 }: NumericFieldOptions): number {
   const parsed = Number(raw);
-  if (raw.trim() === '' || Number.isNaN(parsed)) return fallback;
+  if (raw.trim() === '' || !Number.isFinite(parsed)) return fallback;
   return clampNumeric(parsed, min, max);
 }
 
@@ -69,11 +71,15 @@ export function useNumericField(
       setRaw(next);
       if (isPartialNumericInput(next)) return;
       const parsed = Number(next);
-      if (!Number.isNaN(parsed)) onChange(clampNumeric(parsed, min, max));
+      if (Number.isFinite(parsed)) {
+        const clamped = clampNumeric(parsed, min, max);
+        onChange(options.normalize ? options.normalize(clamped) : clamped);
+      }
     },
     onBlur: () => {
       focused.current = false;
-      const resolved = resolveNumericBlur(raw, options);
+      const clamped = resolveNumericBlur(raw, options);
+      const resolved = options.normalize ? options.normalize(clamped) : clamped;
       setRaw(display(resolved));
       onChange(resolved);
     },

@@ -3,15 +3,18 @@ import { Copy, Eye, Loader2, Receipt as ReceiptIcon, Trash2 } from 'lucide-react
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
+import { ConfirmDialog } from '../ui/confirm-dialog';
 import { useLanguage } from '../../contexts/LanguageContext';
+import { formatDistance, formatMoney } from '../../lib/format';
 import { receiptService, receiptUrl } from '../../services/receiptService';
 import type { Receipt } from '../../types/Receipt';
 
 /** Owned receipts never expire; this list is where users manage the links they shared. */
 export function ReceiptsList() {
-  const { t: tr, tn } = useLanguage();
+  const { t: tr, tn, language } = useLanguage();
   const [receipts, setReceipts] = useState<Receipt[] | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
 
   const t = {
     title: tr('receiptsList.title'),
@@ -22,6 +25,8 @@ export function ReceiptsList() {
     deleteLabel: tr('receiptsList.deleteLabel'),
     deleteFailed: tr('receiptsList.deleteFailed'),
     confirmDelete: tr('receiptsList.confirmDelete'),
+    confirmTitle: tr('receiptsList.confirmTitle'),
+    cancel: tr('common.cancel'),
     unnamed: tr('receiptsList.unnamed'),
   };
 
@@ -38,7 +43,6 @@ export function ReceiptsList() {
   };
 
   const handleDelete = async (slug: string) => {
-    if (!window.confirm(t.confirmDelete)) return;
     setDeleting(slug);
     try {
       await receiptService.remove(slug);
@@ -77,17 +81,17 @@ export function ReceiptsList() {
                   <div className="text-sm font-medium truncate">
                     {r.originLabel && r.destinationLabel
                       ? `${r.originLabel} → ${r.destinationLabel}`
-                      : `${t.unnamed} · ${tr('receiptsList.distance').replace('{km}', r.distanceKm.toFixed(0))}`}
+                      : `${t.unnamed} · ${formatDistance(r.distanceKm, language)}`}
                   </div>
                   <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
-                    {tn('receiptsList.views', r.viewCount)} · {r.costPerPerson.toFixed(2)} {r.currency}
+                    {tn('receiptsList.views', r.viewCount)} · {formatMoney(r.costPerPerson, r.currency, language)}
                   </div>
                 </div>
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
+                  
                   onClick={() => handleCopy(r.slug)}
                   aria-label={t.copyLabel}
                 >
@@ -96,8 +100,8 @@ export function ReceiptsList() {
                 <Button
                   variant="outline"
                   size="icon"
-                  className="h-8 w-8"
-                  onClick={() => handleDelete(r.slug)}
+                  
+                  onClick={() => setPendingDelete(r.slug)}
                   disabled={deleting === r.slug}
                   aria-label={t.deleteLabel}
                 >
@@ -112,6 +116,16 @@ export function ReceiptsList() {
           </ul>
         )}
       </CardContent>
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => { if (!open) setPendingDelete(null); }}
+        title={t.confirmTitle}
+        description={t.confirmDelete}
+        confirmLabel={t.deleteLabel}
+        cancelLabel={t.cancel}
+        destructive
+        onConfirm={() => { if (pendingDelete) void handleDelete(pendingDelete); }}
+      />
     </Card>
   );
 }

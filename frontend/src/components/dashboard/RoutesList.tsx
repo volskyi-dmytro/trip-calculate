@@ -15,7 +15,7 @@ import {
 import type { RouteListItem } from '../../services/dashboardService';
 import { routeService } from '../../services/routeService';
 import { useLanguage } from '../../contexts/LanguageContext';
-import { formatMoney } from '../../utils/money';
+import { formatDistance, formatMoney } from '../../lib/format';
 import { withLocalePrefix } from '../../utils/locale';
 import { routeEditPath } from '../../utils/routePaths';
 import { timeAgo } from '../../i18n/dates';
@@ -146,7 +146,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                       {route.waypointCount} {t('dashboard.routes.waypoints')}
                     </span>
                     <span>
-                      {route.totalDistance.toFixed(1)} km
+                      {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{formatDistance(route.totalDistance, language)}
                     </span>
                     <span>
                       {formatMoney(route.totalCost, route.currency, language)}

@@ -18,6 +18,20 @@ import java.util.Optional;
 public class UserService {
 
     private final UserRepository userRepository;
+    private final jakarta.persistence.EntityManagerFactory entityManagerFactory;
+
+    /**
+     * Scalar identity lookup for work that must not borrow the OSIV context's connection.
+     * Only this operation-owned EntityManager is closed; the request/caller context is untouched.
+     * Returning an ID avoids detaching entities that other consumers may lazily traverse.
+     */
+    public Optional<Long> findIdByGoogleId(String googleId) {
+        try (var lookup = entityManagerFactory.createEntityManager()) {
+            return lookup.createQuery("select u.id from User u where u.googleId = :googleId", Long.class)
+                    .setParameter("googleId", googleId)
+                    .getResultList().stream().findFirst();
+        }
+    }
 
     /**
      * Process OAuth2 user login - create new user or update existing user

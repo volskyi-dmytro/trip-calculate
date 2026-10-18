@@ -6,6 +6,8 @@ import path from 'path'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Debug logging stays in dev; production bundles ship without it.
+  esbuild: { drop: ['console', 'debugger'] },
   build: {
     // Keep font files as real files: the CSP allows fonts from 'self' only,
     // so a font inlined as a data: URI would be blocked.

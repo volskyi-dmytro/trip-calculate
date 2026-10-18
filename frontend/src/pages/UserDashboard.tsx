@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import { dashboardService, type UserDashboard as UserDashboardData } from '../services/dashboardService';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
-import { Header } from '../components/common/Header';
+import { PageShell } from '../components/common/PageShell';
 import { ProfileCard } from '../components/dashboard/ProfileCard';
 import { StatsCard } from '../components/dashboard/StatsCard';
 import { RoutesList } from '../components/dashboard/RoutesList';
@@ -39,31 +39,29 @@ export function UserDashboard() {
 
   if (loading) {
     return (
-      <>
-        <Header />
-        <div className="flex items-center justify-center min-h-screen">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <PageShell>
+        <div className="flex items-center justify-center min-h-screen" role="status">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
+          <span className="sr-only">{t('common.loading')}</span>
         </div>
-      </>
+      </PageShell>
     );
   }
 
   if (!dashboardData) {
     return (
-      <>
-        <Header />
+      <PageShell>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <p className="text-lg text-muted-foreground">{t('dashboard.error.noData')}</p>
           </div>
         </div>
-      </>
+      </PageShell>
     );
   }
 
   return (
-    <>
-      <Header />
+    <PageShell>
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">
@@ -120,6 +118,6 @@ export function UserDashboard() {
         </div>
         </div>
       </div>
-    </>
+    </PageShell>
   );
 }

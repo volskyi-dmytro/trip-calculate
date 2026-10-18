@@ -136,4 +136,42 @@ class RoutingServiceTest {
             new RoutingController.Waypoint(50.4501, 30.5234),
             new RoutingController.Waypoint(50.0647, 19.9450)))).isTrue();
     }
+
+    private static final String OK_ROUTE = """
+        {"code":"Ok","waypoints":[{"distance":1.0,"location":[14.0,50.0]},{"distance":1.0,"location":[15.0,51.0]}],
+         "routes":[{"distance":188690,"duration":9060,"geometry":{"coordinates":[[14.0,50.0],[15.0,51.0]]}}]}
+        """;
+    private static final List<RoutingController.Waypoint> PRAGUE_AREA = List.of(
+        new RoutingController.Waypoint(50, 14), new RoutingController.Waypoint(51, 15));
+
+    @Test
+    void mapboxSuccessIsLabelledRoadWithProvider() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://api.mapbox.com/")))
+            .andRespond(withSuccess(OK_ROUTE, MediaType.APPLICATION_JSON));
+        var result = new RoutingService(restTemplate, "pk.t", "https://trip-calculate.online").calculateRoute(PRAGUE_AREA);
+        assertThat(result).containsEntry("quality", "road").containsEntry("provider", "mapbox");
+    }
+
+    @Test
+    void osrmSuccessIsLabelledRoadWithProvider() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo(org.hamcrest.Matchers.startsWith("https://router.project-osrm.org/")))
+            .andRespond(withSuccess(OK_ROUTE, MediaType.APPLICATION_JSON));
+        var result = new RoutingService(restTemplate, "", "https://trip-calculate.online").calculateRoute(PRAGUE_AREA);
+        assertThat(result).containsEntry("quality", "road").containsEntry("provider", "osrm");
+    }
+
+    @Test
+    void totalOutageAndNoRouteAreLabelled() {
+        RestTemplate restTemplate = new RestTemplate();
+        MockRestServiceServer.bindTo(restTemplate).build()
+            .expect(org.springframework.test.web.client.ExpectedCount.manyTimes(), org.springframework.test.web.client.match.MockRestRequestMatchers.anything())
+            .andRespond(org.springframework.test.web.client.response.MockRestResponseCreators.withServerError());
+        var outage = new RoutingService(restTemplate, "", "https://trip-calculate.online").calculateRoute(PRAGUE_AREA);
+        assertThat(outage).containsEntry("quality", "approximate").containsEntry("provider", "straight-line");
+        assertThat(RoutingService.NO_ROUTE).containsEntry("quality", "noRoute");
+    }
 }

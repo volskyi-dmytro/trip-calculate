@@ -1,15 +1,18 @@
-import { useState, useCallback, useEffect, useRef } from 'react'
+import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
 import { WelcomeScreen } from './WelcomeScreen'
-import { StatsPanel } from './StatsPanel'
+import { TripSummaryCard } from './planner/TripSummaryCard'
+import { PlannerSheet, type SheetSnap } from './planner/PlannerSheet'
+import { summarizeTrip } from './planner/tripSummary'
 import { RoutePanel } from './RoutePanel'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Send, Search, ChevronUp, ChevronDown } from 'lucide-react'
+import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Search, ArrowUpDown } from 'lucide-react'
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService } from '../services/geocodingService'
@@ -18,10 +21,14 @@ import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamSe
 import { AiRateLimitError } from '../services/agentService'
 import { BlockingErrorDialog, type BlockingError } from './BlockingErrorDialog'
 import { AiPrivacyNote } from './AiPrivacyNote'
+import { PromptComposer } from './PromptComposer'
+import { LimitBanner } from './LimitBanner'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
-import { computeTripStats } from '../services/tripStats'
+import { computeTripStats, buildEstimateExport } from '../services/tripStats'
+import { normalizeDecimal } from '../services/routeCost'
+import type { EstimateQuality } from '../services/routingService'
 import { carService } from '../services/carService'
 import type { GarageCar } from '../types/Car'
 import { AgentActivitySlot } from './AgentActivitySlot'
@@ -65,6 +72,12 @@ const DEFAULT_ROUTE_SETTINGS: RouteSettings = {
   fuelPriceTouched: false,
 }
 
+const normalizeSettings = (settings: RouteSettings): RouteSettings => ({
+  ...settings,
+  fuelConsumption: normalizeDecimal(settings.fuelConsumption),
+  fuelCostPerLiter: normalizeDecimal(settings.fuelCostPerLiter),
+})
+
 const isoDate = (d: Date) => d.toISOString().slice(0, 10)
 const todayISO = () => isoDate(new Date())
 
@@ -77,12 +90,15 @@ export function RoutePlanner() {
   const { user } = useAuth()
 
   const [waypoints, setWaypoints] = useState<Waypoint[]>([])
-  const [routeSettings, setRouteSettings] = useState<RouteSettings>(() => {
+  const [routeSettings, setRouteSettingsState] = useState<RouteSettings>(() => {
     const saved = localStorage.getItem('tripCalculate_routeSettings')
     if (!saved) return DEFAULT_ROUTE_SETTINGS
-    try { return { ...DEFAULT_ROUTE_SETTINGS, ...JSON.parse(saved) } }
+    try { return normalizeSettings({ ...DEFAULT_ROUTE_SETTINGS, ...JSON.parse(saved) }) }
     catch { return DEFAULT_ROUTE_SETTINGS }
   })
+  const setRouteSettings = useCallback((update: SetStateAction<RouteSettings>) => {
+    setRouteSettingsState(previous => normalizeSettings(typeof update === 'function' ? update(previous) : update))
+  }, [])
   const [fuelSuggestion, setFuelSuggestion] = useState<FuelSuggestion | null>(null)
   // Latest-wins sequence guard for the debounced fuel suggestion fetch below
   const fuelFetchSeq = useRef(0)
@@ -107,6 +123,8 @@ export function RoutePlanner() {
   const [savedRoutes, setSavedRoutes] = useState<Route[]>([])
   const [loadingRoutes, setLoadingRoutes] = useState(false)
   const [savingRoute, setSavingRoute] = useState(false)
+  const saveInFlight = useRef(false)
+  const [routeRefresh, setRouteRefresh] = useState(0)
   const [routeName, setRouteName] = useState('')
   const [showSaveDialog, setShowSaveDialog] = useState(false)
   const [showLoadDialog, setShowLoadDialog] = useState(false)
@@ -115,6 +133,13 @@ export function RoutePlanner() {
   const [routeDuration, setRouteDuration] = useState<number>(0) // in minutes from OSRM
   // No road connects the waypoints: no cost, receipt, Waze link or save.
   const [routeUnreachable, setRouteUnreachable] = useState(false)
+  // Provenance of routeDistance/routeDuration; undefined until a calculation lands.
+  const [routeEstimate, setRouteEstimate] = useState<{ quality: EstimateQuality; source: string; calculatedAt: string; routeKey: string } | undefined>()
+  // A result belongs to its exact inputs, never to a newly edited shape.
+  // Derive this during render so actions cannot briefly expose the old result
+  // before the replacement-calculation effect has run.
+  const routeQuality: EstimateQuality = routeEstimate?.routeKey === routeCalculationKey(waypoints)
+    ? routeEstimate.quality : 'unavailable'
   // Failures the user must acknowledge (centered dialog, not a fading toast)
   const [blockingError, setBlockingError] = useState<BlockingError | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
@@ -134,6 +159,9 @@ export function RoutePlanner() {
 
   // AI Chat State
   const [chatInput, setChatInput] = useState('')
+  // AI quota hit: inline banner instead of a modal; the draft stays in chatInput.
+  const [aiLimit, setAiLimit] = useState<{ retryAt: Date | null } | null>(null)
+  const clearAiLimit = useCallback(() => setAiLimit(null), [])
   const [isProcessingAi, setIsProcessingAi] = useState(false)
 
   // SSE progress: stages completed so far for the in-flight AI request;
@@ -141,10 +169,8 @@ export function RoutePlanner() {
   const [agentDoneStages, setAgentDoneStages] = useState<AgentStage[]>([])
   const [agentDegraded, setAgentDegraded] = useState(false)
   // Latest-result concierge slot: showResultCard is true once a request
-  // succeeds with an active result; cardDismissed hides it without losing
-  // the "there is an active result" bookkeeping until the next request/clear
+  // succeeds with an active result (bookkeeping until the next request/clear)
   const [showResultCard, setShowResultCard] = useState(false)
-  const [cardDismissed, setCardDismissed] = useState(false)
   const [showResultShareDialog, setShowResultShareDialog] = useState(false)
   const pendingAiResultRouteKey = useRef<string | null>(null)
   const routeCalculationSeq = useRef(0)
@@ -164,15 +190,48 @@ export function RoutePlanner() {
 
   // Route calculation state
   const [isCalculatingRoute, setIsCalculatingRoute] = useState(false)
+  const routeReady = !isCalculatingRoute && (routeQuality === 'road' || routeQuality === 'approximate')
 
   // Mobile bottom sheet state
-  const [isMobileExpanded, setIsMobileExpanded] = useState(false)
+  const [sheetSnap, setSheetSnap] = useState<SheetSnap>('peek')
+  const isMobileExpanded = sheetSnap !== 'peek'
+  const setIsMobileExpanded = useCallback((v: boolean) => setSheetSnap(v ? 'half' : 'peek'), [])
+  // Result a11y: one polite announcement per new AI result, then focus on the summary heading.
+  const [resultAnnouncement, setResultAnnouncement] = useState('')
+  const announcementRef = useRef('')
+  const summaryHeadingRef = useRef<HTMLHeadingElement>(null)
+  const focusSummaryPending = useRef(false)
+  const [routeToDelete, setRouteToDelete] = useState<Route | null>(null)
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768)
+
+  // A new AI result is announced once; on mobile the sheet opens so the heading exists to take focus.
+  const isMobileRef = useRef(isMobile)
+  isMobileRef.current = isMobile
+  useEffect(() => {
+    if (!showResultCard) {
+      setResultAnnouncement('')
+      return
+    }
+    focusSummaryPending.current = true
+    setResultAnnouncement(announcementRef.current)
+    if (isMobileRef.current) setSheetSnap(snap => (snap === 'peek' ? 'half' : snap))
+  }, [showResultCard])
+  useEffect(() => {
+    if (focusSummaryPending.current && summaryHeadingRef.current) {
+      summaryHeadingRef.current.focus()
+      focusSummaryPending.current = false
+    }
+  })
 
   // Load user's routes on mount
   useEffect(() => {
     loadSavedRoutes()
   }, [])
+
+  // Refetch when the dialog opens so routes saved elsewhere (other tab) show up
+  useEffect(() => {
+    if (showLoadDialog) loadSavedRoutes()
+  }, [showLoadDialog])
 
   // Persist waypoints to localStorage
   useEffect(() => {
@@ -262,7 +321,7 @@ export function RoutePlanner() {
         }
       })
       .catch(() => {})
-  }, [user])
+  }, [user, setRouteSettings])
 
   // Track mobile viewport
   useEffect(() => {
@@ -282,7 +341,7 @@ export function RoutePlanner() {
       window.removeEventListener('resize', handleResize)
       window.removeEventListener('orientationchange', handleResize)
     }
-  }, [])
+  }, [setIsMobileExpanded])
 
   // Calculate road-based route whenever waypoints change
   useEffect(() => {
@@ -301,6 +360,7 @@ export function RoutePlanner() {
       if (waypoints.length < 2) {
         console.log('🟢 [PLANNER] Less than 2 waypoints, clearing route');
         setRouteUnreachable(false)
+        setRouteEstimate(undefined)
         setRouteGeometry([])
         setRouteDistance(0)
         setRouteDuration(0)
@@ -312,6 +372,12 @@ export function RoutePlanner() {
       console.log('🟢 [PLANNER] Waypoints:', waypoints.map(w => ({ id: w.id, name: w.name, lat: w.lat, lng: w.lng })));
 
       setIsCalculatingRoute(true)
+      setRouteEstimate(undefined)
+      setRouteGeometry([])
+      setRouteDistance(0)
+      setRouteDuration(0)
+      setRouteUnreachable(false)
+      setShowResultShareDialog(false)
 
       try {
         const route = await routingService.getRoute(waypoints)
@@ -336,10 +402,10 @@ export function RoutePlanner() {
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
         setRouteUnreachable(Boolean(route.noRoute))
+        setRouteEstimate({ quality: route.quality, source: route.source, calculatedAt: route.calculatedAt, routeKey: calculationRouteKey })
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
-          setCardDismissed(false)
         }
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -384,6 +450,7 @@ export function RoutePlanner() {
         setRouteDistance(0)
         setRouteDuration(0)
         setRouteUnreachable(false)
+        setRouteEstimate({ quality: 'approximate', source: 'straight-line', calculatedAt: new Date().toISOString(), routeKey: calculationRouteKey })
         setIsCalculatingRoute(false)
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -400,7 +467,7 @@ export function RoutePlanner() {
     }
 
     updateRoute()
-  }, [waypoints])
+  }, [waypoints, routeRefresh])
 
   // Live fuel price: advisory fetch whenever the route's shape or the fuel
   // context changes; auto-applies only while the price field is untouched
@@ -422,7 +489,7 @@ export function RoutePlanner() {
       }
     }, 1000)
     return () => clearTimeout(handle)
-  }, [waypoints, routeSettings.fuelType, routeSettings.currency])
+  }, [waypoints, routeSettings.fuelType, routeSettings.currency, setRouteSettings])
 
   // Corridor weather: advisory fetch whenever the route shape or the
   // departure date changes. AI responses deliver their own weather_data,
@@ -525,12 +592,12 @@ export function RoutePlanner() {
 
   const updateRouteSettings = useCallback((settings: RouteSettings) => {
     setRouteSettings(settings)
-  }, [])
+  }, [setRouteSettings])
 
   const handleApplyFuelSuggestion = useCallback(() => {
     if (!fuelSuggestion) return
     setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: fuelSuggestion.price, fuelPriceTouched: false }))
-  }, [fuelSuggestion])
+  }, [fuelSuggestion, setRouteSettings])
 
   const handleSelectCar = useCallback((car: GarageCar) => {
     setRouteSettings(prev => ({
@@ -538,7 +605,7 @@ export function RoutePlanner() {
       fuelConsumption: car.fuelConsumption,
       fuelType: car.fuelType,
     }))
-  }, [])
+  }, [setRouteSettings])
 
   const clearRoute = useCallback(() => {
     setWaypoints([])
@@ -551,7 +618,6 @@ export function RoutePlanner() {
     // Clearing the route also clears the latest-result concierge slot —
     // a stale result card no longer describes anything on the map
     setShowResultCard(false)
-    setCardDismissed(false)
     setAgentDoneStages([])
     setAgentDegraded(false)
     // departureDate is intentionally NOT reset here — it isn't tied to the
@@ -571,6 +637,7 @@ export function RoutePlanner() {
   }, [navigate, language, t])
 
   const saveRouteToServer = useCallback(async (saveAsNew = false) => {
+    if (!routeReady || saveInFlight.current) return
     if (waypoints.length < 2) {
       toast.error(t.toasts.minWaypoints)
       return
@@ -581,6 +648,8 @@ export function RoutePlanner() {
       return
     }
 
+    saveInFlight.current = true
+    const savedCalculation = routeCalculationSeq.current
     setSavingRoute(true)
     try {
       const routeData: Route = {
@@ -589,6 +658,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: routeSettings.fuelCostPerLiter,
         currency: routeSettings.currency,
         passengerCount: routeSettings.passengerCount,
+        fuelType: routeSettings.fuelType,
+        departureDate,
+        // Only a calculated estimate is claimed; the server re-verifies it.
+        snapshot: routeQuality === 'road' || routeQuality === 'approximate'
+          ? {
+              distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance,
+              quality: routeQuality,
+            }
+          : undefined,
         waypoints: waypoints.map((wp, index) => ({
           positionOrder: index,
           name: wp.name,
@@ -620,11 +698,35 @@ export function RoutePlanner() {
       await loadSavedRoutes()
     } catch (error) {
       console.error('Failed to save route:', error)
-      toast.error(t.toasts.routeSaveFailed)
+      const response = (error as { response?: { status?: number; data?: unknown } }).response
+      if (response?.status === 409 && response.data === 'ROUTE_SNAPSHOT_STALE') {
+        setShowSaveDialog(false)
+        setShowResultShareDialog(false)
+        // A delayed save failure must not discard a newer waypoint calculation.
+        if (savedCalculation === routeCalculationSeq.current) {
+          ++routeCalculationSeq.current
+          setRouteEstimate(undefined)
+          setRouteGeometry([])
+          setRouteDistance(0)
+          setRouteDuration(0)
+          setIsCalculatingRoute(true)
+          // Reuse the guarded calculation effect, once. Never retry the save.
+          setRouteRefresh(value => value + 1)
+        }
+        toast.error(t.toasts.routeSnapshotStale)
+      } else if (response?.status === 409 && response.data === 'ROUTE_CHANGED') {
+        setShowSaveDialog(false)
+        toast.error(t.toasts.routeChanged)
+      } else if (response?.status === 429 && response.data === 'ROUTE_SAVE_BUSY') {
+        toast.error(t.toasts.routeSaveBusy)
+      } else {
+        toast.error(t.toasts.routeSaveFailed)
+      }
     } finally {
+      saveInFlight.current = false
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -645,12 +747,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: route.fuelCostPerLiter,
         currency: route.currency,
         passengerCount: route.passengerCount || 1,
+        // Older saves have no fuel type: keep the current one rather than guess.
+        fuelType: (route.fuelType as RouteSettings['fuelType'] | undefined) ?? DEFAULT_ROUTE_SETTINGS.fuelType,
         // A persisted price is a user-chosen price: mark it touched so the
         // live fuel suggestion effect (see applyLiveFuelPrice guard) never
         // silently overwrites it once the new waypoints trigger a refetch.
         fuelPriceTouched: true
       })
       setRouteName(route.name)
+      if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
 
@@ -662,13 +767,9 @@ export function RoutePlanner() {
       console.error('Failed to load route:', error)
       toast.error(t.toasts.routeLoadFailed)
     }
-  }, [t])
+  }, [t, setRouteSettings])
 
   const deleteRouteFromServer = useCallback(async (routeId: number) => {
-    if (!confirm(t.dialogs.load.deleteConfirm)) {
-      return
-    }
-
     try {
       await routeService.deleteRoute(routeId)
       toast.success(t.toasts.routeDeleted)
@@ -680,10 +781,12 @@ export function RoutePlanner() {
   }, [t])
 
   const exportRouteAsJSON = useCallback(() => {
+    if (!routeReady) return
     const routeData = {
       name: routeName || `Route ${new Date().toLocaleDateString()}`,
       waypoints,
       settings: routeSettings,
+      estimate: buildEstimateExport(waypoints, routeSettings, routeDistance, routeDuration, routeEstimate),
       exportedAt: new Date().toISOString()
     }
 
@@ -696,9 +799,9 @@ export function RoutePlanner() {
     URL.revokeObjectURL(url)
 
     toast.success(t.toasts.routeExported)
-  }, [waypoints, routeSettings, routeName, t])
+  }, [waypoints, routeSettings, routeName, routeDistance, routeDuration, routeEstimate, routeReady, t])
 
-  const handleManualAddressSubmit = useCallback(async () => {
+const handleManualAddressSubmit = useCallback(async () => {
     if (!manualAddress.trim()) {
       toast.error(t.toasts.enterAddress)
       return
@@ -914,14 +1017,13 @@ export function RoutePlanner() {
     const message = submittedMessage.trim();
     if (!message) return;
 
-    setChatInput('');
+    setAiLimit(null);
     setIsProcessingAi(true);
     // New request replaces whatever the slot was showing: hide any
     // previous result immediately (progress UI takes over the slot while
     // isProcessing is true, then this stays false on error so the slot
     // renders nothing until/unless the new request succeeds)
     setShowResultCard(false);
-    setCardDismissed(false);
     pendingAiResultRouteKey.current = null;
     setAgentDoneStages([]);
     setAgentDegraded(false);
@@ -950,6 +1052,7 @@ export function RoutePlanner() {
       const agentData = agentResult.data;
 
       if (agentData) {
+        setChatInput(''); // cleared only on success so a failed send keeps the draft
         const updates: string[] = [];
 
         // Garage car precedence: a car the user actually named in their
@@ -1125,11 +1228,7 @@ export function RoutePlanner() {
     } catch (e) {
       console.error(e);
       if (e instanceof AiRateLimitError) {
-        const at = e.retryAt?.toLocaleTimeString(language === 'uk' ? 'uk-UA' : 'en-GB', { hour: '2-digit', minute: '2-digit' });
-        setBlockingError({
-          title: t.chat.rateLimitedTitle,
-          description: at ? t.chat.rateLimitedAt.replace('{time}', at) : t.chat.rateLimitedLater,
-        });
+        setAiLimit({ retryAt: e.retryAt });
         return;
       }
       const errorMessage = e instanceof Error ? e.message : 'Unknown error';
@@ -1142,13 +1241,7 @@ export function RoutePlanner() {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog]);
-
-  const handleChatFormSubmit = useCallback((e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const message = new FormData(e.currentTarget).get('aiPrompt');
-    void handleSendChat(typeof message === 'string' ? message : '');
-  }, [handleSendChat]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {
@@ -1194,14 +1287,42 @@ export function RoutePlanner() {
         onSendMessage={handleSendChat}
         isProcessing={isProcessingAi}
         onManualClick={handleManualClick}
+        limit={aiLimit}
+        onLimitExpire={clearAiLimit}
+        doneStages={agentDoneStages}
+        degraded={agentDegraded}
       />
     );
   }
+
+  const peekSummary = waypoints.length >= 2 && !routeUnreachable
+    ? summarizeTrip({ waypoints, routeSettings, routeDistance: routeReady ? routeDistance : 0, routeDuration: routeReady ? routeDuration : 0, routeQuality, language, t })
+    : null
+  announcementRef.current = peekSummary?.announcement ?? ''
 
   // Shared by the desktop sidebar and the mobile sheet — only one of them
   // renders at a time (isMobile), so ids inside stay unique.
   const renderPlannerBody = () => (
     <>
+
+      {/* ── Trip result: the single summary (per-person cost, actions, breakdown) ── */}
+      {waypoints.length >= 2 && !routeUnreachable && (
+        <TripSummaryCard
+          waypoints={waypoints}
+          routeSettings={routeSettings}
+          routeDistance={routeReady ? routeDistance : 0}
+          routeDuration={routeReady ? routeDuration : 0}
+          routeQuality={routeQuality}
+          estimatePending={!routeReady}
+          fuelSuggestion={fuelSuggestion}
+          weather={weatherData}
+          onSaveRoute={() => { if (routeReady) setShowSaveDialog(true) }}
+          onShareReceipt={() => { if (routeReady && routeQuality === 'road') setShowResultShareDialog(true) }}
+          onApplyLivePrice={handleApplyFuelSuggestion}
+          saveLabel={isEditMode ? t.planner.updateRoute : undefined}
+          headingRef={summaryHeadingRef}
+        />
+      )}
 
       {/* ── Route name + edit mode indicator ── */}
       {(routeName || isEditMode) && (
@@ -1271,15 +1392,16 @@ export function RoutePlanner() {
               swapped[swapped.length - 1] = first
               reorderWaypoints(swapped)
             }}
-            className="flex items-center gap-1 text-xs px-3 py-1.5 rounded-full transition-colors"
+            className="flex min-h-11 items-center gap-1.5 text-xs px-4 py-1.5 rounded-full transition-colors"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
               color: 'var(--nav-text-secondary)',
             }}
             title={t.planner.swapTitle}
+            aria-label={t.planner.swapAria.replace('{from}', waypoints[0].name).replace('{to}', waypoints[waypoints.length - 1].name)}
           >
-            ↕ {t.planner.swap}
+            <ArrowUpDown className="h-4 w-4" aria-hidden="true" /> {t.planner.swap}
           </button>
         </div>
       )}
@@ -1330,7 +1452,7 @@ export function RoutePlanner() {
             onClick={handleCalculateRoute}
             disabled={isDisabled}
             title={!hasInputs ? t.buttons.enterLocations : undefined}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            className="min-h-11 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
             style={{
               background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
               border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
@@ -1368,34 +1490,19 @@ export function RoutePlanner() {
         onDepartureDateChange={setDepartureDate}
         garageCars={garageCars}
         onSelectCar={handleSelectCar}
-        routeUnreachable={routeUnreachable}
       />
 
-      {/* ── Route Stats ── only once there is a route; before that the
-          waypoint card's empty state is the single piece of guidance. */}
-      {waypoints.length >= 2 && (
-        <>
-          <div style={{ height: '1px', background: 'var(--nav-border)' }} />
-          {routeUnreachable ? (
-            <div role="alert" className="rounded-lg p-3 text-sm"
-              style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}>
-              <p className="font-semibold">{t.planner.noRouteTitle}</p>
-              <p style={{ color: 'var(--nav-text-secondary)' }}>
-                {t.planner.noRouteDescription
-                  .replace('{from}', waypoints[0].name)
-                  .replace('{to}', waypoints[waypoints.length - 1].name)}
-              </p>
-            </div>
-          ) : (
-            <StatsPanel
-              waypoints={waypoints}
-              routeSettings={routeSettings}
-              routeDistance={routeDistance}
-              routeDuration={routeDuration}
-              routeGeometry={routeGeometry}
-            />
-          )}
-        </>
+      {/* No road route: say so instead of showing figures */}
+      {waypoints.length >= 2 && routeUnreachable && (
+        <div role="alert" className="rounded-lg p-3 text-sm"
+          style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}>
+          <p className="font-semibold">{t.planner.noRouteTitle}</p>
+          <p style={{ color: 'var(--nav-text-secondary)' }}>
+            {t.planner.noRouteDescription
+              .replace('{from}', waypoints[0].name)
+              .replace('{to}', waypoints[waypoints.length - 1].name)}
+          </p>
+        </div>
       )}
 
       {/* ── Divider ── */}
@@ -1406,7 +1513,7 @@ export function RoutePlanner() {
         {isEditMode && (
           <button
             onClick={createNewRoute}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="min-h-11 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1422,7 +1529,7 @@ export function RoutePlanner() {
         <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
           <DialogTrigger asChild>
             <button
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="min-h-11 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
               style={{
                 background: 'var(--nav-bg-input)',
                 border: '1px solid var(--nav-border)',
@@ -1455,7 +1562,8 @@ export function RoutePlanner() {
                       <div className="flex-1">
                         <h3 className="font-semibold">{route.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.distanceQuality && route.distanceQuality !== 'road' && ` • ${t.routeSummary.savedApproximate}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(route.updatedAt!).toLocaleDateString()}
@@ -1465,8 +1573,8 @@ export function RoutePlanner() {
                         <Button size="sm" onClick={() => loadRouteFromServer(route.id!)}>
                           {t.buttons.load}
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => deleteRouteFromServer(route.id!)}>
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="icon" variant="destructive" aria-label={t.dialogs.load.deleteRoute.replace('{name}', route.name)} onClick={() => setRouteToDelete(route)}>
+                          <Trash2 className="h-4 w-4" aria-hidden="true" />
                         </Button>
                       </div>
                     </div>
@@ -1478,14 +1586,15 @@ export function RoutePlanner() {
         </Dialog>
 
         {/* Secondary route actions — one compact row under Load route */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className={`grid gap-2 ${waypoints.length < 2 ? "grid-cols-3" : "grid-cols-2"}`}>
           {/* Save Route Dialog trigger */}
           <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
-            <DialogTrigger asChild>
+            {/* With 2+ waypoints the summary card owns Save; this is the fallback. */}
+            {waypoints.length < 2 && <DialogTrigger asChild>
               <button
-                disabled={waypoints.length === 0 || routeUnreachable}
+                disabled={!routeReady}
                 title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
-                className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
+                className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
                 style={{
                   background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
                   border: '1px solid var(--nav-border)',
@@ -1495,7 +1604,7 @@ export function RoutePlanner() {
                 <Save className="h-4 w-4" />
                 {isEditMode ? t.planner.updateRoute : t.buttons.saveRoute}
               </button>
-            </DialogTrigger>
+            </DialogTrigger>}
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>{isEditMode ? t.planner.updateRoute : t.dialogs.save.title}</DialogTitle>
@@ -1530,7 +1639,7 @@ export function RoutePlanner() {
                   {t.buttons.cancel}
                 </Button>
                 {isEditMode && (
-                  <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute}>
+                  <Button variant="outline" onClick={() => saveRouteToServer(true)} disabled={savingRoute || !routeReady}>
                     {savingRoute ? (
                       <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                     ) : (
@@ -1538,7 +1647,7 @@ export function RoutePlanner() {
                     )}
                   </Button>
                 )}
-                <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute}>
+                <Button onClick={() => saveRouteToServer(false)} disabled={savingRoute || !routeReady}>
                   {savingRoute ? (
                     <><Loader2 className="h-4 w-4 mr-2 animate-spin" />{t.buttons.saving}</>
                   ) : (
@@ -1551,9 +1660,9 @@ export function RoutePlanner() {
 
           <button
             onClick={exportRouteAsJSON}
-            disabled={waypoints.length === 0}
+            disabled={!routeReady}
             title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
-            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1572,7 +1681,7 @@ export function RoutePlanner() {
                 : isProcessingAi ? t.buttons.waitForAi
                 : undefined
             }
-            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1594,51 +1703,16 @@ export function RoutePlanner() {
         isProcessing={isProcessingAi}
         doneStages={agentDoneStages}
         degraded={agentDegraded}
-        showResult={showResultCard && !cardDismissed}
-        onDismiss={() => setCardDismissed(true)}
-        waypoints={waypoints}
-        routeSettings={routeSettings}
-        routeDistance={routeDistance}
-        routeDuration={routeDuration}
-        fuelSuggestion={fuelSuggestion}
-        weather={weatherData}
-        onSaveRoute={() => setShowSaveDialog(true)}
-        onShareReceipt={() => setShowResultShareDialog(true)}
-        onApplyLivePrice={handleApplyFuelSuggestion}
       />
-      <form className="flex gap-2" onSubmit={handleChatFormSubmit}>
-        <Input
-          type="text"
-          name="aiPrompt"
-          placeholder={t.chat.askPlaceholder}
-          aria-label={t.chat.inputLabel}
-          value={chatInput}
-          onChange={(e) => setChatInput(e.target.value)}
-          disabled={isProcessingAi}
-          className="flex-1 h-9 text-sm disabled:opacity-50"
-          style={{
-            background: 'var(--nav-bg-input)',
-            border: '1px solid var(--nav-border)',
-            color: 'var(--nav-text-primary)',
-          }}
-        />
-        <button
-          type="submit"
-          aria-label={t.planner.sendMessage}
-          disabled={isProcessingAi}
-          className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0 transition-colors disabled:opacity-40"
-          style={{
-            background: 'var(--nav-accent)',
-            color: '#000',
-          }}
-        >
-          {isProcessingAi ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
-          ) : (
-            <Send className="h-4 w-4" />
-          )}
-        </button>
-      </form>
+      <PromptComposer
+        value={chatInput}
+        onChange={setChatInput}
+        onSubmit={handleSendChat}
+        placeholder={waypoints.length >= 2 ? t.chat.askPlaceholder : t.agent.describeTrip}
+        isProcessing={isProcessingAi}
+        sendDisabled={aiLimit?.retryAt != null}
+      />
+      {aiLimit && <div className="mt-2"><LimitBanner retryAt={aiLimit.retryAt} onExpire={clearAiLimit} /></div>}
       <AiPrivacyNote className="mt-1" />
     </>
   )
@@ -1646,6 +1720,7 @@ export function RoutePlanner() {
   // Dashboard view — map-first Precision Navigation layout
   return (
     <div className="relative flex h-full overflow-hidden">
+      <h1 className="sr-only">{t.title}</h1>
 
       {/* ── DESKTOP SIDEBAR — hidden on mobile ── */}
       {!isMobile && (
@@ -1677,7 +1752,7 @@ export function RoutePlanner() {
       >
         <MapContainer
           waypoints={waypoints}
-          routeGeometry={routeGeometry}
+          routeGeometry={routeReady ? routeGeometry : []}
           onAddWaypoint={addWaypoint}
           onUpdateWaypoint={updateWaypoint}
           onDeleteWaypoint={removeWaypoint}
@@ -1709,39 +1784,25 @@ export function RoutePlanner() {
 
       {/* ── MOBILE BOTTOM SHEET — hidden on desktop ── */}
       {isMobile && (
-        <div
-          className="glass-sheet absolute bottom-0 left-0 right-0 flex flex-col transition-[height] duration-300 ease-in-out"
-          style={{
-            height: isMobileExpanded ? '65vh' : '140px',
-            zIndex: 40,
-          }}
-        >
-          {/* Sheet trigger: high-contrast pill so it reads as a button over
-              the map, with a nudging chevron announcing the swipe-up */}
-          <button
-            type="button"
-            onClick={() => setIsMobileExpanded(prev => !prev)}
-            className="flex-shrink-0 flex flex-col items-center justify-center pt-1.5 pb-2 w-full"
-            style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}
-            aria-expanded={isMobileExpanded}
-            aria-label={isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
-          >
-            <div
-              className="w-10 h-1 rounded-full mb-1.5"
-              style={{ background: 'var(--nav-border)' }}
-            />
-            <span className="sheet-trigger-pill flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-semibold shadow-lg">
-              {isMobileExpanded ? (
-                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-              ) : (
-                <ChevronUp className="h-4 w-4 sheet-chevron" aria-hidden="true" />
-              )}
-              {isMobileExpanded ? t.bottomSheet.collapse : t.bottomSheet.expand}
-            </span>
-          </button>
-
-          {/* Collapsed state: start + destination quick-entry */}
-          {!isMobileExpanded && (
+        <PlannerSheet
+          snap={sheetSnap}
+          onSnapChange={setSheetSnap}
+          labels={t.bottomSheet}
+          footer={renderComposer()}
+          peek={peekSummary ? (
+            <button
+              type="button"
+              onClick={() => setIsMobileExpanded(true)}
+              className="mx-3 mb-2 flex min-h-11 flex-col items-start justify-center rounded-lg px-3 py-1 text-left"
+              style={{ background: 'var(--nav-bg-input)', border: '1px solid var(--nav-border)', color: 'var(--nav-text-primary)' }}
+            >
+              <span className="text-sm font-semibold">{peekSummary.origin} → {peekSummary.destination}</span>
+              <span className="text-sm" style={{ color: 'var(--nav-text-secondary)' }}>
+                <span style={{ color: 'var(--nav-accent)', fontWeight: 700 }}>{peekSummary.headline.value}</span> {peekSummary.headline.label}
+              </span>
+            </button>
+          ) : (
+            /* Collapsed state: start + destination quick-entry */
             <div className="flex items-center gap-2 px-3 pb-2">
               <div className="relative flex-1">
                 <Input
@@ -1751,7 +1812,7 @@ export function RoutePlanner() {
                   onChange={(e) => setStartLocationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingStart) handleStartLocationSearch() }}
                   disabled={isSearchingStart}
-                  className="h-9 text-sm w-full"
+                  className="h-11 text-sm w-full"
                   style={{
                     background: 'var(--nav-bg-input)',
                     border: '1px solid var(--nav-border)',
@@ -1770,7 +1831,7 @@ export function RoutePlanner() {
                   onChange={(e) => setDestinationInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isSearchingDestination) handleDestinationSearch() }}
                   disabled={isSearchingDestination}
-                  className="h-9 text-sm w-full"
+                  className="h-11 text-sm w-full"
                   style={{
                     background: 'var(--nav-bg-input)',
                     border: '1px solid var(--nav-border)',
@@ -1783,35 +1844,33 @@ export function RoutePlanner() {
               </div>
               <button
                 onClick={() => { if (startLocationInput.trim()) handleStartLocationSearch(); if (destinationInput.trim()) handleDestinationSearch() }}
-                className="h-9 w-9 flex items-center justify-center rounded-lg flex-shrink-0"
-                style={{ background: 'var(--nav-accent)', color: '#0f1117' }}
+                className="h-11 w-11 flex items-center justify-center rounded-lg flex-shrink-0"
+                style={{ background: 'var(--nav-accent)', color: 'var(--on-accent)' }}
                 aria-label={t.planner.search}
               >
-                <Search className="h-4 w-4" />
+                <Search className="h-4 w-4" aria-hidden="true" />
               </button>
             </div>
           )}
-
-          {/* Expanded state: scrollable full sidebar content */}
-          {isMobileExpanded && (
-            <>
-              <div className="flex-1 overflow-y-auto">
-                <div className="p-4 space-y-5">
-                  {renderPlannerBody()}
-                </div>{/* end scrollable content */}
-              </div>
-
-              {/* AI assistant input pinned to bottom */}
-              <div
-                className="flex-shrink-0 p-3"
-                style={{ borderTop: '1px solid var(--nav-border)' }}
-              >
-                {renderComposer()}
-              </div>
-            </>
-          )}
-        </div>
+        >
+          {renderPlannerBody()}
+        </PlannerSheet>
       )}
+
+      {/* Polite live region: the result is announced once, when a new AI result arrives */}
+      <div role="status" aria-live="polite" className="sr-only">{resultAnnouncement}</div>
+
+      {/* Replaces the native confirm() for deleting a saved route */}
+      <ConfirmDialog
+        open={routeToDelete !== null}
+        onOpenChange={(open) => { if (!open) setRouteToDelete(null) }}
+        title={t.dialogs.load.deleteTitle}
+        description={routeToDelete ? `${routeToDelete.name}. ${t.dialogs.load.deleteConfirm}` : ''}
+        confirmLabel={t.buttons.delete}
+        cancelLabel={t.buttons.cancel}
+        destructive
+        onConfirm={() => { if (routeToDelete?.id != null) void deleteRouteFromServer(routeToDelete.id) }}
+      />
 
       {/* ── Dialogs — rendered at root level for correct z-index ── */}
 
@@ -1826,12 +1885,12 @@ export function RoutePlanner() {
           the payload StatsPanel's own ShareReceiptButton builds, but lives
           here because TripResultCard exposes a plain onShareReceipt callback
           rather than owning its own dialog (see task-7-report.md) */}
-      {waypoints.length >= 2 && (
+      {waypoints.length >= 2 && routeReady && routeQuality === 'road' && (
         <ShareReceiptModal
           payload={{
             originLabel: waypoints[0].name,
             destinationLabel: waypoints[waypoints.length - 1].name,
-            distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration).totalDistance,
+            distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance,
             fuelConsumption: routeSettings.fuelConsumption,
             fuelPrice: routeSettings.fuelCostPerLiter,
             currency: routeSettings.currency,

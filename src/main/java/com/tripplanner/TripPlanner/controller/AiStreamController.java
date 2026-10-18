@@ -123,7 +123,7 @@ public class AiStreamController {
         // Cache gate identical to the sync proxy: modification requests
         // depend on the caller's current route and must not be replayed
         boolean cacheable = currentRoute.isEmpty();
-        String cacheKey = cacheService.cacheKey(prompt, language);
+        String cacheKey = cacheService.cacheKey(prompt, language, request.get("settingsContext"));
         String cached = cacheable ? cacheService.get(cacheKey) : null;
         if (cached != null) {
             Long logId = usageService.logRequest(null, userEmail, clientIp, prompt, language);

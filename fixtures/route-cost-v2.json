@@ -1,0 +1,94 @@
+{
+  "version": "route-cost/2",
+  "rule": "Nonnegative values, decimal HALF_UP at 2 digits for distanceKm, consumption and fuel price; total=round(distance*consumption*price/100,2); perPerson=round(roundedTotal/people,2). Client snapshot accepted only when its quantized distance and quality equal server; mismatch is HTTP 409 ROUTE_SNAPSHOT_STALE. No automatic retry/save.",
+  "cases": [
+    {
+      "rawDistanceKm": "188.694",
+      "fuelConsumption": "10",
+      "fuelPrice": "60",
+      "people": 2,
+      "distanceKm": "188.69",
+      "normalizedFuelConsumption": "10.00",
+      "normalizedFuelPrice": "60.00",
+      "totalCost": "1132.14",
+      "costPerPerson": "566.07"
+    },
+    {
+      "rawDistanceKm": "188.695",
+      "fuelConsumption": "10",
+      "fuelPrice": "60",
+      "people": 3,
+      "distanceKm": "188.70",
+      "normalizedFuelConsumption": "10.00",
+      "normalizedFuelPrice": "60.00",
+      "totalCost": "1132.20",
+      "costPerPerson": "377.40"
+    },
+    {
+      "rawDistanceKm": "540",
+      "fuelConsumption": "10",
+      "fuelPrice": "60",
+      "people": 2,
+      "distanceKm": "540.00",
+      "normalizedFuelConsumption": "10.00",
+      "normalizedFuelPrice": "60.00",
+      "totalCost": "3240.00",
+      "costPerPerson": "1620.00"
+    },
+    {
+      "rawDistanceKm": "545",
+      "fuelConsumption": "10",
+      "fuelPrice": "60",
+      "people": 2,
+      "distanceKm": "545.00",
+      "normalizedFuelConsumption": "10.00",
+      "normalizedFuelPrice": "60.00",
+      "totalCost": "3270.00",
+      "costPerPerson": "1635.00"
+    },
+    {
+      "rawDistanceKm": "1.005",
+      "fuelConsumption": "7.555",
+      "fuelPrice": "1.755",
+      "people": 3,
+      "distanceKm": "1.01",
+      "normalizedFuelConsumption": "7.56",
+      "normalizedFuelPrice": "1.76",
+      "totalCost": "0.13",
+      "costPerPerson": "0.04"
+    },
+    {
+      "rawDistanceKm": "100",
+      "fuelConsumption": "1",
+      "fuelPrice": "1.005",
+      "people": 2,
+      "distanceKm": "100.00",
+      "normalizedFuelConsumption": "1.00",
+      "normalizedFuelPrice": "1.01",
+      "totalCost": "1.01",
+      "costPerPerson": "0.51"
+    },
+    {
+      "rawDistanceKm": "0.1",
+      "fuelConsumption": "1",
+      "fuelPrice": "0.05",
+      "people": 2,
+      "distanceKm": "0.10",
+      "normalizedFuelConsumption": "1.00",
+      "normalizedFuelPrice": "0.05",
+      "totalCost": "0.00",
+      "costPerPerson": "0.00"
+    },
+    {
+      "rawDistanceKm": "301.234",
+      "fuelConsumption": "6.789",
+      "fuelPrice": "89.725",
+      "people": 4,
+      "distanceKm": "301.23",
+      "normalizedFuelConsumption": "6.79",
+      "normalizedFuelPrice": "89.73",
+      "totalCost": "1835.29",
+      "costPerPerson": "458.82"
+    }
+  ]
+}

@@ -1,3 +1,5 @@
+import { nominatimFetch } from './nominatimQueue'
+
 export interface LocationDetails {
   city: string;
   street: string;
@@ -20,7 +22,7 @@ export const geocodingService = {
    */
   async reverseGeocode(lat: number, lng: number): Promise<string> {
     try {
-      const response = await fetch(
+      const response = await nominatimFetch(
         `https://nominatim.openstreetmap.org/reverse?` +
         `format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
         {
@@ -78,7 +80,7 @@ export const geocodingService = {
    */
   async forwardGeocode(address: string): Promise<ForwardGeocodeResult | null> {
     try {
-      const response = await fetch(
+      const response = await nominatimFetch(
         `https://nominatim.openstreetmap.org/search?` +
         `format=json&q=${encodeURIComponent(address)}&limit=1&addressdetails=1`,
         {

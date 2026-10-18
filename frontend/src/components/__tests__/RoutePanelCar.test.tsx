@@ -29,14 +29,14 @@ const settings: RouteSettings = {
 const cleanups: Array<() => void> = []
 afterEach(() => { for (const c of cleanups.splice(0)) c() })
 
-function render(onSelectCar = vi.fn()) {
+function render(onSelectCar = vi.fn(), onUpdateSettings = vi.fn()) {
   const container = document.body.appendChild(document.createElement('div'))
   const root = createRoot(container)
   const draw = () => act(() => root.render(
     <RoutePanel
       waypoints={[]} routeSettings={settings}
       onUpdateWaypointName={vi.fn()} onRemoveWaypoint={vi.fn()}
-      onReorderWaypoints={vi.fn()} onUpdateSettings={vi.fn()}
+      onReorderWaypoints={vi.fn()} onUpdateSettings={onUpdateSettings}
       fuelSuggestion={null} onApplyFuelSuggestion={vi.fn()}
       weather={null} departureDate="2026-10-01" onDepartureDateChange={vi.fn()}
       garageCars={[doblo]} onSelectCar={onSelectCar}
@@ -48,6 +48,19 @@ function render(onSelectCar = vi.fn()) {
 }
 
 describe('RoutePanel car choice', () => {
+  it.each([['#fuel-consumption', 'fuelConsumption'], ['#fuel-cost', 'fuelCostPerLiter']] as const)('shows and commits decimal HALF_UP for %s on blur', (selector, key) => {
+    const update = vi.fn()
+    const { container } = render(vi.fn(), update)
+    const field = container.querySelector<HTMLInputElement>(selector)!
+    act(() => field.focus())
+    act(() => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(field, '1.005')
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    act(() => field.blur())
+    expect(field.value).toBe('1.01')
+    expect(update).toHaveBeenLastCalledWith(expect.objectContaining({ [key]: 1.01 }))
+  })
   it('keeps "Custom" selected after a re-render (BUG-4)', () => {
     const { container, redraw } = render()
     const select = () => container.querySelector<HTMLSelectElement>('select')!

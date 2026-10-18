@@ -23,7 +23,7 @@ class RouteServicePublicAccessTest {
         WaypointRepository waypoints = mock(WaypointRepository.class);
         when(routes.save(any(Route.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        RouteService service = new RouteService(routes, waypoints);
+        RouteService service = new RouteService(routes, waypoints, mock(com.tripplanner.TripPlanner.routing.RoutingService.class), RouteTestTransactions.manager(), new com.tripplanner.TripPlanner.service.RouteSaveLimiter(4, 1), mock(jakarta.persistence.EntityManagerFactory.class));
 
         assertDoesNotThrow(() -> service.saveRoute(validRoute(), 42L));
     }

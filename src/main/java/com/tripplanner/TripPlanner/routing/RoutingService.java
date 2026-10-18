@@ -27,6 +27,7 @@ public class RoutingService {
     /** Returned (by identity) when no drivable route connects the waypoints. */
     static final Map<String, Object> NO_ROUTE = Map.of(
         "noRoute", true,
+        "quality", "noRoute",
         "totalDistance", 0,
         "totalDuration", 0,
         "geometry", Collections.emptyList(),
@@ -265,7 +266,7 @@ public class RoutingService {
                 return null;
             }
 
-            List<List<Double>> coordinates_raw = (List<List<Double>>) geometry.get("coordinates");
+            List<List<Number>> coordinates_raw = (List<List<Number>>) geometry.get("coordinates");
 
             if (coordinates_raw == null || coordinates_raw.isEmpty()) {
                 log.warn("Mapbox coordinates array is empty");
@@ -274,7 +275,7 @@ public class RoutingService {
 
             // Convert [lng, lat] to [lat, lng] for Leaflet
             List<List<Double>> geometryLatLng = coordinates_raw.stream()
-                .map(coord -> List.of(coord.get(1), coord.get(0)))
+                .map(coord -> List.of(coord.get(1).doubleValue(), coord.get(0).doubleValue()))
                 .toList();
 
             if (!reachesWaypoints(data, geometryLatLng, waypoints)) {
@@ -291,6 +292,8 @@ public class RoutingService {
                 geometryLatLng.size());
 
             return Map.of(
+                "quality", "road",
+                "provider", "mapbox",
                 "totalDistance", distance,
                 "totalDuration", duration,
                 "geometry", geometryLatLng,
@@ -347,11 +350,11 @@ public class RoutingService {
                     Map<String, Object> geometry = (Map<String, Object>) route.get("geometry");
 
                     if (geometry != null && geometry.containsKey("coordinates")) {
-                        List<List<Double>> coordinates_raw = (List<List<Double>>) geometry.get("coordinates");
+                        List<List<Number>> coordinates_raw = (List<List<Number>>) geometry.get("coordinates");
 
                         // Convert [lng, lat] to [lat, lng] for Leaflet
                         List<List<Double>> geometryLatLng = coordinates_raw.stream()
-                            .map(coord -> List.of(coord.get(1), coord.get(0)))
+                            .map(coord -> List.of(coord.get(1).doubleValue(), coord.get(0).doubleValue()))
                             .toList();
 
                         if (geometryLatLng.isEmpty() || !reachesWaypoints(data, geometryLatLng, waypoints)) {
@@ -368,6 +371,8 @@ public class RoutingService {
                             geometryLatLng.size());
 
                         return Map.of(
+                            "quality", "road",
+                            "provider", "osrm",
                             "totalDistance", distance,
                             "totalDuration", duration,
                             "geometry", geometryLatLng,
@@ -391,6 +396,8 @@ public class RoutingService {
             .toList();
 
         return Map.of(
+            "quality", "approximate",
+            "provider", "straight-line",
             "totalDistance", 0,
             "totalDuration", 0,
             "geometry", fallbackGeometry,

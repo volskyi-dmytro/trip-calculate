@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -56,9 +55,9 @@ public class ReceiptService {
         receipt.setSlug(uniqueSlug());
         receipt.setOriginLabel(sanitizeLabel(req.getOriginLabel()));
         receipt.setDestinationLabel(sanitizeLabel(req.getDestinationLabel()));
-        receipt.setDistanceKm(BigDecimal.valueOf(req.getDistanceKm()));
-        receipt.setFuelConsumption(BigDecimal.valueOf(req.getFuelConsumption()));
-        receipt.setFuelPrice(BigDecimal.valueOf(req.getFuelPrice()));
+        receipt.setDistanceKm(RouteCost.normalize(BigDecimal.valueOf(req.getDistanceKm())));
+        receipt.setFuelConsumption(RouteCost.normalize(BigDecimal.valueOf(req.getFuelConsumption())));
+        receipt.setFuelPrice(RouteCost.normalize(BigDecimal.valueOf(req.getFuelPrice())));
         receipt.setCurrency(req.getCurrency());
         receipt.setPeople(req.getPeople());
         receipt.setLocale("uk".equalsIgnoreCase(req.getLocale()) ? "uk" : "en");
@@ -74,14 +73,9 @@ public class ReceiptService {
 
         // Recompute totals server-side — a receipt shown to strangers must
         // never carry client-fabricated numbers under our branding.
-        BigDecimal totalCost = receipt.getDistanceKm()
-                .divide(BigDecimal.valueOf(100), 10, RoundingMode.HALF_UP)
-                .multiply(receipt.getFuelConsumption())
-                .multiply(receipt.getFuelPrice())
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal totalCost = RouteCost.total(receipt.getDistanceKm(), receipt.getFuelConsumption(), receipt.getFuelPrice());
         receipt.setTotalCost(totalCost);
-        receipt.setCostPerPerson(totalCost
-                .divide(BigDecimal.valueOf(receipt.getPeople()), 2, RoundingMode.HALF_UP));
+        receipt.setCostPerPerson(RouteCost.perPerson(totalCost, receipt.getPeople()));
 
         return ReceiptDTO.from(repository.save(receipt));
     }

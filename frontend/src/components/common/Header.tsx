@@ -1,28 +1,30 @@
 import { Link, useLocation } from 'react-router-dom';
+import { Brand, TopbarControls } from './AppHeader';
 import { useAuth } from '../../contexts/AuthContext';
-import { useTheme } from '../../contexts/ThemeContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useSeason, seasonAssets } from '../../hooks/useSeason';
-import { LoginButton } from '../auth/LoginButton';
-import { UserMenu } from '../auth/UserMenu';
-import { Route, Sun, Moon } from 'lucide-react';
-import { withLocalePrefix, otherLocale } from '../../utils/locale';
+import { withLocalePrefix } from '../../utils/locale';
+import { prefetchRoutePlanner } from '../../utils/plannerChunk';
+
+const prefetchProps = {
+  onMouseEnter: prefetchRoutePlanner,
+  onFocus: prefetchRoutePlanner,
+  onTouchStart: prefetchRoutePlanner,
+};
 
 interface HeaderProps {
   onCalculateClick?: () => void;
+  /** Guest tap on "Create a trip": lets the page show a sign-in preview first. Defaults to going straight to login. */
+  onGuestCreateTrip?: () => void;
 }
 
-export function Header({ onCalculateClick }: HeaderProps) {
+export function Header({ onCalculateClick, onGuestCreateTrip }: HeaderProps) {
   const location = useLocation();
   const { user, loading, login } = useAuth();
-  const { theme, toggleTheme } = useTheme();
   const { language, t } = useLanguage();
   const art = seasonAssets[useSeason()];
 
   const isHomePage = location.pathname === withLocalePrefix('/', language);
-  const otherLang = otherLocale(language);
-  // Keep ?routeId=… and #anchors: switching language must not lose the loaded route.
-  const otherLangPath = withLocalePrefix(location.pathname, otherLang) + location.search + location.hash;
 
   return (
     <header className={`hero${isHomePage ? '' : ' hero--compact'}`}>
@@ -35,44 +37,8 @@ export function Header({ onCalculateClick }: HeaderProps) {
       <div className="hero-scrim" aria-hidden="true" />
       <div className="container hero-inner">
         <div className="topbar">
-          <Link to={withLocalePrefix('/', language)} className="brand" title={t('header.nav.home')}>
-            <Route size={20} strokeWidth={2.25} aria-hidden="true" />
-            <span>Trip Calculate</span>
-          </Link>
-
-          <div className="topbar-controls">
-            <div className="seg" role="group" aria-label={t('common.language')}>
-              <Link
-                to={language === 'en' ? location.pathname + location.search : otherLangPath}
-                hrefLang="en"
-                lang="en"
-                className={language === 'en' ? 'seg-on' : ''}
-                aria-current={language === 'en' ? 'true' : undefined}
-              >
-                EN
-              </Link>
-              <Link
-                to={language === 'uk' ? location.pathname + location.search : otherLangPath}
-                hrefLang="uk"
-                lang="uk"
-                className={language === 'uk' ? 'seg-on' : ''}
-                aria-current={language === 'uk' ? 'true' : undefined}
-              >
-                UA
-              </Link>
-            </div>
-
-            <button
-              type="button"
-              className="icon-btn"
-              onClick={toggleTheme}
-              aria-label={t(theme === 'dark' ? 'common.theme.toLight' : 'common.theme.toDark')}
-            >
-              {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
-
-            {!loading && (user ? <UserMenu /> : <LoginButton />)}
-          </div>
+          <Brand />
+          <TopbarControls />
         </div>
 
         {isHomePage && (
@@ -81,11 +47,11 @@ export function Header({ onCalculateClick }: HeaderProps) {
             <p className="hero-sub">{t('header.tagline')}</p>
             <div className="hero-actions">
               {user ? (
-                <Link id="create-trip-btn" className="btn" to={withLocalePrefix('/route-planner', language)}>
+                <Link id="create-trip-btn" className="btn" {...prefetchProps} to={withLocalePrefix('/route-planner', language)}>
                   {t('header.createTrip')}
                 </Link>
               ) : (
-                <button id="create-trip-btn" type="button" className="btn" onClick={login}>
+                <button id="create-trip-btn" type="button" className="btn" {...prefetchProps} onClick={onGuestCreateTrip ?? login}>
                   {t('header.createTrip')}
                 </button>
               )}

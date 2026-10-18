@@ -31,6 +31,7 @@ export interface RouteListItem {
   waypointCount: number;
   totalDistance: number;
   totalCost: number;
+  distanceQuality?: 'road' | 'approximate' | 'legacy';
   currency: string;
   createdAt: string;
   updatedAt: string;

@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Minus, Plus } from 'lucide-react';
+import { Car, Minus, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ShareReceiptButton } from './receipt/ShareReceiptButton';
 import { CarPicker } from './car/CarPicker';
+import { ScenarioComparison } from './calculator/ScenarioComparison';
 import { loadStoredCar, saveStoredCar, clearStoredCar } from '../utils/carStorage';
 import { carService } from '../services/carService';
 import { convertFuelPrice, suggestFuelPrice } from '../utils/currencyFuelPrice';
+import { calculateRouteCost, normalizeDecimal } from '../services/routeCost';
 import { useNumericField } from '../hooks/useNumericField';
 import type { CarSelection, GarageCar } from '../types/Car';
 
@@ -44,23 +47,17 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   const initial = !prefill && example ? EXAMPLES[language === 'uk' ? 'uk' : 'en'] : null;
   const stored = loadStoredCar();
   const [exampleActive, setExampleActive] = useState(!prefill && example);
-  const [distance, setDistance] = useState<number>(prefill?.distance ?? initial?.distance ?? 0);
+  const [distance, setDistance] = useState<number>(normalizeDecimal(prefill?.distance ?? initial?.distance ?? 0));
   const [passengers, setPassengers] = useState<number>(prefill?.passengers ?? initial?.people ?? 1);
   const [fuelConsumption, setFuelConsumption] = useState<number>(
-    prefill?.consumption ?? initial?.consumption ?? stored?.consumption ?? 8.5,
+    normalizeDecimal(prefill?.consumption ?? initial?.consumption ?? stored?.consumption ?? 8.5),
   );
-  const [fuelPrice, setFuelPrice] = useState<number>(prefill?.price ?? initial?.price ?? 55);
+  const [fuelPrice, setFuelPrice] = useState<number>(normalizeDecimal(prefill?.price ?? initial?.price ?? 55));
   const [currency, setCurrency] = useState<string>(prefill?.currency ?? initial?.currency ?? 'UAH');
-  const [totalCost, setTotalCost] = useState<number>(0);
-  const [costPerPassenger, setCostPerPassenger] = useState<number>(0);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [storedCar, setStoredCar] = useState<CarSelection | null>(stored);
   const [garageCars, setGarageCars] = useState<GarageCar[]>([]);
-  // Once the user deliberately types a fuel price, currency switches stop
-  // overwriting it (see fuelPriceService.applyLiveFuelPrice for the same rule).
   const [fuelPriceTouched, setFuelPriceTouched] = useState(false);
-  // Read when a currency-switch price lookup resolves: the user may have
-  // typed a price or switched again while it was in flight.
   const priceGuard = useRef({ touched: false, currency });
   priceGuard.current = { touched: fuelPriceTouched, currency };
 
@@ -68,13 +65,23 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     if (user) carService.list().then(setGarageCars).catch(() => {});
   }, [user]);
 
-  // Calculate costs whenever inputs change
+  // Derived, not stored: the what-if comparison prices its baseline with the same formula.
+  const cost = calculateRouteCost(distance, fuelConsumption, fuelPrice, passengers);
+  const totalCost = cost.total;
+  const costPerPassenger = cost.perPerson;
+
+  // Mobile: show a per-person mini-bar while the result is still below the fold
+  // (the user is editing inputs above it). Not shown once scrolled past.
+  const resultRef = useRef<HTMLDivElement>(null);
+  const [resultBelow, setResultBelow] = useState(false);
   useEffect(() => {
-    const total = (distance / 100) * fuelConsumption * fuelPrice;
-    const perPerson = passengers > 0 ? total / passengers : 0;
-    setTotalCost(total);
-    setCostPerPassenger(perPerson);
-  }, [distance, passengers, fuelConsumption, fuelPrice]);
+    const el = resultRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const io = new IntersectionObserver(([entry]) =>
+      setResultBelow(!entry.isIntersecting && entry.boundingClientRect.top > 0));
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   // While the example is untouched, switching language swaps to that locale's example
   useEffect(() => {
@@ -94,23 +101,21 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
   };
 
   const handleCarSelect = (selection: CarSelection) => {
-    edited(setFuelConsumption)(selection.consumption);
+    edited(setFuelConsumption)(normalizeDecimal(selection.consumption));
     saveStoredCar(selection);
     setStoredCar(selection);
     setPickerOpen(false);
   };
 
-  /** Switching currency must not leave the old price sitting under the new
-   * currency (e.g. "1.75" surviving an EUR→UAH switch). Prefers a live price
-   * for the new currency; falls back to converting what's there. Never
-   * touches a price the user deliberately typed. */
+  /** Preserve existing conversion/suggestion behavior for untouched prices;
+   * never overwrite a user edit or a newer currency selection. */
   const handleCurrencyChange = (nextCurrency: string) => {
-    const prevCurrency = currency;
+    const previousCurrency = currency;
     edited(setCurrency)(nextCurrency);
-    if (fuelPriceTouched || nextCurrency === prevCurrency) return;
-    suggestFuelPrice(nextCurrency).then((live) => {
+    if (fuelPriceTouched || nextCurrency === previousCurrency) return;
+    suggestFuelPrice(nextCurrency).then(live => {
       if (priceGuard.current.touched || priceGuard.current.currency !== nextCurrency) return;
-      setFuelPrice(live ?? convertFuelPrice(fuelPrice, prevCurrency, nextCurrency));
+      setFuelPrice(normalizeDecimal(live ?? convertFuelPrice(fuelPrice, previousCurrency, nextCurrency)));
     });
   };
 
@@ -119,10 +124,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
     edited(setFuelPrice)(v);
   };
 
-  const distanceField = useNumericField(distance, edited(setDistance), { min: 0 });
-  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1 });
-  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1 });
-  const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0 });
+  const distanceField = useNumericField(distance, edited(setDistance), { min: 0, normalize: normalizeDecimal });
+  const passengersField = useNumericField(passengers, edited(setPassengers), { min: 1, fallback: 1, normalize: Math.trunc });
+  const consumptionField = useNumericField(fuelConsumption, edited(setFuelConsumption), { min: 0.1, fallback: 0.1, normalize: normalizeDecimal });
+  const fuelPriceField = useNumericField(fuelPrice, handleFuelPriceChange, { min: 0, normalize: normalizeDecimal });
 
   const t = {
     title: tr('quickCalc.title'),
@@ -187,7 +192,6 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               variant="outline"
               size="icon"
               onClick={() => edited(setPassengers)(Math.max(1, passengers - 1))}
-              className="h-9 w-9"
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -203,7 +207,6 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               variant="outline"
               size="icon"
               onClick={() => edited(setPassengers)(passengers + 1)}
-              className="h-9 w-9"
             >
               <Plus className="h-4 w-4" />
             </Button>
@@ -227,14 +230,15 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               <button
                 type="button"
                 onClick={() => setPickerOpen(true)}
-                className="hover:underline"
+                className="inline-flex items-center gap-1 min-h-11 hover:underline"
               >
-                🚗 {storedCar.name} · {storedCar.consumption} L/100km
+                <Car className="h-3.5 w-3.5" aria-hidden="true" />
+                {storedCar.name} · {storedCar.consumption} L/100km
               </button>
               <button
                 type="button"
                 aria-label={tr('quickCalc.clearSavedCar')}
-                className="opacity-60 hover:opacity-100"
+                className="inline-flex h-11 w-11 items-center justify-center opacity-60 hover:opacity-100"
                 onClick={() => { clearStoredCar(); setStoredCar(null); }}
               >
                 ×
@@ -246,7 +250,8 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
               onClick={() => setPickerOpen(true)}
               className="mt-1 inline-flex items-center min-h-11 text-xs text-primary hover:underline"
             >
-              🚗 {tr('quickCalc.unknownConsumption')}
+              <Car className="mr-1 h-3.5 w-3.5" aria-hidden="true" />
+              {tr('quickCalc.unknownConsumption')}
             </button>
           )}
         </div>
@@ -281,25 +286,26 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
           </div>
         </div>
 
-        {/* Results */}
-        <div className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+        {/* Results: per-person is the answer people came for, so it leads. */}
+        <div ref={resultRef} aria-live="polite" className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+          <div className="flex justify-between items-baseline">
+            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+              {t.perPassenger}:
+            </span>
+            <span className="text-3xl font-bold text-primary tabular-nums">
+              {costPerPassenger.toFixed(2)} {currency}
+            </span>
+          </div>
           <div className="flex justify-between items-center">
             <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
               {t.totalCost}:
             </span>
-            <span className="text-xl font-bold text-slate-800 dark:text-white">
+            <span className="text-lg font-semibold text-slate-800 dark:text-white tabular-nums">
               {totalCost.toFixed(2)} {currency}
             </span>
           </div>
-          <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              {t.perPassenger}:
-            </span>
-            <span className="text-lg font-semibold text-primary">
-              {costPerPassenger.toFixed(2)} {currency}
-            </span>
-          </div>
-
+        </div>
+        <div>
           <ShareReceiptButton
             className="w-full mt-2"
             disabled={distance <= 0 || totalCost <= 0}
@@ -313,7 +319,24 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
             }}
           />
         </div>
+
+        <ScenarioComparison
+          baseline={{ distanceKm: distance, consumption: fuelConsumption, price: fuelPrice, passengers }}
+          currency={currency}
+        />
       </div>
+
+      {/* Portaled: .glass-panel sets backdrop-filter, which would trap a fixed child inside the card. */}
+      {resultBelow && distance > 0 && createPortal(
+        <div
+          aria-hidden="true"
+          className="md:hidden fixed inset-x-0 bottom-0 z-40 flex justify-between items-baseline border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-4 py-3 backdrop-blur"
+        >
+          <span className="text-sm font-medium">{t.perPassenger}</span>
+          <span className="text-lg font-bold text-primary tabular-nums">{costPerPassenger.toFixed(2)} {currency}</span>
+        </div>,
+        document.body,
+      )}
 
       <CarPicker
         open={pickerOpen}

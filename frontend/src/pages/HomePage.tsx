@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react';
 import { Calculator, Car, Map, Sparkles, Users } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { Header } from '../components/common/Header';
-import { Footer } from '../components/common/Footer';
+import { PageShell } from '../components/common/PageShell';
+import { SignInSheet } from '../components/auth/SignInSheet';
 import { CalculatorModal } from '../components/calculator/CalculatorModal';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -23,6 +24,7 @@ function embeddedRoutes(): CityRouteSummary[] {
 
 export function HomePage() {
   const [isCalculatorOpen, setIsCalculatorOpen] = useState(false);
+  const [signInOpen, setSignInOpen] = useState(false);
   const { t, language } = useLanguage();
   const [popularRoutes, setPopularRoutes] = useState<CityRouteSummary[]>(embeddedRoutes);
   useDocumentTitle(t('pageTitle.home'));
@@ -65,9 +67,7 @@ export function HomePage() {
 
   return (
     <>
-      <Header onCalculateClick={() => setIsCalculatorOpen(true)} />
-
-      <main className="container">
+      <PageShell header={<Header onCalculateClick={() => setIsCalculatorOpen(true)} onGuestCreateTrip={() => setSignInOpen(true)} />} mainClassName="container">
         <section className="section home-intro" aria-labelledby="home-intro-title">
           <div className="home-intro-copy">
             <p className="home-intro-eyebrow">{t('home.intro.eyebrow')}</p>
@@ -153,10 +153,9 @@ export function HomePage() {
             </div>
           </div>
         </section>
-      </main>
+      </PageShell>
 
-      <Footer />
-
+      <SignInSheet open={signInOpen} onOpenChange={setSignInOpen} />
       <CalculatorModal
         isOpen={isCalculatorOpen}
         onClose={() => setIsCalculatorOpen(false)}

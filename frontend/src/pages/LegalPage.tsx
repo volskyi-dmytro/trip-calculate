@@ -1,8 +1,7 @@
 import { Fragment, useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Header } from '../components/common/Header';
-import { Footer } from '../components/common/Footer';
+import { PageShell } from '../components/common/PageShell';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import {
@@ -85,9 +84,7 @@ export function LegalPage({ page }: { page: LegalPageId }) {
   );
 
   return (
-    <>
-      <Header />
-      <main className="container">
+    <PageShell mainClassName="container">
         <article className="section legal">
           <h1>{doc.title}</h1>
           <p className="legal-meta">
@@ -114,8 +111,6 @@ export function LegalPage({ page }: { page: LegalPageId }) {
             </section>
           ))}
         </article>
-      </main>
-      <Footer />
-    </>
+    </PageShell>
   );
 }

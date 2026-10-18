@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,6 +43,28 @@ public class Route {
 
     @Column(name = "total_cost")
     private BigDecimal totalCost;
+
+    @Column(name = "fuel_type", length = 20)
+    private String fuelType;
+
+    @Column(name = "departure_date")
+    private LocalDate departureDate;
+
+    @Column(name = "total_duration_minutes")
+    private Integer totalDurationMinutes;
+
+    /** "road" or "approximate"; null on records saved before provenance existed (legacy). */
+    @Column(name = "distance_quality", length = 16)
+    private String distanceQuality;
+
+    @Column(name = "distance_source", length = 32)
+    private String distanceSource;
+
+    @Column(name = "calculation_version", length = 32)
+    private String calculationVersion;
+
+    @Column(name = "calculated_at")
+    private LocalDateTime calculatedAt;
 
     @OneToMany(mappedBy = "route", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("positionOrder ASC")
