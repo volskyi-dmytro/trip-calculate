@@ -146,7 +146,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                       {route.waypointCount} {t('dashboard.routes.waypoints')}
                     </span>
                     <span>
-                      {route.totalDistance.toFixed(1)} km
+                      {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance.toFixed(1)} km
                     </span>
                     <span>
                       {formatMoney(route.totalCost, route.currency, language)}

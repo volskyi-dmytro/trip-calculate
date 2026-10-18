@@ -21,7 +21,8 @@ import { AiPrivacyNote } from './AiPrivacyNote'
 import { getFuelSuggestion, applyLiveFuelPrice, type FuelSuggestion } from '../services/fuelPriceService'
 import { fetchCorridorWeather } from '../services/weatherService'
 import { downsampleGeometry } from '../services/receiptService'
-import { computeTripStats } from '../services/tripStats'
+import { computeTripStats, buildEstimateExport } from '../services/tripStats'
+import type { EstimateQuality } from '../services/routingService'
 import { carService } from '../services/carService'
 import type { GarageCar } from '../types/Car'
 import { AgentActivitySlot } from './AgentActivitySlot'
@@ -115,6 +116,9 @@ export function RoutePlanner() {
   const [routeDuration, setRouteDuration] = useState<number>(0) // in minutes from OSRM
   // No road connects the waypoints: no cost, receipt, Waze link or save.
   const [routeUnreachable, setRouteUnreachable] = useState(false)
+  // Provenance of routeDistance/routeDuration; undefined until a calculation lands.
+  const [routeEstimate, setRouteEstimate] = useState<{ quality: EstimateQuality; source: string; calculatedAt: string } | undefined>()
+  const routeQuality = routeEstimate?.quality
   // Failures the user must acknowledge (centered dialog, not a fading toast)
   const [blockingError, setBlockingError] = useState<BlockingError | null>(null)
   const [isGeocoding, setIsGeocoding] = useState(false)
@@ -301,6 +305,7 @@ export function RoutePlanner() {
       if (waypoints.length < 2) {
         console.log('🟢 [PLANNER] Less than 2 waypoints, clearing route');
         setRouteUnreachable(false)
+        setRouteEstimate(undefined)
         setRouteGeometry([])
         setRouteDistance(0)
         setRouteDuration(0)
@@ -336,6 +341,7 @@ export function RoutePlanner() {
         setRouteDistance(route.totalDistance)
         setRouteDuration(route.totalDuration)
         setRouteUnreachable(Boolean(route.noRoute))
+        setRouteEstimate({ quality: route.quality, source: route.source, calculatedAt: route.calculatedAt })
 
         if (resolution.revealAiResult) {
           setShowResultCard(true)
@@ -384,6 +390,7 @@ export function RoutePlanner() {
         setRouteDistance(0)
         setRouteDuration(0)
         setRouteUnreachable(false)
+        setRouteEstimate({ quality: 'approximate', source: 'straight-line', calculatedAt: new Date().toISOString() })
         setIsCalculatingRoute(false)
         if (pendingAiResultRouteKey.current === calculationRouteKey) {
           pendingAiResultRouteKey.current = null
@@ -589,6 +596,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: routeSettings.fuelCostPerLiter,
         currency: routeSettings.currency,
         passengerCount: routeSettings.passengerCount,
+        fuelType: routeSettings.fuelType,
+        departureDate,
+        // Only a calculated estimate is claimed; the server re-verifies it.
+        snapshot: routeQuality === 'road' || routeQuality === 'approximate'
+          ? {
+              distanceKm: Number(computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance.toFixed(2)),
+              quality: routeQuality,
+            }
+          : undefined,
         waypoints: waypoints.map((wp, index) => ({
           positionOrder: index,
           name: wp.name,
@@ -624,7 +640,7 @@ export function RoutePlanner() {
     } finally {
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, t, isEditMode, currentRouteId, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, t, isEditMode, currentRouteId, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -645,12 +661,15 @@ export function RoutePlanner() {
         fuelCostPerLiter: route.fuelCostPerLiter,
         currency: route.currency,
         passengerCount: route.passengerCount || 1,
+        // Older saves have no fuel type: keep the current one rather than guess.
+        fuelType: (route.fuelType as RouteSettings['fuelType'] | undefined) ?? DEFAULT_ROUTE_SETTINGS.fuelType,
         // A persisted price is a user-chosen price: mark it touched so the
         // live fuel suggestion effect (see applyLiveFuelPrice guard) never
         // silently overwrites it once the new waypoints trigger a refetch.
         fuelPriceTouched: true
       })
       setRouteName(route.name)
+      if (route.departureDate) setDepartureDate(route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
 
@@ -684,6 +703,7 @@ export function RoutePlanner() {
       name: routeName || `Route ${new Date().toLocaleDateString()}`,
       waypoints,
       settings: routeSettings,
+      estimate: buildEstimateExport(waypoints, routeSettings, routeDistance, routeDuration, routeEstimate),
       exportedAt: new Date().toISOString()
     }
 
@@ -696,9 +716,9 @@ export function RoutePlanner() {
     URL.revokeObjectURL(url)
 
     toast.success(t.toasts.routeExported)
-  }, [waypoints, routeSettings, routeName, t])
+  }, [waypoints, routeSettings, routeName, routeDistance, routeDuration, routeEstimate, t])
 
-  const handleManualAddressSubmit = useCallback(async () => {
+const handleManualAddressSubmit = useCallback(async () => {
     if (!manualAddress.trim()) {
       toast.error(t.toasts.enterAddress)
       return
@@ -1392,6 +1412,7 @@ export function RoutePlanner() {
               routeSettings={routeSettings}
               routeDistance={routeDistance}
               routeDuration={routeDuration}
+              routeQuality={routeQuality}
               routeGeometry={routeGeometry}
             />
           )}
@@ -1455,7 +1476,8 @@ export function RoutePlanner() {
                       <div className="flex-1">
                         <h3 className="font-semibold">{route.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.distanceQuality && route.distanceQuality !== 'road' && ` • ${t.routeSummary.savedApproximate}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
                           {new Date(route.updatedAt!).toLocaleDateString()}
@@ -1600,6 +1622,7 @@ export function RoutePlanner() {
         routeSettings={routeSettings}
         routeDistance={routeDistance}
         routeDuration={routeDuration}
+        routeQuality={routeQuality}
         fuelSuggestion={fuelSuggestion}
         weather={weatherData}
         onSaveRoute={() => setShowSaveDialog(true)}
@@ -1826,12 +1849,12 @@ export function RoutePlanner() {
           the payload StatsPanel's own ShareReceiptButton builds, but lives
           here because TripResultCard exposes a plain onShareReceipt callback
           rather than owning its own dialog (see task-7-report.md) */}
-      {waypoints.length >= 2 && (
+      {waypoints.length >= 2 && routeQuality === 'road' && (
         <ShareReceiptModal
           payload={{
             originLabel: waypoints[0].name,
             destinationLabel: waypoints[waypoints.length - 1].name,
-            distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration).totalDistance,
+            distanceKm: computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality).totalDistance,
             fuelConsumption: routeSettings.fuelConsumption,
             fuelPrice: routeSettings.fuelCostPerLiter,
             currency: routeSettings.currency,

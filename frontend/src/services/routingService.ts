@@ -4,6 +4,11 @@ export interface RouteSegment {
   geometry: Array<[number, number]>; // lat/lng pairs for the route line
 }
 
+/** How far a distance/duration can be trusted. road = provider route;
+ *  approximate = straight-line estimate after an outage; unavailable = there is
+ *  nothing honest to show (no route, or not calculated). */
+export type EstimateQuality = 'road' | 'approximate' | 'unavailable';
+
 export interface RoutingResult {
   totalDistance: number; // in km
   totalDuration: number; // in minutes
@@ -12,10 +17,20 @@ export interface RoutingResult {
   /** No drivable road connects the waypoints (e.g. another continent).
    *  Distinct from an outage: there is nothing honest to estimate. */
   noRoute?: boolean;
+  quality: EstimateQuality;
+  /** Who produced the figures: a provider name or "straight-line". */
+  source: string;
+  calculatedAt: string; // ISO-8601
 }
 
 // Use backend proxy for routing to avoid CORS and timeout issues with public OSRM servers
 import { api } from './api';
+
+const result = (
+  quality: EstimateQuality,
+  source: string,
+  rest: Omit<RoutingResult, 'quality' | 'source' | 'calculatedAt'>,
+): RoutingResult => ({ ...rest, quality, source, calculatedAt: new Date().toISOString() });
 
 export const routingService = {
   /**
@@ -24,33 +39,21 @@ export const routingService = {
    * @returns Route geometry and statistics
    */
   async getRoute(waypoints: Array<{ lat: number; lng: number }>): Promise<RoutingResult> {
-    console.log('🔵 [ROUTING] Starting route calculation for waypoints:', waypoints.length);
-
     if (waypoints.length < 2) {
-      console.log('🔵 [ROUTING] Less than 2 waypoints, returning empty route');
-      return {
-        totalDistance: 0,
-        totalDuration: 0,
-        geometry: [],
-        segments: [],
-      };
+      return result('unavailable', 'none', { totalDistance: 0, totalDuration: 0, geometry: [], segments: [] });
     }
 
-    console.log('🔵 [ROUTING] Waypoints:', waypoints.map(w => ({ lat: w.lat, lng: w.lng })));
-
     try {
-      console.log('🔵 [ROUTING] Calling backend routing API...');
       const response = await api.post('/api/routing/calculate', { waypoints });
       const data = response.data;
 
-      console.log('🔵 [ROUTING] Response from backend:', data);
-
       if (data.noRoute) {
-        return { totalDistance: 0, totalDuration: 0, geometry: [], segments: [], noRoute: true };
+        return result('unavailable', 'none', {
+          totalDistance: 0, totalDuration: 0, geometry: [], segments: [], noRoute: true,
+        });
       }
 
       if (data.error || data.fallback) {
-        console.warn('⚠️ [ROUTING] Backend returned fallback/error response');
         throw new Error(data.message || 'Routing service unavailable');
       }
 
@@ -58,27 +61,28 @@ export const routingService = {
         (coord: [number, number]) => [coord[0], coord[1]] as [number, number]
       );
 
-      console.log(`✅ [ROUTING] Route found! Distance:`, data.totalDistance.toFixed(2), 'km, Duration:', data.totalDuration.toFixed(0), 'min');
-      console.log(`✅ [ROUTING] Coordinates count:`, geometry.length);
-      console.log(`✅ [ROUTING] First 5 coordinates:`, geometry.slice(0, 5));
+      // A zero distance with geometry is the server's straight-line fallback, not a road route.
+      if (!(data.totalDistance > 0)) {
+        return result('approximate', 'straight-line', {
+          totalDistance: 0, totalDuration: 0, geometry, segments: [],
+        });
+      }
 
-      return {
+      return result('road', typeof data.provider === 'string' ? data.provider : 'road-router', {
         totalDistance: data.totalDistance,
         totalDuration: data.totalDuration,
         geometry,
         segments: data.segments || [],
-      };
+      });
     } catch (error) {
-      console.error('❌ [ROUTING] Backend routing failed:', error);
-      console.error('❌ [ROUTING] Falling back to straight lines');
+      console.error('[ROUTING] Backend routing failed, falling back to straight lines:', error);
 
-      // Fallback to straight lines
-      return {
+      return result('approximate', 'straight-line', {
         totalDistance: 0,
         totalDuration: 0,
         geometry: waypoints.map(w => [w.lat, w.lng] as [number, number]),
         segments: [],
-      };
+      });
     }
   },
 };

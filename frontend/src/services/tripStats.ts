@@ -1,3 +1,8 @@
+import type { EstimateQuality } from './routingService'
+
+export const ESTIMATE_MODEL_VERSION = 'trip-estimate/1'
+export const ASSUMED_SPEED_KMH = 80
+
 export interface TripStats {
   totalDistance: number
   fuelNeeded: number
@@ -5,6 +10,14 @@ export interface TripStats {
   costPerPerson: number
   segments: { from: string; to: string; distance: number }[]
   estimatedTime: number
+  /** Quality of totalDistance/fuel/cost. Never 'road' unless a provider route backs it. */
+  quality: EstimateQuality
+  /** Where estimatedTime comes from. */
+  durationBasis: 'provider' | 'assumed-speed' | 'none'
+  /** Leg distances are never provider legs: a share of the routed total
+   *  ('proportional') or plain straight-line legs ('straight-line'). */
+  legBasis: 'proportional' | 'straight-line' | 'none'
+  modelVersion: string
 }
 
 export interface RouteSettings {
@@ -57,20 +70,28 @@ export function computeTripStats(
   routeSettings: RouteSettings,
   routeDistance: number,
   routeDuration: number,
+  routeQuality?: EstimateQuality,
 ): TripStats {
-  if (waypoints.length < 2) {
+  // No road distance means the figures can only be a straight-line estimate,
+  // whatever the caller claims. An explicit 'unavailable' yields no figures at all.
+  const quality: EstimateQuality =
+    routeQuality === 'unavailable' ? 'unavailable' : routeDistance > 0 ? (routeQuality ?? 'road') : 'approximate'
+
+  if (waypoints.length < 2 || quality === 'unavailable') {
     return {
       totalDistance: 0,
       fuelNeeded: 0,
       fuelCost: 0,
       costPerPerson: 0,
       segments: [],
-      estimatedTime: 0
+      estimatedTime: 0,
+      quality: 'unavailable',
+      durationBasis: 'none',
+      legBasis: 'none',
+      modelVersion: ESTIMATE_MODEL_VERSION,
     }
   }
 
-  // Use actual road distance from OSRM routing service if available
-  // Otherwise fall back to calculating straight-line Haversine distance
   let totalDistance = routeDistance
 
   const segments: { from: string; to: string; distance: number }[] = []
@@ -97,10 +118,9 @@ export function computeTripStats(
     })
   }
 
-  // If OSRM routing failed (distance = 0), fall back to sum of Haversine distances
+  // Outage: the straight-line sum is the (labelled) approximate distance
   if (totalDistance === 0 && segments.length > 0) {
     totalDistance = segments.reduce((sum, seg) => sum + seg.distance, 0)
-    console.warn('⚠️ Using Haversine fallback distance:', totalDistance.toFixed(2), 'km')
   }
 
   const fuelNeeded = (totalDistance / 100) * routeSettings.fuelConsumption
@@ -108,8 +128,8 @@ export function computeTripStats(
   const passengerCount = routeSettings.passengerCount || 1
   const costPerPerson = fuelCost / passengerCount
 
-  // Use OSRM duration if available, otherwise estimate at 80 km/h
-  const estimatedTime = routeDuration > 0 ? routeDuration / 60 : totalDistance / 80
+  const providerDuration = quality === 'road' && routeDuration > 0
+  const estimatedTime = providerDuration ? routeDuration / 60 : totalDistance / ASSUMED_SPEED_KMH
 
   return {
     totalDistance,
@@ -117,6 +137,32 @@ export function computeTripStats(
     fuelCost,
     costPerPerson,
     segments,
-    estimatedTime
+    estimatedTime,
+    quality,
+    durationBasis: providerDuration ? 'provider' : 'assumed-speed',
+    legBasis: routeDistance > 0 ? 'proportional' : 'straight-line',
+    modelVersion: ESTIMATE_MODEL_VERSION,
+  }
+}
+
+/** Provenance block for JSON export, so an outage estimate stays labelled outside the app. */
+export function buildEstimateExport(
+  waypoints: Waypoint[],
+  settings: RouteSettings,
+  routeDistance: number,
+  routeDuration: number,
+  estimate?: { quality: EstimateQuality; source: string; calculatedAt: string },
+) {
+  const stats = computeTripStats(waypoints, settings, routeDistance, routeDuration, estimate?.quality)
+  return {
+    quality: stats.quality,
+    source: stats.quality === 'road' ? (estimate?.source ?? 'road-router') : stats.quality === 'approximate' ? 'straight-line' : 'none',
+    calculatedAt: estimate?.calculatedAt ?? null,
+    modelVersion: stats.modelVersion,
+    distanceKm: stats.totalDistance,
+    durationHours: stats.estimatedTime,
+    durationBasis: stats.durationBasis,
+    legBasis: stats.legBasis,
+    fuelCost: stats.fuelCost,
   }
 }

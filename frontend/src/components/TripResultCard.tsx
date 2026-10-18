@@ -2,6 +2,7 @@ import { Navigation, Save, Share2 } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
 import { computeTripStats } from '../services/tripStats'
+import type { EstimateQuality } from '../services/routingService'
 import { wazeLegLinks } from '../services/wazeExport'
 import type { FuelSuggestion } from '../services/fuelPriceService'
 import type { RouteSettings, Waypoint } from './RoutePlanner'
@@ -14,6 +15,7 @@ interface TripResultCardProps {
   routeSettings: RouteSettings
   routeDistance: number
   routeDuration: number
+  routeQuality?: EstimateQuality
   fuelSuggestion: FuelSuggestion | null
   weather: WeatherData | null
   onSaveRoute: () => void
@@ -24,12 +26,15 @@ interface TripResultCardProps {
 }
 
 export function TripResultCard({
-  waypoints, routeSettings, routeDistance, routeDuration,
+  waypoints, routeSettings, routeDistance, routeDuration, routeQuality,
   fuelSuggestion, weather, onSaveRoute, onShareReceipt, onApplyLivePrice,
 }: TripResultCardProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
-  const stats = computeTripStats(waypoints, routeSettings, routeDistance, routeDuration)
+  const stats = computeTripStats(waypoints, routeSettings, routeDistance, routeDuration, routeQuality)
+  const approx = stats.quality === 'approximate'
+  // A public receipt carries no quality flag, so only a road route may be shared.
+  const canShare = stats.quality === 'road'
   // A geocoder (ours or the AI's) can fall back to raw coordinates as a
   // waypoint's name — swap in a "Waypoint N" label everywhere a name is
   // shown, including inside the Waze leg labels built below.
@@ -38,7 +43,7 @@ export function TripResultCard({
     name: displayWaypointName(wp.name, `${t.planner.waypoint} ${i + 1}`),
   }))
   const legs = wazeLegLinks(displayWaypoints)
-  const pending = routeDistance === 0   // road distance not resolved yet
+  const pending = routeDistance === 0 && !approx   // road distance not resolved yet
   // The "live price" badge must only claim the price used IS the live one —
   // routeSettings.fuelPriceTouched means it was overridden (chat/manual/car).
   const usingLivePrice = Boolean(fuelSuggestion) && !routeSettings.fuelPriceTouched
@@ -56,14 +61,16 @@ export function TripResultCard({
         ))}
       </div>
 
+      {approx && <p role="status" className="trip-result-live">{t.routeSummary.qualityApproximate}</p>}
+
       <dl className="trip-result-figures">
         <div>
           <dt>{t.resultCard.distance}</dt>
-          <dd>{pending ? t.resultCard.pendingRoute : `${stats.totalDistance.toFixed(0)} km`}</dd>
+          <dd>{pending ? t.resultCard.pendingRoute : `${approx ? '≈ ' : ''}${stats.totalDistance.toFixed(0)} km`}</dd>
         </div>
         <div>
           <dt>{t.resultCard.duration}</dt>
-          <dd>{pending ? '—' : `${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}</dd>
+          <dd>{pending ? '—' : `${approx ? '≈ ' : ''}${Math.floor(stats.estimatedTime)}h ${Math.round((stats.estimatedTime % 1) * 60)}m`}</dd>
         </div>
         <div>
           <dt>
@@ -107,7 +114,8 @@ export function TripResultCard({
         <button type="button" onClick={onSaveRoute} className="trip-result-action">
           <Save className="w-3.5 h-3.5" aria-hidden="true" /> {t.resultCard.save}
         </button>
-        <button type="button" onClick={onShareReceipt} className="trip-result-action">
+        <button type="button" onClick={onShareReceipt} className="trip-result-action"
+                disabled={!canShare} title={canShare ? undefined : t.routeSummary.qualityApproximate}>
           <Share2 className="w-3.5 h-3.5" aria-hidden="true" /> {t.resultCard.share}
         </button>
       </div>
