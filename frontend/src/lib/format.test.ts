@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDistance, formatDuration, formatLiters, formatMoney, litreUnit } from './format'
+import { formatDate, formatDistance, formatDuration, formatLiters, formatMoney, litreUnit } from './format'
 
 // Normalise no-break spaces; Ukrainian unit words are percent-encoded because
 // src/ keeps Cyrillic text in src/i18n (see noInlineTranslations.test).
@@ -11,6 +11,10 @@ const HOUR = word('%D0%B3%D0%BE%D0%B4')
 const MIN = word('%D1%85%D0%B2')
 
 describe('format', () => {
+  it('keeps calendar dates stable and rejects invalid dates', () => {
+    expect(formatDate('2026-10-24', 'en')).toBe('Sat, Oct 24, 2026')
+    expect(formatDate('invalid', 'uk')).toBe('')
+  })
   it('formats money per locale and falls back for unknown codes', () => {
     expect(norm(formatMoney(1634.78, 'UAH', 'en'))).toBe('UAH 1,634.78')
     expect(norm(formatMoney(1634.78, 'UAH', 'uk'))).toBe(`1 634,78 ${word('%E2%82%B4')}`)

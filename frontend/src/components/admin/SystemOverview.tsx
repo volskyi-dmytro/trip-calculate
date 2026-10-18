@@ -39,7 +39,7 @@ export function SystemOverview() {
   if (!stats) {
     return (
       <div className="text-center py-12">
-        <p className="text-gray-600 dark:text-gray-400">
+        <p className="text-secondary">
           {t('admin.overview.error.noData')}
         </p>
       </div>
@@ -58,8 +58,8 @@ export function SystemOverview() {
       label: t('admin.overview.activeUsers'),
       value: stats.activeUsers,
       icon: UserCheck,
-      color: 'text-green-600 dark:text-green-400',
-      bgColor: 'bg-green-100 dark:bg-green-900/20',
+      color: 'text-success',
+      bgColor: 'bg-success-soft',
     },
     {
       label: t('admin.overview.totalRoutes'),
@@ -79,15 +79,15 @@ export function SystemOverview() {
       label: t('admin.overview.pendingRequests'),
       value: stats.pendingAccessRequests,
       icon: Clock,
-      color: 'text-yellow-600 dark:text-yellow-400',
-      bgColor: 'bg-yellow-100 dark:bg-yellow-900/20',
+      color: 'text-warning',
+      bgColor: 'bg-warning-soft',
     },
     {
       label: t('admin.overview.usersWithAccess'),
       value: stats.usersWithRoutePlanner,
       icon: CheckCircle,
-      color: 'text-teal-600 dark:text-teal-400',
-      bgColor: 'bg-teal-100 dark:bg-teal-900/20',
+      color: 'text-primary',
+      bgColor: 'bg-primary-soft',
     },
   ];
 
@@ -102,10 +102,10 @@ export function SystemOverview() {
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="text-sm text-secondary mb-1">
                       {stat.label}
                     </p>
-                    <p className="text-3xl font-bold text-gray-900 dark:text-white">
+                    <p className="text-3xl font-bold text-content">
                       {stat.value}
                     </p>
                   </div>
@@ -133,7 +133,7 @@ export function SystemOverview() {
               <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast24h}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 {t('admin.overview.last24h')}
               </p>
             </div>
@@ -141,15 +141,15 @@ export function SystemOverview() {
               <p className="text-2xl font-bold text-primary">
                 {stats.newUsersLast7d}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 {t('admin.overview.last7d')}
               </p>
             </div>
             <div className="text-center p-4 glass-inset rounded-lg">
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+              <p className="text-2xl font-bold text-success">
                 {stats.newUsersLast30d}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 {t('admin.overview.last30d')}
               </p>
             </div>
@@ -171,7 +171,7 @@ export function SystemOverview() {
               <p className="text-2xl font-bold text-primary">
                 {stats.aiRequestsLast24h}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Requests (24h)
               </p>
             </div>
@@ -179,23 +179,23 @@ export function SystemOverview() {
               <p className="text-2xl font-bold text-primary">
                 {stats.aiRequestsLastMonth}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Requests (30d)
               </p>
             </div>
-            <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">
+            <div className="text-center p-4 bg-success-soft rounded-lg">
+              <p className="text-2xl font-bold text-success">
                 {(stats.aiCacheHitRate * 100).toFixed(1)}%
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Cache Hit Rate
               </p>
             </div>
-            <div className="text-center p-4 bg-red-50 dark:bg-red-900/20 rounded-lg">
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">
+            <div className="text-center p-4 bg-danger-soft rounded-lg">
+              <p className="text-2xl font-bold text-danger">
                 {(stats.aiErrorRate * 100).toFixed(1)}%
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Error Rate
               </p>
             </div>
@@ -208,29 +208,29 @@ export function SystemOverview() {
               <p className="text-2xl font-bold text-primary">
                 {stats.aiUniqueUsersLast24h}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Unique Users (24h)
               </p>
             </div>
             <div className="text-center p-4 glass-inset rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <Database className="h-5 w-5 text-cyan-600 dark:text-cyan-400" />
+                <Database className="h-5 w-5 text-info" />
               </div>
-              <p className="text-2xl font-bold text-cyan-600 dark:text-cyan-400">
+              <p className="text-2xl font-bold text-info">
                 {stats.aiTotalCachedResponses}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Cached Responses
               </p>
             </div>
             <div className="text-center p-4 glass-inset rounded-lg">
               <div className="flex items-center justify-center mb-2">
-                <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400" />
+                <AlertCircle className="h-5 w-5 text-warning" />
               </div>
-              <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">
+              <p className="text-2xl font-bold text-warning">
                 {stats.aiRateLimitHits24h}
               </p>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+              <p className="text-sm text-secondary mt-1">
                 Rate Limit Hits (24h)
               </p>
             </div>

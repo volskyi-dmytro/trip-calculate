@@ -1,3 +1,4 @@
+import { formatDistance, formatDate } from '../lib/format'
 import { useState, useCallback, useEffect, useRef, type SetStateAction } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { MapContainer } from './MapContainer'
@@ -172,6 +173,7 @@ export function RoutePlanner() {
   const [currentRouteId, setCurrentRouteId] = useState<number | null>(null)
   const [isEditMode, setIsEditMode] = useState(false)
   // updatedAt of the saved record this edit started from (sent on update to detect another session's save)
+  const [savedPriceDate, setSavedPriceDate] = useState<string | undefined>()
   const [loadedUpdatedAt, setLoadedUpdatedAt] = useState<string | undefined>(undefined)
 
   // AI Chat State
@@ -677,11 +679,15 @@ export function RoutePlanner() {
   }, [])
 
   const updateRouteSettings = useCallback((settings: RouteSettings) => {
+    if (settings.fuelCostPerLiter !== routeSettings.fuelCostPerLiter || settings.currency !== routeSettings.currency) {
+      setSavedPriceDate(undefined)
+    }
     setRouteSettings(settings)
-  }, [setRouteSettings])
+  }, [setRouteSettings, routeSettings.fuelCostPerLiter, routeSettings.currency])
 
   const handleApplyFuelSuggestion = useCallback(() => {
     if (!fuelSuggestion) return
+    setSavedPriceDate(undefined)
     setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: fuelSuggestion.price, fuelPriceTouched: false }))
   }, [fuelSuggestion, setRouteSettings])
 
@@ -698,6 +704,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setSavedPriceDate(undefined)
     setLoadedUpdatedAt(undefined)
     localStorage.removeItem('tripCalculate_currentRoute')
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
@@ -719,6 +726,7 @@ export function RoutePlanner() {
     setRouteName('')
     setCurrentRouteId(null)
     setIsEditMode(false)
+    setSavedPriceDate(undefined)
     setLoadedUpdatedAt(undefined)
     navigate(withLocalePrefix('/route-planner', language), { replace: true })
     toast.success(t.toasts.newRouteReady)
@@ -856,8 +864,9 @@ export function RoutePlanner() {
       // it (with an explicit "Save as new"), instead of silently creating a duplicate.
       setCurrentRouteId(routeId)
       setIsEditMode(true)
+      setSavedPriceDate(route.updatedAt ?? route.createdAt)
       setLoadedUpdatedAt(route.updatedAt)
-      if (route.departureDate) setDepartureDate(route.departureDate)
+      setDepartureDate(route.departureDate ?? todayISO())
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
 
@@ -1199,6 +1208,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         // contradictory "Use live price" button appears next to it.
         if (agentData.price) {
           const fromLiveTool = Boolean(agentData.fuelData);
+          setSavedPriceDate(undefined);
           setRouteSettings(prev => ({ ...prev, fuelCostPerLiter: agentData.price!, fuelPriceTouched: !fromLiveTool }));
           updates.push(`${t.routeSettings.fuelCost}: ${agentData.price}`);
         }
@@ -1429,6 +1439,8 @@ const handleManualAddressSubmit = useCallback(async () => {
           estimatePending={!routeReady}
           fuelSuggestion={fuelSuggestion}
           weather={weatherData}
+          departureDate={departureDate}
+          savedPriceDate={savedPriceDate}
           onSaveRoute={openSaveDialog}
           onShareReceipt={() => { if (routeReady && routeQuality === 'road') setShowResultShareDialog(true) }}
           onApplyLivePrice={handleApplyFuelSuggestion}
@@ -1574,7 +1586,7 @@ const handleManualAddressSubmit = useCallback(async () => {
             style={{
               background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
               border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
-              color: isDisabled ? 'var(--nav-text-secondary)' : '#0f1117',
+              color: isDisabled ? 'var(--nav-text-secondary)' : 'var(--on-accent)',
               opacity: isDisabled ? 0.6 : 1,
               cursor: isDisabled ? 'not-allowed' : 'pointer',
             }}
@@ -1680,11 +1692,11 @@ const handleManualAddressSubmit = useCallback(async () => {
                       <div className="flex-1">
                         <h3 className="font-semibold">{route.name}</h3>
                         <p className="text-sm text-muted-foreground">
-                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance?.toFixed(2)} {t.dialogs.load.routeInfo}
+                          {route.waypoints.length} {t.dialogs.save.waypoints} • {route.distanceQuality && route.distanceQuality !== 'road' ? '≈ ' : ''}{route.totalDistance != null ? formatDistance(route.totalDistance, language) : '—'}
                           {route.distanceQuality && route.distanceQuality !== 'road' && ` • ${t.routeSummary.savedApproximate}`}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {new Date(route.updatedAt!).toLocaleDateString()}
+                          {formatDate(route.updatedAt!, language)}
                         </p>
                       </div>
                       <div className="flex gap-2">
@@ -1717,7 +1729,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                 style={{
                   background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
                   border: '1px solid var(--nav-border)',
-                  color: waypoints.length > 0 ? '#000' : 'var(--nav-text-secondary)',
+                  color: waypoints.length > 0 ? 'var(--on-accent)' : 'var(--nav-text-secondary)',
                 }}
               >
                 <Save className="h-4 w-4" />

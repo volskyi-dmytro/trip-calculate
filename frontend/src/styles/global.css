@@ -6,6 +6,21 @@
    and dashboards) resolve to the product palette instead of silently
    generating nothing under Tailwind v4's default theme. */
 @theme inline {
+    --color-content: var(--text);
+    --color-secondary: var(--text-2);
+    --color-caption: var(--text-3);
+    --color-surface: var(--surface);
+    --color-inset: var(--surface-2);
+    --color-edge: var(--border);
+    --color-danger: var(--danger);
+    --color-danger-soft: var(--danger-soft);
+    --color-success: var(--success);
+    --color-success-soft: var(--success-soft);
+    --color-warning: var(--warning);
+    --color-warning-soft: var(--warning-soft);
+    --color-info: var(--info);
+    --color-info-soft: var(--info-soft);
+    --color-primary-soft: var(--accent-soft);
     --color-primary: var(--accent);
     --color-primary-foreground: var(--on-accent);
     --color-muted: var(--surface-2);
@@ -26,6 +41,8 @@
     --border: #e0e6eb;
     --border-strong: #c9d2da;
 
+    --marker-fill: #0a6a56;
+    --marker-text: #ffffff;
     --accent: #0e7a63;
     --accent-hover: #0b6350;
     --accent-soft: rgba(14, 122, 99, 0.10);
@@ -108,7 +125,7 @@ body[data-theme="dark"],
     /* White on this mint is 2.27:1; ink is 8.36:1 */
     --on-accent: #0b1210;
 
-    --danger: #e05c5c;
+    --danger: #f07878;
     --danger-soft: rgba(224, 92, 92, 0.12);
 
     --info: #6aa8e8;
@@ -154,6 +171,9 @@ body, html {
     overflow-x: hidden;
     transition: background-color 0.25s ease, color 0.25s ease;
 }
+
+/* An explicit canvas lets contrast tools resolve the ambient layer's backdrop. */
+body { background-color: var(--bg); isolation: isolate; }
 
 /* ============================================
    Seasonal ambient backdrop — the current
@@ -595,8 +615,14 @@ main:focus {
 @media (min-width: 768px) {
     .hero-scrim {
         background:
-            linear-gradient(90deg, rgba(6, 24, 26, 0.78) 0%, rgba(6, 24, 26, 0.60) 45%, rgba(6, 24, 26, 0.10) 75%, transparent 90%),
+            linear-gradient(90deg, rgba(6, 24, 26, 0.78) 0%, rgba(6, 24, 26, 0.60) 65%, rgba(6, 24, 26, 0.10) 75%, transparent 90%),
             linear-gradient(180deg, rgba(6, 24, 26, 0.45) 0%, transparent 40%);
+    }
+}
+
+@media (min-width: 768px) and (max-width: 1023px) {
+    .hero-scrim {
+        background: linear-gradient(90deg, rgba(6, 24, 26, 0.78) 0%, rgba(6, 24, 26, 0.65) 85%, rgba(6, 24, 26, 0.35) 100%);
     }
 }
 
@@ -1540,7 +1566,7 @@ footer {
 
 .receipt-hero dd {
   font-size: 1.35rem;
-  color: var(--nav-accent, #0e7a63);
+  color: var(--accent);
 }
 
 .receipt-divider {
@@ -1664,3 +1690,5 @@ footer {
     opacity: 0.5;
     cursor: not-allowed;
 }
+
+.touch-link { min-height: 44px; display: inline-flex; align-items: center; }

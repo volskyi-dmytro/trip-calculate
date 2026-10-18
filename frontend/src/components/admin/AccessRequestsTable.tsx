@@ -54,21 +54,21 @@ export function AccessRequestsTable() {
     switch (status) {
       case 'PENDING':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-warning-soft text-warning">
             <Clock className="h-3 w-3 mr-1" />
             {t('admin.requests.status.pending')}
           </span>
         );
       case 'APPROVED':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-soft text-success">
             <CheckCircle className="h-3 w-3 mr-1" />
             {t('admin.requests.status.approved')}
           </span>
         );
       case 'REJECTED':
         return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-danger-soft text-danger">
             <XCircle className="h-3 w-3 mr-1" />
             {t('admin.requests.status.rejected')}
           </span>
@@ -92,11 +92,11 @@ export function AccessRequestsTable() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <CardTitle className="text-xl">{t('admin.requests.title')}</CardTitle>
           <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-gray-400" />
+            <Filter className="h-4 w-4 text-caption" />
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value as FilterType)}
-              className="px-3 py-1.5 text-sm border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
+              className="px-3 py-1.5 text-sm border border-edge rounded-md glass-inset text-content"
             >
               <option value="all">{t('admin.requests.filter.all')}</option>
               <option value="pending">{t('admin.requests.filter.pending')}</option>
@@ -109,7 +109,7 @@ export function AccessRequestsTable() {
       <CardContent>
         {filteredRequests.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-600 dark:text-gray-400">
+            <p className="text-secondary">
               {t('admin.requests.empty')}
             </p>
           </div>
@@ -119,17 +119,17 @@ export function AccessRequestsTable() {
             <div className="hidden md:block overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="border-b border-gray-200 dark:border-gray-700">
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <tr className="border-b border-edge">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                       {t('admin.requests.table.user')}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                       {t('admin.requests.table.feature')}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                       {t('admin.requests.table.status')}
                     </th>
-                    <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                    <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                       {t('admin.requests.table.requestedAt')}
                     </th>
 
@@ -139,26 +139,26 @@ export function AccessRequestsTable() {
                   {filteredRequests.map((request) => (
                     <tr
                       key={request.id}
-                      className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                      className="border-b border-edge hover:bg-surface"
                     >
                       <td className="py-3 px-4">
                         <div>
-                          <p className="font-medium text-gray-900 dark:text-white">
+                          <p className="font-medium text-content">
                             {request.userName}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-caption">
                             {request.userEmail}
                           </p>
                         </div>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="text-sm text-gray-900 dark:text-white">
+                        <span className="text-sm text-content">
                           {request.featureName.replace('_', ' ')}
                         </span>
                       </td>
                       <td className="py-3 px-4">{getStatusBadge(request.status)}</td>
                       <td className="py-3 px-4">
-                        <span className="text-sm text-gray-600 dark:text-gray-400">
+                        <span className="text-sm text-secondary">
                           {timeAgo(request.requestedAt, language)}
                         </span>
                       </td>
@@ -174,14 +174,14 @@ export function AccessRequestsTable() {
               {filteredRequests.map((request) => (
                 <div
                   key={request.id}
-                  className="p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                  className="p-4 rounded-lg border border-edge glass-inset"
                 >
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
+                      <p className="font-medium text-content">
                         {request.userName}
                       </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
+                      <p className="text-sm text-caption">
                         {request.userEmail}
                       </p>
                     </div>
@@ -189,13 +189,13 @@ export function AccessRequestsTable() {
                   </div>
                   <div className="space-y-2 text-sm">
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-secondary">
                         {t('admin.requests.table.feature')}:
                       </span>
                       <span>{request.featureName.replace('_', ' ')}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-secondary">
                         {t('admin.requests.table.requestedAt')}:
                       </span>
                       <span>

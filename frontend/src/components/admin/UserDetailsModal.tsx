@@ -39,17 +39,17 @@ export function UserDetailsModal({
         <div className="space-y-6 py-4">
           {/* Basic Info */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-sm font-semibold text-content mb-3">
               {t('admin.userDetails.basicInfo')}
             </h3>
             <div className="space-y-3">
               <div className="flex items-center text-sm">
-                <User className="h-4 w-4 mr-3 text-gray-400" />
+                <User className="h-4 w-4 mr-3 text-caption" />
                 <div className="flex-1">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-secondary">
                     {t('admin.userDetails.name')}:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-content">
                     {user.name}
                   </span>
                 </div>
@@ -57,12 +57,12 @@ export function UserDetailsModal({
 
               {user.displayName && (
                 <div className="flex items-center text-sm">
-                  <User className="h-4 w-4 mr-3 text-gray-400" />
+                  <User className="h-4 w-4 mr-3 text-caption" />
                   <div className="flex-1">
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-secondary">
                       {t('admin.userDetails.displayName')}:
                     </span>
-                    <span className="ml-2 text-gray-900 dark:text-white">
+                    <span className="ml-2 text-content">
                       {user.displayName}
                     </span>
                   </div>
@@ -70,28 +70,28 @@ export function UserDetailsModal({
               )}
 
               <div className="flex items-center text-sm">
-                <Mail className="h-4 w-4 mr-3 text-gray-400" />
+                <Mail className="h-4 w-4 mr-3 text-caption" />
                 <div className="flex-1">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-secondary">
                     {t('admin.userDetails.email')}:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-content">
                     {user.email}
                   </span>
                 </div>
               </div>
 
               <div className="flex items-center text-sm">
-                <Shield className="h-4 w-4 mr-3 text-gray-400" />
+                <Shield className="h-4 w-4 mr-3 text-caption" />
                 <div className="flex-1">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-secondary">
                     {t('admin.userDetails.role')}:
                   </span>
                   <span
                     className={`ml-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       user.role === 'ADMIN'
                         ? 'bg-primary/10 text-primary'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        : 'bg-inset text-secondary'
                     }`}
                   >
                     {user.role}
@@ -103,19 +103,19 @@ export function UserDetailsModal({
 
           {/* Account Info */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-sm font-semibold text-content mb-3">
               {t('admin.userDetails.accountInfo')}
             </h3>
             <div className="space-y-3">
               <div className="flex items-center text-sm">
-                <Calendar className="h-4 w-4 mr-3 text-gray-400" />
+                <Calendar className="h-4 w-4 mr-3 text-caption" />
                 <div className="flex-1">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-secondary">
                     {t('admin.userDetails.createdAt')}:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-content">
                     {format(new Date(user.createdAt), 'PPpp')}
-                    <span className="text-gray-500 dark:text-gray-400 text-xs ml-2">
+                    <span className="text-caption text-xs ml-2">
                       ({timeAgo(user.createdAt, language)})
                     </span>
                   </span>
@@ -123,12 +123,12 @@ export function UserDetailsModal({
               </div>
 
               <div className="flex items-center text-sm">
-                <Calendar className="h-4 w-4 mr-3 text-gray-400" />
+                <Calendar className="h-4 w-4 mr-3 text-caption" />
                 <div className="flex-1">
-                  <span className="text-gray-600 dark:text-gray-400">
+                  <span className="text-secondary">
                     {t('admin.userDetails.lastLogin')}:
                   </span>
-                  <span className="ml-2 text-gray-900 dark:text-white">
+                  <span className="ml-2 text-content">
                     {timeAgo(user.lastLogin, language)}
                   </span>
                 </div>
@@ -138,24 +138,24 @@ export function UserDetailsModal({
 
           {/* Feature Access */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-sm font-semibold text-content mb-3">
               {t('admin.userDetails.featureAccess')}
             </h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between p-3 rounded-lg glass-inset">
                 <div className="flex items-center">
-                  <Navigation className="h-4 w-4 mr-3 text-gray-400" />
-                  <span className="text-sm text-gray-900 dark:text-white">
+                  <Navigation className="h-4 w-4 mr-3 text-caption" />
+                  <span className="text-sm text-content">
                     {t('admin.userDetails.routePlanner')}
                   </span>
                 </div>
                 {user.routePlannerAccess ? (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-soft text-success">
                     <CheckCircle className="h-3 w-3 mr-1" />
                     {t('admin.userDetails.granted')}
                   </span>
                 ) : (
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-inset text-secondary">
                     <XCircle className="h-3 w-3 mr-1" />
                     {t('admin.userDetails.notGranted')}
                   </span>
@@ -166,7 +166,7 @@ export function UserDetailsModal({
 
           {/* Usage Stats */}
           <div>
-            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
+            <h3 className="text-sm font-semibold text-content mb-3">
               {t('admin.userDetails.usageStats')}
             </h3>
             <div className="grid grid-cols-2 gap-4">
@@ -174,7 +174,7 @@ export function UserDetailsModal({
                 <p className="text-2xl font-bold text-primary">
                   {user.routeCount}
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs text-secondary mt-1">
                   {t('admin.userDetails.totalRoutes')}
                 </p>
               </div>
@@ -182,7 +182,7 @@ export function UserDetailsModal({
                 <p className="text-2xl font-bold text-primary">
                   {user.id}
                 </p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                <p className="text-xs text-secondary mt-1">
                   {t('admin.userDetails.userId')}
                 </p>
               </div>

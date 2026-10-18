@@ -14,18 +14,18 @@ export function Footer() {
         <p>{t('footer.about')}</p>
         <p>
           {before}
-          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
+          <a className="touch-link" href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>
           {after}
           {' · '}
-          <a href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Trip Calculate feedback')}`}>{t('footer.feedback')}</a>
+          <a className="touch-link" href={`mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent('Trip Calculate feedback')}`}>{t('footer.feedback')}</a>
         </p>
       </div>
       <div className="container footer-inner">
         <p style={{ margin: 0 }}>© 2026 Trip Calculate · Dmytro Volskyi</p>
         <nav className="footer-links" aria-label={t('footer.legal')}>
-          <Link to={withLocalePrefix('/privacy', language)}>{t('footer.privacy')}</Link>
-          <Link to={withLocalePrefix('/terms', language)}>{t('footer.terms')}</Link>
-          <Link to={`${withLocalePrefix('/privacy', language)}#cookies`}>{t('footer.cookies')}</Link>
+          <Link className="touch-link" to={withLocalePrefix('/privacy', language)}>{t('footer.privacy')}</Link>
+          <Link className="touch-link" to={withLocalePrefix('/terms', language)}>{t('footer.terms')}</Link>
+          <Link className="touch-link" to={`${withLocalePrefix('/privacy', language)}#cookies`}>{t('footer.cookies')}</Link>
         </nav>
         <div className="footer-links">
           <a

@@ -35,6 +35,7 @@ describe('ShareReceiptModal', () => {
     const html = render('en')
     expect(html).toContain('Anyone with this link can see the receipt, including the route on the map.')
     expect(html).toContain('use a city or landmark instead of your home address')
+    expect(html).toMatch(/<button[^>]*>Cancel<\/button>/)
   })
 
   it('warns that the link is public and suggests coarse labels (UK)', () => {

@@ -392,6 +392,10 @@ class SpaShellControllerTest {
         }
         String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
         assertEquals(2, occurrences(html, "rel=\"preload\" as=\"image\""));
+        for (String path : List.of("/en/route-planner", "/uk/route-planner", "/en/dashboard")) {
+            String workspace = controller.shell(new MockHttpServletRequest("GET", path)).getBody();
+            assertFalse(workspace.contains("rel=\"preload\" as=\"image\""), path);
+        }
     }
 
     private String extractJsonLd(String html, String type) {

@@ -234,7 +234,7 @@ export function DialogDescription({
 }) {
   const ids = useContext(DialogIdsContext);
   return (
-    <p id={ids?.descriptionId} className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>
+    <p id={ids?.descriptionId} className={`text-sm text-caption ${className}`}>
       {children}
     </p>
   );

@@ -5,8 +5,7 @@ import { Loader2, MapPin, Clock, Fuel, ArrowRight } from 'lucide-react';
 import { PageShell } from '../components/common/PageShell';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
-import { translate } from '../i18n/common';
-import { formatMoney } from '../lib/format';
+import { formatMoney, formatDistance, formatDuration } from '../lib/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { plannerPrefillQuery } from '../utils/plannerPrefill';
@@ -16,12 +15,6 @@ import '../styles/page-layout.css';
 
 type PageState = 'loading' | 'ready' | 'notFound' | 'error';
 
-function formatDuration(minutes: number, language: 'en' | 'uk'): string {
-  const h = Math.floor(minutes / 60);
-  const m = Math.round(minutes % 60);
-  const text = translate(language, h <= 0 ? 'cityRoute.durationMinutes' : 'cityRoute.durationHours');
-  return text.replace('{h}', String(h)).replace('{m}', String(m));
-}
 
 // SpaShellController embeds this page's data in the HTML, so the first render
 // (and search engines, which can't call /api/) needs no API request.
@@ -132,7 +125,7 @@ export function CityRoutePage() {
     {
       icon: MapPin,
       label: t('cityRoute.distance'),
-      value: t('cityRoute.distanceValue').replace('{km}', String(Math.round(r.distanceKm))),
+      value: formatDistance(r.distanceKm, language),
     },
     {
       icon: Clock,
@@ -142,7 +135,7 @@ export function CityRoutePage() {
     r.fuelPricePerLiter !== null && {
       icon: Fuel,
       label: t('cityRoute.fuelPrice'),
-      value: `${r.fuelPricePerLiter} ${r.currency}/${litreUnit(language)}`,
+      value: `${formatMoney(r.fuelPricePerLiter, r.currency, language)}/${litreUnit(language)}`,
     },
     r.totalCost !== null && {
       icon: ArrowRight,
@@ -170,7 +163,7 @@ export function CityRoutePage() {
           <div>
           {/* Visible counterpart of the server's BreadcrumbList JSON-LD. */}
           <nav aria-label={t('cityRoute.breadcrumb')} className="breadcrumb">
-            <Link to={withLocalePrefix('/', language)}>Trip Calculate</Link>
+            <Link className="touch-link" to={withLocalePrefix('/', language)}>Trip Calculate</Link>
             <span aria-hidden="true"> › </span>
             <span aria-current="page">
               {r.fromName} → {r.toName}

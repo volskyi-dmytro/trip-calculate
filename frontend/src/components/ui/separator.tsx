@@ -9,7 +9,7 @@ export function Separator({
 }: SeparatorProps) {
   return (
     <div
-      className={`bg-gray-200 ${
+      className={`bg-edge ${
         orientation === 'horizontal' ? 'h-[1px] w-full' : 'h-full w-[1px]'
       } ${className}`}
     />

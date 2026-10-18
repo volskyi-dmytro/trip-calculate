@@ -8,10 +8,10 @@ vi.mock('../../../contexts/LanguageContext', () => ({
 }))
 
 describe('QuickActions', () => {
-  it('offers route creation and the calculator', () => {
+  it('offers the calculator without duplicating route creation', () => {
     const html = renderToStaticMarkup(<QuickActions />)
 
-    expect(html).toContain('dashboard.quickActions.createRoute')
+    expect(html).not.toContain('dashboard.quickActions.createRoute')
     expect(html).toContain('dashboard.quickActions.calculateTrip')
   })
 

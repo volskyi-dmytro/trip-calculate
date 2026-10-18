@@ -94,7 +94,7 @@ describe('CityRoutePage', () => {
 
     expect(container.querySelector('h1')?.textContent).toContain('Kyiv → Lviv')
     expect(container.textContent).toContain('540 km')
-    expect(container.textContent).toContain('58.2 UAH/L')
+    expect(container.textContent?.replace(/\xa0/g, ' ')).toContain('UAH 58.20/L')
     expect(container.textContent?.replace(/\xa0/g, ' ')).toContain('UAH 2,354.40')
     expect(container.querySelector('[data-testid="quick-calculator"]')).not.toBeNull()
     expect(container.textContent).toContain('Kyiv → Odesa')

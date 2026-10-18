@@ -4,6 +4,14 @@
 const INTL_LOCALE: Record<string, string> = { en: 'en-US', uk: 'uk-UA' }
 const intlLocale = (locale: string) => INTL_LOCALE[locale] ?? locale
 
+/** Calendar-only dates stay on the same day in every timezone. */
+export function formatDate(value: string, locale: string): string {
+  const date = new Date(/^\d{4}-\d{2}-\d{2}$/.test(value) ? `${value}T12:00:00` : value)
+  return Number.isNaN(date.getTime()) ? '' : new Intl.DateTimeFormat(intlLocale(locale), {
+    weekday: 'short', month: 'short', day: 'numeric', year: 'numeric',
+  }).format(date)
+}
+
 /** Locale-aware money, e.g. "$202.70" (en) / "5 840,50 ₴" (uk). Codes Intl doesn't know fall back to "12.00 XYZ". */
 export function formatMoney(amount: number, currency: string, locale: string): string {
   try {

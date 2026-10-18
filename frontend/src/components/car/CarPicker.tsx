@@ -211,7 +211,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
     `px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
       active
         ? 'border-primary text-primary'
-        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+        : 'border-transparent text-caption hover:text-secondary'
     }`;
 
   return (
@@ -221,7 +221,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
           <DialogTitle>{t.title}</DialogTitle>
         </DialogHeader>
 
-        <div className="flex gap-1 border-b border-gray-200/60 dark:border-gray-700/60 mb-4">
+        <div className="flex gap-1 border-b border-edge mb-4">
           <button type="button" onClick={() => setTab('search')} className={tabButtonClass(tab === 'search')}>
             {t.tabSearch}
           </button>
@@ -239,7 +239,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
           <div className="space-y-4">
             {garageCars.length > 0 && (
               <div>
-                <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">
+                <p className="text-xs font-semibold uppercase text-caption mb-2">
                   {t.garageTitle}
                 </p>
                 <div className="space-y-1">
@@ -248,11 +248,11 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                       key={car.id}
                       type="button"
                       onClick={() => handleGarageSelect(car)}
-                      className="w-full text-left px-3 py-2 rounded-md border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+                      className="w-full text-left px-3 py-2 rounded-md border border-edge hover:bg-inset transition-colors"
                     >
                       <span className="font-medium text-sm">{car.name}</span>
                       {car.makeModel && (
-                        <span className="text-xs text-gray-500 dark:text-gray-400 ml-2">{car.makeModel}</span>
+                        <span className="text-xs text-caption ml-2">{car.makeModel}</span>
                       )}
                     </button>
                   ))}
@@ -274,18 +274,18 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
 
             {catalogLoading ? (
               <div className="flex justify-center py-6" role="status" aria-label={t.searchLoading}>
-                <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
+                <Loader2 className="h-5 w-5 animate-spin text-caption" />
               </div>
             ) : (
               <div className="space-y-3 max-h-80 overflow-y-auto">
                 {query.trim().length >= 2 && results.length === 0 && (
-                  <p className="text-sm text-gray-500 dark:text-gray-400">{t.searchEmpty}</p>
+                  <p className="text-sm text-caption">{t.searchEmpty}</p>
                 )}
                 {results.map((entry) => (
                   <div key={entry.id}>
                     <p className="text-sm font-medium">
                       {entry.make} {entry.model}{' '}
-                      <span className="text-gray-500 dark:text-gray-400 font-normal">({entry.years})</span>
+                      <span className="text-caption font-normal">({entry.years})</span>
                     </p>
                     <div className="flex flex-wrap gap-2 mt-1">
                       {entry.variants.map((variant) => (
@@ -293,7 +293,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                           key={`${entry.id}-${variant.label}-${variant.fuelType}`}
                           type="button"
                           onClick={() => handleCatalogSelect(entry, variant)}
-                          className="px-2 py-1 text-xs rounded-full border border-gray-300/70 dark:border-gray-600/70 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+                          className="px-2 py-1 text-xs rounded-full border border-edge hover:bg-inset transition-colors"
                         >
                           {variant.label} · {variant.consumption} {t.consumptionShort} ·{' '}
                           {variant.fuelType === 'petrol'
@@ -314,7 +314,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
         {tab === 'presets' && (
           <div className="space-y-4">
             <div>
-              <p className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-xs font-semibold uppercase text-caption mb-2">
                 {t.presetsHint}
               </p>
               <div className="flex gap-2">
@@ -337,12 +337,12 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                   key={preset.id}
                   type="button"
                   onClick={() => handlePresetSelect(preset)}
-                  className="text-left px-3 py-2 rounded-md border border-gray-200/60 dark:border-gray-700/60 hover:bg-gray-100 dark:hover:bg-gray-700/40 transition-colors"
+                  className="text-left px-3 py-2 rounded-md border border-edge hover:bg-inset transition-colors"
                 >
                   <span className="font-medium text-sm">
                     {tr(`carPreset.${preset.id}`)}
                   </span>
-                  <span className="block text-xs text-gray-500 dark:text-gray-400">
+                  <span className="block text-xs text-caption">
                     {preset.consumption[presetFuelType]} {t.consumptionUnit}
                   </span>
                 </button>
@@ -364,7 +364,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                 maxLength={200}
                 rows={3}
                 placeholder={t.aiPlaceholder}
-                className="flex w-full rounded-md border border-gray-300/70 dark:border-gray-600/70 bg-[var(--glass-input)] text-gray-900 dark:text-white px-3 py-2 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                className="flex w-full rounded-md border border-edge bg-[var(--glass-input)] text-content px-3 py-2 text-sm placeholder:text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
               />
               <AiPrivacyNote kind="car" className="mt-1" />
             </div>
@@ -379,7 +379,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
             </Button>
 
             {aiError && (
-              <div className="text-sm text-red-600 dark:text-red-400 space-y-2">
+              <div className="text-sm text-danger space-y-2">
                 <p>{aiError === 'rate_limited' ? t.aiRateLimited : t.aiRecognizeFailed}</p>
                 {aiError === 'recognize_failed' && (
                   <Button variant="outline" size="sm" onClick={() => setTab('presets')}>
@@ -390,12 +390,12 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
             )}
 
             {aiResult && (
-              <div className="rounded-md border border-gray-200/60 dark:border-gray-700/60 p-3 space-y-2">
+              <div className="rounded-md border border-edge p-3 space-y-2">
                 <p className="font-medium text-sm">{aiResult.makeModel}</p>
                 {aiFromCatalog && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{tr('carPicker.fromCatalog')}</p>
+                  <p className="text-xs text-caption">{tr('carPicker.fromCatalog')}</p>
                 )}
-                <p className="text-xs text-gray-500 dark:text-gray-400">
+                <p className="text-xs text-caption">
                   {aiResult.fuelType === 'petrol'
                     ? t.fuelPetrol
                     : aiResult.fuelType === 'diesel'
@@ -405,7 +405,7 @@ export function CarPicker({ open, onClose, onSelect, garageCars = [] }: CarPicke
                 <div>
                   <label
                     htmlFor="car-picker-ai-consumption"
-                    className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400"
+                    className="text-xs font-semibold uppercase text-caption"
                   >
                     {t.aiConsumptionLabel}
                   </label>

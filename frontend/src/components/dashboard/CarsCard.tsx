@@ -193,12 +193,12 @@ export function CarsCard() {
         <CardContent>
           {loading ? (
             <div className="flex justify-center py-8" role="status">
-              <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+              <Loader2 className="h-6 w-6 animate-spin text-caption" />
             </div>
           ) : cars.length === 0 ? (
             <div className="text-center py-8">
-              <CarIcon className="h-12 w-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-              <p className="text-sm text-gray-600 dark:text-gray-400">
+              <CarIcon className="h-12 w-12 text-caption mx-auto mb-3" />
+              <p className="text-sm text-secondary">
                 {t('dashboard.cars.empty')}
               </p>
             </div>
@@ -208,13 +208,13 @@ export function CarsCard() {
                 {sortedCars.map((car) => (
                   <div
                     key={car.id}
-                    className="flex flex-col gap-3 p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                    className="flex flex-col gap-3 p-3 rounded-lg border border-edge glass-inset"
                   >
                     {/* Details: always full-width so a long name never
                         squeezes the actions row into letter-by-letter wraps. */}
                     <div className="w-full min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h4 className="font-semibold text-gray-900 dark:text-white break-words">
+                        <h4 className="font-semibold text-content break-words">
                           {car.name}
                         </h4>
                         {car.isDefault && (
@@ -225,12 +225,12 @@ export function CarsCard() {
                         )}
                       </div>
                       {car.makeModel && (
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                        <p className="text-xs text-caption">
                           {car.makeModel}
                         </p>
                       )}
-                      <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600 dark:text-gray-400">
-                        <span className="px-2 py-0.5 rounded-full border border-gray-300/70 dark:border-gray-600/70 capitalize">
+                      <div className="flex flex-wrap gap-2 mt-1 text-xs text-secondary">
+                        <span className="px-2 py-0.5 rounded-full border border-edge capitalize">
                           {car.fuelType}
                         </span>
                         <span>{car.fuelConsumption} {litreUnit(language)}/100km</span>
@@ -267,7 +267,7 @@ export function CarsCard() {
                         size="icon"
                         aria-label={`${t('dashboard.cars.delete')} ${car.name}`}
                         onClick={() => confirmDelete(car)}
-                        className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                        className="text-danger hover:text-danger hover:bg-danger-soft"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -276,7 +276,7 @@ export function CarsCard() {
                 ))}
               </div>
               {atLimit && (
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
+                <p className="text-xs text-caption mt-3">
                   {t('dashboard.cars.limitReached')}
                 </p>
               )}
@@ -298,7 +298,7 @@ export function CarsCard() {
               <div>
                 <label
                   htmlFor="car-card-name"
-                  className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400"
+                  className="text-xs font-semibold uppercase text-caption"
                 >
                   {t('dashboard.cars.name')}
                 </label>
@@ -312,7 +312,7 @@ export function CarsCard() {
               <div>
                 <label
                   htmlFor="car-card-consumption"
-                  className="text-xs font-semibold uppercase text-gray-500 dark:text-gray-400"
+                  className="text-xs font-semibold uppercase text-caption"
                 >
                   {t('dashboard.cars.consumption')}
                 </label>

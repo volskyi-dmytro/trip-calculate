@@ -1,4 +1,4 @@
-import { litreUnit } from '../lib/format'
+import { formatMoney, litreUnit } from '../lib/format'
 import { useState, useEffect } from 'react'
 import { normalizeDecimal } from '../services/routeCost'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
@@ -522,7 +522,7 @@ export function RoutePanel({
             routeSettings.fuelPriceTouched ? (
               <button type="button" className="fuel-chip fuel-chip-action"
                       onClick={onApplyFuelSuggestion}>
-                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {fuelSuggestion.price} {fuelSuggestion.currency}/{litreUnit(language)}
+                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {formatMoney(fuelSuggestion.price, fuelSuggestion.currency, language)}/{litreUnit(language)}
               </button>
             ) : (
               <span className="fuel-chip">
@@ -758,7 +758,7 @@ export function RoutePanel({
                       />
                       <div
                         className="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold flex-shrink-0"
-                        style={{ background: 'var(--nav-accent)', color: '#000' }}
+                        style={{ background: 'var(--marker-fill)', color: 'var(--marker-text)' }}
                       >
                         {index + 1}
                       </div>

@@ -70,10 +70,10 @@ export function DistanceFinder({ onDistance }: DistanceFinderProps) {
 
   const busy = status.kind === 'loading'
   return (
-    <div className="mt-2 space-y-2 rounded-md border border-slate-200 dark:border-slate-700 p-3">
+    <div className="mt-2 space-y-2 rounded-md border border-edge p-3">
       <div className="grid grid-cols-2 gap-2">
         <div className="relative">
-          <Label htmlFor={`${uid}-from`} className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <Label htmlFor={`${uid}-from`} className="text-sm font-medium text-secondary">
             {t('quickCalc.from')}
           </Label>
           <PlaceCombobox
@@ -89,7 +89,7 @@ export function DistanceFinder({ onDistance }: DistanceFinderProps) {
           />
         </div>
         <div className="relative">
-          <Label htmlFor={`${uid}-to`} className="text-sm font-medium text-slate-600 dark:text-slate-300">
+          <Label htmlFor={`${uid}-to`} className="text-sm font-medium text-secondary">
             {t('quickCalc.to')}
           </Label>
           <PlaceCombobox
@@ -114,7 +114,7 @@ export function DistanceFinder({ onDistance }: DistanceFinderProps) {
         {busy ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : <RouteIcon className="h-4 w-4" aria-hidden="true" />}
         {busy ? t('quickCalc.findingDistance') : t('quickCalc.getDistance')}
       </button>
-      <p role="status" aria-live="polite" className="text-sm text-slate-600 dark:text-slate-300 min-h-5">
+      <p role="status" aria-live="polite" className="text-sm text-secondary min-h-5">
         {status.kind === 'found' && t('quickCalc.distanceFound')
           .replace('{from}', status.from)
           .replace('{to}', status.to)

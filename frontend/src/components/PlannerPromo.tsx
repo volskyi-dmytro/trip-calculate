@@ -31,7 +31,7 @@ export function PlannerPromo() {
           >
             <Sparkles className="w-4 h-4 text-primary" />
           </div>
-          <h2 className="text-xl font-bold text-gray-900 dark:text-white">{t.title}</h2>
+          <h2 className="text-xl font-bold text-content">{t.title}</h2>
         </div>
       </div>
 
@@ -45,7 +45,7 @@ export function PlannerPromo() {
         ].map(({ icon: Icon, label }) => (
           <div className="flex items-start gap-3" key={label}>
             <Icon className="w-5 h-5 mt-0.5 text-primary flex-shrink-0" />
-            <p className="text-sm font-medium text-gray-700 dark:text-gray-300">{label}</p>
+            <p className="text-sm font-medium text-secondary">{label}</p>
           </div>
         ))}
       </div>
@@ -55,7 +55,7 @@ export function PlannerPromo() {
         {t.signInButton}
       </Button>
 
-      <p className="text-xs text-center mt-3 text-gray-500 dark:text-gray-400">{t.freeNote}</p>
+      <p className="text-xs text-center mt-3 text-caption">{t.freeNote}</p>
     </Card>
   );
 }

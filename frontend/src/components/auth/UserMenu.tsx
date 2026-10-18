@@ -76,6 +76,8 @@ export function UserMenu() {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-label={user.name}
+        aria-expanded={isOpen}
         className="flex items-center gap-1.5 sm:gap-2 min-h-11 px-2 sm:px-3 rounded-lg glass-panel hover:shadow transition-shadow"
       >
         {user.picture && !avatarFailed ? (
@@ -83,18 +85,18 @@ export function UserMenu() {
             src={avatarProxyUrl(user.picture)!}
             alt={user.name}
             onError={() => setAvatarFailed(true)}
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-gray-300 dark:border-gray-600 flex-shrink-0"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-full object-cover border border-edge flex-shrink-0"
           />
         ) : (
           <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-            <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+            <User className="w-4 h-4 sm:w-5 sm:h-5 text-primary-foreground" />
           </div>
         )}
-        <span className="hidden sm:inline text-sm font-medium text-gray-900 dark:text-white max-w-[100px] truncate">
+        <span className="hidden sm:inline text-sm font-medium text-content max-w-[100px] truncate">
           {user.name}
         </span>
         <ChevronDown
-          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-600 dark:text-gray-400 transition-transform ${
+          className={`w-3.5 h-3.5 sm:w-4 sm:h-4 text-secondary transition-transform ${
             isOpen ? 'rotate-180' : ''
           }`}
         />
@@ -103,11 +105,11 @@ export function UserMenu() {
       {isOpen && (
         <div className="absolute right-0 mt-2 w-56 glass-modal rounded-lg py-2 z-50">
           {/* User Info Header */}
-          <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-            <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+          <div className="px-4 py-3 border-b border-edge">
+            <p className="text-sm font-medium text-content truncate">
               {user.name}
             </p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+            <p className="text-xs text-caption truncate">
               {user.email}
             </p>
           </div>
@@ -122,7 +124,7 @@ export function UserMenu() {
                   <button
                     key={index}
                     onClick={item.onClick}
-                    className="w-full px-4 py-2 text-left text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-3 transition-colors"
+                    className="w-full px-4 py-2 text-left text-sm text-secondary hover:bg-inset flex items-center gap-3 transition-colors"
                   >
                     <Icon className="w-4 h-4" />
                     <span>{item.label}</span>
@@ -132,10 +134,10 @@ export function UserMenu() {
           </div>
 
           {/* Logout Button */}
-          <div className="border-t border-gray-200 dark:border-gray-700 pt-1">
+          <div className="border-t border-edge pt-1">
             <button
               onClick={handleLogout}
-              className="w-full px-4 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 flex items-center gap-3 transition-colors"
+              className="w-full px-4 py-2 text-left text-sm text-danger hover:bg-danger-soft flex items-center gap-3 transition-colors"
             >
               <LogOut className="w-4 h-4" />
               <span>{t('header.logout')}</span>

@@ -37,7 +37,7 @@ export function CardTitle({
   className?: string;
 }) {
   return (
-    <h3 className={`text-2xl font-semibold leading-none tracking-tight text-gray-900 dark:text-white ${className}`}>
+    <h3 className={`text-2xl font-semibold leading-none tracking-tight text-content ${className}`}>
       {children}
     </h3>
   );
@@ -65,7 +65,7 @@ export function CardDescription({
   className?: string;
 }) {
   return (
-    <p className={`text-sm text-gray-500 dark:text-gray-400 ${className}`}>
+    <p className={`text-sm text-caption ${className}`}>
       {children}
     </p>
   );

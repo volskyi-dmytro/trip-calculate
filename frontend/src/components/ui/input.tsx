@@ -6,7 +6,7 @@ type InputProps = React.ComponentProps<'input'>;
 export function Input({ className = '', ...props }: InputProps) {
   return (
     <input
-      className={`flex h-11 md:h-10 w-full rounded-md border border-gray-300/70 dark:border-gray-600/70 bg-[var(--glass-input)] text-gray-900 dark:text-white px-3 py-2 text-sm ring-offset-white dark:ring-offset-gray-900 file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-gray-500 dark:placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
+      className={`flex h-11 md:h-10 w-full rounded-md border border-edge bg-[var(--glass-input)] text-content px-3 py-2 text-sm ring-offset-surface file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-caption focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${className}`}
       {...props}
     />
   );

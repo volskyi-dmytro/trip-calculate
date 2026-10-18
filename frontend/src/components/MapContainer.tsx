@@ -205,7 +205,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
             'line-cap': 'round'
           },
           paint: {
-            'line-color': '#0e7a63', // product accent
+            'line-color': getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(), // product accent
             'line-width': 4,
             'line-opacity': 0.8
           }
@@ -274,7 +274,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
               'line-cap': 'round'
             },
             paint: {
-              'line-color': '#3b82f6',
+              'line-color': getComputedStyle(document.documentElement).getPropertyValue('--accent').trim(),
               'line-width': 4,
               'line-opacity': 0.8
             }
@@ -336,8 +336,8 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
         const inner = document.createElement('div')
         inner.className = 'custom-mapbox-marker-inner'
         inner.style.cssText = `
-          background-color: #3b82f6;
-          color: white;
+          background-color: var(--marker-fill);
+          color: var(--marker-text);
           border-radius: 50%;
           width: 32px;
           height: 32px;
