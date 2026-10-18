@@ -52,13 +52,13 @@ describe('WelcomeScreen', () => {
     const img = container.querySelector('img')!
     expect(img.getAttribute('src')).toBe('/images/planner-v1/ai-welcome.webp')
     expect(img.getAttribute('alt')).toBe('')
-    expect(container.querySelector('h2')?.textContent).toBe('Where to next, Dana?')
+    expect(container.querySelector('h1')?.textContent).toBe('Where to next, Dana?')
   })
 
   it('uses native form submission and reads the current DOM value', () => {
     const { container, onSendMessage } = render()
-    const input = container.querySelector('input')!
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+    const input = container.querySelector('textarea')!
+    Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set
       ?.call(input, 'Нововолинськ - Лісабон, 2 пасажира')
     act(() => {
       container.querySelector('form')!.dispatchEvent(
@@ -73,7 +73,7 @@ describe('WelcomeScreen', () => {
     act(() => exampleButton(container).click())
     expect(onChatInputChange).toHaveBeenCalledWith('A trip from Kyiv to Lviv for 2 passengers')
     expect(onSendMessage).not.toHaveBeenCalled()
-    expect(document.activeElement).toBe(container.querySelector('input'))
+    expect(document.activeElement).toBe(container.querySelector('textarea'))
   })
 
   it('asks in a dialog before replacing a non-empty draft', () => {

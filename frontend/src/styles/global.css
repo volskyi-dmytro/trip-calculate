@@ -35,6 +35,13 @@
     --danger: #b93a3f;
     --danger-soft: rgba(185, 58, 63, 0.10);
 
+    --info: #1f5fa8;
+    --info-soft: rgba(31, 95, 168, 0.10);
+    --warning: #8a5a00;
+    --warning-soft: rgba(214, 150, 0, 0.14);
+    --success: #1e7a45;
+    --success-soft: rgba(30, 122, 69, 0.10);
+
     /* Glass material — frosted porcelain, legibility first.
        Alpha stays high so text never fights the seasonal backdrop. */
     --glass-bg: rgba(255, 255, 255, 0.62);
@@ -103,6 +110,13 @@ body[data-theme="dark"],
 
     --danger: #e05c5c;
     --danger-soft: rgba(224, 92, 92, 0.12);
+
+    --info: #6aa8e8;
+    --info-soft: rgba(106, 168, 232, 0.14);
+    --warning: #e0a93a;
+    --warning-soft: rgba(224, 169, 58, 0.14);
+    --success: #4cc486;
+    --success-soft: rgba(76, 196, 134, 0.12);
 
     --glass-bg: rgba(22, 29, 36, 0.60);
     --glass-bg-strong: rgba(17, 23, 30, 0.78);
@@ -1499,8 +1513,9 @@ footer {
 /* Example prompts: fill the composer only, so they read as suggestions
    (soft chips), not as primary send buttons. */
 .planner-example-chip {
-    padding: 6px 12px;
-    border-radius: 999px;
+    min-height: 44px;
+    padding: 8px 14px;
+    border-radius: 22px;
     border: 1px solid var(--border);
     background: var(--accent-soft);
     color: var(--text);
@@ -1511,8 +1526,11 @@ footer {
     transition: border-color 0.15s ease;
 }
 
-.planner-example-chip:hover:not(:disabled) {
-    border-color: var(--accent);
+/* hover only where it exists: on touch it sticks and reads as "selected" after a tap */
+@media (hover: hover) {
+    .planner-example-chip:hover:not(:disabled) {
+        border-color: var(--accent);
+    }
 }
 
 .planner-example-chip:focus-visible {
