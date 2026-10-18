@@ -1395,7 +1395,7 @@ const handleManualAddressSubmit = useCallback(async () => {
             onClick={handleCalculateRoute}
             disabled={isDisabled}
             title={!hasInputs ? t.buttons.enterLocations : undefined}
-            className="w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+            className="min-h-11 w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-colors"
             style={{
               background: isDisabled ? 'var(--nav-bg-input)' : 'var(--nav-accent)',
               border: `1px solid ${isDisabled ? 'var(--nav-border)' : 'var(--nav-accent)'}`,
@@ -1456,7 +1456,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         {isEditMode && (
           <button
             onClick={createNewRoute}
-            className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+            className="min-h-11 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1472,7 +1472,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         <Dialog open={showLoadDialog} onOpenChange={setShowLoadDialog}>
           <DialogTrigger asChild>
             <button
-              className="w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
+              className="min-h-11 w-full flex items-center justify-center gap-2 py-2 rounded-lg text-sm font-medium transition-colors"
               style={{
                 background: 'var(--nav-bg-input)',
                 border: '1px solid var(--nav-border)',
@@ -1537,7 +1537,7 @@ const handleManualAddressSubmit = useCallback(async () => {
               <button
                 disabled={waypoints.length === 0 || routeUnreachable}
                 title={waypoints.length === 0 ? t.buttons.needWaypoints : routeUnreachable ? t.planner.noRouteTitle : undefined}
-                className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
+                className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-semibold transition-colors disabled:opacity-40"
                 style={{
                   background: waypoints.length > 0 ? 'var(--nav-accent)' : 'var(--nav-bg-input)',
                   border: '1px solid var(--nav-border)',
@@ -1605,7 +1605,7 @@ const handleManualAddressSubmit = useCallback(async () => {
             onClick={exportRouteAsJSON}
             disabled={waypoints.length === 0}
             title={waypoints.length === 0 ? t.buttons.needWaypoints : undefined}
-            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1624,7 +1624,7 @@ const handleManualAddressSubmit = useCallback(async () => {
                 : isProcessingAi ? t.buttons.waitForAi
                 : undefined
             }
-            className="w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
+            className="min-h-11 w-full h-full flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg text-xs leading-tight text-center font-medium transition-colors disabled:opacity-40"
             style={{
               background: 'var(--nav-bg-input)',
               border: '1px solid var(--nav-border)',
@@ -1646,18 +1646,6 @@ const handleManualAddressSubmit = useCallback(async () => {
         isProcessing={isProcessingAi}
         doneStages={agentDoneStages}
         degraded={agentDegraded}
-        showResult={false} // the result is the TripSummaryCard in the planner body
-        onDismiss={() => {}}
-        waypoints={waypoints}
-        routeSettings={routeSettings}
-        routeDistance={routeDistance}
-        routeDuration={routeDuration}
-        routeQuality={routeQuality}
-        fuelSuggestion={fuelSuggestion}
-        weather={weatherData}
-        onSaveRoute={() => setShowSaveDialog(true)}
-        onShareReceipt={() => setShowResultShareDialog(true)}
-        onApplyLivePrice={handleApplyFuelSuggestion}
       />
       <PromptComposer
         value={chatInput}

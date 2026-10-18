@@ -10,6 +10,19 @@ type Clickable = { onClick?: (e: React.MouseEvent) => void };
 const FOCUSABLE =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
+// Ref-counted so nested/multiple open dialogs keep the page locked until the last closes.
+let scrollLocks = 0
+let savedOverflow = ''
+function lockScroll() {
+  if (scrollLocks++ === 0) {
+    savedOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+  }
+  return () => {
+    if (--scrollLocks === 0) document.body.style.overflow = savedOverflow
+  }
+}
+
 export function DialogTrigger({
   children,
   asChild = false,
@@ -65,6 +78,8 @@ export function Dialog({
   const panelRef = useRef<HTMLDivElement>(null);
   const onOpenChangeRef = useRef(onOpenChange);
   onOpenChangeRef.current = onOpenChange;
+
+  useEffect(() => (open ? lockScroll() : undefined), [open]);
 
   // Modal behavior: focus moves in on open, Escape closes, Tab cycles inside,
   // and focus returns to whatever opened the dialog.
