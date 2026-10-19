@@ -18,12 +18,12 @@ export function Button({
     default: 'bg-primary text-primary-foreground hover:bg-primary/90',
     outline: 'border border-edge bg-transparent hover:bg-inset',
     ghost: 'hover:bg-inset hover:text-content',
-    destructive: 'bg-danger-soft text-white hover:bg-danger-soft'
+    destructive: 'bg-danger text-on-danger hover:bg-danger/90'
   };
 
   const sizeStyles = {
-    default: 'min-h-11 px-4 py-2',
-    sm: 'min-h-11 px-3 text-sm',
+    default: 'min-h-11 min-w-11 px-4 py-2',
+    sm: 'min-h-11 min-w-11 px-3 text-sm',
     lg: 'h-12 px-8',
     icon: 'h-11 w-11'
   };

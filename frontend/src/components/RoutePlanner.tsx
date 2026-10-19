@@ -17,6 +17,7 @@ import { MapPin, Save, Upload, Trash2, FolderOpen, Loader2, Edit, FilePlus, Sear
 import { toast } from 'sonner'
 import { routeService, type Route } from '../services/routeService'
 import { geocodingService, type Place } from '../services/geocodingService'
+import { isCoordinateLikeName } from '../utils/waypointName'
 import { PlaceCombobox } from './PlaceCombobox'
 import { routingService } from '../services/routingService'
 import { streamRouteWithAgent, type AgentStage } from '../services/agentStreamService'
@@ -130,6 +131,10 @@ export function RoutePlanner() {
   // over AI/user edits made before the garage fetch resolves
   const appliedDefaultCar = useRef(false)
   const [departureDate, setDepartureDate] = useState<string>(todayISO())
+  // The picker defaults to today for the weather lookup, but that is a planning date, not a trip date:
+  // the summary chip and saved route only carry a date the user, the AI or a saved route actually set.
+  const [departureChosen, setDepartureChosen] = useState(false)
+  const chooseDepartureDate = useCallback((date: string) => { setDepartureDate(date); setDepartureChosen(true) }, [])
   const [weatherData, setWeatherData] = useState<WeatherData | null>(null)
   // Latest-wins guard, same rationale as fuelFetchSeq above
   const weatherFetchSeq = useRef(0)
@@ -264,7 +269,7 @@ export function RoutePlanner() {
       if (draft) {
         setWaypoints(draft.waypoints)
         setRouteSettings(draft.routeSettings)
-        if (draft.departureDate) setDepartureDate(draft.departureDate)
+        if (draft.departureDate) chooseDepartureDate(draft.departureDate)
         if (resumeMode === 'save' && user) {
           setRouteName(defaultTripName(draft.waypoints))
           setShowSaveDialog(true)
@@ -297,8 +302,8 @@ export function RoutePlanner() {
   }, [language])
 
   const stashDraft = useCallback(() => {
-    if (waypoints.length > 0) savePlannerDraft({ waypoints, routeSettings, departureDate })
-  }, [waypoints, routeSettings, departureDate])
+    if (waypoints.length > 0) savePlannerDraft({ waypoints, routeSettings, departureDate: departureChosen ? departureDate : undefined })
+  }, [waypoints, routeSettings, departureDate, departureChosen])
 
   /** Save from the result card / fallback button: prefilled name, or sign-in for guests. */
   const openSaveDialog = useCallback(() => {
@@ -757,7 +762,7 @@ export function RoutePlanner() {
         currency: routeSettings.currency,
         passengerCount: routeSettings.passengerCount,
         fuelType: routeSettings.fuelType,
-        departureDate,
+        departureDate: departureChosen ? departureDate : undefined,
         // Only a calculated estimate is claimed; the server re-verifies it.
         snapshot: routeQuality === 'road' || routeQuality === 'approximate'
           ? {
@@ -831,7 +836,7 @@ export function RoutePlanner() {
       saveInFlight.current = false
       setSavingRoute(false)
     }
-  }, [waypoints, routeSettings, routeName, departureDate, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, loadedUpdatedAt, navigate, language])
+  }, [waypoints, routeSettings, routeName, departureDate, departureChosen, routeQuality, routeDistance, routeDuration, routeReady, t, isEditMode, currentRouteId, loadedUpdatedAt, navigate, language])
 
   const loadRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -846,6 +851,14 @@ export function RoutePlanner() {
       }))
 
       setWaypoints(loadedWaypoints)
+      // Routes saved while the geocoder was down store "50.450, 30.524" as the name; fill in the
+      // place name in the background and leave the coordinates if the lookup fails.
+      for (const wp of loadedWaypoints) {
+        if (!isCoordinateLikeName(wp.name)) continue
+        geocodingService.resolveCoordinateName(wp.lat, wp.lng, language).then(name => {
+          if (name) setWaypoints(prev => prev.map(p => (p.id === wp.id && isCoordinateLikeName(p.name) ? { ...p, name } : p)))
+        })
+      }
       setRouteSettings({
         ...DEFAULT_ROUTE_SETTINGS,
         fuelConsumption: route.fuelConsumption,
@@ -867,6 +880,7 @@ export function RoutePlanner() {
       setSavedPriceDate(route.updatedAt ?? route.createdAt)
       setLoadedUpdatedAt(route.updatedAt)
       setDepartureDate(route.departureDate ?? todayISO())
+      setDepartureChosen(!!route.departureDate)
       setShowLoadDialog(false)
       setShowWelcomeScreen(false) // Exit welcome screen when loading a route
 
@@ -878,7 +892,7 @@ export function RoutePlanner() {
       console.error('Failed to load route:', error)
       toast.error(t.toasts.routeLoadFailed)
     }
-  }, [t, setRouteSettings])
+  }, [t, language, setRouteSettings])
 
   const deleteRouteFromServer = useCallback(async (routeId: number) => {
     try {
@@ -1235,7 +1249,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         // Chat-parsed departure date ("trip on Saturday") updates the picker;
         // absent means unmentioned — keep the current date (no-reset contract)
         if (agentData.departureDate) {
-          setDepartureDate(agentData.departureDate);
+          chooseDepartureDate(agentData.departureDate);
         }
 
         // Weather arrived with the AI response — adopt it and skip the one
@@ -1364,7 +1378,7 @@ const handleManualAddressSubmit = useCallback(async () => {
       setAgentDoneStages([]);
       setAgentDegraded(false);
     }
-  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings, isGuest, askToSignIn]);
+  }, [t, showWelcomeScreen, language, waypoints, routeSettings.fuelType, routeSettings.currency, garageCars, carCatalog, setRouteSettings, isGuest, askToSignIn, chooseDepartureDate]);
 
   // Helper function to calculate total distance (commented out for now)
   // const calculateTotalDistance = () => {
@@ -1439,7 +1453,7 @@ const handleManualAddressSubmit = useCallback(async () => {
           estimatePending={!routeReady}
           fuelSuggestion={fuelSuggestion}
           weather={weatherData}
-          departureDate={departureDate}
+          departureDate={departureChosen ? departureDate : undefined}
           savedPriceDate={savedPriceDate}
           onSaveRoute={openSaveDialog}
           onShareReceipt={() => { if (routeReady && routeQuality === 'road') setShowResultShareDialog(true) }}
@@ -1617,7 +1631,7 @@ const handleManualAddressSubmit = useCallback(async () => {
         onApplyFuelSuggestion={handleApplyFuelSuggestion}
         weather={weatherData}
         departureDate={departureDate}
-        onDepartureDateChange={setDepartureDate}
+        onDepartureDateChange={chooseDepartureDate}
         garageCars={garageCars}
         onSelectCar={handleSelectCar}
       />
@@ -1670,8 +1684,8 @@ const handleManualAddressSubmit = useCallback(async () => {
               {t.buttons.loadRoute}
             </button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent closeLabel={t.buttons.close}>
+            <DialogHeader className="pr-10">
               <DialogTitle>{t.dialogs.load.title}</DialogTitle>
               <DialogDescription>{t.dialogs.load.description}</DialogDescription>
             </DialogHeader>

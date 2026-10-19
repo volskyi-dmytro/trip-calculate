@@ -6,7 +6,7 @@ import { getTranslation, type Language } from '../i18n/routePlanner'
 import { Button } from '@/components/ui/button'
 import { MapContainer } from './MapContainer'
 import { TripResultCard } from './TripResultCard'
-import { SignInSheet } from './auth/SignInSheet'
+import { SignInSheet, type SignInReason } from './auth/SignInSheet'
 import { getFuelSuggestion } from '../services/fuelPriceService'
 import { withLocalePrefix } from '../utils/locale'
 import { track } from '../lib/analytics'
@@ -54,7 +54,7 @@ export function PlannerGuestPreview() {
   const t = getTranslation(language as Language)
   const [settings, setSettings] = useState<RouteSettings>(DEMO_SETTINGS)
   const [livePrice, setLivePrice] = useState(false)
-  const [signInOpen, setSignInOpen] = useState(false)
+  const [signInReason, setSignInReason] = useState<SignInReason | null>(null)
   const plannerPath = withLocalePrefix('/route-planner', language)
 
   useEffect(() => {
@@ -67,9 +67,9 @@ export function PlannerGuestPreview() {
     return () => { cancelled = true }
   }, [])
 
-  const askSignIn = (source: string) => {
+  const askSignIn = (source: string, reason: SignInReason = 'ai') => {
     track('cta_click', { location: 'sample', label: source })
-    setSignInOpen(true)
+    setSignInReason(reason)
   }
 
   return (
@@ -78,9 +78,10 @@ export function PlannerGuestPreview() {
         <div className="text-center mb-6">
           <span
             className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full"
-            style={{ background: 'var(--accent-soft)', color: 'var(--nav-accent)' }}
+            style={{ background: 'var(--accent-soft)', color: 'var(--text-2)' }}
           >
-            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            {/* Accent on its own tint is 4.19:1; the label uses --text-2, the icon keeps the brand colour */}
+            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" style={{ color: 'var(--accent)' }} />
             {t.guestPreview.badge}
           </span>
           <h1 className="text-2xl md:text-3xl font-bold mt-3 text-content">
@@ -108,8 +109,8 @@ export function PlannerGuestPreview() {
               routeDuration={DEMO_DURATION_MIN}
               fuelSuggestion={null}
               weather={null}
-              onSaveRoute={() => askSignIn('sample_save')}
-              onShareReceipt={() => askSignIn('sample_share')}
+              onSaveRoute={() => askSignIn('sample_save', 'save')}
+              onShareReceipt={() => askSignIn('sample_share', 'share')}
             />
             {!livePrice && (
               <p className="text-xs text-caption -mt-2">* {t.guestPreview.examplePrice}</p>
@@ -143,9 +144,9 @@ export function PlannerGuestPreview() {
         </div>
       </div>
       <SignInSheet
-        open={signInOpen}
-        onOpenChange={setSignInOpen}
-        reason="ai"
+        open={signInReason !== null}
+        onOpenChange={(open) => { if (!open) setSignInReason(null) }}
+        reason={signInReason ?? 'ai'}
         returnTo={plannerPath}
         source="sample"
       />

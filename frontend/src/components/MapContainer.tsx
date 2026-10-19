@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import mapboxgl from 'mapbox-gl'
+import { Route } from 'lucide-react'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import type { Waypoint } from './RoutePlanner'
 import { useTheme } from '../contexts/ThemeContext'
@@ -25,6 +26,8 @@ const DEFAULT_PADDING = 50
 export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdateWaypoint, onDeleteWaypoint, bottomPadding }: MapContainerProps) {
   const mapRef = useRef<mapboxgl.Map | null>(null)
   const [mapFailed, setMapFailed] = useState(false)
+  // Tiles/style take a few seconds on first load; show a placeholder instead of a blank box.
+  const [mapReady, setMapReady] = useState(false)
   const mapContainerRef = useRef<HTMLDivElement>(null)
   const markersRef = useRef<Map<string, mapboxgl.Marker>>(new Map())
   const onAddWaypointRef = useRef(onAddWaypoint)
@@ -141,6 +144,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
 
     if (!mapboxgl.accessToken) {
       console.error('⚠️ [MAP] VITE_MAPBOX_TOKEN is not set. Map will not load.')
+      setMapReady(true)
       return
     }
 
@@ -186,6 +190,7 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
     // Wait for map to load before adding initial data
     map.on('load', () => {
       isMapLoadedRef.current = true
+      setMapReady(true)
       console.log('✅ [MAP] Mapbox GL JS initialized')
 
       // Add source for route line (initially empty)
@@ -535,5 +540,14 @@ export function MapContainer({ waypoints, routeGeometry, onAddWaypoint, onUpdate
       </div>
     )
   }
-  return <div id="map" ref={mapContainerRef} className="w-full h-full" />
+  return (
+    <div className="relative w-full h-full">
+      <div id="map" ref={mapContainerRef} className="w-full h-full" />
+      {!mapReady && (
+        <div data-testid="map-skeleton" aria-hidden="true" className="absolute inset-0 z-[2] flex items-center justify-center bg-inset motion-safe:animate-pulse pointer-events-none">
+          <Route className="h-10 w-10 text-caption" />
+        </div>
+      )}
+    </div>
+  )
 }

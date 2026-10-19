@@ -1,4 +1,4 @@
-import { formatMoney, litreUnit } from '../lib/format'
+import { formatPrice, litreUnit } from '../lib/format'
 import { useState, useEffect } from 'react'
 import { normalizeDecimal } from '../services/routeCost'
 import type { Waypoint, RouteSettings } from './RoutePlanner'
@@ -522,7 +522,7 @@ export function RoutePanel({
             routeSettings.fuelPriceTouched ? (
               <button type="button" className="fuel-chip fuel-chip-action"
                       onClick={onApplyFuelSuggestion}>
-                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {formatMoney(fuelSuggestion.price, fuelSuggestion.currency, language)}/{litreUnit(language)}
+                <Fuel className="h-3.5 w-3.5" aria-hidden="true" /> {t.fuel.applyLive}: {formatPrice(fuelSuggestion.price, fuelSuggestion.currency, language)}/{litreUnit(language)}
               </button>
             ) : (
               <span className="fuel-chip">

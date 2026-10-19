@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { RoutePlanner } from '../components/RoutePlanner';
 import { AppHeader } from '../components/common/AppHeader';
 import { SkipLink } from '../components/common/PageShell';
-import { Header } from '../components/common/Header';
 import { PlannerGuestPreview } from '../components/PlannerGuestPreview';
 import { useAuth } from '../contexts/AuthContext';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -30,7 +29,7 @@ export function RoutePlannerPage() {
     return (
       <>
         <SkipLink />
-        <Header />
+        <AppHeader />
         <main id="main" tabIndex={-1} className="flex items-center justify-center min-h-screen" role="status">
           <Loader2 className="h-8 w-8 animate-spin text-primary" aria-hidden="true" />
           <span className="sr-only">{t('common.loading')}</span>
@@ -43,7 +42,7 @@ export function RoutePlannerPage() {
     return (
       <>
         <SkipLink />
-        <Header />
+        <AppHeader />
         <main id="main" tabIndex={-1}>
           <PlannerGuestPreview />
         </main>
