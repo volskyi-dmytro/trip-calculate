@@ -655,6 +655,8 @@ main:focus {
     align-items: center;
     gap: 8px;
     min-height: 44px;
+    /* Icon-only on phones: still a 44px-wide target */
+    min-width: 44px;
     padding: 8px 8px 8px 0;
     color: #ffffff;
     font-size: 1rem;
@@ -797,6 +799,11 @@ main:focus {
 .app-bar .brand,
 .app-bar .brand:hover {
     color: var(--text);
+}
+
+/* The hero's white icon is invisible on the light strip (1.02:1); accent is >=3:1 in both themes */
+.app-bar .brand svg {
+    color: var(--accent);
 }
 
 .app-bar .icon-btn,
@@ -1697,3 +1704,6 @@ footer {
 }
 
 .touch-link { min-height: 44px; display: inline-flex; align-items: center; }
+/* Links inside running text keep the paragraph's line height (WCAG 2.5.8 exempts inline links);
+   44px would turn a 21px contact line into a 44px+ block. */
+.footer-about .touch-link { display: inline; min-height: 0; }
