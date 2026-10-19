@@ -1,4 +1,4 @@
-import { formatMoney, formatDistance, litreUnit } from '../lib/format'
+import { formatMoney, formatPrice, formatDistance, litreUnit } from '../lib/format'
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
@@ -158,6 +158,7 @@ export function ReceiptPage() {
   const r = receipt!;
   const geometry = parseGeometry(r.routeGeometry);
   const money = (v: number) => formatMoney(v, r.currency, lang);
+  const price = (v: number) => formatPrice(v, r.currency, lang);
 
   return (
     <><SkipLink /><main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4 py-10">
@@ -190,7 +191,7 @@ export function ReceiptPage() {
           <div className="receipt-row">
             <dt>{t.fuelPrice}</dt>
             <dd>
-              {money(r.fuelPrice)}/{litreUnit(lang)}
+              {price(r.fuelPrice)}/{litreUnit(lang)}
             </dd>
           </div>
           <div className="receipt-row">

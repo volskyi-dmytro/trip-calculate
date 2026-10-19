@@ -5,7 +5,7 @@ import { Loader2, MapPin, Clock, Fuel, ArrowRight } from 'lucide-react';
 import { PageShell } from '../components/common/PageShell';
 import { QuickCalculator } from '../components/QuickCalculator';
 import { useLanguage } from '../contexts/LanguageContext';
-import { formatMoney, formatDistance, formatDuration } from '../lib/format';
+import { formatMoney, formatPrice, formatDistance, formatDuration } from '../lib/format';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { withLocalePrefix } from '../utils/locale';
 import { plannerPrefillQuery } from '../utils/plannerPrefill';
@@ -135,7 +135,7 @@ export function CityRoutePage() {
     r.fuelPricePerLiter !== null && {
       icon: Fuel,
       label: t('cityRoute.fuelPrice'),
-      value: `${formatMoney(r.fuelPricePerLiter, r.currency, language)}/${litreUnit(language)}`,
+      value: `${formatPrice(r.fuelPricePerLiter, r.currency, language)}/${litreUnit(language)}`,
     },
     r.totalCost !== null && {
       icon: ArrowRight,

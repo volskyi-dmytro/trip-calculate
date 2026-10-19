@@ -21,6 +21,17 @@ export function formatMoney(amount: number, currency: string, locale: string): s
   }
 }
 
+/** Per-litre prices keep up to 3 decimals ("₴85.995/L"); totals stay on formatMoney (2 decimals). */
+export function formatPrice(amount: number, currency: string, locale: string): string {
+  try {
+    return new Intl.NumberFormat(intlLocale(locale), {
+      style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 3,
+    }).format(amount)
+  } catch {
+    return `${amount.toFixed(3).replace(/0$/, '')} ${currency}`
+  }
+}
+
 /** Whole kilometres ("543 km"); under 10 km keeps one decimal so short hops don't read "0 km". */
 export function formatDistance(km: number, locale: string): string {
   return new Intl.NumberFormat(intlLocale(locale), {
