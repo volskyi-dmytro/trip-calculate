@@ -6,7 +6,7 @@ import { useLanguage } from '../../contexts/LanguageContext';
 import { buildLoginUrl } from '../../utils/loginUrl';
 import { track } from '../../lib/analytics';
 
-export type SignInReason = 'general' | 'save' | 'ai';
+export type SignInReason = 'general' | 'save' | 'share' | 'ai';
 
 interface SignInSheetProps {
   open: boolean;
@@ -30,7 +30,9 @@ export function SignInSheet({
 }: SignInSheetProps) {
   const { t } = useLanguage();
   const { login } = useAuth();
-  const titleKey = reason === 'save' ? 'signInSheet.title.save' : reason === 'ai' ? 'signInSheet.title.ai' : 'signInSheet.title';
+  const titleKey = reason === 'save' ? 'signInSheet.title.save' : reason === 'share' ? 'signInSheet.title.share' : reason === 'ai' ? 'signInSheet.title.ai' : 'signInSheet.title';
+  // The description must also match the action the user just tried.
+  const textKey = reason === 'save' ? 'signInSheet.text.save' : reason === 'share' ? 'signInSheet.text.share' : 'signInSheet.text';
 
   useEffect(() => {
     if (open) track('signin_dialog_open', { source, reason });
@@ -49,7 +51,7 @@ export function SignInSheet({
             <Sparkles className="h-5 w-5" aria-hidden="true" />
             {t(titleKey)}
           </DialogTitle>
-          <DialogDescription>{t('signInSheet.text')}</DialogDescription>
+          <DialogDescription>{t(textKey)}</DialogDescription>
         </DialogHeader>
         <p className="flex items-start gap-2 text-sm text-muted-foreground">
           <Lock className="h-4 w-4 mt-0.5 flex-shrink-0" aria-hidden="true" />
