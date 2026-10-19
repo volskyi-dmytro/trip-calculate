@@ -1,9 +1,10 @@
+import { X } from 'lucide-react';
 import React, { cloneElement, createContext, isValidElement, useContext, useEffect, useId, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
 // Title/description ids flow from Dialog to its parts, so the dialog is
 // announced with its name and description without every caller wiring ids.
-const DialogIdsContext = createContext<{ titleId: string; descriptionId: string } | null>(null);
+const DialogIdsContext = createContext<{ titleId: string; descriptionId: string; close: () => void } | null>(null);
 
 type Clickable = { onClick?: (e: React.MouseEvent) => void };
 
@@ -171,7 +172,7 @@ export function Dialog({
             tabIndex={-1}
             className="relative z-[100] outline-none"
           >
-            <DialogIdsContext.Provider value={{ titleId, descriptionId }}>
+            <DialogIdsContext.Provider value={{ titleId, descriptionId, close: () => onOpenChange(false) }}>
               {content}
             </DialogIdsContext.Provider>
           </div>
@@ -184,13 +185,27 @@ export function Dialog({
 
 export function DialogContent({
   children,
-  className = ''
+  className = '',
+  closeLabel
 }: {
   children: React.ReactNode;
   className?: string;
+  /** Translated aria-label; when set, renders a 44x44 Close button (for dialogs with no Cancel/Not now). */
+  closeLabel?: string;
 }) {
+  const ids = useContext(DialogIdsContext);
   return (
-    <div className={`glass-modal rounded-lg p-6 max-w-lg w-full ${className}`}>
+    <div className={`glass-modal rounded-lg p-6 max-w-lg w-full ${closeLabel ? 'relative' : ''} ${className}`}>
+      {closeLabel && (
+        <button
+          type="button"
+          aria-label={closeLabel}
+          onClick={ids?.close}
+          className="absolute top-1 right-1 h-11 w-11 inline-flex items-center justify-center rounded-md text-secondary hover:bg-inset hover:text-content"
+        >
+          <X className="h-5 w-5" aria-hidden="true" />
+        </button>
+      )}
       {children}
     </div>
   );

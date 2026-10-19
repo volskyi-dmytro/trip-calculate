@@ -1670,8 +1670,8 @@ const handleManualAddressSubmit = useCallback(async () => {
               {t.buttons.loadRoute}
             </button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
+          <DialogContent closeLabel={t.buttons.close}>
+            <DialogHeader className="pr-10">
               <DialogTitle>{t.dialogs.load.title}</DialogTitle>
               <DialogDescription>{t.dialogs.load.description}</DialogDescription>
             </DialogHeader>
