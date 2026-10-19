@@ -32,11 +32,11 @@ export function AdminRoute({ children }: AdminRouteProps) {
         <Card className="max-w-md">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="p-4 bg-red-100 dark:bg-red-900/20 rounded-full">
-                <ShieldAlert className="h-12 w-12 text-red-600 dark:text-red-400" />
+              <div className="p-4 bg-danger-soft rounded-full">
+                <ShieldAlert className="h-12 w-12 text-danger" />
               </div>
             </div>
-            <CardTitle className="text-2xl text-red-600 dark:text-red-400">
+            <CardTitle className="text-2xl text-danger">
               {t('admin.accessDenied.title')}
             </CardTitle>
             <CardDescription className="text-base mt-2">

@@ -844,7 +844,7 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
   background: none;
   border: none;
   padding: 0 0 0 6px;
-  min-height: 32px;
+  min-height: 44px;
   font: inherit;
   font-size: 0.85rem;
   color: var(--accent);
@@ -866,3 +866,5 @@ body[data-theme="dark"] .waypoint-card-wrapper.dragging .waypoint-card {
 @keyframes prompt-send-pulse {
   50% { transform: scale(1.08); }
 }
+
+.trip-summary-saved-price { color: var(--info); background: var(--info-soft); border-radius: var(--radius-sm); padding: 6px 10px; font-size: 0.8rem; }

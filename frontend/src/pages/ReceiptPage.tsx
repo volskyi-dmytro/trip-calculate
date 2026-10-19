@@ -1,4 +1,4 @@
-import { litreUnit } from '../lib/format'
+import { formatMoney, formatDistance, litreUnit } from '../lib/format'
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Loader2, MapPin } from 'lucide-react';
@@ -8,13 +8,14 @@ import type { Language } from '../types';
 import { useDocumentTitle } from '../hooks/useDocumentTitle';
 import { receiptService } from '../services/receiptService';
 import type { Receipt } from '../types/Receipt';
+import { SkipLink } from '../components/common/PageShell';
 import { withLocalePrefix } from '../utils/locale';
 
 type PageState = 'loading' | 'ready' | 'expired' | 'notFound';
 
 /** Decorative SVG sketch of the route — deliberately not a real map:
  *  zero tile quota, zero JS weight, and it keeps the receipt look. */
-function RouteSketch({ geometry }: { geometry: Array<[number, number]> }) {
+function RouteSketch({ geometry, label }: { geometry: Array<[number, number]>; label: string }) {
   const lats = geometry.map((p) => p[0]);
   const lngs = geometry.map((p) => p[1]);
   const minLat = Math.min(...lats);
@@ -38,7 +39,7 @@ function RouteSketch({ geometry }: { geometry: Array<[number, number]> }) {
   const [x1, y1] = lastPoint.split(',').map(Number);
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" aria-hidden="true">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label={label}>
       <polyline
         points={points}
         fill="none"
@@ -132,15 +133,15 @@ export function ReceiptPage() {
 
   if (state === 'loading') {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <><SkipLink /><main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" role="status" aria-label={tl('common.loading')} />
+      </main></>
     );
   }
 
   if (state === 'expired' || state === 'notFound') {
     return (
-      <div className="min-h-screen flex items-center justify-center px-4">
+      <><SkipLink /><main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4">
         <div className="receipt-card text-center">
           <h1 className="text-xl font-bold mb-2">
             {state === 'expired' ? t.expiredTitle : t.notFoundTitle}
@@ -150,46 +151,46 @@ export function ReceiptPage() {
             {t.cta}
           </button>
         </div>
-      </div>
+      </main></>
     );
   }
 
   const r = receipt!;
   const geometry = parseGeometry(r.routeGeometry);
-  const money = (v: number) => `${v.toFixed(2)} ${r.currency}`;
+  const money = (v: number) => formatMoney(v, r.currency, lang);
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10">
+    <><SkipLink /><main id="main" tabIndex={-1} className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="receipt-card receipt-torn">
         <div className="text-center mb-4">
           <span className="text-xs uppercase tracking-widest opacity-60">{t.receipt}</span>
-          {(r.originLabel || r.destinationLabel) && (
+          {(r.originLabel || r.destinationLabel) ? (
             <h1 className="text-lg font-bold mt-1 flex items-center justify-center gap-2">
               <MapPin className="h-4 w-4 shrink-0" aria-hidden="true" />
               {r.originLabel ?? '…'} → {r.destinationLabel ?? '…'}
             </h1>
-          )}
+          ) : <h1 className="text-lg font-bold mt-1">{t.receipt}</h1>}
         </div>
 
         {geometry && geometry.length >= 2 && (
           <div className="text-primary mb-4">
-            <RouteSketch geometry={geometry} />
+            <RouteSketch geometry={geometry} label={`${t.receipt}: ${r.originLabel ?? "…"} → ${r.destinationLabel ?? "…"}`} />
           </div>
         )}
 
         <dl className="receipt-rows">
           <div className="receipt-row">
             <dt>{t.distance}</dt>
-            <dd>{r.distanceKm.toFixed(0)} km</dd>
+            <dd>{formatDistance(r.distanceKm, lang)}</dd>
           </div>
           <div className="receipt-row">
             <dt>{t.consumption}</dt>
-            <dd>{r.fuelConsumption} {litreUnit(language)}/100km</dd>
+            <dd>{r.fuelConsumption} {litreUnit(lang)}/100km</dd>
           </div>
           <div className="receipt-row">
             <dt>{t.fuelPrice}</dt>
             <dd>
-              {r.fuelPrice} {r.currency}/{litreUnit(language)}
+              {money(r.fuelPrice)}/{litreUnit(lang)}
             </dd>
           </div>
           <div className="receipt-row">
@@ -213,14 +214,14 @@ export function ReceiptPage() {
           <button className="btn w-full" onClick={handleCta}>
             {t.cta}
           </button>
-          <p className="text-xs opacity-60">
+          <p className="text-xs text-secondary">
             {t.poweredBy}{' '}
-            <a href="/" className="underline font-semibold">
+            <a href="/" className="touch-link underline font-semibold">
               Trip Calculate
             </a>
           </p>
         </div>
       </div>
-    </div>
+    </main></>
   );
 }

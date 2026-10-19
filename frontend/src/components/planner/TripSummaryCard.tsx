@@ -1,6 +1,6 @@
 import { useId, useState, type Ref } from 'react'
-import { ChevronDown, Clock, Fuel, Navigation, Route as RouteIcon, Save, Share2 } from 'lucide-react'
-import { litreUnit } from '../../lib/format'
+import { CalendarDays, ChevronDown, Clock, Fuel, Navigation, Route as RouteIcon, Save, Share2 } from 'lucide-react'
+import { formatDate, formatDistance, litreUnit } from '../../lib/format'
 import { useLanguage } from '../../contexts/LanguageContext'
 import { getTranslation, type Language } from '../../i18n/routePlanner'
 import { wazeLegLinks } from '../../services/wazeExport'
@@ -8,7 +8,6 @@ import type { EstimateQuality } from '../../services/routingService'
 import type { FuelSuggestion } from '../../services/fuelPriceService'
 import type { WeatherData } from '../../types/weather'
 import { displayWaypointName } from '../../utils/waypointName'
-import { formatDistance } from '../../lib/format'
 import type { RouteSettings, Waypoint } from '../RoutePlanner'
 import { WeatherStrip } from '../WeatherStrip'
 import { summarizeTrip } from './tripSummary'
@@ -23,6 +22,8 @@ export interface TripSummaryCardProps {
   estimatePending?: boolean
   fuelSuggestion: FuelSuggestion | null
   weather: WeatherData | null
+  departureDate?: string
+  savedPriceDate?: string
   onSaveRoute: () => void
   onShareReceipt: () => void
   /** Offered only while the price used isn't already the live one. */
@@ -36,7 +37,7 @@ export interface TripSummaryCardProps {
 /** The single place a trip result is shown: per-person cost first, once; the arithmetic lives in a closed disclosure. */
 export function TripSummaryCard({
   waypoints, routeSettings, routeDistance, routeDuration, routeQuality,
-  fuelSuggestion, weather, onSaveRoute, onShareReceipt, onApplyLivePrice, saveLabel, headingRef, estimatePending = false,
+  fuelSuggestion, weather, departureDate, savedPriceDate, onSaveRoute, onShareReceipt, onApplyLivePrice, saveLabel, headingRef, estimatePending = false,
 }: TripSummaryCardProps) {
   const { language } = useLanguage()
   const t = getTranslation(language as Language)
@@ -84,10 +85,21 @@ export function TripSummaryCard({
           <Fuel className="h-4 w-4" aria-hidden="true" />
           <span className="sr-only">{t.routeSummary.fuelNeeded}: </span>{s.fuel}
         </li>
+        {departureDate && (
+          <li className="trip-summary-chip">
+            <CalendarDays className="h-4 w-4" aria-hidden="true" />
+            <time dateTime={departureDate}>{formatDate(departureDate, language)}</time>
+          </li>
+        )}
       </ul>
 
       <WeatherStrip weather={weather} />
 
+      {savedPriceDate && !usingLivePrice && (
+        <p className="trip-summary-saved-price">
+          {t.resultCard.savedPrice} · <time dateTime={savedPriceDate}>{formatDate(savedPriceDate, language)}</time>
+        </p>
+      )}
       <p className="trip-summary-price">
         <Fuel className="h-4 w-4" aria-hidden="true" />
         {t.resultCard.fuelPrice.replace('{price}', `${s.money(routeSettings.fuelCostPerLiter)}/${litreUnit(language)}`)}

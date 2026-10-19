@@ -120,4 +120,5 @@ assets/dashboard-ui-v1/*.png
 
 # Playwright
 e2e/.results/
+frontend/e2e/.results/
 playwright-report/

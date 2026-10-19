@@ -76,7 +76,7 @@ export function SecuritySection() {
         <CardContent>
           <div className="space-y-4">
             {/* Authentication Provider */}
-            <div className="flex items-center justify-between p-3 rounded-lg glass-inset border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between p-3 rounded-lg glass-inset border border-edge">
               <div className="flex items-center">
                 <div className="flex-shrink-0 mr-3">
                   <img
@@ -90,10 +90,10 @@ export function SecuritySection() {
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-content">
                     {t('dashboard.security.provider')}
                   </p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-xs text-caption">
                     Google OAuth 2.0
                   </p>
                 </div>
@@ -101,7 +101,7 @@ export function SecuritySection() {
             </div>
 
             {/* Session Info */}
-            <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+            <div className="text-sm text-secondary space-y-2">
               <p>
                 <span className="font-medium">{t('dashboard.security.sessionExpires')}:</span>{' '}
                 {t('dashboard.security.sessionDuration')}
@@ -124,25 +124,25 @@ export function SecuritySection() {
             </div>
 
             {/* Account settings */}
-            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="pt-4 border-t border-edge">
               {/* p, not h4/h1-h3: the global h1-h4 base rule sets an
                   unlayered color that beats Tailwind's layered utilities
                   (see CLAUDE.md), silently discarding text-gray-500 here. */}
-              <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 dark:text-gray-400 mb-2">
+              <p className="text-xs font-semibold uppercase tracking-wide text-caption mb-2">
                 {t('dashboard.security.accountSettings')}
               </p>
               <button
                 onClick={handleDownloadData}
-                className="w-full flex items-center p-3 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset hover:bg-white/70 dark:hover:bg-white/10 transition-colors"
+                className="w-full flex items-center p-3 rounded-lg border border-edge glass-inset hover:bg-surface transition-colors"
               >
                 <div className="flex-shrink-0">
                   <Download className="h-5 w-5 text-primary" />
                 </div>
                 <div className="ml-3 text-left flex-1">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
+                  <p className="text-sm font-medium text-content">
                     {t('dashboard.quickActions.downloadData')}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  <p className="text-xs text-secondary mt-0.5">
                     {t('dashboard.quickActions.downloadDataDesc')}
                   </p>
                 </div>
@@ -150,9 +150,9 @@ export function SecuritySection() {
             </div>
 
             {/* Danger zone — visually separated, same confirmation as before */}
-            <div className="pt-4 border-t border-red-200 dark:border-red-900/40">
+            <div className="pt-4 border-t border-danger">
               {/* p, not h4: see the account-settings label above.
-                  --danger, not text-red-600: on this plain card surface
+                  --danger, not text-danger: on this plain card surface
                   Tailwind's red-600/400 measures under 4.5:1 in light mode;
                   the calibrated --danger token clears it in both themes. */}
               <p
@@ -163,16 +163,16 @@ export function SecuritySection() {
               </p>
               <button
                 onClick={() => setDeleteDialogOpen(true)}
-                className="w-full flex items-center p-3 rounded-lg border border-red-200/60 dark:border-red-900/40 glass-inset hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                className="w-full flex items-center p-3 rounded-lg border border-danger glass-inset hover:bg-danger-soft transition-colors"
               >
                 <div className="flex-shrink-0">
-                  <Trash2 className="h-5 w-5 text-red-600 dark:text-red-400" />
+                  <Trash2 className="h-5 w-5 text-danger" />
                 </div>
                 <div className="ml-3 text-left flex-1">
-                  <p className="text-sm font-medium text-red-600 dark:text-red-400">
+                  <p className="text-sm font-medium text-danger">
                     {t('dashboard.quickActions.deleteAccount')}
                   </p>
-                  <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                  <p className="text-xs text-secondary mt-0.5">
                     {t('dashboard.quickActions.deleteAccountDesc')}
                   </p>
                 </div>
@@ -186,7 +186,7 @@ export function SecuritySection() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-red-600 dark:text-red-400">
+            <DialogTitle className="text-danger">
               {t('dashboard.quickActions.deleteAccountTitle')}
             </DialogTitle>
             <DialogDescription>

@@ -83,18 +83,18 @@ export function PlannerGuestPreview() {
             <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
             {t.guestPreview.badge}
           </span>
-          <h1 className="text-2xl md:text-3xl font-bold mt-3 text-slate-900 dark:text-white">
+          <h1 className="text-2xl md:text-3xl font-bold mt-3 text-content">
             {t.guestPreview.heading}
           </h1>
           {/* The sentence this trip was "planned" from — proves the AI claim */}
           <figure className="mt-4 inline-flex items-start gap-2 text-left rounded-xl px-4 py-3 glass-panel max-w-xl">
             <MessageSquareQuote className="w-5 h-5 mt-0.5 flex-shrink-0" aria-hidden="true" style={{ color: 'var(--accent)' }} />
             <div>
-              <figcaption className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t.guestPreview.promptLabel}</figcaption>
-              <blockquote className="text-base font-medium text-slate-900 dark:text-white">“{t.guestPreview.prompt}”</blockquote>
+              <figcaption className="text-xs font-semibold text-caption">{t.guestPreview.promptLabel}</figcaption>
+              <blockquote className="text-base font-medium text-content">“{t.guestPreview.prompt}”</blockquote>
             </div>
           </figure>
-          <p className="text-sm md:text-base mt-3 max-w-2xl mx-auto text-slate-600 dark:text-slate-300">
+          <p className="text-sm md:text-base mt-3 max-w-2xl mx-auto text-secondary">
             {t.guestPreview.subtitle}
           </p>
         </div>
@@ -112,9 +112,9 @@ export function PlannerGuestPreview() {
               onShareReceipt={() => askSignIn('sample_share')}
             />
             {!livePrice && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 -mt-2">* {t.guestPreview.examplePrice}</p>
+              <p className="text-xs text-caption -mt-2">* {t.guestPreview.examplePrice}</p>
             )}
-            <p className="text-sm text-slate-600 dark:text-slate-300">{t.guestPreview.routeVia}</p>
+            <p className="text-sm text-secondary">{t.guestPreview.routeVia}</p>
             <Button onClick={() => askSignIn('sample_cta')} className="w-full py-6 text-base font-semibold" size="lg">
               {t.guestPreview.cta}
             </Button>

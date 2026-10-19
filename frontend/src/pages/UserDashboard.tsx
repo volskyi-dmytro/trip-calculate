@@ -27,8 +27,8 @@ function SignedOutDashboard() {
       <div className="flex justify-center px-4" style={{ padding: "64px 16px" }}>
         <div className="glass-panel rounded-xl p-8 max-w-md w-full text-center space-y-4">
           <FolderOpen className="h-10 w-10 mx-auto text-primary" aria-hidden="true" />
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t('dashboard.signedOut.title')}</h1>
-          <p className="text-gray-600 dark:text-gray-300">{t('dashboard.signedOut.text')}</p>
+          <h1 className="text-2xl font-bold text-content">{t('dashboard.signedOut.title')}</h1>
+          <p className="text-secondary">{t('dashboard.signedOut.text')}</p>
           <button type="button" className="btn w-full" onClick={() => login(undefined, 'dashboard')}>
             {t('header.login')}
           </button>
@@ -99,10 +99,10 @@ export function UserDashboard() {
       <div className="min-h-screen">
         <div className="container mx-auto px-4 py-6 sm:py-8">
         <div className="mb-6 sm:mb-8">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-2xl sm:text-3xl font-bold text-content mb-2">
             {t('dashboard.title')}
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400">
+          <p className="text-sm sm:text-base text-secondary">
             {t('dashboard.subtitle')}
           </p>
         </div>

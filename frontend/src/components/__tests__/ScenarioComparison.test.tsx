@@ -57,7 +57,7 @@ const addButton = (c: HTMLElement) => Array.from(c.querySelectorAll('button')).f
 describe('ScenarioComparison', () => {
   it('shows the baseline and a blank scenario that equals it', () => {
     const { container } = mount(<ScenarioComparison baseline={baseline} currency="EUR" />)
-    expect(container.textContent).toContain('76.65 EUR · 19.16 EUR')
+    expect(container.textContent).toContain('€76.65 · €19.16')
     click(addButton(container))
     expect(container.textContent).toContain('Same as your estimate')
   })
@@ -66,8 +66,8 @@ describe('ScenarioComparison', () => {
     const { container } = mount(<ScenarioComparison baseline={baseline} currency="EUR" />)
     click(addButton(container))
     type(container.querySelector<HTMLInputElement>('input[id$="consumption"]')!, '5')
-    expect(container.textContent).toContain('51.10 EUR · 12.78 EUR')
-    expect(container.textContent).toContain('−25.55 EUR')
+    expect(container.textContent).toContain('€51.10 · €12.78')
+    expect(container.textContent).toContain('−€25.55')
   })
 
   it('guards invalid input without showing a fake result', () => {
@@ -79,7 +79,7 @@ describe('ScenarioComparison', () => {
     expect(container.textContent).toContain('Enter a valid number')
     expect(container.textContent).toContain('Fix the highlighted field')
     type(container.querySelector<HTMLInputElement>('input[id$="passengers"]')!, '2.5')
-    expect(container.textContent).not.toContain('0.00 EUR')
+    expect(container.textContent).not.toContain('€0.00')
   })
 
   it('moves focus to the new scenario on add and back to Add on remove', () => {
@@ -109,7 +109,7 @@ describe('ScenarioComparison', () => {
     expect(frozen).toEqual(baseline)
     rerender(<ScenarioComparison baseline={{ ...baseline, distanceKm: 100 }} currency="EUR" />)
     // 100 km * 7.5 L/100 * 2 = 15.00 total, edit preserved across the baseline change
-    expect(container.textContent).toContain('15.00 EUR · 3.75 EUR')
+    expect(container.textContent).toContain('€15.00 · €3.75')
     expect(container.querySelector<HTMLInputElement>('input[id$="price"]')!.value).toBe('2')
   })
 
@@ -121,7 +121,7 @@ describe('ScenarioComparison', () => {
     rerender(<ScenarioComparison baseline={baseline} currency="EUR" />)
     expect(container.textContent).toContain('Сценарій 1')
     expect(container.querySelector<HTMLInputElement>('input[id$="consumption"]')!.value).toBe('5')
-    expect(container.textContent).toContain('51.10 EUR')
+    expect(container.textContent).toContain(new Intl.NumberFormat('uk-UA', { style: 'currency', currency: 'EUR' }).format(51.1))
   })
 })
 
@@ -141,7 +141,7 @@ describe('QuickCalculator + scenarios', () => {
     expect(price.value).toBe('1e999')
     expect(price.getAttribute('aria-invalid')).toBe('true')
     expect(container.querySelector('[role="alert"]')).not.toBeNull()
-    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('0.00 EUR')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('€0.00')
   })
   it('accepts a decimal comma in distance and recalculates (QA F1)', () => {
     const { container } = mount(<QuickCalculator prefill={{ distance: 0, consumption: 10, price: 10, passengers: 1, currency: 'EUR' }} />)
@@ -150,7 +150,7 @@ describe('QuickCalculator + scenarios', () => {
     type(d, '10,5')
     act(() => d.blur())
     expect(d.value).toBe('10.5')
-    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('10.50 EUR')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('€10.50')
   })
   it('normalizes typed decimals on blur without losing partial input', () => {
     const { container } = mount(<QuickCalculator prefill={{ distance: 100, consumption: 1, price: 1, passengers: 2, currency: 'EUR' }} />)
@@ -161,14 +161,15 @@ describe('QuickCalculator + scenarios', () => {
     type(field, '1.005')
     act(() => field.blur())
     expect(field.value).toBe('1.01')
-    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('0.51 EUR')
+    expect(container.querySelector('[aria-live="polite"]')!.textContent).toContain('€0.51')
   })
   it.each(fixtures.cases)('matches fixture $rawDistanceKm km and $fuelPrice price in summary, scenario baseline and receipt', c => {
     const { container } = mount(<QuickCalculator prefill={{ distance: Number(c.rawDistanceKm), consumption: Number(c.fuelConsumption), price: Number(c.fuelPrice), passengers: c.people, currency: 'EUR' }} />)
     const figures = container.querySelector('[aria-live="polite"]')!.textContent
-    expect(figures).toContain(`${c.totalCost} EUR`)
-    expect(figures).toContain(`${c.costPerPerson} EUR`)
-    expect(container.querySelector('details')!.textContent).toContain(`${c.totalCost} EUR · ${c.costPerPerson} EUR`)
+    const money = (amount: string) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR' }).format(Number(amount))
+    expect(figures).toContain(money(c.totalCost))
+    expect(figures).toContain(money(c.costPerPerson))
+    expect(container.querySelector('details')!.textContent).toContain(`${money(c.totalCost)} · ${money(c.costPerPerson)}`)
     expect(JSON.parse(container.querySelector('[data-testid="receipt-inputs"]')!.getAttribute('data-payload')!)).toMatchObject({
       distanceKm: Number(c.distanceKm), fuelConsumption: Number(c.normalizedFuelConsumption), fuelPrice: Number(c.normalizedFuelPrice), people: c.people,
     })
@@ -210,8 +211,8 @@ describe('QuickCalculator + scenarios', () => {
     const { container } = mount(<QuickCalculator example />)
     const perPerson = () => container.querySelector('[aria-live="polite"]')!.textContent
     const before = perPerson()
-    expect(before).toContain('10.52 EUR')
-    expect(before).toContain('42.08 EUR')
+    expect(before).toContain('€10.52')
+    expect(before).toContain('€42.08')
 
     const details = container.querySelector('details')!
     click(addButton(container))
@@ -221,7 +222,7 @@ describe('QuickCalculator + scenarios', () => {
     click(addButton(container))
 
     // The scenario's baseline row is the calculator's own number.
-    expect(details.textContent).toContain('42.08 EUR · 10.52 EUR')
+    expect(details.textContent).toContain('€42.08 · €10.52')
     expect(perPerson()).toBe(before)
     expect((container.querySelector('#quick-consumption') as HTMLInputElement).value).toBe('7.5')
     expect(fetchSpy).not.toHaveBeenCalled()

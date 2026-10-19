@@ -16,9 +16,9 @@ export function Button({
 
   const variantStyles = {
     default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-    outline: 'border border-gray-300 dark:border-gray-600 bg-transparent hover:bg-gray-100 dark:hover:bg-gray-700',
-    ghost: 'hover:bg-gray-100 hover:text-gray-900 dark:hover:bg-gray-700 dark:hover:text-gray-100',
-    destructive: 'bg-red-600 text-white hover:bg-red-700'
+    outline: 'border border-edge bg-transparent hover:bg-inset',
+    ghost: 'hover:bg-inset hover:text-content',
+    destructive: 'bg-danger-soft text-white hover:bg-danger-soft'
   };
 
   const sizeStyles = {

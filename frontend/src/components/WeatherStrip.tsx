@@ -1,3 +1,4 @@
+import { formatDate } from '../lib/format'
 import { CloudLightning, CloudRain, CloudSnow, Snowflake, Wind, type LucideIcon } from 'lucide-react'
 import { useLanguage } from '../contexts/LanguageContext'
 import { getTranslation, type Language } from '../i18n/routePlanner'
@@ -21,6 +22,7 @@ export function WeatherStrip({ weather }: { weather: WeatherData | null }) {
 
   return (
     <div className="weather-strip" aria-label={t.weather.title}>
+      <p className="trip-summary-secondary">{t.weather.title} · <time dateTime={weather.date}>{formatDate(weather.date, language)}</time></p>
       <div className="weather-strip-stops">
         {stops.map((s, i) => (
           <span key={`${s.lat},${s.lon},${i}`} className="weather-strip-stop">

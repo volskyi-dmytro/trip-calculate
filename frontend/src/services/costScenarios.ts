@@ -1,3 +1,4 @@
+import { formatMoney } from '../lib/format';
 // Pure what-if arithmetic for the quick calculator. Deterministic, no I/O:
 // every scenario is priced on the SAME distance as the baseline.
 import { calculateRouteCost } from './routeCost';
@@ -69,9 +70,9 @@ export function compareScenarios(baseline: CostInputs, scenarios: ScenarioOverri
 }
 
 /** Same format as the calculator's own figures. */
-export const formatAmount = (n: number, currency: string) => `${n.toFixed(2)} ${currency}`;
+export const formatAmount = (n: number, currency: string, locale = 'en') => formatMoney(n, currency, locale);
 
-export function formatDelta(n: number, currency: string): string {
+export function formatDelta(n: number, currency: string, locale = 'en'): string {
   const sign = n > 0 ? '+' : n < 0 ? '−' : '';
-  return `${sign}${Math.abs(n).toFixed(2)} ${currency}`;
+  return `${sign}${formatMoney(Math.abs(n), currency, locale)}`;
 }

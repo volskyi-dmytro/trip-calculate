@@ -18,7 +18,7 @@ export function StatsCard({ stats }: StatsCardProps) {
     ? perCurrency.map(([currency, amount]) => formatMoney(amount, currency, language)).join(' · ')
     : stats.mostUsedCurrency
       ? formatMoney(stats.totalFuelCost, stats.mostUsedCurrency, language)
-      : stats.totalFuelCost.toFixed(2);
+      : new Intl.NumberFormat(language, { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(stats.totalFuelCost);
 
   // Account age is deliberately not a tile: it's account metadata, not a
   // travel statistic, and the profile card already shows the join date.
@@ -53,7 +53,7 @@ export function StatsCard({ stats }: StatsCardProps) {
             return (
               <div
                 key={index}
-                className="flex items-center p-4 last:sm:col-span-2 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                className="flex items-center p-4 last:sm:col-span-2 rounded-lg border border-edge glass-inset"
               >
                 <div
                   className="p-2.5 rounded-lg mr-4"
@@ -62,10 +62,10 @@ export function StatsCard({ stats }: StatsCardProps) {
                   <Icon className="h-5 w-5 text-primary" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                  <p className="text-sm text-secondary">
                     {item.label}
                   </p>
-                  <p className="text-2xl font-bold text-gray-900 dark:text-white tabular-nums break-words">
+                  <p className="text-2xl font-bold text-content tabular-nums break-words">
                     {item.value}
                   </p>
                 </div>

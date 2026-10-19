@@ -43,6 +43,7 @@ function mount(over: Partial<{ settings: RouteSettings; quality: 'road' | 'appro
         routeQuality={over.quality ?? 'road'}
         fuelSuggestion={null}
         weather={null}
+        departureDate="2026-10-24"
         onSaveRoute={vi.fn()}
         onShareReceipt={vi.fn()}
       />,
@@ -64,6 +65,8 @@ describe('TripSummaryCard', () => {
     expect(figure?.textContent).toMatch(PER_PERSON)
     expect(c.querySelectorAll('.trip-summary-figure')).toHaveLength(1)
     expect(c.querySelector('h2')?.textContent).toBe('Kyiv → Lviv')
+    expect(c.querySelector('time')?.dateTime).toBe('2026-10-24')
+    expect(c.textContent).toContain('Sat, Oct 24, 2026')
   })
 
   it('does not repeat distance, time or total cost while the breakdown is closed', () => {

@@ -43,10 +43,10 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
                   src={avatarProxyUrl(profile.pictureUrl)!}
                   alt={profile.name}
                   onError={() => setAvatarFailed(true)}
-                  className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg object-cover"
+                  className="h-24 w-24 rounded-full border-4 border-edge shadow-lg object-cover"
                 />
               ) : (
-                <div className="h-24 w-24 rounded-full border-4 border-white dark:border-gray-700 shadow-lg bg-primary flex items-center justify-center">
+                <div className="h-24 w-24 rounded-full border-4 border-edge shadow-lg bg-primary flex items-center justify-center">
                   <User className="h-10 w-10 text-white" />
                 </div>
               )}
@@ -59,11 +59,11 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
 
             {/* Name & Display Name */}
             <div className="text-center">
-              <h3 className="text-xl font-semibold text-gray-900 dark:text-white">
+              <h3 className="text-xl font-semibold text-content">
                 {profile.displayName || profile.name}
               </h3>
               {profile.displayName && (
-                <p className="text-sm text-gray-500 dark:text-gray-400">
+                <p className="text-sm text-caption">
                   {profile.name}
                 </p>
               )}
@@ -71,20 +71,20 @@ export function ProfileCard({ profile, onProfileUpdate }: ProfileCardProps) {
 
             {/* Details */}
             <div className="w-full space-y-3">
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <Mail className="h-4 w-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-secondary">
+                <Mail className="h-4 w-4 mr-2 text-caption" />
                 <span className="truncate">{profile.email}</span>
               </div>
 
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <Calendar className="h-4 w-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-secondary">
+                <Calendar className="h-4 w-4 mr-2 text-caption" />
                 <span>
                   {t('dashboard.profile.joined')} {timeAgo(profile.createdAt, language)}
                 </span>
               </div>
 
-              <div className="flex items-center text-sm text-gray-600 dark:text-gray-300">
-                <User className="h-4 w-4 mr-2 text-gray-400" />
+              <div className="flex items-center text-sm text-secondary">
+                <User className="h-4 w-4 mr-2 text-caption" />
                 <span>
                   {t('dashboard.profile.lastLogin')} {timeAgo(profile.lastLogin, language)}
                 </span>

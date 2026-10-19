@@ -1,4 +1,4 @@
-import { litreUnit } from '../lib/format'
+import { formatMoney, litreUnit } from '../lib/format'
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../contexts/LanguageContext';
@@ -171,16 +171,16 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
       onBlur={() => setFieldFocused(false)}
     >
       <div className="mb-4">
-        <h2 className="text-lg font-bold text-slate-800 dark:text-white">{t.title}</h2>
+        <h2 className="text-lg font-bold text-content">{t.title}</h2>
         {exampleActive && (
-          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">{t.exampleLabel}</p>
+          <p className="mt-1 text-sm text-secondary">{t.exampleLabel}</p>
         )}
       </div>
 
       <div className="space-y-4">
         {/* Distance */}
         <div>
-          <Label htmlFor="quick-distance" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <Label htmlFor="quick-distance" className="text-sm font-semibold text-secondary">
             {t.distance}
           </Label>
           <Input
@@ -197,7 +197,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
         {/* Passengers */}
         <div>
-          <Label htmlFor="quick-passengers" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <Label htmlFor="quick-passengers" className="text-sm font-semibold text-secondary">
             {t.passengers}
           </Label>
           <div className="flex items-center gap-2 mt-1">
@@ -231,7 +231,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
         {/* Fuel Consumption */}
         <div>
-          <Label htmlFor="quick-consumption" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <Label htmlFor="quick-consumption" className="text-sm font-semibold text-secondary">
             {t.consumption}
           </Label>
           <Input
@@ -275,7 +275,7 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
 
         {/* Fuel Price */}
         <div>
-          <Label htmlFor="quick-fuel-price" className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+          <Label htmlFor="quick-fuel-price" className="text-sm font-semibold text-secondary">
             {t.fuelPrice}
           </Label>
           <div className="flex gap-2 mt-1">
@@ -305,21 +305,21 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
         </div>
 
         {/* Results: per-person is the answer people came for, so it leads. */}
-        <div ref={resultRef} aria-live="polite" className="pt-4 border-t border-slate-200 dark:border-slate-700 space-y-2">
+        <div ref={resultRef} aria-live="polite" className="pt-4 border-t border-edge space-y-2">
           <div className="flex justify-between items-baseline">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <span className="text-sm font-medium text-secondary">
               {t.perPassenger}:
             </span>
             <span className="text-3xl font-bold text-primary tabular-nums">
-              {costPerPassenger.toFixed(2)} {currency}
+              {formatMoney(costPerPassenger, currency, language)}
             </span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+            <span className="text-sm font-medium text-secondary">
               {t.totalCost}:
             </span>
-            <span className="text-lg font-semibold text-slate-800 dark:text-white tabular-nums">
-              {totalCost.toFixed(2)} {currency}
+            <span className="text-lg font-semibold text-content tabular-nums">
+              {formatMoney(totalCost, currency, language)}
             </span>
           </div>
         </div>
@@ -348,10 +348,10 @@ export function QuickCalculator({ example = false, prefill }: QuickCalculatorPro
       {resultBelow && hasEdited && !fieldFocused && distance > 0 && createPortal(
         <div
           aria-hidden="true"
-          className="md:hidden fixed inset-x-0 bottom-0 z-40 flex justify-between items-baseline border-t border-slate-200 dark:border-slate-700 bg-white/95 dark:bg-slate-900/95 px-4 py-3 backdrop-blur"
+          className="md:hidden fixed inset-x-0 bottom-0 z-40 flex justify-between items-baseline border-t border-edge bg-surface px-4 py-3 backdrop-blur"
         >
           <span className="text-sm font-medium">{t.perPassenger}</span>
-          <span className="text-lg font-bold text-primary tabular-nums">{costPerPassenger.toFixed(2)} {currency}</span>
+          <span className="text-lg font-bold text-primary tabular-nums">{formatMoney(costPerPassenger, currency, language)}</span>
         </div>,
         document.body,
       )}

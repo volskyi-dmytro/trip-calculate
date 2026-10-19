@@ -139,7 +139,7 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
                 placeholder={tr('shareReceipt.toPlaceholder')}
               />
             </div>
-            <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+            <div className="space-y-1 text-xs text-secondary">
               <p>{t.publicNotice}</p>
               <p>{t.addressHint}</p>
             </div>
@@ -172,10 +172,11 @@ export function ShareReceiptModal({ payload, isOpen, onClose }: ShareReceiptModa
               </Button>
             )}
             {receipt.expiresAt && (
-              <p className="text-xs text-slate-500 dark:text-slate-400">{t.expiresNote}</p>
+              <p className="text-xs text-caption">{t.expiresNote}</p>
             )}
           </div>
         )}
+        <Button type="button" variant="ghost" onClick={onClose} className="w-full">{tr('common.cancel')}</Button>
       </DialogContent>
     </Dialog>
   );

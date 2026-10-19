@@ -134,7 +134,7 @@ export function UsersTable() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-xl">{t('admin.users.title')}</CardTitle>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-caption" />
               <Input
                 type="text"
                 placeholder={t('admin.users.search')}
@@ -150,23 +150,23 @@ export function UsersTable() {
           <div className="hidden md:block overflow-x-auto">
             <table className="w-full">
               <thead>
-                <tr className="border-b border-gray-200 dark:border-gray-700">
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                <tr className="border-b border-edge">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.user')}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.role')}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.access')}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.routes')}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.lastLogin')}
                   </th>
-                  <th className="text-left py-3 px-4 text-sm font-medium text-gray-600 dark:text-gray-400">
+                  <th className="text-left py-3 px-4 text-sm font-medium text-secondary">
                     {t('admin.users.table.actions')}
                   </th>
                 </tr>
@@ -175,15 +175,15 @@ export function UsersTable() {
                 {filteredUsers.map((user) => (
                   <tr
                     key={user.id}
-                    className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50"
+                    className="border-b border-edge hover:bg-surface"
                   >
                     <td className="py-3 px-4">
                       <div className="flex items-center">
                         <div className="ml-3">
-                          <p className="font-medium text-gray-900 dark:text-white">
+                          <p className="font-medium text-content">
                             {user.displayName || user.name}
                           </p>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                          <p className="text-sm text-caption">
                             {user.email}
                           </p>
                         </div>
@@ -194,7 +194,7 @@ export function UsersTable() {
                         className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                           user.role === 'ADMIN'
                             ? 'bg-primary/10 text-primary'
-                            : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                            : 'bg-inset text-secondary'
                         }`}
                       >
                         {user.role === 'ADMIN' && <Shield className="h-3 w-3 mr-1" />}
@@ -203,24 +203,24 @@ export function UsersTable() {
                     </td>
                     <td className="py-3 px-4">
                       {user.routePlannerAccess ? (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success-soft text-success">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           {t('admin.users.table.granted')}
                         </span>
                       ) : (
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300">
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-inset text-secondary">
                           <XCircle className="h-3 w-3 mr-1" />
                           {t('admin.users.table.denied')}
                         </span>
                       )}
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-sm text-gray-900 dark:text-white">
+                      <span className="text-sm text-content">
                         {user.routeCount}
                       </span>
                     </td>
                     <td className="py-3 px-4">
-                      <span className="text-sm text-gray-600 dark:text-gray-400">
+                      <span className="text-sm text-secondary">
                         {timeAgo(user.lastLogin, language)}
                       </span>
                     </td>
@@ -230,7 +230,7 @@ export function UsersTable() {
                           onClick={() =>
                             setActionMenuOpen(actionMenuOpen === user.id ? null : user.id)
                           }
-                          className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          className="p-1 hover:bg-inset rounded"
                         >
                           <MoreVertical className="h-4 w-4" />
                         </button>
@@ -238,7 +238,7 @@ export function UsersTable() {
                           <div className="absolute right-0 mt-2 w-48 glass-modal rounded-lg z-10">
                             <button
                               onClick={() => openDetails(user)}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-inset flex items-center"
                             >
                               <Eye className="h-4 w-4 mr-2" />
                               {t('admin.users.action.viewDetails')}
@@ -249,7 +249,7 @@ export function UsersTable() {
                                 handleToggleRole(user);
                                 setActionMenuOpen(null);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center"
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-inset flex items-center"
                             >
                               {user.role === 'ADMIN' ? (
                                 <>
@@ -268,7 +268,7 @@ export function UsersTable() {
                                 confirmDelete(user);
                                 setActionMenuOpen(null);
                               }}
-                              className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center text-red-600 dark:text-red-400"
+                              className="w-full text-left px-4 py-2 text-sm hover:bg-inset flex items-center text-danger"
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
                               {t('admin.users.action.deleteUser')}
@@ -288,20 +288,20 @@ export function UsersTable() {
             {filteredUsers.map((user) => (
               <div
                 key={user.id}
-                className="p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset"
+                className="p-4 rounded-lg border border-edge glass-inset"
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
-                    <p className="font-medium text-gray-900 dark:text-white">
+                    <p className="font-medium text-content">
                       {user.displayName || user.name}
                     </p>
-                    <p className="text-sm text-gray-500 dark:text-gray-400">{user.email}</p>
+                    <p className="text-sm text-caption">{user.email}</p>
                   </div>
                   <span
                     className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                       user.role === 'ADMIN'
                         ? 'bg-primary/10 text-primary'
-                        : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
+                        : 'bg-inset text-secondary'
                     }`}
                   >
                     {user.role}
@@ -309,21 +309,21 @@ export function UsersTable() {
                 </div>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-secondary">
                       {t('admin.users.table.access')}:
                     </span>
                     {user.routePlannerAccess ? (
-                      <span className="text-green-600 dark:text-green-400">
+                      <span className="text-success">
                         {t('admin.users.table.granted')}
                       </span>
                     ) : (
-                      <span className="text-gray-600 dark:text-gray-400">
+                      <span className="text-secondary">
                         {t('admin.users.table.denied')}
                       </span>
                     )}
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-600 dark:text-gray-400">
+                    <span className="text-secondary">
                       {t('admin.users.table.routes')}:
                     </span>
                     <span>{user.routeCount}</span>
@@ -337,7 +337,7 @@ export function UsersTable() {
                     size="sm"
                     variant="outline"
                     onClick={() => confirmDelete(user)}
-                    className="text-red-600 hover:text-red-700"
+                    className="text-danger hover:text-danger"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -348,7 +348,7 @@ export function UsersTable() {
 
           {filteredUsers.length === 0 && (
             <div className="text-center py-12">
-              <p className="text-gray-600 dark:text-gray-400">{t('admin.users.empty')}</p>
+              <p className="text-secondary">{t('admin.users.empty')}</p>
             </div>
           )}
         </CardContent>
@@ -358,7 +358,7 @@ export function UsersTable() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle className="text-red-600 dark:text-red-400">
+            <DialogTitle className="text-danger">
               {t('admin.users.delete.title')}
             </DialogTitle>
             <DialogDescription>

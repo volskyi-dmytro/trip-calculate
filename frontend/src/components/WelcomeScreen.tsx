@@ -86,10 +86,10 @@ export function WelcomeScreen({
         />
 
         <div className="text-center mb-5">
-          <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white mb-2">
+          <h1 className="text-3xl md:text-4xl font-bold text-content mb-2">
             {firstName ? t.greeting.replace('{name}', firstName) : t.greetingNoName}
           </h1>
-          <p className="text-base text-slate-600 dark:text-slate-300">{t.greetingSubtitle}</p>
+          <p className="text-base text-secondary">{t.greetingSubtitle}</p>
         </div>
 
         <div className="glass-panel p-4 rounded-xl">
@@ -119,7 +119,7 @@ export function WelcomeScreen({
             <div className="mt-3"><AgentProgress doneStages={doneStages} degraded={degraded} /></div>
           ) : (
           <div className="mt-3" role="group" aria-label={t.examplesLabel}>
-            <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1.5">{t.examplesLabel}</p>
+            <p className="text-xs font-medium text-caption mb-1.5">{t.examplesLabel}</p>
             <div className="flex flex-wrap gap-2">
               {t.examples.map((ex) => (
                 <button
@@ -135,12 +135,12 @@ export function WelcomeScreen({
           </div>
           )}
 
-          <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-slate-200 dark:border-slate-700">
+          <div className="mt-3 pt-3 flex flex-wrap items-center justify-between gap-2 border-t border-edge">
             <AiPrivacyNote className="flex-1 min-w-[12rem]" />
             <button
               type="button"
               onClick={onManualClick}
-              className="text-sm font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
+              className="touch-link text-sm font-medium flex items-center gap-1 hover:opacity-80 transition-opacity"
               // --accent, not text-primary: the Tailwind primary is the same
               // dark teal in both themes and fails contrast on dark glass.
               style={{ color: 'var(--accent)' }}

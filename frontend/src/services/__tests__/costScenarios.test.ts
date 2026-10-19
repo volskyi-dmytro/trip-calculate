@@ -13,8 +13,8 @@ describe('computeCost', () => {
     // The shared route-cost-v2 fixture suite exercises the same contract.
     expect(r.total).toBe(76.65)
     expect(r.perPerson).toBe(19.16)
-    expect(formatAmount(r.total, 'EUR')).toBe('76.65 EUR')
-    expect(formatAmount(r.perPerson, 'EUR')).toBe('19.16 EUR')
+    expect(formatAmount(r.total, 'EUR')).toBe('€76.65')
+    expect(formatAmount(r.perPerson, 'EUR')).toBe('€19.16')
   })
   it('allows a zero distance', () => {
     expect(computeCost({ ...base, distanceKm: 0 })).toEqual({ total: 0, perPerson: 0 })
@@ -48,7 +48,7 @@ describe('compareScenarios', () => {
   })
   it('overrides one factor and keeps the same distance', () => {
     const [row] = compareScenarios(base, [{ consumption: 5 }])
-    expect(formatAmount(row.result!.total, 'EUR')).toBe('51.10 EUR')
+    expect(formatAmount(row.result!.total, 'EUR')).toBe('€51.10')
     expect(row.deltaTotal).toBe(-25.55)
   })
   it('more passengers lowers per-person but not total', () => {
@@ -83,8 +83,8 @@ describe('compareScenarios', () => {
 
 describe('formatDelta', () => {
   it('signs and rounds consistently', () => {
-    expect(formatDelta(1.5, 'UAH')).toBe('+1.50 UAH')
-    expect(formatDelta(-25.55, 'UAH')).toBe('−25.55 UAH')
-    expect(formatDelta(0, 'UAH')).toBe('0.00 UAH')
+    expect(formatDelta(1.5, 'UAH')).toBe('+UAH\u00a01.50')
+    expect(formatDelta(-25.55, 'UAH')).toBe('−UAH\u00a025.55')
+    expect(formatDelta(0, 'UAH')).toBe('UAH\u00a00.00')
   })
 })

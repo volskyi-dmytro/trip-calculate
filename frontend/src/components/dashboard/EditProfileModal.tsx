@@ -99,11 +99,11 @@ export function EditProfileModal({
                 maxLength={50}
               />
               {errors.displayName && (
-                <p className="text-sm text-red-600 dark:text-red-400">
+                <p className="text-sm text-danger">
                   {errors.displayName}
                 </p>
               )}
-              <p className="text-xs text-gray-500 dark:text-gray-400">
+              <p className="text-xs text-caption">
                 {t('dashboard.editProfile.displayNameHint')}
               </p>
             </div>
@@ -119,7 +119,7 @@ export function EditProfileModal({
                 onChange={(e) =>
                   setFormData({ ...formData, preferredLanguage: e.target.value })
                 }
-                className="w-full px-3 py-2 border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
+                className="w-full px-3 py-2 border border-edge rounded-md glass-inset text-content"
               >
                 <option value="en">{t('dashboard.editProfile.languageEnglish')}</option>
                 <option value="uk">{t('dashboard.editProfile.languageUkrainian')}</option>

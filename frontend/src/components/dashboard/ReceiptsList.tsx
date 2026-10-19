@@ -69,13 +69,13 @@ export function ReceiptsList() {
             <Loader2 className="h-5 w-5 animate-spin" />
           </div>
         ) : receipts.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">{t.empty}</p>
+          <p className="text-sm text-caption">{t.empty}</p>
         ) : (
           <ul className="space-y-2">
             {receipts.map((r) => (
               <li
                 key={r.slug}
-                className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 dark:border-slate-700"
+                className="flex items-center gap-2 p-2 rounded-lg border border-edge"
               >
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium truncate">
@@ -83,7 +83,7 @@ export function ReceiptsList() {
                       ? `${r.originLabel} → ${r.destinationLabel}`
                       : `${t.unnamed} · ${formatDistance(r.distanceKm, language)}`}
                   </div>
-                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                  <div className="text-xs text-caption flex items-center gap-1">
                     <Eye className="h-3 w-3" aria-hidden="true" />
                     {tn('receiptsList.views', r.viewCount)} · {formatMoney(r.costPerPerson, r.currency, language)}
                   </div>

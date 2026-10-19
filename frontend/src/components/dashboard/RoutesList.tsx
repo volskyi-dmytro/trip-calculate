@@ -94,7 +94,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
               decoding="async"
               className="planner-waypoints-art"
             />
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
+            <p className="text-secondary mb-4">
               {t('dashboard.routes.empty')}
             </p>
             <Button onClick={() => navigate(withLocalePrefix('/route-planner', language))}>
@@ -113,14 +113,14 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <CardTitle className="text-xl">{t('dashboard.routes.title')}</CardTitle>
             <div className="flex items-center gap-2">
-              <label htmlFor="route-sort" className="text-sm text-gray-600 dark:text-gray-400">
+              <label htmlFor="route-sort" className="text-sm text-secondary">
                 {t('dashboard.routes.sortBy')}:
               </label>
               <select
                 id="route-sort"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-1.5 text-sm border border-gray-300/60 dark:border-gray-600/60 rounded-md glass-inset text-gray-900 dark:text-white"
+                className="px-3 py-1.5 text-sm border border-edge rounded-md glass-inset text-content"
               >
                 <option value="newest">{t('dashboard.routes.sortNewest')}</option>
                 <option value="oldest">{t('dashboard.routes.sortOldest')}</option>
@@ -134,13 +134,13 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
             {sortedRoutes.map((route) => (
               <div
                 key={route.id}
-                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-gray-200/60 dark:border-gray-700/60 glass-inset hover:shadow-md transition-shadow"
+                className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-lg border border-edge glass-inset hover:shadow-md transition-shadow"
               >
                 <div className="flex-1">
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-1">
+                  <h4 className="font-semibold text-content mb-1">
                     {route.name}
                   </h4>
-                  <div className="flex flex-wrap gap-3 text-sm text-gray-600 dark:text-gray-400">
+                  <div className="flex flex-wrap gap-3 text-sm text-secondary">
                     <span className="flex items-center">
                       <MapPin className="h-3.5 w-3.5 mr-1" />
                       {route.waypointCount} {t('dashboard.routes.waypoints')}
@@ -170,7 +170,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                     size="sm"
                     aria-label={`${t('dashboard.routes.delete')} ${route.name}`}
                     onClick={() => confirmDelete(route)}
-                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-900/20"
+                    className="text-danger hover:text-danger hover:bg-danger-soft"
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>

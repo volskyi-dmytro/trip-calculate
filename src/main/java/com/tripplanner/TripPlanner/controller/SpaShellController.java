@@ -532,7 +532,8 @@ public class SpaShellController {
                 + "\n    <link rel=\"alternate\" hreflang=\"uk\" href=\"" + metadata.alternateUrl("uk") + "\" />"
                 + "\n    <link rel=\"alternate\" hreflang=\"x-default\" href=\"" + metadata.defaultUrl() + "\" />\n  ";
         String jsonLd = metadata.jsonLd != null ? metadata.jsonLd : "";
-        html = html.replace("</head>", alternates + heroPreload(LocalDate.now(KYIV)) + jsonLd + "\n  </head>");
+        boolean hasHero = metadata.routePath.isEmpty() || metadata.routePath.startsWith("/route/");
+        html = html.replace("</head>", alternates + (hasHero ? heroPreload(LocalDate.now(KYIV)) : "") + jsonLd + "\n  </head>");
 
         if (metadata.noscript != null) {
             html = html.replace("<div id=\"root\"></div>", "<div id=\"root\"></div>" + metadata.noscript);
