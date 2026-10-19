@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { MapPin, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
@@ -120,7 +120,7 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
                 id="route-sort"
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="px-3 py-1.5 text-sm border border-edge rounded-md glass-inset text-content"
+                className="min-h-11 px-3 py-1.5 text-sm border border-edge rounded-md glass-inset text-content"
               >
                 <option value="newest">{t('dashboard.routes.sortNewest')}</option>
                 <option value="oldest">{t('dashboard.routes.sortOldest')}</option>
@@ -138,7 +138,8 @@ export function RoutesList({ routes, onRouteDeleted }: RoutesListProps) {
               >
                 <div className="flex-1">
                   <h4 className="font-semibold text-content mb-1">
-                    {route.name}
+                    {/* A sibling link, not a wrapper: Edit and Delete stay separate buttons */}
+                    <Link to={routeEditPath(route.id, language)} className="inline-flex min-h-11 items-center hover:underline">{route.name}</Link>
                   </h4>
                   <div className="flex flex-wrap gap-3 text-sm text-secondary">
                     <span className="flex items-center">

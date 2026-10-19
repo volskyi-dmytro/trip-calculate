@@ -22,8 +22,8 @@ export function Button({
   };
 
   const sizeStyles = {
-    default: 'min-h-11 px-4 py-2',
-    sm: 'min-h-11 px-3 text-sm',
+    default: 'min-h-11 min-w-11 px-4 py-2',
+    sm: 'min-h-11 min-w-11 px-3 text-sm',
     lg: 'h-12 px-8',
     icon: 'h-11 w-11'
   };
