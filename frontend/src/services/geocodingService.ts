@@ -1,4 +1,5 @@
 import { nominatimFetch } from './nominatimQueue'
+import { isCoordinateLikeName } from '../utils/waypointName'
 
 export interface LocationDetails {
   city: string;
@@ -126,4 +127,20 @@ export const geocodingService = {
       : places[0];
     return { lat: best.lat, lng: best.lng, displayName: best.displayName };
   },
+
+  /**
+   * Name for a saved waypoint whose stored name is just coordinates. Successful lookups are
+   * cached per ~100 m cell so reopening routes doesn't re-hit Nominatim; null means "keep the coordinates".
+   */
+  async resolveCoordinateName(lat: number, lng: number, language = 'en'): Promise<string | null> {
+    const key = `${language}:${lat.toFixed(3)},${lng.toFixed(3)}`;
+    const hit = resolvedNames.get(key);
+    if (hit) return hit;
+    const name = await geocodingService.reverseGeocode(lat, lng, language);
+    if (isCoordinateLikeName(name)) return null; // geocoder fell back to coordinates
+    resolvedNames.set(key, name);
+    return name;
+  },
 };
+
+const resolvedNames = new Map<string, string>();
