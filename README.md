@@ -596,3 +596,5 @@ This project is part of a portfolio application demonstrating full-stack develop
 ---
 
 **Built with ❤️ using React 19, Spring Boot 3, and PostgreSQL**
+
+<!-- review-flow smoke test: close without merging -->
