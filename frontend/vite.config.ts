@@ -45,3 +45,5 @@ export default defineConfig({
     },
   },
 })
+
+// TripClaude pipeline smoke test: comment-only, this PR is closed unmerged.
