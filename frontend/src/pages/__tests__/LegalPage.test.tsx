@@ -36,7 +36,7 @@ describe('LegalPage', () => {
     const html = render('uk', 'terms')
     expect(html).toContain('<h1>Умови користування</h1>')
     expect(html).toContain('Дата набрання чинності')
-    expect(html).toContain('<time dateTime="2026-09-25">')
+    expect(html).toContain('<time dateTime="2026-10-27">')
   })
 
   it('renders tables with header cells', () => {

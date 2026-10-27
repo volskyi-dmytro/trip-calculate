@@ -34,7 +34,7 @@ interface LegalTranslations {
 }
 
 // The day this version was published. Update it with every material change.
-export const LEGAL_EFFECTIVE_DATE = '2026-09-25';
+export const LEGAL_EFFECTIVE_DATE = '2026-10-27';
 
 export const LEGAL_CONTACT_EMAIL = 'volskyi.dmytro@gmail.com';
 
@@ -157,6 +157,7 @@ export const legalTranslations: Record<Language, LegalTranslations> = {
               ['mapbox.eventData*', 'Local storage (Mapbox)', 'Anonymous ID that Mapbox uses to count map usage for billing', 'Until you clear your browser data'],
             ] },
             { kind: 'p', text: 'Cloudflare may set its own strictly necessary security cookies to protect the site from bots. If we ever add analytics or other non-essential cookies, we will ask for your consent first and update this policy.' },
+            { kind: 'p', text: 'To count visits we use Cloudflare Web Analytics. It sets no cookies and uses no local storage, and it does not follow you across other sites or build a profile of you. It records only aggregate page views and visits with the page address, referrer, browser type and country.' },
           ],
         },
         {
@@ -435,6 +436,7 @@ export const legalTranslations: Record<Language, LegalTranslations> = {
               ['mapbox.eventData*', 'Локальне сховище (Mapbox)', 'Анонімний ідентифікатор, за яким Mapbox обліковує використання мапи для виставлення рахунків', 'Доки ви не очистите дані браузера'],
             ] },
             { kind: 'p', text: 'Cloudflare може встановлювати власні суворо необхідні файли cookie для захисту сайту від ботів. Якщо ми колись додамо аналітику чи інші необов\'язкові файли cookie, ми спершу попросимо вашої згоди й оновимо цю політику.' },
+            { kind: 'p', text: 'Для підрахунку відвідувань ми використовуємо Cloudflare Web Analytics. Він не встановлює файлів cookie, не використовує локальне сховище, не стежить за вами на інших сайтах і не створює вашого профілю. Фіксуються лише узагальнені перегляди сторінок і візити з адресою сторінки, джерелом переходу, типом браузера та країною.' },
           ],
         },
         {
