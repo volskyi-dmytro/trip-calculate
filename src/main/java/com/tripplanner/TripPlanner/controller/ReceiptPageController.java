@@ -72,6 +72,8 @@ public class ReceiptPageController {
 
         String html = ogMetaInjector.inject(template, ogTitle(receipt.get()), ogDescription(receipt.get()),
                 publicBaseUrl + "/r/" + slug);
+        html = ogMetaInjector.injectReceiptImage(html, publicBaseUrl + "/r/" + slug + "/og.png",
+                ogTitle(receipt.get()));
 
         return ResponseEntity.ok()
                 .header(HttpHeaders.CACHE_CONTROL, "no-cache")
