@@ -14,6 +14,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Controller
@@ -44,8 +45,10 @@ public class ReceiptOgController {
         byte[] png;
         synchronized (cache) { png = cache.get(slug); }
         if (png == null) {
-            // Never queue concurrent cold renders on the small VPS.
-            if (!renderLock.tryLock()) return retry(503, "2");
+            // Chat apps fetch a fresh link's image at the same moment, and they cache a
+            // failed fetch. Wait briefly so the second crawler hits the cache; the cap
+            // still keeps cold renders from queueing on the small VPS.
+            if (!acquireRenderLock()) return retry(503, "2");
             try {
                 synchronized (cache) { png = cache.get(slug); }
                 if (png == null) {
@@ -67,6 +70,15 @@ public class ReceiptOgController {
         // Public immutable caching would keep deleted/expired receipts available downstream.
         return ResponseEntity.ok().header("Cache-Control", "public, max-age=0, must-revalidate")
                 .header("X-Robots-Tag", "noindex").header("X-Content-Type-Options", "nosniff").body(png);
+    }
+
+    private boolean acquireRenderLock() {
+        try {
+            return renderLock.tryLock(2, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
     }
 
     private ResponseEntity<byte[]> missing() {

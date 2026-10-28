@@ -95,4 +95,31 @@ class ReceiptOgControllerTest {
             executor.shutdownNow();
         }
     }
+
+    @Test
+    void secondCrawlerOfSameFreshReceiptWaitsForCachedImageInsteadOfFailing() throws Exception {
+        var r = new TripReceipt();
+        var entered = new CountDownLatch(1);
+        var release = new CountDownLatch(1);
+        when(receipts.findForPreview(anyString())).thenReturn(Optional.of(r));
+        when(renderer.render(r)).thenAnswer(invocation -> {
+            entered.countDown();
+            if (!release.await(5, TimeUnit.SECONDS)) throw new AssertionError("render never released");
+            return new byte[]{1};
+        });
+        var executor = Executors.newFixedThreadPool(2);
+        try {
+            var first = executor.submit(() -> controller.image("abc12345", request));
+            assertTrue(entered.await(5, TimeUnit.SECONDS));
+            var second = executor.submit(() -> controller.image("abc12345", request));
+            Thread.sleep(200); // let the second crawler reach the lock
+            release.countDown();
+            assertEquals(200, first.get(5, TimeUnit.SECONDS).getStatusCode().value());
+            assertEquals(200, second.get(5, TimeUnit.SECONDS).getStatusCode().value());
+            verify(renderer, times(1)).render(r);
+        } finally {
+            release.countDown();
+            executor.shutdownNow();
+        }
+    }
 }
