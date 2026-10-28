@@ -1,6 +1,13 @@
 # Use Amazon Corretto JDK
 FROM amazoncorretto:17-alpine
 
+# Java2D needs native font discovery even when the application loads its own TTF.
+RUN apk add --no-cache fontconfig
+COPY src/main/resources/receipt-og/Manrope.ttf /usr/share/fonts/trip-calculate/Manrope.ttf
+COPY src/main/resources/receipt-og/OFL.txt /usr/share/fonts/trip-calculate/OFL.txt
+RUN fc-cache -f
+ENV XDG_CACHE_HOME=/tmp/.cache
+
 # Create non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
 
@@ -33,7 +40,7 @@ ARG GIT_SHA=unknown
 ENV GIT_SHA=${GIT_SHA}
 
 # Set JVM options optimized for containers
-ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom"
+ENV JAVA_OPTS="-XX:MaxRAMPercentage=75.0 -XX:+UseContainerSupport -Djava.security.egd=file:/dev/./urandom -Djava.awt.headless=true"
 
 # Run application with JVM options
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar trip-calculate.jar"]

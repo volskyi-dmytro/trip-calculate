@@ -14,6 +14,14 @@ import java.util.regex.Pattern;
 @Component
 public class OgMetaInjector {
 
+    public String injectReceiptImage(String html, String imageUrl, String alt) {
+        html = replaceTagContent(html, "og:image", HtmlUtils.htmlEscape(imageUrl));
+        html = replaceTagContent(html, "og:image:alt", HtmlUtils.htmlEscape(alt));
+        html = replaceTagContent(html, "og:image:width", "1200");
+        html = replaceTagContent(html, "og:image:height", "630");
+        return replaceTagContent(html, "og:image:type", "image/png");
+    }
+
     public String inject(String html, String title, String description, String url) {
         String safeTitle = HtmlUtils.htmlEscape(title);
         String safeDescription = HtmlUtils.htmlEscape(description);
@@ -30,7 +38,12 @@ public class OgMetaInjector {
     private String replaceTagContent(String html, String property, String escapedContent) {
         Pattern pattern = Pattern.compile(
                 "(<meta property=\"" + Pattern.quote(property) + "\" content=\")[^\"]*(\")");
-        return pattern.matcher(html)
-                .replaceFirst("$1" + Matcher.quoteReplacement(escapedContent) + "$2");
+        Matcher matcher = pattern.matcher(html);
+        if (matcher.find()) {
+            return matcher.replaceFirst("$1" + Matcher.quoteReplacement(escapedContent) + "$2");
+        }
+        // Backend-only dev boots can use the legacy shell, which has no OG tags.
+        return html.replace("</head>", "<meta property=\"" + property + "\" content=\""
+                + escapedContent + "\" />\n</head>");
     }
 }

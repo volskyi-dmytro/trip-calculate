@@ -2,6 +2,7 @@ package com.tripplanner.TripPlanner.service;
 
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -56,5 +57,17 @@ class OgMetaInjectorTest {
         String html = injector.inject(TEMPLATE, "t", "d", "u");
         assertTrue(html.contains("<body></body>"));
         assertTrue(html.contains("<!DOCTYPE html>"));
+    }
+
+    @Test
+    void imageMetadataEscapesUserTextAndAddsDimensions() {
+        String html = injector.injectReceiptImage(TEMPLATE, "https://example.invalid/r/abc12345/og.png", "<script> & \"test\"");
+        assertTrue(html.contains("content=\"https://example.invalid/r/abc12345/og.png\""));
+        assertTrue(html.contains("&lt;script&gt; &amp; &quot;test&quot;"));
+        assertFalse(html.contains("<script>"));
+        assertTrue(html.contains("property=\"og:image:width\" content=\"1200\""));
+        assertTrue(html.contains("property=\"og:image:height\" content=\"630\""));
+        assertTrue(html.contains("property=\"og:image:type\" content=\"image/png\""));
+        assertEquals(html, injector.injectReceiptImage(html, "https://example.invalid/r/abc12345/og.png", "<script> & \"test\""));
     }
 }
