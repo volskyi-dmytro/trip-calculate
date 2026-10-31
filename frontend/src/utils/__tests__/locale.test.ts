@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isSupportedLocale, stripLocalePrefix, withLocalePrefix } from '../locale';
+import { isSupportedLocale, otherLocale, stripLocalePrefix, withLocalePrefix } from '../locale';
 
 describe('isSupportedLocale', () => {
   it('accepts en and uk', () => {
@@ -24,6 +24,11 @@ describe('stripLocalePrefix', () => {
     expect(stripLocalePrefix('/route-planner')).toBe('/route-planner');
     expect(stripLocalePrefix('/r/abc12345')).toBe('/r/abc12345');
   });
+
+  it('does not strip segments that merely start with a locale code', () => {
+    expect(stripLocalePrefix('/english')).toBe('/english');
+    expect(stripLocalePrefix('/ukraine/map')).toBe('/ukraine/map');
+  });
 });
 
 describe('withLocalePrefix', () => {
@@ -38,5 +43,20 @@ describe('withLocalePrefix', () => {
   it('handles the bare root path in either direction', () => {
     expect(withLocalePrefix('/', 'en')).toBe('/en');
     expect(withLocalePrefix('/uk', 'en')).toBe('/en');
+  });
+
+  it('replaces a bare locale segment with the target locale', () => {
+    expect(withLocalePrefix('/en', 'uk')).toBe('/uk');
+  });
+
+  it('operates on pathnames only, leaving query and hash handling to the caller', () => {
+    expect(withLocalePrefix('/route-planner', 'en')).toBe('/en/route-planner');
+  });
+});
+
+describe('otherLocale', () => {
+  it('returns the alternate supported locale', () => {
+    expect(otherLocale('en')).toBe('uk');
+    expect(otherLocale('uk')).toBe('en');
   });
 });
