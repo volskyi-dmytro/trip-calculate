@@ -543,7 +543,7 @@ export const translations: Record<Language, Record<string, string>> = {
     'home.guide.example.step2': 'Потрібно пального: {km} × {consumption} ÷ 100 = {liters} л.',
     'home.guide.example.step3': 'Вартість пального: {liters} л × {price} = {total}.',
     'home.guide.example.step4': 'Поділ на {people} осіб: {total} ÷ {people} = {share} з кожного.',
-    'home.guide.priceLive': 'Ціна — середня по Україні для бензину А-95 за даними minfin.com.ua на {date}.',
+    'home.guide.priceLive': 'Ціна — середня по Україні для бензину А-95 за даними minfin.com.ua на {date}',
     'home.guide.priceSample': 'Ціна {price} за літр орієнтовна — підставте актуальну з вашої АЗС.',
     'home.guide.split.title': 'Як поділити вартість поїздки між пасажирами',
     'home.guide.split.text': 'Поділіть загальну вартість пального на кількість людей, які скидаються, — разом із водієм або без нього, як домовитеся. У калькуляторі вкажіть, на скільки людей ділити суму, і частку кожного побачите одразу, а з акаунтом можна надіслати посилання на чек у груповий чат.',
