@@ -1202,12 +1202,6 @@ main:focus {
     color: inherit;
 }
 
-.route-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 10px;
-}
-
 .route-chip {
     display: inline-flex;
     align-items: center;
@@ -1231,6 +1225,125 @@ main:focus {
 .route-chip:hover {
     background: var(--glass-bg-strong);
     border-color: var(--border-strong);
+}
+
+/* Home "how to calculate" guide and route cost table. Readable line length,
+   glass formula card; the table scrolls inside its own box on phones. */
+.home-formula {
+    margin: 0 0 20px;
+    padding: 14px 18px;
+    max-width: 65ch;
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    line-height: 1.6;
+}
+
+.home-guide h3 {
+    margin: 24px 0 8px;
+    font-size: 1.05rem;
+    font-weight: 700;
+}
+
+.home-guide-list,
+.home-guide-text,
+.home-guide-note {
+    max-width: 65ch;
+    line-height: 1.6;
+    color: var(--text-2);
+}
+
+.home-guide-list {
+    margin: 0 0 8px;
+    padding-left: 1.3rem;
+}
+
+ol.home-guide-list {
+    list-style: decimal;
+}
+
+ul.home-guide-list {
+    list-style: disc;
+}
+
+.home-guide-list li + li {
+    margin-top: 4px;
+}
+
+.home-guide-text {
+    margin: 0 0 8px;
+}
+
+.home-guide-note {
+    margin: 0;
+    font-size: 0.85rem;
+}
+
+.home-routes-wrap {
+    overflow-x: auto;
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    background: var(--glass-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.4);
+}
+
+.home-routes {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+}
+
+.home-routes th,
+.home-routes td {
+    padding: 10px 12px;
+    text-align: right;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+}
+
+.home-routes th:first-child {
+    text-align: left;
+}
+
+/* Headers may wrap ("З кожного (4 ос.)" is the widest cell) so the four
+   columns fit a 375px phone without sideways scrolling. */
+.home-routes thead th {
+    font-weight: 700;
+    color: var(--text-2);
+    font-size: 0.8rem;
+    white-space: normal;
+}
+
+@media (max-width: 480px) {
+    .home-routes th,
+    .home-routes td {
+        padding: 9px 8px;
+    }
+}
+
+.home-routes tbody th {
+    font-weight: 600;
+    white-space: normal;
+}
+
+.home-routes tbody th a {
+    color: var(--text);
+}
+
+.home-routes td {
+    font-variant-numeric: tabular-nums;
+    color: var(--text-2);
+}
+
+.home-routes tbody tr:last-child > * {
+    border-bottom: 0;
+}
+
+.home-routes-more {
+    margin-top: 12px;
 }
 
 /* ============================================

@@ -7,6 +7,8 @@ export interface CityRouteSummary {
   slug: string;
   from: { uk: string; en: string };
   to: { uk: string; en: string };
+  /** Cached live road distance, else the curated estimate (rounded km). */
+  distanceKm: number;
 }
 
 export interface CityRouteRelated {

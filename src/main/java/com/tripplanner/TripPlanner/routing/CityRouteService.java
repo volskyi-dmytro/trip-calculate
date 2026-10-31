@@ -49,14 +49,40 @@ public class CityRouteService {
         return CityRouteCatalog.ALL;
     }
 
-    /** Catalog list in both languages: GET /api/city-routes and the home page's embedded copy. */
+    /**
+     * Catalog list in both languages: GET /api/city-routes and the home page's embedded copy.
+     * The distance is the cached live figure when a route page was viewed in the last 24h,
+     * otherwise the curated estimate — never a routing call, so the home page stays fast.
+     */
     public List<Map<String, Object>> summaries() {
         return CityRouteCatalog.ALL.stream()
-                .map(r -> Map.<String, Object>of(
-                        "slug", r.slug(),
-                        "from", Map.of("uk", r.from().uk(), "en", r.from().en()),
-                        "to", Map.of("uk", r.to().uk(), "en", r.to().en())))
+                .map(r -> {
+                    CachedDistance cached = cache.get(r.slug());
+                    double km = cached != null && cached.live() && cached.isFresh() ? cached.km() : r.estDistanceKm();
+                    return Map.<String, Object>of(
+                            "slug", r.slug(),
+                            "from", Map.of("uk", r.from().uk(), "en", r.from().en()),
+                            "to", Map.of("uk", r.to().uk(), "en", r.to().en()),
+                            "distanceKm", Math.round(km));
+                })
                 .toList();
+    }
+
+    /**
+     * Today's Ukraine petrol average and the consumption the city pages assume, for the home
+     * page's worked example and route cost table. Empty before the first real refresh: a seed
+     * placeholder must not be published as "today's price".
+     */
+    public Optional<Map<String, Object>> homeFuelPrice() {
+        FuelPrice fuel = fuelPrice();
+        if (fuel == null || "seed".equals(fuel.source())) {
+            return Optional.empty();
+        }
+        return Optional.of(Map.of(
+                "pricePerLiter", round2(fuel.pricePerLiter()),
+                "date", fuel.fetchedAt().toString(),
+                "consumptionL100", CONSUMPTION_L_PER_100KM,
+                "passengers", PASSENGERS));
     }
 
     public Optional<Map<String, Object>> get(String slug, String locale) {
