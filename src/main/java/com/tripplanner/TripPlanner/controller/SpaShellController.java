@@ -126,7 +126,8 @@ public class SpaShellController {
         // The popular-routes links ship with the HTML (HomePage reads this island),
         // so crawlers see them without waiting on /api/city-routes.
         String jsonLd = jsonLdWebSite(locale) + jsonLdWebApplication(canonical, locale, description)
-                + dataIsland("city-routes-data", cityRouteService.summaries());
+                + dataIsland("city-routes-data", cityRouteService.summaries())
+                + cityRouteService.homeFuelPrice().map(fuel -> dataIsland("fuel-price-data", fuel)).orElse("");
         String noscript = homeNoscript(english, locale);
         return new PageMetadata(locale, "", title, description, ogTitle, true, jsonLd, noscript);
     }
@@ -365,9 +366,11 @@ public class SpaShellController {
         List<String> paragraphs = english
                 ? List.of(
                         "Trip Calculate works out your road trip's fuel cost from real driving distances and live fuel prices by country, then splits the total between passengers.",
+                        "Trip cost = distance (km) × consumption (L/100 km) ÷ 100 × fuel price per litre. Divide by the number of people to get each share.",
                         "Plan a route on the map, browse a city-to-city fuel cost below, or switch to the Ukrainian version.")
                 : List.of(
                         "Trip Calculate рахує вартість пального для вашої поїздки за реальною відстанню та актуальними цінами на пальне по країнах, а потім ділить суму між пасажирами.",
+                        "Вартість поїздки = відстань (км) × витрата (л/100 км) ÷ 100 × ціна пального за літр. Поділіть суму на кількість людей — і отримаєте частку кожного.",
                         "Сплануйте маршрут на карті, перегляньте вартість поїздки між містами нижче або перемкніться на англійську версію.");
 
         List<NoscriptLink> links = new ArrayList<>();

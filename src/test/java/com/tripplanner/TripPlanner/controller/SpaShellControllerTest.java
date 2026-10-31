@@ -54,8 +54,14 @@ class SpaShellControllerTest {
 
     @SuppressWarnings("unchecked")
     private void mockFuelPrice(double price, Instant fetchedAt) throws Exception {
+        mockFuelPrice(price, fetchedAt, "minfin");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void mockFuelPrice(double price, Instant fetchedAt, String source) throws Exception {
         ResultSet rs = mock(ResultSet.class);
         when(rs.getString("currency")).thenReturn("UAH");
+        when(rs.getString("source")).thenReturn(source);
         when(rs.getDouble("price")).thenReturn(price);
         when(rs.getTimestamp("fetched_at")).thenReturn(Timestamp.from(fetchedAt));
         when(jdbc.query(startsWith("SELECT price"), any(RowMapper.class))).thenAnswer(inv -> {
@@ -221,6 +227,31 @@ class SpaShellControllerTest {
         assertEquals(com.tripplanner.TripPlanner.routing.CityRouteCatalog.ALL.size(), routes.size());
         assertEquals("kyiv-lviv", routes.get(0).get("slug"));
         assertEquals(Map.of("uk", "Київ", "en", "Kyiv"), routes.get(0).get("from"));
+        // The home cost table needs a distance per route; offline that is the catalog estimate.
+        assertEquals((int) Math.round(com.tripplanner.TripPlanner.routing.CityRouteCatalog.ALL.get(0).estDistanceKm()),
+                routes.get(0).get("distanceKm"));
+    }
+
+    @Test
+    void homeEmbedsTodaysFuelPriceForTheWorkedExample() throws Exception {
+        mockFuelPrice(58.49, Instant.parse("2026-10-31T06:00:00Z"));
+
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+        Matcher island = Pattern.compile("<script type=\"application/json\" id=\"fuel-price-data\">(.*?)</script>").matcher(html);
+        assertTrue(island.find());
+        Map<String, Object> fuel = new ObjectMapper().readValue(island.group(1), Map.class);
+        assertEquals(58.49, fuel.get("pricePerLiter"));
+        assertEquals(7.5, fuel.get("consumptionL100"));
+        assertEquals(4, fuel.get("passengers"));
+    }
+
+    @Test
+    void homeNeverPublishesTheSeedPlaceholderAsTodaysPrice() throws Exception {
+        mockFuelPrice(55.0, Instant.parse("2026-01-01T00:00:00Z"), "seed");
+
+        String html = controller.shell(new MockHttpServletRequest("GET", "/uk")).getBody();
+
+        assertFalse(html.contains("id=\"fuel-price-data\""));
     }
 
     @Test
